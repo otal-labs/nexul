@@ -32,7 +32,7 @@ export const WizardStepPanel = ({ step, children }: WizardStepPanelProps) => {
         forward ? "slide-in-from-right-2" : "slide-in-from-left-2",
       )}
     >
-      <h1 className={cn(displayTitleClass, "text-[2rem]")}>{wizardStepTitle(step, door, projectName)}</h1>
+      <h1 className={cn(displayTitleClass, "text-headline")}>{wizardStepTitle(step, door, projectName)}</h1>
       {lead && <p className="mt-2 text-muted-foreground">{lead}</p>}
       <div className="mt-8">{children}</div>
     </div>

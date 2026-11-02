@@ -52,7 +52,7 @@ export const SetupCodeForm = () => {
         className="font-mono"
       />
       <div className="space-y-2">
-        <p className="text-[13px] text-muted-foreground">The installer printed it. Lost it? Run this on the server:</p>
+        <p className="text-row text-muted-foreground">The installer printed it. Lost it? Run this on the server:</p>
         <CommandRow lines={["sudo nexul status"]} ariaLabel="The command to run on the server" copyLabel="command" quiet />
       </div>
       <Button type="submit" size="lg" className="w-full" loading={form.formState.isSubmitting}>

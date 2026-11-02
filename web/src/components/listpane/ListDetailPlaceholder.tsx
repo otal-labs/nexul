@@ -24,7 +24,7 @@ export const ListDetailPlaceholder = ({ icon, title, summary, searchable = false
     action={
       searchable && (
         <p className="text-xs text-muted-foreground">
-          <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-[11px]">{commandPaletteShortcut()}</kbd> to search
+          <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-micro">{commandPaletteShortcut()}</kbd> to search
         </p>
       )
     }

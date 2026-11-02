@@ -13,7 +13,7 @@ export const ComposerSteerHint = ({ conversationId }: ComposerSteerHintProps) =>
     working && (
       <p data-slot="steer-hint" className="settle-in px-1 pt-1.5 text-xs text-muted-foreground">
         Enter steers the Agent ·{" "}
-        <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-[11px]">{queueShortcut()}</kbd> queues
+        <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-micro">{queueShortcut()}</kbd> queues
       </p>
     )
   );

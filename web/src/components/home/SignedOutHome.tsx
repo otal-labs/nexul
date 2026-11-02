@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 export const SignedOutHome = () => (
   <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-8 lg:px-12">
-    <header className="flex items-center gap-2.5 py-6 text-[15px] font-semibold tracking-tight">
+    <header className="flex items-center gap-2.5 py-6 text-base font-semibold tracking-tight">
       <Logo className="size-7 rounded-md" />
       Nexul
     </header>

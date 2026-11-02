@@ -13,7 +13,7 @@ interface SignedOutHeaderProps {
 export const SignedOutHeader = ({ title, subtitle, progress }: SignedOutHeaderProps) => (
   <header>
     {progress && <div className="mb-5">{progress}</div>}
-    <h1 className={cn(displayTitleClass, "text-[2rem]")}>{title}</h1>
+    <h1 className={cn(displayTitleClass, "text-headline")}>{title}</h1>
     {subtitle && <p className="mt-3 text-sm text-pretty text-muted-foreground">{subtitle}</p>}
   </header>
 );

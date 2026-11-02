@@ -30,7 +30,7 @@ export const PlayRunsSection = ({ play }: PlayRunsSectionProps) => {
     <section aria-labelledby="play-runs" className="@container space-y-3">
       <div className="flex h-7 items-center gap-2">
         <Microheader id="play-runs">Runs</Microheader>
-        {recent && recent.total > 0 && <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{recent.total}</span>}
+        {recent && recent.total > 0 && <span className="font-mono text-micro text-muted-foreground tabular-nums">{recent.total}</span>}
       </div>
       {error && <ErrorDisplay error={error} title="Couldn't load the runs." />}
       {waiting && waiting.total > 0 && (

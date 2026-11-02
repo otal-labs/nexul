@@ -31,7 +31,7 @@ export const ProjectsCard = ({ grid, footer, aside, fill = false }: ProjectsCard
       return {
         id: project.id,
         name: project.name,
-        mark: <ProjectMark project={project} className="size-6 rounded-md text-[9px]" />,
+        mark: <ProjectMark project={project} className="size-6 rounded-md text-micro" />,
         trailing: <PeopleCell projectName={project.name} userIds={userIds} onToggle={(userId) => draft.togglePerson(project.id, userId)} />,
       };
     });

@@ -83,7 +83,7 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
           aria-expanded={open}
           onClick={onToggle}
           className={cn(
-            "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md px-2.5 py-3 text-left focus-visible:-outline-offset-3!",
+            "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md px-2.5 py-3 text-left inset-focus",
             (open || lit) && currentRowFillClass,
             !open && "transition-colors duration-150 ease-standard hover:bg-accent",
           )}

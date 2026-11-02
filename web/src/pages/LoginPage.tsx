@@ -78,7 +78,7 @@ export const LoginPage = () => {
             {passkeysEnabled && <PasskeySignInButton />}
           </div>
           {bootstrapStatus?.reconfigurable && (
-            <p className="mt-5 text-[13px] text-muted-foreground">
+            <p className="mt-5 text-row text-muted-foreground">
               Sign-in failing?{" "}
               <Link to="/setup" className="underline underline-offset-4 hover:text-foreground">
                 Set up the GitHub App again

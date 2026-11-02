@@ -16,7 +16,7 @@ interface ThemeTileProps {
 export const ThemeTile = ({ value, label, selected, children }: ThemeTileProps) => (
   <RadioGroupPrimitive.Item
     value={value}
-    className="group/tile flex min-w-0 flex-col gap-2 rounded-lg p-1 text-left outline-none motion-safe:active:scale-[0.97] transition-[scale] duration-150 ease-out focus-visible:ring-[3px] focus-visible:ring-ring/40"
+    className="group/tile flex min-w-0 flex-col gap-2 rounded-lg p-1 text-left outline-none motion-safe:active:scale-[0.97] transition-[scale] duration-150 ease-out"
   >
     <span
       className={cn(

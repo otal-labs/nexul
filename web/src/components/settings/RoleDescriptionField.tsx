@@ -17,7 +17,7 @@ export const RoleDescriptionField = ({ description, onDescription }: RoleDescrip
         <label htmlFor="role-description" className="text-sm font-medium">
           Description
         </label>
-        <span className={cn("font-mono text-[11px] tabular-nums text-muted-foreground", left <= 20 && "text-warning")}>
+        <span className={cn("font-mono text-micro tabular-nums text-muted-foreground", left <= 20 && "text-warning")}>
           {description.length} / {ROLE_DESCRIPTION_MAX}
         </span>
       </div>

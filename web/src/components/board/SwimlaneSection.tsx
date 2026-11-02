@@ -61,7 +61,7 @@ export const SwimlaneSection = ({ lane, columns, overflowing = false }: Swimlane
               className={cn("size-3.5 shrink-0 self-center text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
               aria-hidden
             />
-            <span title={lane.label} className="min-w-0 truncate text-[14px] font-semibold">{lane.label}</span>{" "}
+            <span title={lane.label} className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
             {allDone && <CircleCheckBig className="size-3 shrink-0 self-center text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
               <span className="flex shrink-0 items-baseline gap-2.5 text-xs tabular-nums text-muted-foreground">

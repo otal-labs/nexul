@@ -1,5 +1,15 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// The type scale's own steps (index.css @theme), so a size is never merged away as a colour.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["initial", "micro", "row", "empty-headline", "title", "headline"],
+      "font-weight": ["book"],
+    },
+  },
+});
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 

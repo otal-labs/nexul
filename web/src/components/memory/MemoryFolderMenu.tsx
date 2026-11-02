@@ -35,7 +35,7 @@ export const MemoryFolderMenu = ({ memory }: MemoryFolderMenuProps) => {
       {canMove && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="-mx-2 h-7 gap-1 px-2 text-[13px] font-normal text-foreground has-[>svg]:px-2" aria-label={`Folder: ${label}`}>
+            <Button variant="ghost" size="sm" className="-mx-2 h-7 gap-1 px-2 text-row font-normal text-foreground has-[>svg]:px-2" aria-label={`Folder: ${label}`}>
               {label}
               <ChevronDownIcon className="size-3.5 text-muted-foreground" aria-hidden />
             </Button>

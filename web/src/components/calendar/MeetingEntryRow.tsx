@@ -30,14 +30,14 @@ export const MeetingEntryRow = ({ entry: { meeting, occurrence }, detailed = fal
       title={`${range} ${meeting.title}`}
       className={cn(
         ENTRY_ROW,
-        detailed ? cn(WEEK_ROW, "text-sm") : cn(MONTH_ROW, "text-[13px]"),
+        detailed ? cn(WEEK_ROW, "text-sm") : cn(MONTH_ROW, "text-row"),
         open && "bg-accent",
         cancelled && "text-muted-foreground",
       )}
     >
       {!detailed && (
         <span className="flex items-center">
-          <time dateTime={occurrence.starts_at} className="font-mono text-[11px] text-muted-foreground tabular-nums @max-[55rem]:sr-only">
+          <time dateTime={occurrence.starts_at} className="font-mono text-micro text-muted-foreground tabular-nums @max-[55rem]:sr-only">
             {formatTime(occurrence.starts_at)}
           </time>
           <span aria-hidden className="hidden size-1.5 rounded-full bg-muted-foreground/60 @max-[55rem]:block" />

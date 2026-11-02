@@ -22,7 +22,7 @@ export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
   const attention = playAttention(play);
   const auto = (play.auto_plays_on ?? 0) > 0;
   const time = play.last_run && !attention?.state.startsWith("run") && (
-    <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{formatShortAgo(play.last_run.started_at)}</span>
+    <span className="font-mono text-micro text-muted-foreground tabular-nums">{formatShortAgo(play.last_run.started_at)}</span>
   );
 
   const detail = (

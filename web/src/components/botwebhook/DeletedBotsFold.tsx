@@ -30,7 +30,7 @@ export const DeletedBotsFold = ({ conversationId, full, onRestored }: DeletedBot
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="flex items-center gap-1 rounded-md text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="flex items-center gap-1 rounded-md text-xs text-muted-foreground hover:text-foreground"
       >
         <ChevronRight className={cn("size-3.5 transition-transform duration-150 ease-standard", open && "rotate-90")} aria-hidden />
         Deleted ({deleted.length})

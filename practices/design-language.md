@@ -177,8 +177,11 @@ light-mode ember holds 5:1 with white.
 
 One indicator everywhere: a 2px `focus` outline (ink at 80%), 2px out, 1px on
 a field, which keeps its border; a component's own ring utility is cleared on
-focus. Errors keep `destructive` on the border and message, so a focused field
-in error is an ink ring around a red border.
+focus, so the web app writes none: lint fails on `focus-visible:ring-*` and
+`focus-visible:outline-*`, and a control that shows focus another way takes
+`quiet-focus`, a full-width row in a scrolling list `inset-focus`. Errors keep
+`destructive` on the border and message, so a focused field in error is an
+ink ring around a red border.
 
 Focus is not the accent: the ember sits a few degrees from the destructive
 coral, and an ember ring on a field read as a field in error. Ink at 80% reads
@@ -236,6 +239,28 @@ axis settings:
 | Web app | `@fontsource-variable/fraunces`, its `full` build: the variable file that carries the SOFT and WONK axes | set at runtime by `type-display`: weight 560, `font-variation-settings: "SOFT" 50, "WONK" 1`, `font-optical-sizing: auto` |
 | Site | one pinned subset, `fraunces-display-latin.woff2` (34KB against the package's 121KB), preloaded | weight 560, SOFT 50 and WONK 1 pinned into the file, optical sizing kept; any other weight renders at 560 |
 | Phone | a static cut, `assets/fonts/Fraunces-Display.ttf`, family `Fraunces Display` | opsz 28, wght 560, SOFT 50, WONK 1 baked in, because Android does not apply variable axes reliably |
+
+The web app's sizes are one named scale, set in `@theme` in
+`web/src/index.css`; a size the table lacks is added to it and to the theme,
+never written as `text-[13px]`, and lint fails on an arbitrary `text-[Npx]`,
+`text-[Nrem]` or `font-[NNN]`. Text never goes under 11px, except initials in
+a mark under 24px.
+
+| Utility | Size / leading | Use |
+|---|---|---|
+| `text-initial` | 10 / 10px | initials and the "+N" in an avatar or mark under 24px, nothing else |
+| `text-micro` | 11 / 16px | group labels and microheaders (uppercase mono), a card's eyebrow and meta, kbd hints, canvas edge labels |
+| `text-xs` | 12 / 16px | meta lines, hints, descriptions, mono timestamps |
+| `text-row` | 13 / 20px | list rows, card and row titles, sidebar rows, the turn feed |
+| `text-sm` | 14 / 20px | body, labels, menu rows, a record's names |
+| `text-base` | 16 / 24px | settings and pane titles, rich-text `h3` |
+| `text-xl`, `text-2xl` | 20, 24px | the page title past 100 and 50 characters |
+| `text-empty-headline` | 26px | an empty state's Fraunces headline |
+| `text-title` | 28px | a page title |
+| `text-headline` | 32px | a showcase screen's headline (sign-in, setup, wizards) |
+
+The display steps carry no leading of their own; `type-display` sets 1.12.
+`font-book` is weight 450, a board card's title, where 500 read as bold.
 
 Title sizes are per surface: the web app in [What the web app
 adapts](#what-the-web-app-adapts), the site in [Site tokens and
@@ -725,7 +750,7 @@ the run marks, the thread mark and the 16px avatar of whoever acts next, all
 centred on the key's cap height. The run timer shows one unit ("45s", "16m",
 "2h"); on a narrow card the thread mark gives way first, then the timer, and
 the spinner stays. The title takes the
-card's full width under it, in 13px at weight 450 (500 read as bold at that
+card's full width under it, in 13px (`text-row`) at weight 450 (`font-book`; 500 read as bold at that
 size on a dark card), at most three lines. A blocked card adds "Blocked by" and
 the key on a line of its own. Last comes the type as its icon (a bug in its
 fuchsia, every other type muted) and at most two labels, each an 18px pill in its
@@ -831,7 +856,7 @@ from panes (Docs, Memories, Plays, Inbox, Ticket) run the full width with no
 Container, one panel per pane; Chat is one conversation panel.
 
 Microheader. The one small uppercase label is `microheaderClass`
-(`font-mono text-[11px] font-medium tracking-[0.12em] uppercase
+(`font-mono text-micro font-medium tracking-[0.12em] uppercase
 text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 

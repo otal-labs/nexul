@@ -112,7 +112,7 @@ export const BoardFilterBar = ({
               placeholder="Filter tickets"
               value={filters.search}
               onChange={(e) => onSearch(e.target.value)}
-              className="h-8 pl-8 text-[13px]"
+              className="h-8 pl-8 text-row"
             />
           </div>
           <Popover>

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CornerDownLeftIcon } from "lucide-react";
 
 const Key = ({ children }: { children: ReactNode }) => (
-  <kbd className="flex h-5 min-w-5 items-center justify-center rounded-sm border border-border bg-muted/60 px-1 font-mono text-[11px] text-muted-foreground">
+  <kbd className="flex h-5 min-w-5 items-center justify-center rounded-sm border border-border bg-muted/60 px-1 font-mono text-micro text-muted-foreground">
     {children}
   </kbd>
 );

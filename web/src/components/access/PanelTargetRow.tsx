@@ -62,10 +62,10 @@ export const PanelTargetRow = ({ target, selected, onSelect, subline, onRemove }
     >
       <TargetMark target={target} />
       <span className="min-w-0 flex-1">
-        <span title={target.name} className="block truncate text-[13px] font-medium">
+        <span title={target.name} className="block truncate text-row font-medium">
           {target.name}
         </span>
-        <span className="hidden truncate font-mono text-[11px] text-muted-foreground @3xl/panel:block">{subline}</span>
+        <span className="hidden truncate font-mono text-micro text-muted-foreground @3xl/panel:block">{subline}</span>
       </span>
     </button>
     {selected && <CurrentRowEdge className="hidden @3xl/panel:block" />}

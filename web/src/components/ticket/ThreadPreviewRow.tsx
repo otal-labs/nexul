@@ -45,7 +45,7 @@ export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => 
           login={author.login}
           name={personLabel(author)}
           src={message.author_avatar_url || author.avatar_url}
-          className="size-5 self-center text-[10px]"
+          className="size-5 self-center"
         />
       )}
       {!isSystem && (

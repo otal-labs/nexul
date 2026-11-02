@@ -32,7 +32,7 @@ const AvatarImage = ({ login, src, className, label = login, name }: PersonAvata
             className,
           )}
         >
-          <span className="text-[max(10px,38cqw)] leading-none">
+          <span className="text-[max(var(--text-initial),38cqw)] leading-none @min-[1.5rem]:text-[max(var(--text-micro),38cqw)]">
             {first}
             <span className="@max-[1.5rem]:hidden">{second}</span>
           </span>

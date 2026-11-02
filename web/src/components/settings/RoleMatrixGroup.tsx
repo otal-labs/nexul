@@ -44,7 +44,7 @@ const AreaCell = ({ domain, permissions }: { domain: PermissionDomain; permissio
         <span>
           {rungName(domain.domain, level)}
           {extras.length > 0 && (
-            <span className="ml-1.5 font-mono text-[11px] text-muted-foreground" title={extras.join(", ")}>
+            <span className="ml-1.5 font-mono text-micro text-muted-foreground" title={extras.join(", ")}>
               +{extras.length}
             </span>
           )}

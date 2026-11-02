@@ -26,13 +26,13 @@ export const VoiceRoomAvatars = ({ occupants, speaking }: VoiceRoomAvatarsProps)
           src={lookup(occupant.identity).avatar_url}
           label={occupant.name}
           className={cn(
-            "size-7 text-[11px] ring-2 ring-surface-2 transition-shadow duration-150 ease-standard",
+            "size-7 text-micro ring-2 ring-surface-2 transition-shadow duration-150 ease-standard",
             speaking?.has(occupant.identity) && "ring-success",
           )}
         />
       ))}
       {rest > 0 && (
-        <span className="avatar-more size-7 text-[11px] ring-2 ring-surface-2">
+        <span className="avatar-more size-7 text-micro ring-2 ring-surface-2">
           +{rest}
         </span>
       )}

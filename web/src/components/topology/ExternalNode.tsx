@@ -21,7 +21,7 @@ export const ExternalNode = ({ data, selected }: NodeProps<ExternalNodeType>) =>
   const Icon = labelIcons[data.label] ?? BoxIcon;
   return (
     <div className="group" style={{ width: EXTERNAL_W }}>
-      <span className={cn("mb-1.5 block text-[10px] leading-4", microheaderClass)}>outside Nexul</span>
+      <span className={cn("mb-1.5 block leading-4", microheaderClass)}>outside Nexul</span>
       <div className={cn(nodeShell, "p-3")} data-selected={selected}>
         <Handle type="target" position={Position.Left} className={handleClasses} />
         <div className="flex items-start gap-2">
@@ -38,7 +38,7 @@ export const ExternalNode = ({ data, selected }: NodeProps<ExternalNodeType>) =>
                 ))}
               </a>
             )}
-            <span className="font-mono text-[11px] leading-4 text-muted-foreground">{data.label}</span>
+            <span className="font-mono text-micro leading-4 text-muted-foreground">{data.label}</span>
           </div>
         </div>
         <Handle type="source" position={Position.Right} className={handleClasses} />

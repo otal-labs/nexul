@@ -9,7 +9,7 @@ const InvitationRoleItem = ({ role }: { role: InvitationRole }) => (
     <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
     <div className="min-w-0">
       <p className="text-sm leading-5 font-medium break-words text-pretty">{role.name}</p>
-      {role.description && <p className="mt-0.5 text-[13px] leading-[18px] text-pretty text-muted-foreground">{role.description}</p>}
+      {role.description && <p className="mt-0.5 text-row leading-[18px] text-pretty text-muted-foreground">{role.description}</p>}
     </div>
   </li>
 );
@@ -31,7 +31,7 @@ export const InvitationGrantGroup = ({ grant, signedIn }: InvitationGrantGroupPr
   return (
     <section className="space-y-1.5">
       <div className="flex min-w-0 items-baseline gap-2">
-        <span aria-hidden className="mt-px grid self-start size-[18px] shrink-0 place-items-center rounded-sm bg-surface-2 font-mono text-[10px] font-semibold text-muted-foreground ring-1 ring-border">
+        <span aria-hidden className="mt-px grid self-start size-[18px] shrink-0 place-items-center rounded-sm bg-surface-2 font-mono text-initial font-semibold text-muted-foreground ring-1 ring-border">
           {grant.workspace_name.charAt(0).toUpperCase()}
         </span>
         <h2 title={grant.workspace_name} className="min-w-0 flex-1 text-sm leading-5 font-medium break-words">{grant.workspace_name}</h2>

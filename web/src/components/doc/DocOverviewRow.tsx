@@ -24,7 +24,7 @@ export const DocOverviewRow = ({ doc, runState, projectToken, detail }: DocOverv
     <li>
       <Link
         to={wsPath(docPath(projectToken, doc.id))}
-        className="-mx-2 flex gap-2 rounded-md px-2 py-2 text-[13px] transition-colors duration-150 ease-standard hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+        className="-mx-2 flex gap-2 rounded-md px-2 py-2 text-row transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
       >
         <span className="flex h-lh shrink-0 items-center">
           <DocStateIcon runState={runState} locked={!!doc.locked} questionsClosed={!!doc.clarification_closed} />
@@ -34,7 +34,7 @@ export const DocOverviewRow = ({ doc, runState, projectToken, detail }: DocOverv
             <span dir="auto" title={doc.title} className="truncate font-medium text-foreground">
               {doc.title}
             </span>
-            <span title={`Edited ${formatFullTime(doc.updated_at)}`} className="ml-auto shrink-0 pl-3 font-mono text-[11px] text-muted-foreground tabular-nums">
+            <span title={`Edited ${formatFullTime(doc.updated_at)}`} className="ml-auto shrink-0 pl-3 font-mono text-micro text-muted-foreground tabular-nums">
               {formatShortAgo(doc.updated_at)}
             </span>
           </span>

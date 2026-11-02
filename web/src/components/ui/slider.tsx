@@ -22,7 +22,7 @@ export const Slider = ({
     <SliderPrimitive.Thumb
       data-slot="slider-thumb"
       aria-label={ariaLabel}
-      className="block size-4 shrink-0 rounded-full border border-brand bg-background shadow-xs transition-[box-shadow] duration-150 ease-standard outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+      className="block size-4 shrink-0 rounded-full border border-brand bg-background shadow-xs transition-[box-shadow] duration-150 ease-standard outline-none disabled:pointer-events-none disabled:opacity-50"
     />
   </SliderPrimitive.Root>
 );

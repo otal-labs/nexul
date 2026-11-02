@@ -64,7 +64,7 @@ export const EmptyState = ({
     >
       <OrbitMark icon={icon} compact={compact} />
       {compact && <h2 className="text-sm font-medium text-foreground">{title}</h2>}
-      {!compact && <h2 className={cn(displayTitleClass, "mt-6 max-w-md text-[1.625rem] text-foreground")}>{title}</h2>}
+      {!compact && <h2 className={cn(displayTitleClass, "mt-6 max-w-md text-empty-headline text-foreground")}>{title}</h2>}
       {message && (
         <p className={cn("max-w-sm text-pretty text-muted-foreground", compact ? "text-xs" : "mt-2 text-sm")}>{message}</p>
       )}

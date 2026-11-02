@@ -19,7 +19,7 @@ export const WaitingRepositoryRow = ({ projectId, repo }: WaitingRepositoryRowPr
   return (
     <SettingsListRow
       lead={<GithubMark className="size-3.5 text-muted-foreground" />}
-      name={<span className="truncate font-mono text-[13px]" title={repo.full_name}>{repo.full_name}</span>}
+      name={<span className="truncate font-mono text-row" title={repo.full_name}>{repo.full_name}</span>}
       meta="Attached, not deployed yet"
       showActions
       actions={

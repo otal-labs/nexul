@@ -47,7 +47,7 @@ export const RoleSectionTabs = ({ tab, onTab, workspaceName }: RoleSectionTabsPr
           {sections.map(({ section, tally, changed }) => (
             <BrowserTab key={section.area} value={section.area} pending={changed}>
               {section.title}
-              <span aria-hidden className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <span aria-hidden className="font-mono text-micro tabular-nums text-muted-foreground">
                 {tally.allowed}/{tally.total}
               </span>
               <span className="sr-only">
@@ -57,7 +57,7 @@ export const RoleSectionTabs = ({ tab, onTab, workspaceName }: RoleSectionTabsPr
           ))}
           <BrowserTab value={WELCOME_TAB} pending={!sameActions(steps, loadedSteps)}>
             Welcome
-            <span aria-hidden className="font-mono text-[11px] tabular-nums text-muted-foreground">
+            <span aria-hidden className="font-mono text-micro tabular-nums text-muted-foreground">
               {steps.length}/{WELCOME_STEPS.length}
             </span>
             <span className="sr-only">

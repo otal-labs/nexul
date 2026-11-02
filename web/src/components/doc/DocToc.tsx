@@ -101,7 +101,7 @@ export const DocToc = ({ headings, onJump }: DocTocProps) => {
               aria-current={currentId === heading.id ? "true" : undefined}
               className={cn(
                 // The edge is a bar laid on the track and entries start past it, so the rounded focus ring never crosses the track.
-                "relative block rounded-md py-1 pr-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 ease-standard before:absolute before:inset-y-1.5 before:-left-[5.5px] before:w-0.5 before:rounded-full hover:text-foreground",
+                "relative block rounded-md py-1 pr-2 text-row leading-5 text-muted-foreground transition-colors duration-150 ease-standard before:absolute before:inset-y-1.5 before:-left-[5.5px] before:w-0.5 before:rounded-full hover:text-foreground",
                 heading.level === topLevel && "pl-2.5",
                 heading.level === topLevel + 1 && "pl-[1.125rem]",
                 heading.level >= topLevel + 2 && "pl-[1.625rem]",

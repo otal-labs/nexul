@@ -27,7 +27,7 @@ export const CalendarMonth = ({ days, byDay }: CalendarMonthProps) => {
     <div className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
       <div aria-hidden className={cn(COLUMNS, "border-b border-border")}>
         {days.slice(0, 7).map((day) => (
-          <span key={dayKey(day)} className="px-1.5 py-1.5 font-mono @max-[55rem]:px-1 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+          <span key={dayKey(day)} className="px-1.5 py-1.5 font-mono @max-[55rem]:px-1 text-micro font-medium tracking-[0.12em] text-muted-foreground uppercase">
             {formatWeekday(day)}
           </span>
         ))}

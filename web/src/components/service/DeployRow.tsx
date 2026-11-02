@@ -28,7 +28,7 @@ const sourceOf = (deploy: Deploy, current: boolean): string =>
 const What = ({ deploy }: { deploy: Deploy }) => {
   const commit = deployCommit(deploy);
   return (
-    <span className="flex min-w-0 items-center gap-2 font-mono text-[13px]">
+    <span className="flex min-w-0 items-center gap-2 font-mono text-row">
       {deploy.image && <MonoRef value={imageShortName(deploy.image)} kind="image" title={deploy.image} className="flex-1" />}
       {!deploy.image && (
         <span className="flex min-w-0 items-center gap-1" title={[deploy.ref, commit].filter(Boolean).join(" ")}>

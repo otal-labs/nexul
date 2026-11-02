@@ -15,7 +15,7 @@ interface HistoryFooterProps {
 
 export const HistoryFooter = ({ note, children }: HistoryFooterProps) => (
   <div className={footerTrayClass}>
-    <p className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{note}</p>
+    <p className="min-w-0 flex-1 truncate text-row text-muted-foreground">{note}</p>
     <DialogClose asChild>
       <Button variant="ghost">Close</Button>
     </DialogClose>

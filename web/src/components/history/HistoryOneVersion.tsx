@@ -26,7 +26,7 @@ export const HistoryOneVersion = ({ version, footer }: HistoryOneVersionProps) =
 
   return (
     <>
-      <p className="bg-popover px-6 pb-5 text-[13px] text-muted-foreground">
+      <p className="bg-popover px-6 pb-5 text-row text-muted-foreground">
         <span className="text-foreground">
           One version, saved {formatVersionTime(version.created_at)}
           {by}

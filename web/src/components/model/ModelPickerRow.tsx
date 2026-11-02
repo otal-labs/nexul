@@ -43,7 +43,7 @@ export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onP
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm">{name}</span>
             {isNew && (
-              <span className="shrink-0 rounded-sm border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground uppercase">
+              <span className="shrink-0 rounded-sm border border-border px-1 font-mono text-micro leading-4 text-muted-foreground uppercase">
                 New
               </span>
             )}
@@ -58,7 +58,7 @@ export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onP
           )}
         </span>
         {selected && <CheckIcon className="size-3.5 shrink-0" aria-hidden />}
-        {shortcut && <kbd className="shrink-0 font-mono text-[10px] text-muted-foreground">{shortcut}</kbd>}
+        {shortcut && <kbd className="shrink-0 font-mono text-micro text-muted-foreground">{shortcut}</kbd>}
       </button>
       {favouriteKey && (
         <button

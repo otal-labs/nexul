@@ -36,7 +36,7 @@ export const WorkspaceUrlField = () => {
           onChange={(e) => field.onChange(normalizeSlugInput(e.target.value))}
           spellCheck={false}
           autoComplete="off"
-          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent font-mono shadow-none outline-none! focus-visible:ring-0 dark:bg-transparent"
+          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent font-mono shadow-none outline-none! dark:bg-transparent"
         />
         {canSuggest && (
           <span className="flex shrink-0 items-center pr-1">

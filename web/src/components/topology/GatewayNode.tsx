@@ -65,7 +65,7 @@ export const GatewayNode = ({ data, selected }: NodeProps<GatewayNodeType>) => (
         <RouteItem key={r.id} route={r} height={data.rowHeights?.[i]} dim={!!data.litRoutes && !data.litRoutes.includes(r.id)} />
       ))}
     </ul>
-    <div className="border-t border-border px-3 py-2 font-mono text-[11px] leading-4 text-muted-foreground">
+    <div className="border-t border-border px-3 py-2 font-mono text-micro leading-4 text-muted-foreground">
       {footerOnOneLine(data) && footerFacts(data).join(" · ")}
       {!footerOnOneLine(data) &&
         footerFacts(data).map((fact) => (

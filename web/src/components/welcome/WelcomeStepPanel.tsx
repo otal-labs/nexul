@@ -29,7 +29,7 @@ export const WelcomeStepPanel = () => {
       )}
     >
       {view === "finish" && <WelcomeFinish />}
-      {view !== "finish" && <h1 className={cn(displayTitleClass, "text-[2rem]")}>{STEP_COPY[view].title}</h1>}
+      {view !== "finish" && <h1 className={cn(displayTitleClass, "text-headline")}>{STEP_COPY[view].title}</h1>}
       {view !== "finish" && <p className="mt-2 text-muted-foreground">{STEP_COPY[view].lead}</p>}
       {view !== "finish" && (
         <div className="mt-8">

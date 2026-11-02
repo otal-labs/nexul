@@ -33,7 +33,7 @@ export const CommandBlock = ({ shell, lines, prompt = "$" }: CommandBlockProps) 
           type="button"
           onClick={copy}
           aria-label={copied ? "Copied" : `Copy ${shell} commands`}
-          className="terminal-window__action focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="terminal-window__action"
         >
           {copied && <Check className="size-3.5" aria-hidden />}
           {!copied && <Copy className="size-3.5" aria-hidden />}

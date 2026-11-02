@@ -12,7 +12,7 @@ interface PresenceSectionProps {
   size?: "sm" | "md";
 }
 
-const sizes = { sm: "size-5 text-[10px]", md: "size-6 text-xs" };
+const sizes = { sm: "size-5 text-initial", md: "size-6 text-xs" };
 
 // Stacked avatar group for glanceable presence; no domain event per cursor move.
 export const PresenceSection = ({ participants, max = 4, size = "md" }: PresenceSectionProps) => {

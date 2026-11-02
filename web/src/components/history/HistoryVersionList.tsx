@@ -43,8 +43,8 @@ export const HistoryVersionList = ({ versions, changes, selected, retention = "t
       className="flex min-h-0 w-62 shrink-0 flex-col overflow-y-auto border-l border-border bg-popover max-lg:w-58"
     >
       <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-between gap-1.5 border-b border-border bg-popover px-4">
-        <h3 className="text-[11px] leading-4 font-semibold tracking-[0.1em] text-muted-foreground uppercase">Versions</h3>
-        <span title={counts.long} className="min-w-0 truncate text-[11px] leading-4 tabular-nums text-muted-foreground">
+        <h3 className="text-micro leading-4 font-semibold tracking-[0.1em] text-muted-foreground uppercase">Versions</h3>
+        <span title={counts.long} className="min-w-0 truncate text-micro leading-4 tabular-nums text-muted-foreground">
           {counts.short}
           <span className="sr-only">. {counts.long}</span>
         </span>

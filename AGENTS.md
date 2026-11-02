@@ -140,6 +140,7 @@ skipped and lint errors do not.
 | A phone query cached until pushed names a topic, and its topics and payload fields exist in the catalog | `bun run typecheck` in `native/`, through the `@ts-expect-error` cases in `native/src/lib/liveQuery.test.ts` |
 | A catalog topic reaches exactly the phone queries that declare it | the per-topic table test in `native/src/hooks/useLiveEvents.test.tsx` |
 | Phone icons import by path; the SDK's event types import as types only | `no-restricted-imports` in `native/eslint.config.js` |
+| Web text sizes come from the type scale, and no component writes its own focus ring | `no-restricted-syntax` in `web/eslint.config.js` |
 | Dependency freshness | Dependabot, weekly, grouped per directory |
 
 A rule that could be a lint rule and is not yet is a candidate for one; add

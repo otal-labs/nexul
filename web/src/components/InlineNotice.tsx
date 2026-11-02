@@ -17,7 +17,7 @@ export const InlineNotice = ({ title, children, tone = "error", className }: Inl
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={cn("flex gap-2.5 rounded-lg border px-3 py-2.5 text-[13px] leading-5", tone === "error" ? "border-destructive/40" : "border-border", className)}
+      className={cn("flex gap-2.5 rounded-lg border px-3 py-2.5 text-row leading-5", tone === "error" ? "border-destructive/40" : "border-border", className)}
     >
       <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", tone === "error" ? "text-destructive" : "text-muted-foreground")} />
       <div className="min-w-0">

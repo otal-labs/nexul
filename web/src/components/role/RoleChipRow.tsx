@@ -13,7 +13,7 @@ export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
         <RoleChip key={role.id} name={role.name} />
       ))}
       {rest.length > 0 && (
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums" title={rest.map((role) => role.name).join(", ")}>
+        <span className="shrink-0 font-mono text-micro text-muted-foreground tabular-nums" title={rest.map((role) => role.name).join(", ")}>
           +{rest.length}
         </span>
       )}

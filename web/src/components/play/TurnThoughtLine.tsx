@@ -8,7 +8,7 @@ interface TurnThoughtLineProps {
 
 // A thought the Agent summarised between its steps, muted and in italics so it never reads as something it said.
 export const TurnThoughtLine = ({ entry }: TurnThoughtLineProps) => (
-  <p className="flex items-start gap-2 px-1 py-0.5 text-[13px] leading-5 text-muted-foreground italic">
+  <p className="flex items-start gap-2 px-1 py-0.5 text-row leading-5 text-muted-foreground italic">
     <span className="flex h-5 shrink-0 items-center">
       <Brain className="size-3.5" aria-hidden />
     </span>

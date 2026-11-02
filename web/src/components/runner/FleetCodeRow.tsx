@@ -26,7 +26,7 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
         <RunnerName name={code.name} muted />
       </span>
       <span />
-      <span className="truncate text-[13px] text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
+      <span className="truncate text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
         unused code · until {until}
       </span>
       <DropdownMenu>

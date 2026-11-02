@@ -18,7 +18,7 @@ export const PairingProjectRow = ({ project, open, onToggle }: PairingProjectRow
 
   return (
     <RunSettingsRow
-      mark={<ProjectMark project={project} className="size-7 rounded-md text-[10px] shadow-none" />}
+      mark={<ProjectMark project={project} className="size-7 rounded-md text-micro shadow-none" />}
       title={project.name}
       summary={summary}
       open={open}

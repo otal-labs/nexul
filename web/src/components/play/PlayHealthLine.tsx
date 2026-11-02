@@ -18,10 +18,10 @@ export const PlayHealthLine = ({ health }: PlayHealthLineProps) => {
 
   return (
     <>
-      {!last && <p className="font-mono text-[12px] text-muted-foreground">Not run yet</p>}
+      {!last && <p className="font-mono text-xs text-muted-foreground">Not run yet</p>}
       {last && (
         // Each figure leads with its dot, which a wrapped line pushes into the clipped margin, so no line starts or ends on one.
-        <p className="overflow-hidden font-mono text-[12px] text-muted-foreground tabular-nums">
+        <p className="overflow-hidden font-mono text-xs text-muted-foreground tabular-nums">
           <span className="-ml-5 flex flex-wrap items-center gap-y-1">
             {inFlight && <Figure state="running" text={`${health.running} running`} />}
             {health.waiting > 0 && <Figure state="waiting" text={needAnswers(health.waiting)} />}

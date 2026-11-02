@@ -18,7 +18,7 @@ const InstructionText = ({ text }: { text: string }) =>
   text.split(/(`[^`\n]+`)/).map((part, i) => {
     const code = part.length > 2 && part.startsWith("`") && part.endsWith("`");
     return (
-      <span key={i} className={cn(code && "rounded-sm bg-foreground/[0.06] px-1 py-0.5 font-mono text-[12px] leading-none box-decoration-clone")}>
+      <span key={i} className={cn(code && "rounded-sm bg-foreground/[0.06] px-1 py-0.5 font-mono text-xs leading-none box-decoration-clone")}>
         {code ? part.slice(1, -1) : part}
       </span>
     );
@@ -40,7 +40,7 @@ export const PlayInstructionsSection = ({ play }: PlayInstructionsSectionProps) 
           <p
             ref={markClamped}
             className={cn(
-              "peer max-w-[72ch] text-[13px] leading-relaxed whitespace-pre-wrap text-foreground [overflow-wrap:anywhere]",
+              "peer max-w-[72ch] text-row leading-relaxed whitespace-pre-wrap text-foreground [overflow-wrap:anywhere]",
               !open && "line-clamp-10 data-clamped:[mask-image:linear-gradient(to_bottom,black_70%,transparent)]",
             )}
           >

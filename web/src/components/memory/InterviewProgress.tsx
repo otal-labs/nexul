@@ -52,7 +52,7 @@ export const InterviewProgress = ({ sections, current, onJump }: InterviewProgre
             </>
           )}
         </p>
-        <ul aria-hidden className="ml-auto flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
+        <ul aria-hidden className="ml-auto flex flex-wrap items-center gap-x-3 text-micro text-muted-foreground">
           {current !== null && <LegendItem swatch="bg-brand" label="Open" />}
           {LEGEND.filter((l) => shown.has(l.kind)).map((l) => <LegendItem key={l.kind} swatch={SEGMENT[l.kind]} label={l.label} />)}
         </ul>

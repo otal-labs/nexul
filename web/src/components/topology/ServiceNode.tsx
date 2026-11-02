@@ -16,7 +16,7 @@ export const ServiceNode = ({ data, selected }: NodeProps<ServiceNodeType>) => (
       <div className="mt-1 flex items-center gap-2 text-xs leading-4 text-muted-foreground">
         <span className={cn("size-1.5 shrink-0 rounded-full", statusDot[data.status])} aria-hidden />
         <span>{data.status}</span>
-        {data.strategy && <span className="ml-auto font-mono text-[11px]">{data.strategy}</span>}
+        {data.strategy && <span className="ml-auto font-mono text-micro">{data.strategy}</span>}
       </div>
       {data.url && (
         <a className="mt-1 block font-mono text-xs break-all text-muted-foreground" href={data.url}>
@@ -25,7 +25,7 @@ export const ServiceNode = ({ data, selected }: NodeProps<ServiceNodeType>) => (
       )}
     </div>
     {((data.target && !data.machineInBox) || data.replicas != null || data.volume) && (
-      <div className="flex flex-col gap-0.5 border-t border-border px-3 py-1.5 font-mono text-[11px] leading-4 text-muted-foreground">
+      <div className="flex flex-col gap-0.5 border-t border-border px-3 py-1.5 font-mono text-micro leading-4 text-muted-foreground">
         {data.target && !data.machineInBox && <span>{data.target}</span>}
         {data.replicas != null && <span className="tabular-nums">{data.replicas} replicas</span>}
         {data.volume && <span>{data.volume}</span>}

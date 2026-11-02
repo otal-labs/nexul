@@ -34,7 +34,7 @@ export const WizardLayout = ({ step, progress, title, subtitle, onBack, children
           </Button>
         )}
         {step && !progress && <WizardStepIndicator current={step.current} total={step.total} />}
-        <h1 className={cn(displayTitleClass, "text-[2rem]", !progress && "mt-5")}>{title}</h1>
+        <h1 className={cn(displayTitleClass, "text-headline", !progress && "mt-5")}>{title}</h1>
         <p className="mt-2 text-muted-foreground">{subtitle}</p>
         <div className="mt-8">{children}</div>
       </div>

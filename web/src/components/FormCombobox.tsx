@@ -90,7 +90,7 @@ export const FormCombobox = <T extends FieldValues>({
                 aria-invalid={message != null}
                 onBlur={field.onBlur}
                 className={cn(
-                  "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-sm whitespace-nowrap shadow-xs outline-none transition-[color,box-shadow,border-color] duration-150 ease-standard hover:border-ring/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/20 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+                  "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 text-sm whitespace-nowrap shadow-xs outline-none transition-[color,box-shadow,border-color] duration-150 ease-standard hover:border-ring/40 focus-visible:border-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/20 [&_svg]:pointer-events-none [&_svg]:shrink-0",
                   selected ? "text-foreground" : "text-muted-foreground",
                 )}
               >

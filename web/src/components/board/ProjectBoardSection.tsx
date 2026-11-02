@@ -93,7 +93,7 @@ export const ProjectBoardSection = ({
       <div className="mx-auto flex w-full shrink-0 flex-col" style={{ maxWidth: chromeWidth, paddingRight: gutter || undefined }}>
         <PageHeader
           className="border-b-0 pb-0"
-          leading={project ? <ProjectMark project={project} className="size-8 rounded-lg text-[11px]" /> : undefined}
+          leading={project ? <ProjectMark project={project} className="size-8 rounded-lg text-micro" /> : undefined}
           title={project?.name ?? "Board"}
           meta={
             <p className="font-mono text-xs tabular-nums">

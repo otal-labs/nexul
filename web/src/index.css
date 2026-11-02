@@ -49,6 +49,17 @@
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
   --font-display: var(--font-display-stack);
+  /* The type scale between Tailwind's steps (practices/design-language.md, Type); display sizes leave leading to type-display. */
+  --text-initial: 0.625rem;
+  --text-initial--line-height: 1;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: calc(1 / 0.6875);
+  --text-row: 0.8125rem;
+  --text-row--line-height: calc(1.25 / 0.8125);
+  --text-empty-headline: 1.625rem;
+  --text-title: 1.75rem;
+  --text-headline: 2rem;
+  --font-weight-book: 450;
   /* Radius system: 4px small, 6px controls, 8px cards, 12px panels, 16px large surfaces, pills for badges. */
   --radius-sm: var(--shape-sm);
   --radius-md: var(--shape-md);

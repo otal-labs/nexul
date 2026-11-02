@@ -52,7 +52,7 @@ export const QuestionForm = ({
 
   return (
     <div onKeyDown={onKeyDown} className="animate-in fade-in-0 slide-in-from-top-1 pt-2 pr-2.5 pb-5 pl-10.5 duration-200 ease-out">
-      <p className="font-mono text-[11px] text-muted-foreground">{progress}</p>
+      <p className="font-mono text-micro text-muted-foreground">{progress}</p>
       {row.why !== "" && (
         <p className="mt-1 text-sm text-pretty text-muted-foreground">
           <span className="text-foreground">{whyLabel} </span>

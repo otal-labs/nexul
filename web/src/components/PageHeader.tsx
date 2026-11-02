@@ -10,7 +10,7 @@ export const displayTitleClass = "type-display text-balance break-words";
 const titleSizeClass = (length: number) => {
   if (length > 100) return "text-xl";
   if (length > 50) return "text-2xl";
-  return "text-[1.75rem]";
+  return "text-title";
 };
 
 // A title someone typed steps down the scale as it grows (28, 24, 20px), so a sentence-long one stays a header.
@@ -41,7 +41,7 @@ export const ClampedTitle = ({ title, children }: ClampedTitleProps) => {
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         className={cn(
-          "mt-1 hidden text-xs text-muted-foreground transition-colors duration-150 ease-standard peer-data-clamped:inline-flex hover:text-foreground focus-visible:text-foreground focus-visible:outline-none",
+          "mt-1 hidden text-xs text-muted-foreground transition-colors duration-150 ease-standard peer-data-clamped:inline-flex hover:text-foreground focus-visible:text-foreground",
           open && "inline-flex",
         )}
       >

@@ -7,7 +7,7 @@ import { formatFullTime, formatVersionTime } from "@/utils/TimeUtility";
 export const EmbedFooter = ({ embed: { footer, timestamp }, className }: { embed: Embed; className?: string }) => {
   const at = timestamp && embedTimestamp(timestamp);
   return (
-    <p className={cn("flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground", className)}>
+    <p className={cn("flex min-w-0 items-center gap-1.5 font-mono text-micro text-muted-foreground", className)}>
       <BotMediaImage url={footer?.icon_url} className="size-4 shrink-0 rounded-full" />
       {footer && <span className="truncate">{footer.text}</span>}
       {footer && timestamp && <span aria-hidden>·</span>}

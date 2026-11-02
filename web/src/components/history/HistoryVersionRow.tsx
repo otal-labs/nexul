@@ -59,7 +59,7 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
       <HistorySpine node={headline ? "named" : "save"} selected={selected} first={first} last={last} />
       <span className="min-w-0 flex-1">
         {headline && (
-          <span className="mb-0.5 line-clamp-2 text-[13px] leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
+          <span className="mb-0.5 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
             {headline}
           </span>
         )}
@@ -75,7 +75,7 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
         </span>
         <HistoryAuthor people={people} via={summary.via} />
         {(summary.current || pending || restoredWhen) && (
-          <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
+          <span className="mt-1 block text-micro leading-4 text-muted-foreground">
             {summary.current && <span className="block">Current</span>}
             {pending && <span className="block">Pending</span>}
             {restoredWhen && (

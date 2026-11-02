@@ -33,7 +33,7 @@ export const FleetGroupSection = ({ group }: FleetGroupSectionProps) => {
           <FleetCodeRow key={code.id} code={code} />
         ))}
         {machine && rows === 0 && (
-          <li className="flex items-baseline gap-2 py-2.5 pr-4 pl-9 text-[13px] leading-5 text-muted-foreground">
+          <li className="flex items-baseline gap-2 py-2.5 pr-4 pl-9 text-row leading-5 text-muted-foreground">
             No runners yet
             <AddRunnerDialog machine={machine} triggerVariant="link" />
           </li>

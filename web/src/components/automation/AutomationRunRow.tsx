@@ -38,7 +38,7 @@ export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-baseline gap-2 leading-5">
             <span className={cn("shrink-0 text-sm", failed && "font-medium")}>{outcome.word}</span>
-            <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-muted-foreground">{run.event_topic}</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-row text-muted-foreground">{run.event_topic}</span>
             {failed && <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{when}</span>}
           </span>
           {failed && (
