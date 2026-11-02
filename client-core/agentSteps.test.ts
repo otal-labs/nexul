@@ -9,6 +9,7 @@ import {
   liveStepLabel,
   runDirectory,
   segmentSteps,
+  stepAct,
   stepLabel,
   stepPhrase,
   turnOutcome,
@@ -98,6 +99,17 @@ describe("segmentSteps", () => {
   it("keeps a running turn open after the last message, and has nothing before the first step", () => {
     expect(segmentSteps([read, done], true).at(-1)).toEqual({ kind: "turn", entries: [], running: true, from: done.at, until: null });
     expect(segmentSteps([], true)).toEqual([]);
+  });
+
+  it("stands a thought on its own line between the tools around it, leaving it out of their count", () => {
+    const thought: AgentStep = { kind: "reasoning", call_id: "r-1", summary: "Recalling the rule.", detail: "Recalling the rule.", at: "2026-09-18T10:00:05Z" };
+    expect(segmentSteps([read, thought, result], false)).toEqual([
+      { kind: "turn", entries: [read], running: false, from: null, until: thought.at },
+      { kind: "thought", entry: thought },
+      { kind: "turn", entries: [result], running: false, from: thought.at, until: null },
+    ]);
+    expect(stepAct(thought)).toBe("think");
+    expect(turnPhrase([read, thought])).toBe(turnPhrase([read]));
   });
 });
 

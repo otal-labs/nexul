@@ -35,6 +35,8 @@ type StreamFrame struct {
 	ActivityTool string               `json:"activity_tool,omitempty"`
 	// ActivityCallID names the tool call, so its result replaces the call in the bubble's steps instead of following it.
 	ActivityCallID string `json:"activity_call_id,omitempty"`
+	// ActivityText is a reasoning step's whole text, which the bubble shows; Activity stays its one-line preview.
+	ActivityText string `json:"activity_text,omitempty"`
 	// Handoff is set only on the frame for a hand-off that changed; the web merges it by id.
 	Handoff *chat.Handoff `json:"handoff,omitempty"`
 	// QueuedMessageID names the request message of a turn that started or stopped waiting in the harness's queue, as
@@ -864,7 +866,7 @@ func onSnapshot(snap harness.Snapshot, finalText string, frame *StreamFrame, pub
 	}
 	// One message finishing is not the turn finishing; the frame streams until finishTurn clears it.
 	frame.MessageID, frame.Text = snap.MessageID, snap.Text
-	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = "", "", "", ""
+	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID, frame.ActivityText = "", "", "", "", ""
 	publish()
 	obs.OnSnapshot()
 	seg.observe(snap)
@@ -883,9 +885,12 @@ func (s *Service) onActivity(ctx context.Context, conversationID, viaUserID stri
 		obs.OnActivity(a)
 		return
 	}
-	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID = a.Summary, a.Kind, a.Tool, a.CallID
+	frame.Activity, frame.ActivityKind, frame.ActivityTool, frame.ActivityCallID, frame.ActivityText = a.Summary, a.Kind, a.Tool, a.CallID, ""
+	if a.Kind == harness.ActivityReasoning {
+		frame.ActivityText = a.Detail
+	}
 	publish()
-	if a.Kind == harness.ActivityToolCall {
+	if a.Kind == harness.ActivityToolCall || a.Kind == harness.ActivityReasoning {
 		seg.flush(obs)
 	}
 	obs.OnActivity(a)

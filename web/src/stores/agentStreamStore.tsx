@@ -13,13 +13,15 @@ export interface AgentStreamFrame {
   activityKind?: ActivityKind;
   activityTool?: string;
   activityCallId?: string;
+  // A reasoning step's whole text; activity stays its one-line preview.
+  activityText?: string;
   // First-frame arrival time, preserved across replaces — feeds the "Working for Xs" counter.
   startedAt: number;
   // Every hand-off the turn's frames carried so far, merged by id across replaces.
   handoffs: Handoff[];
   // The turn so far as trail steps: each piece of text written between tool calls, and each tool call, its result replacing it.
   steps: ActivityEntry[];
-  // Where the open text step starts in the current message's text; a tool call moves it to the text's end.
+  // Where the open text step starts in the current message's text; a tool call or a thought moves it to the text's end.
   textFrom: number;
 }
 
@@ -50,6 +52,16 @@ const nextSteps = (previous: AgentStreamFrame | undefined, frame: StreamUpdate):
       at,
     };
     return { steps: mergeLiveStep(steps, step), textFrom: frame.activityKind === "tool_call" ? frame.text.length : textFrom };
+  }
+  if (frame.activityKind === "reasoning") {
+    const thought: ActivityEntry = {
+      kind: "reasoning",
+      ...(frame.activityCallId && { call_id: frame.activityCallId }),
+      summary: frame.activity ?? "",
+      detail: frame.activityText ?? frame.activity ?? "",
+      at,
+    };
+    return { steps: mergeLiveStep(steps, thought), textFrom: frame.text.length };
   }
   const piece = frame.text.slice(textFrom).trim();
   if (piece === "") return { steps, textFrom };

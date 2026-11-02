@@ -2198,7 +2198,8 @@
           "question",
           "other",
           "note",
-          "user_message"
+          "user_message",
+          "reasoning"
         ]
       },
       "tool": {

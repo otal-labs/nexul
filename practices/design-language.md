@@ -1539,8 +1539,9 @@ ink and what it did ("· explored 2 files, 1 search, ran 3 commands, used Nexul
 2 times", MCP calls counted by server) muted, then the chevron. It is open
 while it runs, folded once over, and opens at any time, a running turn beside
 it included. Opened, under a hairline, it is a feed: what the Agent said
-between steps as prose, and the tools it ran between two sentences folded to
-one 13px muted line each, led by the icon of their one kind of step (a wrench
+between steps as prose, each thought it summarised as a 13px muted italic
+line led by a brain (never prose, so a thought never reads as something it
+said), and the tools it ran between two of them folded to one 13px muted line each, led by the icon of their one kind of step (a wrench
 when mixed, the `destructive` warning when one failed), "Used Nexul 5 times,
 ran 2 commands" and a chevron. The run in flight is the feed's last line: a
 spinning loader and the step in plain words ("Running bun run lint",
@@ -2770,7 +2771,8 @@ with the hairline border, the provider marks overlapped 4pt in 24pt
 `surface-2` discs, "3 sub-agents" over how they stand (`info` while one
 runs), the time once none runs, and a chevron; opened, one 44pt row per agent
 behind a hairline (its mark, title, model in muted mono, state dot), pushing
-its conversation. A hand-off folds each turn of the helper agent into one
+its conversation. A helper's thoughts are muted italic lines led by a brain
+between its turns. A hand-off folds each turn of the helper agent into one
 row: the web's outcome mark (the orbit while it runs, a muted check, a
 `destructive` warning when a step failed, a muted dashed circle when a call
 never came back), the step in flight or "Worked for" in medium ink over what it

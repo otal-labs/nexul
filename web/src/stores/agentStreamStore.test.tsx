@@ -71,4 +71,18 @@ describe("agentStreamStore steps", () => {
 
     expect(said("c1")).toEqual(["Reading.", "tool_call t1", "Now editing."]);
   });
+
+  it("keeps a thought whole as a step of its own, growing in place and splitting the text around it", () => {
+    const { setStream } = useAgentStreamStore.getState();
+    const thought = (activityText: string) => ({ activity: activityText.slice(0, 8), activityKind: "reasoning" as const, activityCallId: "r1", activityText });
+    setStream("c1", { messageId: "m1", text: "Reading.", streaming: true });
+    setStream("c1", { messageId: "m1", text: "Reading.", streaming: true, ...thought("Recalling the rule") });
+    setStream("c1", { messageId: "m1", text: "Reading.", streaming: true, ...thought("Recalling the rule on test ids.") });
+    setStream("c1", { messageId: "m1", text: "Reading. No test ids yet.", streaming: true });
+
+    const steps = useAgentStreamStore.getState().streams.c1?.steps ?? [];
+    expect(steps.map((s) => s.kind)).toEqual(["text", "reasoning", "text"]);
+    expect(steps[1]?.detail).toBe("Recalling the rule on test ids.");
+    expect(steps[2]?.detail).toBe("No test ids yet.");
+  });
 });

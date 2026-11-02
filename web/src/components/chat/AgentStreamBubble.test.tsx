@@ -57,4 +57,11 @@ describe("AgentStreamBubble", () => {
     await user.click(screen.getByRole("button", { name: /^Used Nexul/ }));
     expect(screen.getByText("Called")).toBeInTheDocument();
   });
+
+  it("shows a thought on a line of its own, outside the count of the tools around it", () => {
+    const thought: ActivityEntry = { kind: "reasoning", call_id: "r1", summary: "Recalling…", detail: "Recalling the rule on test ids.", at };
+    render(<AgentStreamBubble frame={frame({ steps: [docUpdate("tool_result"), thought, { ...docUpdate("tool_call"), call_id: "t2" }] })} onInterrupt={() => {}} live={null} />);
+    expect(screen.getByText("Recalling the rule on test ids.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Used Nexul$/ })).toBeInTheDocument();
+  });
 });

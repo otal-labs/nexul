@@ -139,10 +139,12 @@ export const stepTarget = (step: AgentStep, root: string | null = null): string 
 
 export const fileName = (path: string): string => path.split(/[/\\]/).filter(Boolean).pop() ?? path;
 
-// How a step reads in a turn: exploring files, editing them, running a command, calling any other tool, or the Agent saying something.
-export type StepAct = "explore" | "edit" | "command" | "tool" | "say";
+// How a step reads in a turn: exploring files, editing them, running a command, calling any other tool, the Agent
+// thinking, or the Agent saying something.
+export type StepAct = "explore" | "edit" | "command" | "tool" | "think" | "say";
 
 export const stepAct = (step: AgentStep): StepAct => {
+  if (step.kind === "reasoning") return "think";
   if (!isToolStep(step)) return "say";
   if (isCommandTool(step.tool)) return "command";
   if (isFileReadTool(step.tool)) return "explore";
@@ -257,24 +259,26 @@ export const turnPhrase = (entries: AgentStep[]): string => {
   return [...parts, ...toolCounts(entries)].join(", ");
 };
 
-// A run of steps between two of the agent's messages, folded into one group, or one message read as prose.
+// A run of steps between two of the agent's messages, folded into one group, one message read as prose, or a thought.
 // from is the run's start for the first turn; until is when the turn ended when that is later than its last row.
 export type StepSegment<T extends AgentStep> =
   | { kind: "turn"; entries: T[]; running: boolean; from: string | null; until: string | null }
-  | { kind: "reply"; entry: T };
+  | { kind: "reply"; entry: T }
+  | { kind: "thought"; entry: T };
 
-// Each message is prose and the tools between two messages fold into a group; empty until the first step lands.
+// Each message is prose and each thought a line of its own, the tools between two of them folding into a group; empty
+// until the first step lands.
 export const segmentSteps = <T extends AgentStep>(steps: T[], running: boolean): StepSegment<T>[] => {
   const out: StepSegment<T>[] = [];
   let entries: T[] = [];
   let from: string | null = null;
   for (const step of steps) {
-    if (step.kind !== "text") {
+    if (step.kind !== "text" && step.kind !== "reasoning") {
       entries.push(step);
       continue;
     }
     if (entries.length > 0) out.push({ kind: "turn", entries, running: false, from, until: step.at });
-    out.push({ kind: "reply", entry: step });
+    out.push({ kind: step.kind === "text" ? "reply" : "thought", entry: step });
     entries = [];
     from = step.at;
   }

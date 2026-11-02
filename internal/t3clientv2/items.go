@@ -95,12 +95,24 @@ func mapItem(it turnItem) (harness.Update, bool) {
 			it.SecretStatus == "pending"
 	case "dynamic_tool":
 		return harness.Update{Activity: step(it, toolName(it.ToolName), open)}, true
+	case "reasoning":
+		return reasoning(it)
 	}
 	tool, ok := builtinTools[it.Type]
 	if !ok {
 		return harness.Update{}, false
 	}
 	return harness.Update{Activity: step(it, tool, open)}, true
+}
+
+// reasoning is a thought the agent summarised, re-sent whole while it streams; one with no text yet is no step.
+func reasoning(it turnItem) (harness.Update, bool) {
+	text := strings.TrimSpace(it.Text)
+	if text == "" {
+		return harness.Update{}, false
+	}
+	return harness.Update{Activity: &harness.Activity{Kind: harness.ActivityReasoning, CallID: it.ID, Summary: harness.Preview(text, summaryRunes),
+		Detail: harness.CapDetail(text), At: itemTime(it.UpdatedAt)}}, true
 }
 
 func step(it turnItem, tool string, open bool) *harness.Activity {

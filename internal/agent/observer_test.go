@@ -363,3 +363,34 @@ func TestAnswerFromChat_Refusals(t *testing.T) {
 	require.ErrorIs(t, svc.AnswerFromChat(t.Context(), "conv-1", "u-1", " ", answer), apperrs.ErrInvalid)
 	require.ErrorIs(t, svc.AnswerFromChat(t.Context(), "conv-1", "u-1", "req-1", harness.QuestionAnswer{}), apperrs.ErrInvalid)
 }
+
+func TestRunTurn_Reasoning_ClosesTheTextBeforeItAndReachesTheBubbleWhole(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	thought := harness.Activity{Kind: harness.ActivityReasoning, CallID: "r-1", Summary: "Recalling the rule…", Detail: "Recalling the rule on test ids before listing tickets."}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Checking the doc.", Streaming: true}},
+		harness.Update{Activity: &thought},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Checking the doc.\n\nNo test ids yet.", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	live := &fakeLive{}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	obs := &fakeObserver{}
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "go", Observer: obs})
+
+	var kinds []harness.ActivityKind
+	for _, a := range obs.activity {
+		kinds = append(kinds, a.Kind)
+	}
+	assert.Equal(t, []harness.ActivityKind{harness.ActivityText, harness.ActivityReasoning, harness.ActivityText}, kinds, "the thought sits between the two pieces of text")
+	var carried []StreamFrame
+	for _, f := range live.snapshot() {
+		if f.ActivityKind == harness.ActivityReasoning {
+			carried = append(carried, f)
+		}
+	}
+	require.Len(t, carried, 1)
+	assert.Equal(t, thought.Detail, carried[0].ActivityText)
+	assert.Equal(t, thought.Summary, carried[0].Activity)
+}

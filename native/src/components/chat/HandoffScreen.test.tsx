@@ -141,3 +141,13 @@ test("a running hand-off with no steps yet shows it is working", async () => {
   expect(await screen.findByText("Working")).toBeTruthy();
   expect(screen.queryByText("No reply came back.")).toBeNull();
 });
+
+test("a thought the helper had reads as its own line between its turns", async () => {
+  const command = { kind: "tool_result", call_id: "t7", tool: "Shell", summary: "git status", at: "2026-10-04T10:00:00Z" } as const;
+  const thought = { kind: "reasoning", call_id: "r1", summary: "Checking…", detail: "Checking the callers before the diff.", at: "2026-10-04T10:00:03Z" } as const;
+  get.mockResolvedValue([reply([{ ...handoff, steps: [command, thought, { ...command, call_id: "t8", at: "2026-10-04T10:00:09Z" }] }])]);
+  await renderHandoff();
+
+  expect(await screen.findByLabelText("Thought: Checking the callers before the diff.")).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: /^Worked/ })).toHaveLength(2);
+});

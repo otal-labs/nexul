@@ -8,7 +8,7 @@ export interface Message extends ChatMessage {
 
 // Mirrors internal/chat.HandoffStep, one step of the handed-off agent's conversation.
 export interface HandoffStep {
-  kind: "tool_call" | "tool_result" | "text" | "question" | "other" | "note";
+  kind: "tool_call" | "tool_result" | "text" | "question" | "other" | "note" | "reasoning";
   call_id?: string;
   tool?: string;
   summary: string;
