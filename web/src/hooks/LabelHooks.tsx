@@ -50,15 +50,12 @@ export const useSetLabelColor = () => {
   });
 };
 
-// A label is made by giving it a color, so it exists before any ticket carries it.
+// A label is made by giving it a color, so it exists before any ticket carries it; its new row is the feedback.
 export const useCreateLabel = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: putLabelColor,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getAllLabelsKey] });
-      toast.success("Label added");
-    },
+    onSuccess: () => client.invalidateQueries({ queryKey: [getAllLabelsKey] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };

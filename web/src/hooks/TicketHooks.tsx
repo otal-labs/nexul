@@ -13,8 +13,10 @@ import {
   ticketCategoryMoved,
   ticketChanged,
   ticketCreated,
+  ticketEdited,
   ticketFetched,
   ticketRemoved,
+  type TicketEdit,
 } from "@/hooks/TicketCache";
 import { getAllLabelsKey } from "@/hooks/LabelHooks";
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
@@ -116,99 +118,88 @@ export const useDeleteTicket = () => {
   });
 };
 
-export const useUpdateTicketStatus = () => {
+// A field edit shows in every view on the click; a refusal puts the old value back and offers to send it again.
+// silent: one step of a board drop, which shows the move itself and refetches once at the end (useBoardActions).
+const useTicketEdit = <V extends { id: string; silent?: boolean }>(
+  send: (vars: V) => Promise<Ticket>,
+  fields: (vars: V, before: Ticket | undefined) => Partial<Ticket>,
+  saved?: () => Promise<unknown>,
+) => {
   const client = useQueryClient();
-  return useMutation({
-    // silent: part of a board drop, which refetches once at the end (useBoardActions) instead of per step.
-    mutationFn: requires("tickets:write", async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data),
-    onSuccess: async (moved, vars) => {
+  const edit = useMutation({
+    mutationFn: send,
+    onMutate: async (vars): Promise<TicketEdit | undefined> =>
+      vars.silent ? undefined : ticketEdited(client, vars.id, (before) => fields(vars, before)),
+    onSuccess: async (ticket, vars, edited) => {
       if (vars.silent) return;
-      await ticketChanged(client, moved);
-      toast.success("Status updated");
+      await ticketChanged(client, ticket, edited?.before);
+      await saved?.();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error, vars, edited) => {
+      if (vars.silent) {
+        toast.error(errorMessage(error));
+        return;
+      }
+      edited?.undo();
+      toast.error(errorMessage(error), { action: { label: "Retry", onClick: () => { edit.mutate(vars); } } });
+    },
   });
+  return edit;
 };
 
-export const useSetTicketPerson = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
+export const useUpdateTicketStatus = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data),
+    ({ status }) => ({ status }),
+  );
+
+export const useSetTicketPerson = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data),
-    onSuccess: async (ticket, vars) => {
-      await ticketChanged(client, ticket);
-      toast.success(vars.role === TicketRole.Tester ? "Tester updated" : "Developer updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+    ({ role, login }) => (role === TicketRole.Tester ? { tester: login } : { developer: login }),
+  );
 
-export const useSetTicketDueOn = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, dueOn }: { id: string; dueOn: string }) =>
+export const useSetTicketDueOn = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, dueOn }: { id: string; dueOn: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/due-date`, { due_on: dueOn })).data),
-    onSuccess: async (ticket, vars) => {
-      await ticketChanged(client, ticket);
-      toast.success(vars.dueOn ? "Due date updated" : "Due date cleared");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+    ({ dueOn }) => ({ due_on: dueOn }),
+  );
 
-export const useSetTicketSource = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, docId }: { id: string; docId: string }) =>
+export const useSetTicketSource = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, docId }: { id: string; docId: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/source`, { doc_id: docId })).data),
-    onSuccess: async (ticket, vars) => {
-      await ticketChanged(client, ticket);
-      toast.success(vars.docId ? "Source updated" : "Source removed");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+    ({ docId }) => ({ doc_id: docId }),
+  );
 
-export const useSetTicketType = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, typeId }: { id: string; typeId: string }) =>
+export const useSetTicketType = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, typeId }: { id: string; typeId: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/type`, { type_id: typeId })).data),
-    onSuccess: async (ticket) => {
-      await ticketChanged(client, ticket);
-      toast.success("Type updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+    ({ typeId }) => ({ type_id: typeId }),
+  );
+
+const without = (ticket: Ticket | undefined, label: string) => (ticket?.labels ?? []).filter((l) => l !== label);
 
 export const useAddLabel = () => {
   const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
+  return useTicketEdit(
+    requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
       (await api.post<Ticket>(`/api/tickets/${id}/labels`, { label })).data),
-    onSuccess: async (ticket) => {
-      await ticketChanged(client, ticket);
-      await client.invalidateQueries({ queryKey: [getAllLabelsKey] });
-      toast.success("Label added");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
+    ({ label }, before) => ({ labels: [...without(before, label), label] }),
+    () => client.invalidateQueries({ queryKey: [getAllLabelsKey] }),
+  );
 };
 
-export const useRemoveLabel = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
+export const useRemoveLabel = () =>
+  useTicketEdit(
+    requires("tickets:write", async ({ id, label }: { id: string; label: string }) =>
       (await api.delete<Ticket>(`/api/tickets/${id}/labels/${encodeURIComponent(label)}`)).data),
-    onSuccess: async (ticket) => {
-      await ticketChanged(client, ticket);
-      toast.success("Label removed");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
+    ({ label }, before) => ({ labels: without(before, label) }),
+  );
 
 // No success toast: a reorder fans out into several calls at once, and the card animating in is feedback enough.
 export const useUpdateTicketPosition = () => {

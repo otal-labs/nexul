@@ -45,12 +45,12 @@ const settle = async (work: Promise<unknown>[]) => {
 };
 
 // A bare id, from an endpoint that returns no ticket, refetches the views holding it instead of patching them.
-export const ticketChanged = (client: QueryClient, ticket: Ticket | string): Promise<void> => {
+// previous is the copy the change is measured against; an edit passes the one from before it showed.
+export const ticketChanged = (client: QueryClient, ticket: Ticket | string, previous = cachedTicket(client, typeof ticket === "string" ? ticket : ticket.id)): Promise<void> => {
   if (typeof ticket === "string") {
     const holders = cachedLists(client).filter(({ list }) => list?.some((t) => t.id === ticket));
     return settle([refetch(client, [getTicketKey, ticket]), ...holders.map(({ key }) => refetch(client, key)), ...refetchMentions(client, ticket, false)]);
   }
-  const previous = cachedTicket(client, ticket.id);
   // A frame can trail a newer copy the viewer's own save already wrote.
   if (previous && Date.parse(ticket.updated_at) < Date.parse(previous.updated_at)) return settle([]);
   client.setQueryData<Ticket>([getTicketKey, ticket.id], (old) => old && ticket);
@@ -66,6 +66,29 @@ export const ticketChanged = (client: QueryClient, ticket: Ticket | string): Pro
   const cleared = previous?.status !== ticket.status || previous?.finished_at !== ticket.finished_at;
   if (cleared || previous?.title !== ticket.title) work.push(...refetchMentions(client, ticket.id, cleared));
   return settle(work);
+};
+
+const patchViews = (client: QueryClient, id: string, fields: Partial<Ticket>) => {
+  client.setQueryData<Ticket>([getTicketKey, id], (old) => old && { ...old, ...fields });
+  for (const { key, list } of cachedLists(client)) {
+    if (list?.some((t) => t.id === id)) client.setQueryData<Ticket[]>(key, list.map((t) => (t.id === id ? { ...t, ...fields } : t)));
+  }
+};
+
+export interface TicketEdit {
+  before: Ticket | undefined;
+  undo: () => void;
+}
+
+// An edit shows in every view holding the ticket before the server answers; undo puts back only the fields it changed.
+export const ticketEdited = async (client: QueryClient, id: string, edit: (before: Ticket | undefined) => Partial<Ticket>): Promise<TicketEdit> => {
+  const holders = cachedLists(client).filter(({ list }) => list?.some((t) => t.id === id));
+  await Promise.all([[getTicketKey, id], ...holders.map(({ key }) => key)].map((queryKey) => client.cancelQueries({ queryKey, exact: true })));
+  const before = cachedTicket(client, id);
+  const fields = edit(before);
+  const undone = Object.fromEntries(Object.keys(fields).map((field) => [field, before?.[field as keyof Ticket]])) as Partial<Ticket>;
+  patchViews(client, id, fields);
+  return { before, undo: () => patchViews(client, id, undone) };
 };
 
 // A category move appends the ticket to its column in the new category, as the server does; a ticket whose project

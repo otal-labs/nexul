@@ -77,12 +77,35 @@ describe("useMarkNotificationsRead", () => {
   });
 });
 
-describe("useMarkNotificationsRead failure", () => {
-  it("toasts a refusal", async () => {
+describe("useMarkNotificationsRead on the click", () => {
+  const inbox = [notification, { ...notification, id: "n2", subject_id: "doc-2" }];
+  const unread = { count: 3, workspaces: { "ws-1": 2, "ws-2": 1 } };
+  const seed = () =>
+    seeded([
+      [["getNotifications", "ws-1"], inbox],
+      [["getUnreadCount", "ws-1"], { count: 2, workspaces: { "ws-1": 2 } }],
+      [["getUnreadCount"], unread],
+    ]);
+  const render = (client: QueryClient) =>
+    renderHook(() => useMarkNotificationsRead(), { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+
+  it("clears the row's dot and drops every badge before the server answers", async () => {
+    vi.mocked(api.post).mockReturnValue(new Promise(() => {}));
+    const client = seed();
+    render(client).result.current.mutate(["n1"]);
+    await waitFor(() => expect(client.getQueryData<Notification[]>(["getNotifications", "ws-1"])?.map((n) => n.read)).toEqual([true, false]));
+    expect(client.getQueryData(["getUnreadCount", "ws-1"])).toEqual({ count: 1, workspaces: { "ws-1": 1 } });
+    expect(client.getQueryData(["getUnreadCount"])).toEqual({ count: 2, workspaces: { "ws-1": 1, "ws-2": 1 } });
+  });
+
+  it("puts the dots and badges back and toasts a refusal", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
-    await result.current.mutateAsync(["n1"]).catch(() => {});
-    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    const client = seed();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue();
+    await render(client).result.current.mutateAsync(["n1", "n2"]).catch(() => {});
+    expect(client.getQueryData(["getNotifications", "ws-1"])).toEqual(inbox);
+    expect(client.getQueryData(["getUnreadCount"])).toEqual(unread);
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 });
 

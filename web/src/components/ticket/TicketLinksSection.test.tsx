@@ -248,7 +248,6 @@ describe("TicketLinksSection", () => {
     expect(screen.queryByText("No links yet.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove source doc" }));
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/source", { doc_id: "" });
-    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Source removed"));
   });
 
   it("sets the source from the project's open docs, leaving out the current, archived, and unopenable ones", async () => {
@@ -263,6 +262,5 @@ describe("TicketLinksSection", () => {
     expect(options.map((o) => o.textContent)).toEqual(["Books research"]);
     await user.click(options[0]!);
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/source", { doc_id: "doc-2" });
-    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Source updated"));
   });
 });
