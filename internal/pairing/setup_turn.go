@@ -587,7 +587,7 @@ func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a ha
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
 		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind), Tool: a.Tool, At: a.At, MembersOnly: true,
 	}
-	if a.Kind == harness.ActivityText {
+	if a.Kind == harness.ActivityText || a.Kind == harness.ActivityReasoning {
 		frame.Text = a.Detail
 	}
 	err := s.bus.Publish(ctx, TopicSetupTurnActivity, frame)

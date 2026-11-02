@@ -158,10 +158,10 @@ type SetupTurnActivityEvent struct {
 	// CallID names the tool call the step belongs to, so a consumer updates that step's line instead of adding one.
 	CallID string `json:"call_id,omitempty"`
 	// Kind is the step's harness.ActivityKind; tool_call means the call is still open.
-	Kind string `json:"kind,omitempty" enum:"tool_call,tool_result,text,question,other,note,user_message"`
+	Kind string `json:"kind,omitempty" enum:"tool_call,tool_result,text,question,other,note,user_message,reasoning"`
 	// Tool names the tool a call ran, so the dialog tells a command from any other tool.
 	Tool string `json:"tool,omitempty"`
-	// Text is a text step's whole message, which the dialog shows as prose; Status stays its one-line preview.
+	// Text is a text or reasoning step's whole text, which the dialog shows; Status stays its one-line preview.
 	Text        string    `json:"text,omitempty"`
 	At          time.Time `json:"at"`
 	MembersOnly bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`

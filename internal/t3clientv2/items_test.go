@@ -2,6 +2,8 @@ package t3clientv2
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -206,4 +208,27 @@ func TestMapItem_SecretRequest(t *testing.T) {
 		_, ok := mapItem(secretItem(t, status))
 		assert.False(t, ok, "a %s request asks for nothing", status)
 	}
+}
+
+func TestMapItem_Reasoning(t *testing.T) {
+	t.Parallel()
+	item := func(text string) turnItem {
+		var it turnItem
+		require.NoError(t, json.Unmarshal([]byte(`{"id":"turn-item:provider:claude:native-item:r-1","runId":"`+runOne+`","nodeId":"`+rootOne+`",
+			"status":"running","type":"reasoning","text":`+strconv.Quote(text)+`,"streaming":true,"updatedAt":"2026-10-03T17:00:30.000Z"}`), &it))
+		return it
+	}
+	t.Run("a thought with no text yet is no step", func(t *testing.T) {
+		t.Parallel()
+		_, ok := mapItem(item("  "))
+		assert.False(t, ok)
+	})
+	t.Run("a thought is a reasoning step keyed by its item, its whole text the detail", func(t *testing.T) {
+		t.Parallel()
+		long := strings.Repeat("Recalling the standing rule on test ids. ", 6)
+		got, ok := mapItem(item(long))
+		require.True(t, ok)
+		want := stepOf(harness.ActivityReasoning, "turn-item:provider:claude:native-item:r-1", "", harness.Preview(strings.TrimSpace(long), summaryRunes), strings.TrimSpace(long), 30)
+		assert.Equal(t, *want, got)
+	})
 }

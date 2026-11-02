@@ -24,8 +24,8 @@ export interface TrailQuestion extends HarnessQuestion {
 
 // Mirrors internal/harness.ActivityKind plus plays.ActivityNote: what one transcript step is; a note is the
 // runner's own line (a skipped move, a stop), not harness activity, and a user_message is one the starter wrote in
-// the harness itself, its tool naming the harness.
-export const ACTIVITY_KINDS = ["tool_call", "tool_result", "text", "question", "other", "note", "user_message"] as const;
+// the harness itself, its tool naming the harness, and reasoning is the Agent's summary of its own thinking.
+export const ACTIVITY_KINDS = ["tool_call", "tool_result", "text", "question", "other", "note", "user_message", "reasoning"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 // Mirrors internal/plays.ActivityEntry, one step of a trail's transcript; detail is JSON ({input, result}) or plain text.

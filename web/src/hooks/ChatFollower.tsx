@@ -28,6 +28,7 @@ interface AgentStreamPayload {
   activity_kind?: ActivityKind;
   activity_tool?: string;
   activity_call_id?: string;
+  activity_text?: string;
   // Set only on the frame for the one hand-off that changed.
   handoff?: Handoff;
   // Set only on a frame saying the turn answering this message entered or left the harness's queue, as queued says.
@@ -148,6 +149,7 @@ export const chatFollower: LiveFollower = {
       ...(p.activity_kind && { activityKind: p.activity_kind }),
       ...(p.activity_tool && { activityTool: p.activity_tool }),
       ...(p.activity_call_id && { activityCallId: p.activity_call_id }),
+      ...(p.activity_text && { activityText: p.activity_text }),
       ...(p.handoff && { handoff: p.handoff }),
     });
   },
