@@ -704,6 +704,11 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 	if err != nil {
 		return nil, s.offline(ctx, target.Computer, err)
 	}
+	if starting(target.Computer.Facts, providers, target.Provider) {
+		nc := s.offline(ctx, target.Computer, fmt.Errorf("%w: T3 Code lists %d providers", apperrs.ErrRetryable, len(providers)))
+		nc.Why = stillStarting
+		return nil, nc
+	}
 	if listsMore(target.Computer.Facts, providers) {
 		if err := s.recordFacts(ctx, target.Computer.UserID, target.Computer.ID, nil); err != nil {
 			logging.FromCtx(ctx).Warn("computer facts not read again after T3 Code listed more providers", "computer_id", target.Computer.ID, "error", err)
@@ -749,6 +754,21 @@ func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfig
 		nc.Why = notConnected
 	}
 	return nc
+}
+
+// stillStarting is why a computer is offline while its T3 Code, just started, has yet to list the providers it listed before.
+const stillStarting = "T3 Code is still starting there"
+
+// starting is whether T3 Code lists none of the providers its facts hold, or not yet the pinned one they hold.
+func starting(facts *Facts, providers []harness.Provider, pinned string) bool {
+	if facts == nil {
+		return false
+	}
+	if pinned == "" {
+		return len(providers) == 0 && len(facts.Providers) > 0
+	}
+	listed := slices.ContainsFunc(providers, func(p harness.Provider) bool { return p.ID == pinned })
+	return !listed && slices.ContainsFunc(facts.Providers, func(f ProviderFacts) bool { return f.ID == pinned })
 }
 
 // pickProvider finds the stored instance id among the harness's providers; an empty one takes the first usable, else the harness default.

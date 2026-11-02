@@ -75,7 +75,7 @@ func TestHandleMessageCreated_HarnessNeverAnswersDuringSetup_FailsAtFifteenMinut
 		client  *harnesstest.Client
 		want    string
 	}{
-		{"target check", &fakeTargets{hang: true}, &harnesstest.Client{}, "Agent isn't configured to run yet"},
+		{"target check", &fakeTargets{hang: true}, &harnesstest.Client{}, "@Agent couldn't start: the harness did not answer within 15m0s"},
 		{"version probe", &fakeTargets{target: testTarget()}, &harnesstest.Client{
 			VersionFn:   func(ctx context.Context, _ string) (string, error) { <-ctx.Done(); return "", ctx.Err() },
 			StartTurnFn: startHangs,

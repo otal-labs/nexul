@@ -407,7 +407,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	// Failure posts stay on ctx: the window cancels setupCtx when it cuts setup off, and a post on it would fail.
 	setupCtx, disarm := setupWindow(ctx, req.Silence)
 	defer disarm()
-	target, err := s.resolveTarget(setupCtx, viaUserID, projectID, req)
+	target, err := s.resolveWithin(ctx, setupCtx, viaUserID, projectID, req)
 	if err != nil {
 		s.replyNotConfigured(ctx, conversationID, viaUserID, err)
 		failed(err.Error())
@@ -538,6 +538,15 @@ func threadTitle(conv Conversation, target *threadTarget) string {
 		return "#" + conv.Name
 	}
 	return "Nexul chat"
+}
+
+// resolveWithin resolves the turn's target inside the setup window, naming the window's cut-off rather than a bare cancel.
+func (s *Service) resolveWithin(ctx, setupCtx context.Context, userID, projectID string, req TurnRequest) (*pairing.ResolvedTarget, error) {
+	target, err := s.resolveTarget(setupCtx, userID, projectID, req)
+	if err != nil && setupCtx.Err() != nil && ctx.Err() == nil {
+		return nil, context.Cause(setupCtx)
+	}
+	return target, err
 }
 
 // resolveTarget keeps a validated launch choice while rechecking its computer, otherwise resolving current settings.
@@ -1104,7 +1113,7 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 	var nc *pairing.NotConfiguredError
 	if !errors.As(err, &nc) {
 		s.log.Error("agent: resolve target failed", "conversation", conversationID, "error", err)
-		s.postSystemMessage(ctx, conversationID, viaUserID, msg)
+		s.postSystemMessage(ctx, conversationID, viaUserID, "@Agent couldn't start: "+err.Error())
 		return
 	}
 	switch nc.Reason {
