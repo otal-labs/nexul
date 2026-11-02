@@ -170,7 +170,7 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await vi.waitFor(() => expect(screen.getByRole("button", { name: "Remove project" })).toBeDisabled());
-    expect(screen.getByText(/Still holds 3 tickets/)).toBeInTheDocument();
+    expect(await screen.findByText(/Still holds 3 tickets/)).toBeInTheDocument();
   });
 
   it("removes an empty project from the danger zone after confirming", async () => {
