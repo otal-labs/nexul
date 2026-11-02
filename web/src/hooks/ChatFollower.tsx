@@ -21,6 +21,7 @@ import type { LiveFollower } from "@/lib/live";
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.
 interface AgentStreamPayload {
   conversation_id: string;
+  ticket_id?: string;
   message_id: string;
   text: string;
   streaming: boolean;
@@ -151,6 +152,7 @@ export const chatFollower: LiveFollower = {
       ...(p.activity_call_id && { activityCallId: p.activity_call_id }),
       ...(p.activity_text && { activityText: p.activity_text }),
       ...(p.handoff && { handoff: p.handoff }),
+      ...(p.ticket_id && { ticketId: p.ticket_id }),
     });
   },
   // A ticket run that is starting has opened its thread, so the Thread section shows Started in place of Start thread.

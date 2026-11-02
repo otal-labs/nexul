@@ -43,6 +43,8 @@ type StreamFrame struct {
 	// Queued says; such a frame carries nothing else and leaves the bubble alone.
 	QueuedMessageID string `json:"queued_message_id,omitempty"`
 	Queued          bool   `json:"queued,omitempty"`
+	// TicketID names a ticket thread's ticket, so its board card shows the turn as work under way.
+	TicketID string `json:"ticket_id,omitempty"`
 }
 
 // Conversation is the pipeline's slice of a chat conversation (ADR 0017 seam onto chat).
@@ -256,6 +258,8 @@ type activeTurn struct {
 	queued           bool
 	// queue is whether the person asked the turn to wait its place rather than steer into the turn under way.
 	queue bool
+	// ticketID is the ticket a ticket thread belongs to, "" for any other conversation.
+	ticketID string
 }
 
 // NewService wires the agent pipeline.
@@ -438,7 +442,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
-	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), requestMessageID: req.RequestMessageID, queue: req.Queue, target: harness.Target{
+	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), requestMessageID: req.RequestMessageID, queue: req.Queue, ticketID: conv.TicketID, target: harness.Target{
 		Session:      target.Computer.Session(),
 		ProjectID:    target.HarnessProjectID,
 		Provider:     target.Provider,
@@ -779,7 +783,7 @@ func (s *Service) template(ctx context.Context, key, fallback string) string {
 
 // announceTurnStarted shows a "working" indicator at once, names the turn for Stop, and persists a new session id, if any.
 func (s *Service) announceTurnStarted(ctx context.Context, conversationID, priorThreadID string, turn *activeTurn, result harness.StartResult) {
-	if err := s.live.Publish(ctx, TopicAgentStream, StreamFrame{ConversationID: conversationID, Streaming: true}); err != nil {
+	if err := s.live.Publish(ctx, TopicAgentStream, StreamFrame{ConversationID: conversationID, TicketID: turn.ticketID, Streaming: true}); err != nil {
 		s.log.Warn("agent: publish working frame failed", "conversation", conversationID, "error", err)
 	}
 	s.mu.Lock()
@@ -798,7 +802,7 @@ func (s *Service) announceTurnStarted(ctx context.Context, conversationID, prior
 
 // drainTurn reads a turn's updates to completion, forwarding snapshots, hand-offs and approvals live.
 func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, handoffs []harness.Handoff, term *harness.TurnResult) {
-	frame := StreamFrame{ConversationID: conversationID, Streaming: true}
+	frame := StreamFrame{ConversationID: conversationID, TicketID: turn.ticketID, Streaming: true}
 	publish := func() {
 		if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
 			s.log.Warn("agent: publish stream frame failed", "conversation", conversationID, "error", err)
