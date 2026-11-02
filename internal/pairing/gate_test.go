@@ -139,6 +139,36 @@ func TestRequireSetup_HarnessAndStoreFailures_NeverPass(t *testing.T) {
 		assert.ErrorIs(t, err, errBoom, "the harness failure stays in the chain for logs")
 	})
 
+	t.Run("a T3 Code yet to list the providers it listed before reads as still starting", func(t *testing.T) {
+		t.Parallel()
+		for name, listed := range map[string][]harness.Provider{
+			"none listed yet":           nil,
+			"the pinned one not listed": {{ID: "codex-main", Driver: "codex", Name: "Codex"}},
+		} {
+			f := newGateFixture(t)
+			f.confirmOverall(t)
+			f.confirmProvider(t, "claudeAgent")
+			c := f.repo.computers[f.computer.ID]
+			c.Facts = &Facts{Providers: []ProviderFacts{{ID: "codex-main", Driver: "codex"}, {ID: "claude", Driver: "claudeAgent"}}}
+			f.repo.computers[f.computer.ID] = c
+			f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) { return listed, nil }
+			_, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "claude", "", nil)
+			var nc *NotConfiguredError
+			require.ErrorAs(t, err, &nc, name)
+			assert.Equal(t, ReasonOffline, nc.Reason, name)
+			assert.Equal(t, "Onik's laptop is offline: T3 Code is still starting there.", err.Error(), name)
+		}
+	})
+
+	t.Run("a provider T3 Code never listed is not mistaken for a start", func(t *testing.T) {
+		t.Parallel()
+		f := newGateFixture(t)
+		_, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "gone", "", nil)
+		var nc *NotConfiguredError
+		assert.NotErrorAs(t, err, &nc)
+		assert.EqualError(t, err, "invalid: provider gone is not available on this computer")
+	})
+
 	t.Run("harness went back to a protocol Nexul left reads as that, not offline", func(t *testing.T) {
 		t.Parallel()
 		f := newGateFixture(t)
