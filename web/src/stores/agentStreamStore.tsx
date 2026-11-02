@@ -15,6 +15,8 @@ export interface AgentStreamFrame {
   activityCallId?: string;
   // A reasoning step's whole text; activity stays its one-line preview.
   activityText?: string;
+  // The ticket whose thread the turn runs in, so the board card shows it working.
+  ticketId?: string;
   // First-frame arrival time, preserved across replaces — feeds the "Working for Xs" counter.
   startedAt: number;
   // Every hand-off the turn's frames carried so far, merged by id across replaces.
@@ -105,3 +107,7 @@ export const useAgentStreamStore = create<AgentStreamStore>((set) => ({
       return { queued: rest };
     }),
 }));
+
+// When the Agent's turn in this ticket's thread started, while one is under way; a play's run shows through its trail instead.
+export const useTicketAgentTurnStart = (ticketId: string): number | undefined =>
+  useAgentStreamStore((s) => Object.values(s.streams).find((frame) => frame.ticketId === ticketId)?.startedAt);

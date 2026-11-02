@@ -100,10 +100,11 @@ describe("the chat follower", () => {
       followFrame(chatFollower, "chat.agent.stream", { conversation_id: "c-1", message_id: "", text: "", streaming: true, ...payload }, chat());
     const helper = (id: string, state: string) => ({ id, driver: "codex", model: "", title: id, prompt: "Review it", state, reply: "", steps: [] });
 
-    it("keeps the bubble's text and tool activity, keyed by conversation", async () => {
-      await stream({ message_id: "s-1", text: "Looking into it", activity: "Read main.go started", activity_kind: "tool_call", activity_tool: "Read" });
+    it("keeps the bubble's text, tool activity and ticket, keyed by conversation", async () => {
+      await stream({ message_id: "s-1", ticket_id: "t-1", text: "Looking into it", activity: "Read main.go started", activity_kind: "tool_call", activity_tool: "Read" });
       expect(useAgentStreamStore.getState().streams["c-1"]).toMatchObject({
         messageId: "s-1",
+        ticketId: "t-1",
         text: "Looking into it",
         activity: "Read main.go started",
         activityKind: "tool_call",

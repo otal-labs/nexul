@@ -579,6 +579,29 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	})
 }
 
+func TestRunTurn_TicketThread_FramesNameTheTicket(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-1", IsTicketThread: true, TicketID: "t-1"})
+		live := &fakeLive{}
+		client := &fakeHarness{startResult: harness.StartResult{
+			SessionID: "thread-1",
+			Updates: updatesChan(
+				harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "c-1", Tool: "Read", Summary: "Read main.go started"}},
+				harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+			),
+		}}
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+		synctest.Wait()
+
+		frames := live.snapshot()
+		require.GreaterOrEqual(t, len(frames), 2)
+		assert.Equal(t, "t-1", frames[0].TicketID, "the working frame names the ticket, so its board card can show the turn")
+		assert.Equal(t, "t-1", frames[1].TicketID, "every step frame names it too, so a board opened mid-turn picks it up")
+	})
+}
+
 func TestRunTurn_MessageWrittenInTheHarness_IsRelayedAsTheUsersOwnAndRecordedNotStreamed(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-1"})
 	live := &fakeLive{}

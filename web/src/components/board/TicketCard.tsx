@@ -23,6 +23,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
+import { useTicketAgentTurnStart } from "@/stores/agentStreamStore";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -45,6 +46,9 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const runState = useRunState("ticket", ticket.id, activeTrails);
   const runStartedAt = activeTrails?.started[ticket.id];
   const runQueued = activeTrails?.queued[ticket.id] !== undefined;
+  // A mention with no play behind it is a plain turn, with no trail; the card still shows the Agent at work.
+  const turnStartedAt = useTicketAgentTurnStart(ticket.id);
+  const turning = runState === undefined && turnStartedAt !== undefined;
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
@@ -95,7 +99,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   );
   const run = (
     <>
-      {runState === undefined && runQueued && (
+      {runState === undefined && runQueued && !turning && (
         <Clock className="size-3 shrink-0 text-info" role="img" aria-label="Play queued">
           <title>Play queued</title>
         </Clock>
@@ -114,6 +118,16 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         <span className="-ml-0.5">
           <RunTimer startedAt={runStartedAt} />
         </span>
+      )}
+      {turning && (
+        <>
+          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Agent working">
+            <title>Agent working</title>
+          </LoaderCircle>
+          <span className="-ml-0.5">
+            <RunTimer startedAt={new Date(turnStartedAt).toISOString()} />
+          </span>
+        </>
       )}
     </>
   );

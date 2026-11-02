@@ -8,6 +8,7 @@ import { BoardCardProvider } from "@/components/board/BoardCardProvider";
 import { TicketCard } from "@/components/board/TicketCard";
 import { labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
+import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
 
 // T10/F6: TicketCard sources badge colors from the backend (ticket type color, label color side
@@ -72,6 +73,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   mockNavigate.mockReset();
   usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
+  useAgentStreamStore.setState({ streams: {}, queued: {} });
   // Default: project "p-1" has prefix "REF", its only ticket type is "Task", no configured colors
   // anywhere, so every test exercises the hash fallback unless it overrides this.
   mockTicketType("Task");
@@ -250,6 +252,22 @@ describe("TicketCard", () => {
     );
     expect(screen.getByLabelText("Play running")).toBeInTheDocument();
     expect(screen.queryByLabelText("Play queued")).not.toBeInTheDocument();
+  });
+
+  it("shows a spinner while the Agent answers in the ticket's thread with no play, and drops it when the turn ends", async () => {
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    await screen.findByText("REF-142");
+    expect(screen.queryByLabelText("Agent working")).not.toBeInTheDocument();
+
+    act(() => useAgentStreamStore.getState().setStream("c-9", { messageId: "", text: "", streaming: true, ticketId: "t-2" }));
+    expect(screen.queryByLabelText("Agent working")).not.toBeInTheDocument();
+
+    act(() => useAgentStreamStore.getState().setStream("c-1", { messageId: "", text: "", streaming: true, ticketId: "t-1" }));
+    expect(screen.getByLabelText("Agent working")).toBeInTheDocument();
+    expect(screen.getByText("0s")).toBeInTheDocument();
+
+    act(() => useAgentStreamStore.getState().clearStream("c-1"));
+    expect(screen.queryByLabelText("Agent working")).not.toBeInTheDocument();
   });
 
   it("shows no chat indicator when the ticket has no thread", async () => {
