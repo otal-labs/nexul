@@ -740,6 +740,13 @@ Rules:
   ([Error handling](#error-handling)). A form saved from a settings card's
   strip (`SettingsSaveBar`) answers in its Save button instead, so its hook
   sends no success toast.
+- An edit whose result shows where the user clicked (a ticket's status,
+  labels, type, due date, people, source; an inbox row's read dot) is
+  optimistic and sends no success toast: the changed value is the feedback.
+  `onMutate` cancels the views' queries and patches them, `onError` puts the
+  old value back and toasts the error with a Retry action. A ticket field
+  edit goes through `useTicketEdit` in `hooks/TicketHooks.tsx`, which patches
+  through `ticketEdited`. A success toast stays for what happens out of view.
 - The server pushes changes over the socket ([Live events](#live-events-websocket-client)); never poll.
 - Do **not** default list data to `= []` when you render a length-based
   empty state (see the "React Query: don't over-guard" callout in F2).
@@ -749,7 +756,7 @@ Rules:
   call sites cannot drift out of sync with each other.
 - `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
   in the cache. It owns the four views (all, one, by doc, by project) and
-  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved`,
+  its operations, `ticketChanged`, `ticketEdited`, `ticketCreated`, `ticketRemoved`,
   `ticketCategoryMoved` and `statusRemoved`; every mutation, board drop,
   category move, test report and live ticket frame goes through them. A hook
   that patches or invalidates one ticket key by itself leaves the other three

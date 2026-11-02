@@ -6,12 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, errorMessage } from "@/api/client";
 import {
+  useAddLabel,
   useCreateTicket,
   useFetchTicket,
   useFetchTicketIdByKey,
   useFetchTickets,
   useFetchTicketsByDoc,
   useFetchTicketsByProject,
+  useRemoveLabel,
   useSetTicketDueOn,
   useUpdateTicket,
   useUpdateTicketPosition,
@@ -268,5 +270,62 @@ describe("the ticket follower", () => {
 
     await followFrame(ticketFollower, "play.run", { ...run, state: "done" }, client);
     expect([["getTickets"], ["getTicket", "t-9"], ["getTicketLinks", "t-9"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
+  });
+});
+
+describe("ticket field edits", () => {
+  const seededClient = (shown: Ticket) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["getTicketsByProject", "p-1"], [shown]);
+    client.setQueryData(["getTicket", "t-1"], shown);
+    return client;
+  };
+  const shownIn = (client: QueryClient) => [client.getQueryData<Ticket[]>(["getTicketsByProject", "p-1"])?.[0], client.getQueryData<Ticket>(["getTicket", "t-1"])];
+  const labelled = { ...ticket, labels: ["bug"] } as unknown as Ticket;
+  const within = (client: QueryClient): Wrapper => ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const edits: [string, (w: Wrapper) => Promise<unknown>, Partial<Ticket>][] = [
+    ["status", (w) => renderHook(() => useUpdateTicketStatus(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done }), { status: TicketStatus.Done }],
+    ["an added label", (w) => renderHook(() => useAddLabel(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", label: "ui" }), { labels: ["bug", "ui"] }],
+    ["a removed label", (w) => renderHook(() => useRemoveLabel(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", label: "bug" }), { labels: [] }],
+  ];
+
+  it.each(edits)("shows %s in every view before the server answers, without a success toast", async (_, save, shows) => {
+    let answer: (value: unknown) => void = () => {};
+    const sent = new Promise((resolve) => { answer = resolve; });
+    vi.mocked(api.patch).mockReturnValue(sent as never);
+    vi.mocked(api.post).mockReturnValue(sent as never);
+    vi.mocked(api.delete).mockReturnValue(sent as never);
+    vi.mocked(toast.success).mockClear();
+    const client = seededClient(labelled);
+    const saving = save(within(client));
+    await waitFor(() => expect(shownIn(client)).toEqual([{ ...labelled, ...shows }, { ...labelled, ...shows }]));
+    answer({ data: { ...labelled, ...shows, updated_at: "2026-08-02T12:00:05Z" } });
+    await saving;
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it.each(edits)("puts %s back when the server refuses it and offers to send it again", async (_, save) => {
+    vi.mocked(api.patch).mockRejectedValue(new Error("boom"));
+    vi.mocked(api.post).mockRejectedValue(new Error("boom"));
+    vi.mocked(api.delete).mockRejectedValue(new Error("boom"));
+    vi.mocked(errorMessage).mockReturnValue("boom");
+    const client = seededClient(labelled);
+    await save(within(client)).catch(() => {});
+    expect(shownIn(client)).toEqual([labelled, labelled]);
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    const [message, options] = vi.mocked(toast.error).mock.calls[0]!;
+    expect(message).toBe("boom");
+    const retry = (options as { action: { label: string; onClick: () => void } }).action;
+    expect(retry.label).toBe("Retry");
+    retry.onClick();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(2));
+  });
+
+  it("leaves a board drop's status step to the board, which shows the move and refetches once at the end", async () => {
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, status: TicketStatus.Done } });
+    const client = seededClient(labelled);
+    const { result } = renderHook(() => useUpdateTicketStatus(), { wrapper: within(client) });
+    await result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done, silent: true });
+    expect(shownIn(client)).toEqual([labelled, labelled]);
   });
 });

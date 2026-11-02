@@ -72,12 +72,48 @@ const refreshInbox = async (client: QueryClient) => {
   await client.invalidateQueries({ queryKey: [getUnreadCountKey] });
 };
 
+// Every cached inbox and count, so a refused mark puts each back as it was.
+const inboxSnapshot = (client: QueryClient) => [
+  ...client.getQueriesData<Notification[]>({ queryKey: [getNotificationsKey] }),
+  ...client.getQueriesData<UnreadCount>({ queryKey: [getUnreadCountKey] }),
+];
+
+// The rows turn read and the badges drop on the click; the server's counts replace them once every mark lands.
+const showRead = async (client: QueryClient, ids: string[]) => {
+  await Promise.all([getNotificationsKey, getUnreadCountKey].map((key) => client.cancelQueries({ queryKey: [key] })));
+  const snapshot = inboxSnapshot(client);
+  const marked = new Map(
+    client.getQueriesData<Notification[]>({ queryKey: [getNotificationsKey] })
+      .flatMap(([, rows]) => rows ?? [])
+      .filter((n) => !n.read && ids.includes(n.id))
+      .map((n) => [n.id, n.workspace_id]),
+  );
+  client.setQueriesData<Notification[]>({ queryKey: [getNotificationsKey] }, (rows) => rows?.map((n) => (marked.has(n.id) ? { ...n, read: true } : n)));
+  client.setQueriesData<UnreadCount>({ queryKey: [getUnreadCountKey] }, (unread) => {
+    if (!unread) return unread;
+    const workspaces = { ...unread.workspaces };
+    let count = unread.count;
+    for (const workspaceId of marked.values()) {
+      if (!workspaces[workspaceId]) continue;
+      workspaces[workspaceId] -= 1;
+      count -= 1;
+      if (workspaces[workspaceId] === 0) delete workspaces[workspaceId];
+    }
+    return { count, workspaces };
+  });
+  return snapshot;
+};
+
 export const useMarkNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => Promise.all(ids.map(requires("none", (id) => api.post(`/api/notifications/${id}/read`)))),
-    onSuccess: () => refreshInbox(client),
-    onError: (error) => toast.error(errorMessage(error)),
+    onMutate: (ids) => showRead(client, ids),
+    onError: (error, _, snapshot) => {
+      for (const [key, data] of snapshot ?? []) client.setQueryData(key, data);
+      toast.error(errorMessage(error));
+    },
+    onSettled: () => refreshInbox(client),
   });
 };
 
