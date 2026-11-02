@@ -90,4 +90,15 @@ describe("DocListRow run indicator", () => {
     expect(await screen.findByRole("img", { name: "Play running" })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Questions closed" })).not.toBeInTheDocument();
   });
+
+  it("keeps the tick on a closed doc its implement run left locked, and the lock on an open one", async () => {
+    mockApi({});
+    const { unmount } = renderRow({ ...idle, locked: true, clarification_closed: true });
+    expect(await screen.findByRole("img", { name: "Questions closed" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Locked" })).not.toBeInTheDocument();
+    unmount();
+
+    renderRow({ ...idle, locked: true });
+    expect(await screen.findByRole("img", { name: "Locked" })).toBeInTheDocument();
+  });
 });

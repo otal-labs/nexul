@@ -553,7 +553,7 @@ own padding and its hover lift separate them: a 13px normal-weight title in
 title wraps to two lines at most, the full text in its tooltip, and sets its
 own direction so an Arabic title reads right to left. A
 row whose record already shows its details when open (Docs) is one line at
-32px: a 14px state slot under the folder icon holding the doc's one mark (a play waiting or running, then the lock, then questions closed) that is
+32px: a 14px state slot under the folder icon holding the doc's one mark (a play waiting or running, then questions closed, then the lock) that is
 empty at rest, the title truncated with its full text in the tooltip, then the
 mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
