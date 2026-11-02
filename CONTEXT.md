@@ -1486,7 +1486,7 @@ Model Context Protocol — the standard LLM agents use to call tools. The
 
 **Design language**:
 The visual spec of record for the web app, the public site and the phone app:
-raised surfaces over a still light field, frosted panels in the web app, dark
+raised surfaces over a still light field, opaque panels in the web app, dark
 first, one ember accent (`brand`) for action and selection, focus in ink,
 status in its own hues. Tokens in `web/src/index.css`,
 `website/src/styles/tokens.css` and `native/src/global.css`, spec in

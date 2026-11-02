@@ -241,7 +241,6 @@ export const KanbanBoard = ({
           )}
         </div>
         {/* The drop animation lands on the ghost card, already sitting in its final slot thanks to `settled` above. */}
-        {/* Portalled to body: the page frame's backdrop-filter would otherwise anchor the fixed overlay to the frame, not the viewport. */}
         {createPortal(
           <DragOverlay dropAnimation={dropAnimation}>
             {activeTicket && <TicketCardOverlay ticket={activeTicket} />}

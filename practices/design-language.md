@@ -63,7 +63,7 @@ and a soft grey in light mode, and behind everything sits a still, soft light
 field drawn from the palette: a tint of the brand top right and bottom left, so a
 palette never shows a hue that is not its own.
 Content sits on raised surfaces, a step lighter than the canvas with a hairline
-ring: frosted panels in the web app, solid cards and sheets on the
+ring: opaque panels in the web app, solid cards and sheets on the
 phone, and on the site's reading pages the canvas itself. One ember accent
 marks what you act on and where you are: the primary action, the active nav
 item, selection, your own messages, checked controls and progress. Focus is
@@ -90,8 +90,8 @@ in the three token files; this table holds the roles.
 | `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
 | `scrollbar` / `scrollbar-hover` | `foreground` at 18% / 34% | `foreground` at 22% / 40% | a scroller's thumb at rest and under the pointer | web only |
 | `media` | `oklch(0.16 0 0)` | `oklch(0.16 0 0)` | behind a camera feed or a shared screen, and the name chip over one (at 80%): it frames media, not the theme, so it stays near-black in every palette and mode | web only |
-| `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
-| `panel-opaque` | `panel` at `--panel-opacity` over `background` | same | a band rows scroll under inside a panel (a list's pinned group row, a record's pinned crumbs): the panel as it reads, but opaque | web only |
+| `panel` | `card` 60% into `background` | `card` | the panel, painted opaque as `panel-opaque`; `--panel-opacity` (85%) sets its mix | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
+| `panel-opaque` | `panel` at `--panel-opacity` over `background` | same | the fill of every panel, and of a band rows scroll under inside one (a list's pinned group row, a record's pinned crumbs) | web only |
 | `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel: in every dark palette at least 0.029 of OKLCH lightness above the panel as it renders | |
 | `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
 | `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
@@ -394,7 +394,7 @@ The decisions every surface inherits. Each surface section records its own.
 | One design language for `web/`, `website/` and `native/`, specified here (2026-10-09) | A person moving from the site to the app to the phone meets one product; one spec means a decision is made once and every surface follows it |
 | Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
 | One ember accent, held to action, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the product's voice |
-| Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
+| Panels opaque, no backdrop blur (2026-11-02); a dialog solid `popover` | At 85% the 20px blur re-sampled the page under every panel on each scroll and drag frame and showed almost nothing; the opaque mix reads the same and keeps body and muted text at least 6:1. Blur stays on the dialog scrim and on sign-in's card over the live field (`panel-frosted`) |
 | Disabled text is `muted-foreground`, not half opacity | At 50% opacity a disabled label sat near 3.5:1 on a light tray, where Save for an unchanged form read as missing; muted ink holds 6:1 and the loss of fill and shadow still says it is off |
 | Light `muted-foreground` at 0.465 | 0.48 held 5.65:1 on the canvas, under the 6:1 the token promises; 0.465 clears it on every light surface |
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
@@ -414,13 +414,13 @@ The decisions every surface inherits. Each surface section records its own.
 ## Web app
 
 The web app in `web/` is the language's fullest form: every token, the
-frosted panels, palettes, and the pattern layer below. It is built at 768px
+opaque panels, palettes, and the pattern layer below. It is built at 768px
 first and verified at 768, 1024 and 1440px; phones are served by the phone
 app.
 
 ### What the web app adapts
 
-Panels. Every page's content lives in a raised, frosted panel that floats 8px
+Panels. Every page's content lives in a raised, opaque panel that floats 8px
 from the canvas edges and from its neighbours; the sidebar sits straight on
 the canvas with no surface of its own. Cards inside a panel are a step lighter
 with the same hairline ring. The panel is the `panel` utility in `index.css`,
@@ -861,7 +861,7 @@ text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 
 Menu. Every menu, custom on a popover, a dropdown or a right-click, is one anatomy: a
-`glass-menu` panel (the frosted recipe's ring and lit edge on solid `popover`,
+`glass-menu` panel (the panel recipe's ring and lit edge on solid `popover`,
 since with no scrim under it the page would read through, and the elevated
 shadow) at 8px with 4px padding; rows of at least 32px in `text-sm` with
 `px-2 gap-2.5` on a 4px corner, concentric in the panel's 8px, a muted 16px
@@ -874,7 +874,7 @@ an outline. A destructive row is `destructive` text and icon over a
 cards take the same panel. The sidebar's nav rows keep their own height at
 the same `text-sm`.
 
-Dialog. A `glass-popover` panel (the palette's surface at 96%, so no page
+Dialog. A `glass-popover` panel (solid `popover`, so no page
 text reads through it or its fields) at 12px over a
 scrim in the canvas colour, not black, at the Appearance slider's opacity
 with a 4px blur, so a light page dims to a soft wash instead of grey. Up to
@@ -1028,7 +1028,7 @@ shows while the shader compiles, without WebGPU, and as the whole
 reduced-motion variant (the shader is never mounted then); the live layer
 fades in over 700ms once ready, and pauses with the browser's animation
 frames in a hidden tab and offscreen. The sign-in and invitation cards are a
-`panel` at 72%; over sign-in's live field that is the one place a blur sits
+`panel-frosted` at 72%, the app's one frosted panel; over sign-in's live field that is the one place a blur sits
 over motion, for a single small card. Headlines on these surfaces
 are Fraunces. Never on an everyday screen, never behind a panel.
 
@@ -1830,7 +1830,7 @@ of its icon's top-right corner, with no ring (`railDotClass`): `foreground` for 
 The switchers work the same on the rail: the tile opens the same menu.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
-one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
+one palette from any signed-in page: a solid overlay (`glass-popover`) 40rem
 wide, hung at 14% of the viewport so a changing result count only moves its
 bottom edge, over the dialog family's scrim. Opened from the Search row it
 runs the dialog clock (220ms in, rising 6px from 0.97) and an overlay click

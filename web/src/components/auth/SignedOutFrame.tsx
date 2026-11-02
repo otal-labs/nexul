@@ -27,7 +27,7 @@ export const SignedOutFrame = ({ live = false, quiet = false, exit, card = false
         {exit}
       </div>
       <div className={cn("flex flex-1 justify-center px-6 py-5", card ? "items-center" : "items-start pt-[max(1.25rem,6vh)]")}>
-        <div className={cn("w-full max-w-md", card && "panel px-8 py-5 [--panel-opacity:72%]")}>{children}</div>
+        <div className={cn("w-full max-w-md", card && "panel-frosted px-8 py-5 [--panel-opacity:72%]")}>{children}</div>
       </div>
     </div>
   </ShowcaseSurface>
