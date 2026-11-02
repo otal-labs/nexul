@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
@@ -43,16 +43,19 @@ export const useFetchTickets = () =>
     queryFn: async () => (await api.get<Ticket[]>("/api/tickets", { params: { without: "body" } })).data,
   });
 
-export const useFetchTicket = (id: string | undefined) =>
-  useQuery({
+// Shared by the ticket page and the hover prefetch of whatever opens it.
+export const ticketQuery = (id: string | undefined) =>
+  queryOptions({
     queryKey: [getTicketKey, id],
     queryFn: async () => (await api.get<Ticket>(`/api/tickets/${id}`)).data,
     enabled: !!id,
   });
 
+export const useFetchTicket = (id: string | undefined) => useQuery(ticketQuery(id));
+
 // A PREFIX-NUMBER link reads its one ticket by key and seeds the ticket's own view, so the page reads it once.
-export const useFetchTicketIdByKey = (key: string | undefined, workspaceId: string) =>
-  useQuery({
+export const ticketIdByKeyQuery = (key: string | undefined, workspaceId: string) =>
+  queryOptions({
     queryKey: [getTicketIdByKeyKey, workspaceId, key],
     queryFn: async ({ client }) => {
       const ticket = (await api.get<Ticket>(`/api/tickets/${key}`, { params: { workspace: workspaceId } })).data;
@@ -61,6 +64,8 @@ export const useFetchTicketIdByKey = (key: string | undefined, workspaceId: stri
     },
     enabled: !!key,
   });
+
+export const useFetchTicketIdByKey = (key: string | undefined, workspaceId: string) => useQuery(ticketIdByKeyQuery(key, workspaceId));
 
 export const useFetchTicketsByDoc = (docId: string | undefined) =>
   useQuery({

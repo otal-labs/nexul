@@ -1,7 +1,9 @@
 import { DocStateIcon } from "@/components/doc/DocStateIcon";
 import { formatShortAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
+import { docQuery } from "@/hooks/DocHooks";
 import { useDocRunState } from "@/hooks/TrailHooks";
+import { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
 import { useDocRowActions } from "@/hooks/useDocRowActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useDocSortStore } from "@/stores/docSortStore";
@@ -21,6 +23,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
   const wsPath = useWorkspacePath();
   const runState = useDocRunState(doc.project_id, doc.id);
   const sortBy = useDocSortStore((s) => s.sortBy);
+  const prefetch = useHoverPrefetch((client) => client.prefetchQuery(docQuery(doc.id)));
   return (
     <ListPaneRow
       to={wsPath(docPath(projectToken, doc.id))}
@@ -34,6 +37,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       }
       selected={selected}
       menu={menu}
+      prefetch={prefetch}
     />
   );
 };

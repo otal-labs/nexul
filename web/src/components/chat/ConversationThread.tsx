@@ -7,11 +7,11 @@ import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ConversationHeader } from "@/components/chat/ConversationHeader";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
+import { ChatTranscriptSkeleton } from "@/components/chat/ChatTranscriptSkeleton";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
 import { ReadOnlyComposer } from "@/components/chat/ReadOnlyComposer";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { VoiceLobbySlot } from "@/components/voice/VoiceLobbyRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
@@ -117,11 +117,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           </Suspense>
         )}
         <div className={cn("flex min-h-0 flex-1 flex-col", stageBeside && "@[1000px]/thread:w-95 @[1000px]/thread:flex-none @[1000px]/thread:border-l @[1000px]/thread:border-border")}>
-        {isPending && (
-          <ChatPaneState>
-            <LoadingDisplay label="Loading messages…" />
-          </ChatPaneState>
-        )}
+        {isPending && <ChatTranscriptSkeleton />}
         {error && (
           <ChatPaneState>
             <ErrorDisplay error={error} title="Couldn't load messages." />

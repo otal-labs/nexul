@@ -1,4 +1,4 @@
-import { enterAfterLoader } from "@/lib/motion";
+import { enterAfterLoader, LOADER_DELAY_MS } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface LoadingDisplayProps {
@@ -6,11 +6,9 @@ interface LoadingDisplayProps {
   className?: string;
 }
 
-const SHOW_AFTER_MS = 300;
-
 // Once the loader has been on screen, the content that takes its place rises in where it stood.
 const handOff = (el: HTMLDivElement) => {
-  const shownAt = performance.now() + SHOW_AFTER_MS;
+  const shownAt = performance.now() + LOADER_DELAY_MS;
   const parent = el.parentElement;
   return () => {
     if (!parent || performance.now() < shownAt) return;
@@ -26,7 +24,7 @@ export const LoadingDisplay = ({ label = "Loading", className }: LoadingDisplayP
     role="status"
     className={cn("animate-in fade-in-0 flex items-center justify-center gap-2.5 p-8 text-muted-foreground duration-150 ease-out", className)}
     // Held back so a fast load never flashes a spinner.
-    style={{ animationDelay: `${SHOW_AFTER_MS}ms`, animationFillMode: "both" }}
+    style={{ animationDelay: `${LOADER_DELAY_MS}ms`, animationFillMode: "both" }}
   >
     <svg viewBox="0 0 20 20" fill="none" aria-hidden className="size-4 animate-[spin_1.2s_linear_infinite] motion-reduce:animate-none">
       <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1.5" />

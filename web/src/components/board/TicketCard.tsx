@@ -17,13 +17,16 @@ import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { getProjectKey } from "@/hooks/ProjectHooks";
+import { ticketIdByKeyQuery, ticketQuery } from "@/hooks/TicketHooks";
 import { useRunState } from "@/hooks/TrailHooks";
 import { useFittingChildren } from "@/hooks/useFittingChildren";
+import { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 import { useTicketAgentTurnStart } from "@/stores/agentStreamStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -171,9 +174,16 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   // Read at click time, not subscribed: cards re-render on every drag move and only the handlers need the prefix.
-  const open = () =>
-    navigate(wsPath(ticketPath(ticket, queryClient.getQueryData<Project>([getProjectKey, ticket.project_id])?.prefix)));
+  const prefixOf = () => queryClient.getQueryData<Project>([getProjectKey, ticket.project_id])?.prefix;
+  const open = () => navigate(wsPath(ticketPath(ticket, prefixOf())));
+  // The same read the page makes for the path open() goes to.
+  const prefetch = useHoverPrefetch((client) => {
+    const prefix = prefixOf();
+    if (prefix) return client.prefetchQuery(ticketIdByKeyQuery(`${prefix}-${ticket.number}`, workspaceId));
+    return client.prefetchQuery(ticketQuery(ticket.id));
+  });
   // A card moves by dragging it, so a viewer who can't write the ticket gets a card that only opens.
   const draggable = useCanMoveTickets();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -203,6 +213,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
       data-no-enter={mountedWhileDragging || undefined}
       {...(draggable ? listeners : {})}
       {...attributes}
+      {...prefetch}
       onClick={open}
       onKeyDown={(event) => {
         // Enter opens the ticket, matching native <button>; every other key goes to dnd-kit, whose pickup is Space.

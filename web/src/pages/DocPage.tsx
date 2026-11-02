@@ -4,8 +4,8 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 
 import { Container } from "@/components/Container";
 import { DocDetail } from "@/components/doc/DocDetail";
+import { DocSkeleton } from "@/components/doc/DocSkeleton";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useArchiveDoc, useFetchDoc, useFetchDocClarification, useRestoreDoc } from "@/hooks/DocHooks";
 import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
@@ -32,7 +32,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
 
   return (
     <Container className="py-8">
-      {isPending && <LoadingDisplay />}
+      {isPending && <DocSkeleton />}
       {error && <DetailErrorDisplay error={error} embedded={docIdProp !== undefined} />}
       {doc && !error && (
         <DocDetail
