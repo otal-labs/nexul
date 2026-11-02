@@ -327,7 +327,7 @@ describe("Statuses, Ticket types and Labels", () => {
   });
 
   it("sets a ticket type's color without touching its name", async () => {
-    mocks.patch.mockResolvedValue({ data: ticketType({ color: "#06b6d4" }) });
+    mocks.patch.mockResolvedValue({ data: ticketType({ color: "#009583" }) });
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/ticket-types") return Promise.resolve({ data: [ticketType()] });
       return Promise.resolve({ data: [] });
@@ -336,9 +336,9 @@ describe("Statuses, Ticket types and Labels", () => {
     renderSection("types");
 
     await user.click(await screen.findByRole("button", { name: "Color for task" }));
-    await user.click(within(screen.getByRole("radiogroup", { name: "Quick colors" })).getByRole("radio", { name: "#06b6d4" }));
+    await user.click(within(screen.getByRole("radiogroup", { name: "Quick colors" })).getByRole("radio", { name: "Teal" }));
 
-    expect(mocks.patch).toHaveBeenCalledWith("/api/ticket-types/task", { name: "task", color: "#06b6d4" });
+    expect(mocks.patch).toHaveBeenCalledWith("/api/ticket-types/task", { name: "task", color: "#009583" });
   });
 
   it("saves a label's color once, when its picker closes, however far it was dragged", async () => {

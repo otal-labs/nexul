@@ -1,13 +1,27 @@
-import { useState, type KeyboardEvent, type PointerEvent } from "react";
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
+import { useId, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import { NAMED_HEX } from "@/components/board/ticketTypeColor";
 import { cn } from "@/lib/utils";
 import { HEX_COLOR, hexToHsv, hsvToHex, type Hsv } from "@/lib/hsv";
 
-const QUICK_HUES = [
-  "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#10b981", "#14b8a6", "#06b6d4",
-  "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#64748b",
+// The person fill's 12 hues at chroma 0.11, lifted to lightness 0.6 so a type icon in one holds 3:1 on the dark card and on white.
+const QUICK_COLORS = [
+  { name: "Red", hex: "#b96558" },
+  { name: "Orange", hex: "#b06f35" },
+  { name: "Amber", hex: "#9a7d22" },
+  { name: "Olive", hex: "#788a37" },
+  { name: "Green", hex: "#4a925c" },
+  { name: "Teal", hex: "#009583" },
+  { name: "Cyan", hex: "#0091a4" },
+  { name: "Blue", hex: "#3788bb" },
+  { name: "Indigo", hex: "#677cc2" },
+  { name: "Violet", hex: "#8a70b8" },
+  { name: "Plum", hex: "#a5679f" },
+  { name: "Rose", hex: "#b5627d" },
+  { name: "Slate", hex: "#7a808d" },
 ];
+const NONE = "none";
 
 const HUE_STRIP = "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)";
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
@@ -40,7 +54,7 @@ interface ColorPanelProps {
   value: string;
   // Every move of a drag, for a live preview.
   onChange: (color: string) => void;
-  // A finished choice (a quick hue or No color), so a popover can close on it.
+  // A finished choice (a quick color clicked, or Enter or Space on one), so a popover can close on it; arrowing through them only previews.
   onPick?: (color: string) => void;
   allowNone?: boolean;
 }
@@ -51,17 +65,21 @@ export const ColorPanel = ({ value, onChange, onPick = onChange, allowNone = tru
   const [hsv, setHsv] = useState<Hsv>(() => (HEX_COLOR.test(hex) ? hexToHsv(hex) : [220, 0.75, 0.95]));
   const [text, setText] = useState(hex);
   const [h, s, v] = hsv;
+  const invalid = text !== "" && !HEX_COLOR.test(text);
+  const errorId = useId();
 
   const steer = (next: Hsv) => {
     setHsv(next);
     setText(hsvToHex(next));
     onChange(hsvToHex(next));
   };
-  const pick = (color: string) => {
+  const choose = (color: string, done: boolean) => {
     if (color) setHsv(hexToHsv(color, h));
     setText(color);
-    onPick(color);
+    (done ? onPick : onChange)(color);
   };
+  const quickValue = (color: string) => (color === NONE ? "" : color);
+  const pickQuick = (color: string) => choose(quickValue(color), true);
 
   return (
     <div className="flex w-56 flex-col gap-2.5">
@@ -69,8 +87,11 @@ export const ColorPanel = ({ value, onChange, onPick = onChange, allowNone = tru
         role="slider"
         tabIndex={0}
         aria-label="Saturation and brightness"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(v * 100)}
         aria-valuetext={`${Math.round(s * 100)}% saturation, ${Math.round(v * 100)}% brightness`}
-        className="relative h-32 cursor-crosshair touch-none rounded-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="relative h-32 cursor-crosshair touch-none rounded-md"
         style={{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, ${hsvToHex([h, 1, 1])})` }}
         onPointerDown={dragWith((x, y) => steer([h, x, 1 - y]))}
         onKeyDown={(event) => arrows(event, (dx, dy) => steer([h, clamp(s + dx / 100), clamp(v - dy / 100)]))}
@@ -84,7 +105,7 @@ export const ColorPanel = ({ value, onChange, onPick = onChange, allowNone = tru
         aria-valuemin={0}
         aria-valuemax={359}
         aria-valuenow={Math.round(h)}
-        className="relative h-3 cursor-pointer touch-none rounded-full focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="relative h-3 cursor-pointer touch-none rounded-full"
         style={{ background: HUE_STRIP }}
         onPointerDown={dragWith((x) => steer([x * 359, s, v]))}
         onKeyDown={(event) => arrows(event, (dx) => steer([Math.min(359, Math.max(0, h + dx)), s, v]))}
@@ -93,9 +114,11 @@ export const ColorPanel = ({ value, onChange, onPick = onChange, allowNone = tru
       </div>
       <input
         aria-label="Hex color"
+        aria-invalid={invalid}
+        aria-describedby={invalid ? errorId : undefined}
         spellCheck={false}
         autoComplete="off"
-        className="h-7 w-full rounded-md border border-input bg-transparent px-2 font-mono text-xs uppercase outline-none focus-visible:border-ring dark:bg-input/20"
+        className="h-7 w-full rounded-md border border-input bg-transparent px-2 font-mono text-xs uppercase aria-invalid:border-destructive dark:bg-input/20"
         placeholder="#000000"
         value={text}
         onChange={(event) => {
@@ -103,25 +126,55 @@ export const ColorPanel = ({ value, onChange, onPick = onChange, allowNone = tru
           setText(next);
           if (HEX_COLOR.test(next)) steer(hexToHsv(next.toLowerCase(), h));
         }}
+        onBlur={() => {
+          if (!invalid) return;
+          setText(value === "" ? "" : hsvToHex(hsv));
+        }}
       />
-      <div role="radiogroup" aria-label="Quick colors" className="grid grid-cols-9 gap-1">
-        {allowNone && (
-          <button type="button" role="radio" aria-checked={value === ""} aria-label="No color" className={swatchClass(value === "")} onClick={() => pick("")}>
-            <span className="size-full rounded-full border border-dashed border-muted-foreground" aria-hidden />
-          </button>
-        )}
-        {QUICK_HUES.map((color) => (
-          <button key={color} type="button" role="radio" aria-checked={hex === color} aria-label={color} className={swatchClass(hex === color)} onClick={() => pick(color)}>
-            <span className="size-full rounded-full" style={{ backgroundColor: color }} aria-hidden />
-          </button>
+      {invalid && (
+        <p id={errorId} role="alert" className="-mt-1 text-xs text-destructive">
+          Use six hex digits, like #3788BB
+        </p>
+      )}
+      <RadioGroupPrimitive.Root
+        aria-label="Quick colors"
+        value={value === "" ? NONE : hex}
+        onValueChange={(color) => choose(quickValue(color), false)}
+        className="grid grid-cols-[repeat(7,auto)] justify-between gap-y-1.5"
+      >
+        {allowNone && <QuickColor value={NONE} name="No color" active={value === ""} onPick={pickQuick} />}
+        {QUICK_COLORS.map((color) => (
+          <QuickColor key={color.hex} value={color.hex} name={color.name} active={hex === color.hex} onPick={pickQuick} />
         ))}
-      </div>
+      </RadioGroupPrimitive.Root>
     </div>
   );
 };
 
-const swatchClass = (active: boolean) =>
-  cn(
-    "flex size-6 items-center justify-center rounded-full border-2 p-0.5 transition-colors duration-150 ease-standard focus-visible:border-ring focus-visible:outline-none",
-    active ? "border-foreground/70" : "border-transparent hover:border-border",
-  );
+interface QuickColorProps {
+  value: string;
+  name: string;
+  active: boolean;
+  onPick: (value: string) => void;
+}
+
+// Radix checks an item as the arrows reach it, through a click with no pointer behind it, so only a real click or Enter and Space pick.
+const QuickColor = ({ value, name, active, onPick }: QuickColorProps) => (
+  <RadioGroupPrimitive.Item
+    value={value}
+    aria-label={name}
+    className={cn(
+      "flex size-6 items-center justify-center rounded-full border-2 p-0.5 transition-colors duration-150 ease-standard",
+      active ? "border-foreground/70" : "border-transparent hover:border-border",
+    )}
+    onClick={(event) => {
+      if (event.detail > 0) onPick(value);
+    }}
+    onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") onPick(value);
+    }}
+  >
+    {value === NONE && <span className="size-full rounded-full border border-dashed border-muted-foreground" aria-hidden />}
+    {value !== NONE && <span className="size-full rounded-full" style={{ backgroundColor: value }} aria-hidden />}
+  </RadioGroupPrimitive.Item>
+);

@@ -12,7 +12,7 @@ quick hues; every new pick is stored as hex, and the five names stay valid so ex
   `foreground` so its name stays readable.
 - **Rejected: a larger fixed palette.** It keeps the contrast guarantee, but it still refuses the brand color an
   owner wants, which is what was asked for.
-- **Saved once.** The label and ticket-type pickers save when their popover closes or a quick hue is picked, never on
-  each step of a drag.
+- **Saved once.** The label and ticket-type pickers save when their popover closes or a quick hue is clicked or taken
+  with Enter or Space, never on each step of a drag; arrowing through the quick hues previews like a drag.
 
 Supersedes the "fixed suggested palette (not freeform hex)" paragraph of ADR 0005.

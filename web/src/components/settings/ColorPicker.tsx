@@ -17,7 +17,7 @@ export const ColorPicker = ({ label, value, onChange }: ColorPickerProps) => {
         <button
           type="button"
           aria-label={label}
-          className="inline-flex h-8 items-center gap-2 rounded-md border border-input px-2.5 text-xs transition-colors duration-150 ease-standard hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none dark:bg-input/20"
+          className="inline-flex h-8 items-center gap-2 rounded-md border border-input px-2.5 text-xs transition-colors duration-150 ease-standard hover:bg-accent dark:bg-input/20"
         >
           {hex && <span className="size-3.5 rounded-full" style={{ backgroundColor: hex }} aria-hidden />}
           {!hex && <span className="size-3.5 rounded-full border border-dashed border-muted-foreground" aria-hidden />}
