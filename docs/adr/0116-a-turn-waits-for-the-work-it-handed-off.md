@@ -24,6 +24,12 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
   the restart or a run it woke replied, and interrupted otherwise. Only a Stop, a failure, or a deleted thread ends
   the turn at once. A provider's own subagent stays running in T3's projection until its wake run replays the
   notice, so the turn cannot end in the gap between the two.
+- **A turn a restart cut before it replied.** T3 continues a run its restart cancelled mid-turn in a run of its own
+  ("Continue where you left off."), which it dispatches as it boots. A run that started and was cancelled with no
+  reply, no woken run's reply and no continuation yet waits up to two minutes from when the stream comes back for that
+  continuation, follows it like any restart continuation, and says "T3 Code restarted and resumed this turn". A
+  continuation a second restart cut waits the same way. With no continuation by then the turn ends interrupted. A run
+  cancelled before it started never ran, and T3 never continues it, so it still ends interrupted at once.
 - **While it waits.** The step "Waiting for work handed off in T3 Code" repeats every five minutes under one call id
   while anything is pending, whatever Nexul's run is doing, because a wait-mode delegation keeps that run running with
   no events for as long as the child works. It keeps chat's and plays' silence windows open. While T3 holds a woken run

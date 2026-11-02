@@ -435,3 +435,24 @@ func TestPump_HandedOffAgentsThreadUnreadable_ItsPillComesFromItsRowAndTheTurnGo
 		assert.Equal(t, harness.HandoffFailed, pills["task-2"].State)
 	})
 }
+
+func TestPump_RunCutByAT3RestartThatNeverContinues_EndsInterruptedAfterTheRestartWait(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		started := map[string]any{"startedAt": "2026-10-03T16:00:00.000Z"}
+		src := newFakeSource(items(
+			event(2, "run.created", merged(runOf("msg-1", "running"), started)),
+			event(3, "run.updated", merged(runOf("msg-1", "cancelled"), started)),
+		))
+		out := make(chan harness.Update, 8)
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"), openChild: silentThread}
+		go p.run(t.Context(), src, out)
+
+		time.Sleep(restartWait - time.Second)
+		synctest.Wait()
+		assert.Empty(t, collect(out), "T3 may still continue the run")
+
+		time.Sleep(time.Second)
+		synctest.Wait()
+		assert.Equal(t, []string{"end " + string(harness.TurnInterrupted)}, labels(collect(out)))
+	})
+}

@@ -655,7 +655,7 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
 				{"run.updated", runAt(3, "message:restart-continuation:run-2", runWaiting)},
 			}),
-			want: []string{"reply Handed the audit off.", "reply Picking the audit up again: three issues.", "end done"}},
+			want: []string{"reply Handed the audit off.", "note " + restartNote, "reply Picking the audit up again: three issues.", "end done"}},
 		{name: "a run a T3 restart cut waits for the task it handed off and ends on the wake's reply",
 			events: slices.Concat(cutWhileHandingOff, wakeQueued, wakeReplies),
 			want:   []string{"reply Handing the audit off.", "reply The audit found three issues.", "end done"}},
@@ -699,6 +699,58 @@ func TestWatch_HandedOffWork(t *testing.T) {
 			w := newWatch("msg-1")
 			assert.Equal(t, tt.want, labels(fold(t, w, story(tt.events...))))
 			assert.Equal(t, tt.standing, w.standingNote())
+		})
+	}
+}
+
+func TestWatch_RunCutByAT3Restart(t *testing.T) {
+	t.Parallel()
+	started := map[string]any{"startedAt": "2026-10-03T16:00:00.000Z"}
+	working := [][2]any{
+		{"run.created", merged(runOf("msg-1", "running"), started)},
+		{"turn-item.updated", replyIn(1, "Surveying the toasts.")},
+		{"run.updated", merged(runOf("msg-1", "cancelled"), started)},
+	}
+	continuation := func(n int, of string, status string) map[string]any {
+		return merged(runAt(n, "message:restart-continuation:"+of, status), map[string]any{"restartContinuationOfRunId": of, "startedAt": "2026-10-03T16:01:00.000Z"})
+	}
+	tests := []struct {
+		name   string
+		events [][2]any
+		want   []string
+	}{
+		{name: "waits for T3 to continue it",
+			events: working,
+			want:   []string{"reply Surveying the toasts."}},
+		{name: "shows the run T3 continues it in as its own steps",
+			events: slices.Concat(working, [][2]any{{"run.created", continuation(2, runOne, "running")}}),
+			want:   []string{"reply Surveying the toasts.", "note " + restartNote}},
+		{name: "follows the run T3 continues it in and ends on its reply",
+			events: slices.Concat(working, [][2]any{
+				{"run.created", continuation(2, runOne, "running")},
+				{"turn-item.updated", replyIn(2, "Picked up where it left off.")},
+				{"run.updated", continuation(2, runOne, runWaiting)},
+			}),
+			want: []string{"reply Surveying the toasts.", "note " + restartNote, "reply Picked up where it left off.", "end done"}},
+		{name: "follows a continuation that a second restart cut into the next one",
+			events: slices.Concat(working, [][2]any{
+				{"run.created", continuation(2, runOne, "running")},
+				{"run.updated", continuation(2, runOne, "cancelled")},
+				{"run.created", continuation(3, runTwo, "running")},
+				{"turn-item.updated", replyIn(3, "Third time lucky.")},
+				{"run.updated", continuation(3, runTwo, runWaiting)},
+			}),
+			want: []string{"reply Surveying the toasts.", "note " + restartNote, "note " + restartNote, "reply Third time lucky.", "end done"}},
+		{name: "a run cancelled before it started ends interrupted at once",
+			events: [][2]any{{"run.created", runOf("msg-1", runQueued)}, {"run.updated", runOf("msg-1", "cancelled")}},
+			want:   []string{"end interrupted"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			w := newWatch("msg-1")
+			assert.Equal(t, tt.want, labels(fold(t, w, story(tt.events...))))
+			assert.Nil(t, w.standingNote(), "a continuation shows its own steps, not the hand-off note")
 		})
 	}
 }
