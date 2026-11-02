@@ -418,9 +418,10 @@ func (w *watch) pending() bool {
 	return w.pendingWork(true)
 }
 
-// pendingWork is pending, leaving out the runs typed in T3 unless typed.
-func (w *watch) pendingWork(typed bool) bool {
-	if w.woken(func(r run) bool { return (typed || !w.typedRuns[r.ID]) && slices.Contains(workingRuns, r.Status) }) {
+// pendingWork is pending, leaving out unless all the runs that show their own steps: typed in T3, or a restart continuation.
+func (w *watch) pendingWork(all bool) bool {
+	ownSteps := func(r run) bool { return w.typedRuns[r.ID] || r.RestartContinuationOfRunID != "" }
+	if w.woken(func(r run) bool { return (all || !ownSteps(r)) && slices.Contains(workingRuns, r.Status) }) {
 		return true
 	}
 	for _, s := range w.subagents {

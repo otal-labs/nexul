@@ -722,6 +722,9 @@ func TestWatch_RunCutByAT3Restart(t *testing.T) {
 		{name: "waits for T3 to continue it",
 			events: working,
 			want:   []string{"reply Surveying the toasts."}},
+		{name: "shows the run T3 continues it in as its own steps",
+			events: slices.Concat(working, [][2]any{{"run.created", continuation(2, runOne, "running")}}),
+			want:   []string{"reply Surveying the toasts.", "note " + restartNote}},
 		{name: "follows the run T3 continues it in and ends on its reply",
 			events: slices.Concat(working, [][2]any{
 				{"run.created", continuation(2, runOne, "running")},
@@ -745,7 +748,9 @@ func TestWatch_RunCutByAT3Restart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, labels(fold(t, newWatch("msg-1"), story(tt.events...))))
+			w := newWatch("msg-1")
+			assert.Equal(t, tt.want, labels(fold(t, w, story(tt.events...))))
+			assert.Nil(t, w.standingNote(), "a continuation shows its own steps, not the hand-off note")
 		})
 	}
 }
