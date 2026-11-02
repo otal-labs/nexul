@@ -83,12 +83,10 @@ export const enterList = (list: HTMLElement, arrival: Arrival = "pop") => {
   return () => observer.disconnect();
 };
 
-const isPanel = (el: Element) => {
-  const style = getComputedStyle(el);
-  return style.display !== "contents" && style.backdropFilter !== "none" && style.backdropFilter !== "";
-};
+// The frame paints as a panel unless the page splits into panes of its own (the `.app-frame` rules in index.css).
+const isPanel = (el: Element) => el.matches(".panel, .panel-frosted") || (el.matches(".app-frame") && !el.querySelector("[data-pane-layout]"));
 
-// The frosted panels a page is built from; the frame itself is the panel of a single-surface page.
+// The panels a page is built from; the frame itself is the panel of a single-surface page.
 const findPanels = (el: Element, depth: number): Element[] =>
   [...el.children].flatMap((child) => {
     if (isPanel(child)) return [child];

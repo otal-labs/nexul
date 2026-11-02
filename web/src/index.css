@@ -146,10 +146,10 @@
   --scrollbar: color-mix(in oklab, var(--foreground) 22%, transparent);
   --scrollbar-hover: color-mix(in oklab, var(--foreground) 40%, transparent);
 
-  /* The frosted panel every page floats in; derived from card so a palette's panels follow it. */
+  /* The panel every page floats in; derived from card so a palette's panels follow it. */
   --panel: var(--card);
   --panel-opacity: 85%;
-  /* The panel as it reads over the canvas, for a band that rows scroll under: opaque, so nothing shows through it. */
+  /* The panel as it paints: its card mix over the canvas, opaque, so no blur is needed behind it. */
   --panel-opaque: color-mix(in oklab, var(--panel) var(--panel-opacity), var(--background));
   --panel-ring: oklch(0.2 0.01 265 / 0.08);
   --panel-highlight: oklch(1 0 0 / 0.9);
@@ -423,16 +423,24 @@ body {
   mask-repeat: no-repeat;
 }
 
-/* A raised frosted panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */
+/* A raised, opaque panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */
 @utility panel {
   border: 1px solid transparent;
   border-top-color: var(--panel-highlight);
   border-radius: var(--radius-xl);
-  background-color: color-mix(in oklab, var(--panel) var(--panel-opacity), transparent);
-  backdrop-filter: blur(20px) saturate(1.3);
+  background-color: var(--panel-opaque);
   box-shadow:
     0 0 0 1px var(--panel-ring),
     var(--panel-shadow);
+}
+
+/* The one frosted panel, for a card over moving content (sign-in's live field), where an opaque card would read as a hole. */
+@utility panel-frosted {
+  @apply panel;
+  @supports (backdrop-filter: blur(1px)) {
+    background-color: color-mix(in oklab, var(--panel) var(--panel-opacity), transparent);
+    backdrop-filter: blur(20px) saturate(1.3);
+  }
 }
 
 /* A card on the topology canvas: the panel's ring and lit top edge on the card colour, no blur (nodes move on pan). */
@@ -446,13 +454,11 @@ body {
     var(--shadow-card);
 }
 
-/* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour, at 96% so
-   the page's text never reads through it, inside its fields included, wherever the blur is not drawn. */
+/* An overlay over the dimmed page (dialogs, the command palette): the panel's recipe on solid popover; the scrim under it carries the blur. */
 @utility glass-popover {
   border: 1px solid transparent;
   border-top-color: var(--panel-highlight);
-  background-color: color-mix(in oklab, var(--popover) 96%, transparent);
-  backdrop-filter: blur(24px) saturate(1.4);
+  background-color: var(--popover);
   box-shadow:
     0 0 0 1px var(--panel-ring),
     var(--shadow-overlay);
@@ -501,7 +507,7 @@ body {
   height: 40px;
   margin-top: -40px;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--panel) var(--panel-opacity), transparent));
+  background: linear-gradient(to bottom, transparent, var(--panel-opaque));
 }
 
 .app-frame:has([data-pane-layout]) {
@@ -515,7 +521,7 @@ body {
 }
 
 /* The light field behind the app: the brand's tint top right and bottom left, nothing between, where a glow showed through the panels as a disc.
-   Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
+   Soft by gradient falloff (no filter) and still: moving it would repaint the whole screen each frame. */
 .light-field {
   position: fixed;
   inset: -12%;

@@ -37,3 +37,9 @@ Decided 2026-10-08. Supersedes the "no accent" rule recorded in
 Amended 2026-10-09: focus left the accent for an ink outline, because an ember
 ring on a field read as a field in error; the decision ledger in
 `practices/design-language.md` records it.
+
+Amended 2026-11-02: panels and dialogs lost their backdrop blur and paint
+opaque. At 85% the blur re-sampled the page under every panel on each scroll
+and drag frame while showing almost nothing; the floating panels, ring, lit
+edge and light field stay. The dialog scrim keeps its blur, and sign-in's card
+over the live field is the one frosted panel (`panel-frosted`).
