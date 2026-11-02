@@ -208,24 +208,25 @@ describe("MessageList agent stream bubble lifecycle", () => {
 
     frame(helper({}));
     renderList([message({})]);
+    await user.click(screen.getByRole("button", { name: /^1 sub-agent, 1 working/ }));
     await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
     const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
-    expect(within(dialog).getByText("go test -race ./internal/auth/...")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^Running go test -race \.\/internal\/auth\/\.\.\./ })).toBeInTheDocument();
 
     frame(helper({ steps: [test, diff] }));
-    expect(within(dialog).getByText("git diff internal/auth")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^Running git diff internal\/auth/ })).toBeInTheDocument();
 
     frame(helper({ state: "done", steps: [test, diff], reply: "The refresh holds the lock throughout." }));
     expect(within(dialog).getByText("Done")).toBeInTheDocument();
     expect(within(dialog).getByText("The refresh holds the lock throughout.")).toBeInTheDocument();
   });
 
-  it("a live frame with only hand-offs shows their pills without the thinking line", () => {
+  it("a live frame with only hand-offs shows their sub-agents row without the thinking line", () => {
     const helper: Handoff = { id: "sa-1", driver: "codex", model: "", title: "Review the auth module", prompt: "Review it", state: "running", reply: "", steps: [] };
     act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "", text: "", streaming: true, handoff: helper }));
     renderList([message({})]);
 
-    expect(screen.getByRole("button", { name: /Review the auth module/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1 sub-agent, 1 working" })).toBeInTheDocument();
     expect(screen.queryByText("Thinking")).not.toBeInTheDocument();
   });
 });
@@ -395,7 +396,7 @@ describe("MessageList play runs in a ticket thread", () => {
     expect(screen.getAllByText("handler.go")).toHaveLength(2);
   });
 
-  it("a running run's stream bubble shows the open turn group with every step the frames carried", () => {
+  it("a running run's stream bubble shows the open turn group, one clock, and every step the frames carried under the step in flight", async () => {
     act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "", text: "", streaming: true, activity: "/src/handler.go", activityKind: "tool_call", activityTool: "Edit" }));
     act(() =>
       usePlayRunStore.getState().applyFrame({
@@ -404,10 +405,10 @@ describe("MessageList play runs in a ticket thread", () => {
       }),
     );
     renderThread([message({ body: "Started Fix with AI" })], [trail({ state: "running", ended_at: null, reply_message_id: "", activity: [read] })]);
-    expect(screen.getByRole("button", { name: /^Editing handler\.go/ })).toBeInTheDocument();
+    expect(screen.getAllByText(/^Working for \d+/)).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: /^Editing handler\.go/ }));
     expect(screen.getByText("Explored 1 file")).toBeInTheDocument();
     expect(screen.getByText("Editing 1 file")).toBeInTheDocument();
-    expect(screen.queryByText(/Working for \d+s/, { selector: "span" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
   });
 

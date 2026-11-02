@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { SetupTranscript } from "@/components/pairing/SetupTranscript";
@@ -27,13 +28,15 @@ const renderTranscript = (state: SetupRunRow["state"]) =>
 describe("SetupTranscript", () => {
   beforeEach(() => useSetupActivityStore.setState({ steps: { t1: steps } }));
 
-  it("reads the agent's messages whole as prose and folds the tools between them into counted groups, the live one open", () => {
+  it("reads the agent's messages whole as prose and folds the tools between them into counted groups, the live one on its step in flight", async () => {
+    const user = userEvent.setup();
     renderTranscript("running");
 
     expect(screen.getByText(said)).toBeInTheDocument();
-    expect(screen.getByText("· ran 1 command, used 1 tool")).toBeInTheDocument();
+    expect(screen.getByText("· ran 1 command, used Nexul")).toBeInTheDocument();
     expect(screen.queryByText("ls ~/.claude/skills")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Running python3 - <<'PY'/ })).toBeInTheDocument();
+    expect(screen.queryByText("python3 - <<'PY'")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Running python3 - <<'PY'/ }));
     expect(screen.getByText("python3 - <<'PY'")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });

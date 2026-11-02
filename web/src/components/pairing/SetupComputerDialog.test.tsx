@@ -208,6 +208,7 @@ describe("SetupComputerDialog", () => {
     expect(screen.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "false");
     await user.click(screen.getByRole("button", { name: /^codex/i }));
     const log = screen.getByRole("log", { name: "Codex steps" });
+    await user.click(within(log).getByRole("button", { name: /^Running ls ~\/\.claude\/skills/ }));
     expect(within(log).getAllByText(/^(nexul mcp add|ls ~\/\.claude\/skills)$/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
 
     push("t1", "tool_call", "cat ~/.claude.json", "call-3");

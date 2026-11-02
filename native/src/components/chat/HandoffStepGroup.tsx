@@ -7,7 +7,7 @@ import Wrench from "lucide-react-native/icons/wrench";
 import type { LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 
-import { groupHeadline, isFailedStep, isMcpTool, stepAct, stepPhrase, type StepAct, type StepGroup } from "@nexul/client-core/agentSteps";
+import { groupHeadline, isFailedStep, isMcpTool, listedAct, stepAct, stepPhrase, type ListedAct, type StepAct, type StepGroup } from "@nexul/client-core/agentSteps";
 
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -58,15 +58,6 @@ const NameLine = ({ step, root }: { step: HandoffStep; root: string | null }) =>
       {failed && <Failed />}
     </View>
   );
-};
-
-type ListedAct = "explore" | "edit" | "command";
-
-// Files always list under a count; a command does once a neighbour joins it, and stands as one row alone.
-const listedAct = (group: StepGroup<HandoffStep>): ListedAct | null => {
-  if (group.act === "explore" || group.act === "edit") return group.act;
-  if (group.act === "command" && group.entries.length > 1) return "command";
-  return null;
 };
 
 const StepList = ({ act, entries, root }: { act: ListedAct; entries: HandoffStep[]; root: string | null }) => (

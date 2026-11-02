@@ -76,6 +76,8 @@ const readTarget = (summary: string, keys = READ_TARGET_KEYS): string | null => 
 
 export const isMcpTool = (tool: string | undefined): boolean => tool !== undefined && mcpParts(tool) !== null;
 
+const serverName = (server: string): string => `${server.charAt(0).toUpperCase()}${server.slice(1)}`;
+
 const withoutFailed = (summary: string): string => (summary.endsWith(FAILED_SUFFIX) ? summary.slice(0, -FAILED_SUFFIX.length) : summary);
 
 const shellCommand = (step: AgentStep): string => unwrapShellCommand(withoutFailed(step.summary));
@@ -115,7 +117,7 @@ export const stepLabel = (step: AgentStep): string => {
   if (!step.tool) return summary;
   if (isCommandTool(step.tool)) return commandText(step, runDirectory([step]));
   const mcp = mcpParts(step.tool);
-  if (mcp) return `${mcp.server.charAt(0).toUpperCase()}${mcp.server.slice(1)}${SERVER_SEPARATOR}${mcp.name}`;
+  if (mcp) return `${serverName(mcp.server)}${SERVER_SEPARATOR}${mcp.name}`;
   if (summary === "" || summary === step.tool) return step.tool;
   const target = isFileReadTool(step.tool) ? readTarget(summary) : null;
   return `${step.tool}: ${target ?? summary}`;
@@ -193,6 +195,15 @@ export const groupSteps = <T extends AgentStep>(entries: T[]): StepGroup<T>[] =>
   return out;
 };
 
+export type ListedAct = "explore" | "edit" | "command";
+
+// Files always list under a count; a command does once a neighbour joins it, and stands as one row alone.
+export const listedAct = <T extends AgentStep>(group: StepGroup<T>): ListedAct | null => {
+  if (group.act === "explore" || group.act === "edit") return group.act;
+  if (group.act === "command" && group.entries.length > 1) return "command";
+  return null;
+};
+
 const plural = (n: number, noun: string, nouns = `${noun}s`): string => `${n} ${n === 1 ? noun : nouns}`;
 const distinctFiles = (entries: AgentStep[]): number => new Set(entries.map((e) => fileName(stepTarget(e)))).size;
 
@@ -216,18 +227,34 @@ export const groupHeadline = (act: "explore" | "edit" | "command", entries: Agen
   return `${running ? "Running" : "Ran"} ${plural(entries.length, "command")}`;
 };
 
-// "explored 2 files, 1 search, edited 1 file, ran 2 commands"; the Agent's own sentences are not counted.
+// "used Nexul 3 times, used 2 tools": MCP calls by their server, in the order each server was first called, then every other tool.
+const toolCounts = (entries: AgentStep[]): string[] => {
+  const servers = new Map<string, number>();
+  let others = 0;
+  for (const entry of entries.filter((e) => stepAct(e) === "tool")) {
+    const mcp = entry.tool === undefined ? null : mcpParts(entry.tool);
+    if (mcp === null) {
+      others++;
+      continue;
+    }
+    const name = serverName(mcp.server);
+    servers.set(name, (servers.get(name) ?? 0) + 1);
+  }
+  const parts = [...servers].map(([name, n]) => (n === 1 ? `used ${name}` : `used ${name} ${n} times`));
+  if (others > 0) parts.push(`used ${plural(others, "tool")}`);
+  return parts;
+};
+
+// "explored 2 files, 1 search, edited 1 file, ran 2 commands, used Nexul"; the Agent's own sentences are not counted.
 export const turnPhrase = (entries: AgentStep[]): string => {
   const parts: string[] = [];
   const explored = exploreCount(entries);
   const edits = entries.filter((e) => stepAct(e) === "edit");
   const commands = entries.filter((e) => stepAct(e) === "command").length;
-  const tools = entries.filter((e) => stepAct(e) === "tool").length;
   if (explored !== "") parts.push(`explored ${explored}`);
   if (edits.length > 0) parts.push(`edited ${editCount(edits)}`);
   if (commands > 0) parts.push(`ran ${plural(commands, "command")}`);
-  if (tools > 0) parts.push(`used ${plural(tools, "tool")}`);
-  return parts.join(", ");
+  return [...parts, ...toolCounts(entries)].join(", ");
 };
 
 // A run of steps between two of the agent's messages, folded into one group, or one message read as prose.
