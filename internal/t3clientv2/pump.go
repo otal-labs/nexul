@@ -23,6 +23,8 @@ const (
 	noteEvery = 5 * time.Minute
 	// handoffCap is how long a turn whose run is done, or cut by a T3 restart, waits on handed-off work that sends no news.
 	handoffCap = 60 * time.Minute
+	// restartWait is how long a turn a T3 restart cut waits for the run T3 continues it in, which T3 starts as it boots.
+	restartWait = 2 * time.Minute
 	// updatedNote ends a turn whose resubscribe finds T3 Code on another protocol.
 	updatedNote = "T3 Code was updated during this turn; ask again"
 )
@@ -80,6 +82,8 @@ func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
 		}
 		p.log.Warn("t3clientv2: thread stream ended mid-turn", "after_sequence", p.w.cursor, "error", err)
 		src = p.resubscribe(ctx, err, out)
+		// The cap counts from the new stream, so a T3 restart longer than restartWait still gets to resume the turn.
+		p.capAt = time.Time{}
 	}
 }
 
@@ -210,13 +214,30 @@ func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
 		return false
 	}
 	if seen := p.newest(); p.capAt.IsZero() || seen != p.seen {
-		p.capAt, p.seen = time.Now().Add(handoffCap), seen
+		p.capAt, p.seen = time.Now().Add(p.wait()), seen
 	}
 	if time.Now().Before(p.capAt) {
 		return false
 	}
+	if p.unresumed() {
+		p.finish(ctx, out, p.w.stop())
+		return true
+	}
 	p.finish(ctx, out, p.w.leave())
 	return true
+}
+
+// unresumed is a turn a T3 restart cut that only waits for T3 to continue it.
+func (p *pump) unresumed() bool {
+	return p.w.resuming() && !p.w.pending()
+}
+
+// wait is how long the turn waits for news before the cap ends it.
+func (p *pump) wait() time.Duration {
+	if p.unresumed() {
+		return restartWait
+	}
+	return handoffCap
 }
 
 // newest moves whenever the turn's thread or a hand-off's thread sends news; a resent snapshot leaves it.

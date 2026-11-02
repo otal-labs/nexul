@@ -56,6 +56,7 @@ type run struct {
 	RootNodeID                 string  `json:"rootNodeId"`
 	Status                     string  `json:"status"`
 	QueueHeld                  bool    `json:"queueHeld"`
+	StartedAt                  *string `json:"startedAt"`
 	CompletedAt                *string `json:"completedAt"`
 	RestartContinuationOfRunID string  `json:"restartContinuationOfRunId"`
 	// DelegatedCompletion names the message that will carry the run's delegated results back, once T3 dispatches it.
@@ -157,6 +158,7 @@ const (
 	heldNote    = "Held in T3 Code's queue; resume it in T3 Code or stop it here"
 	handoffNote = "Waiting for work handed off in T3 Code"
 	steeredNote = "The handed-off result went to a later reply in T3 Code"
+	restartNote = "T3 Code restarted and resumed this turn"
 	noReason    = "T3 Code reported the run failed without saying why."
 )
 
@@ -197,12 +199,14 @@ type watch struct {
 	ended    bool
 	// adopted is a Watch's: its run is the one it picked to follow, which a person may have started in T3.
 	adopted bool
+	// resumedIn are the runs T3 continued the turn in after a restart, each announced once.
+	resumedIn map[string]bool
 }
 
 func newWatch(messageID string) *watch {
 	return &watch{messageID: messageID, runs: map[string]run{}, followed: map[string]bool{}, deliveries: map[string]string{},
 		messages: map[string]message{}, typed: map[string]bool{}, typedRuns: map[string]bool{}, subagents: map[string]subagent{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
-		steps: map[string]harness.Activity{}, asked: map[string]bool{}, resolved: map[string]bool{}}
+		steps: map[string]harness.Activity{}, asked: map[string]bool{}, resolved: map[string]bool{}, resumedIn: map[string]bool{}}
 }
 
 // apply folds one stream item into the watch and returns what the harness should emit for it.
@@ -244,7 +248,7 @@ func (w *watch) reset(p projection) ([]harness.Update, *harness.TurnResult) {
 	for _, it := range items {
 		out = append(out, w.item(it)...)
 	}
-	notes, end := w.end()
+	notes, end := w.settle()
 	return append(out, notes...), end
 }
 
@@ -257,7 +261,7 @@ func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
 		}
 		w.track(r)
 		w.link()
-		return w.end()
+		return w.settle()
 	case e.Type == "message.updated":
 		var m message
 		if !decode(e, &m) {
@@ -265,7 +269,7 @@ func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
 		}
 		w.message(m)
 		w.link()
-		return w.end()
+		return w.settle()
 	case e.Type == "subagent.updated":
 		var s subagent
 		if !decode(e, &s) {
@@ -273,7 +277,7 @@ func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
 		}
 		w.subagent(s)
 		w.link()
-		return w.end()
+		return w.settle()
 	case e.Type == "turn-item.updated":
 		var it turnItem
 		if !decode(e, &it) {
@@ -558,7 +562,7 @@ func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 		w.ended = true
 		return []harness.Update{note(steeredNote)}, result
 	}
-	if result.State == harness.TurnDone && w.pending() {
+	if result.State == harness.TurnDone && (w.pending() || w.resuming()) {
 		return nil, nil
 	}
 	if w.cut() && !w.ownReplied && !w.woken(replied) {
@@ -571,6 +575,44 @@ func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 // cut is the turn's run cancelled by a T3 restart, which leaves its handed-off work running; a deleted thread's cancel ends it all.
 func (w *watch) cut() bool {
 	return w.run.Status == "cancelled" && w.thread.DeletedAt == nil
+}
+
+// resuming is whether T3 may yet continue a turn a restart cut before it replied, the newest run of its chain uncontinued.
+func (w *watch) resuming() bool {
+	if w.ended || w.ownReplied || w.woken(replied) || w.thread.DeletedAt != nil {
+		return false
+	}
+	last := w.run
+	for next, ok := w.continuationOf(last.ID); ok; next, ok = w.continuationOf(last.ID) {
+		last = next
+	}
+	return last.Status == "cancelled" && last.StartedAt != nil
+}
+
+// continuationOf is the run T3 started to continue runID after a restart.
+func (w *watch) continuationOf(runID string) (run, bool) {
+	for _, r := range w.runs {
+		if runID != "" && r.RestartContinuationOfRunID == runID {
+			return r, true
+		}
+	}
+	return run{}, false
+}
+
+// settle ends a fold that may have grown the followed runs: a note for each run T3 resumed the turn in, then its end.
+func (w *watch) settle() ([]harness.Update, *harness.TurnResult) {
+	var notes []harness.Update
+	for _, r := range w.runs {
+		if w.ended || w.resumedIn[r.ID] || !w.followed[r.ID] || !w.followed[r.RestartContinuationOfRunID] {
+			continue
+		}
+		w.resumedIn[r.ID] = true
+		u := note(restartNote)
+		u.Activity.CallID = "restart:" + r.ID
+		notes = append(notes, u)
+	}
+	more, end := w.end()
+	return append(notes, more...), end
 }
 
 // waiting is whether the turn's own run is done or cut and only the work it handed off keeps the turn open.
