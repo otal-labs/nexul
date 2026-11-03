@@ -2,6 +2,7 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 
 import { AddProjectSection } from "@/components/settings/AddProjectSection";
+import { EmptyProjectPicker } from "@/components/settings/EmptyProjectPicker";
 import { ProjectCheckoutCell } from "@/components/settings/ProjectCheckoutCell";
 import { RankedComputerRow, type RowControls } from "@/components/settings/RankedComputerRow";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,11 @@ interface ProjectComputerRowProps {
 export const ProjectComputerRow = ({ projectId, computer, rank, checkout, controls, onPick }: ProjectComputerRowProps) => {
   const [adding, setAdding] = useState(false);
   const missing = checkout.state === "missing";
+  const projects = computer.facts?.projects ?? [];
+  const pick = (id: string) => {
+    onPick(id);
+    setAdding(false);
+  };
 
   return (
     <RankedComputerRow
@@ -32,16 +38,9 @@ export const ProjectComputerRow = ({ projectId, computer, rank, checkout, contro
       below={
         missing &&
         adding && (
-          <div className="settle-in border-t border-border px-3 py-3">
-            <AddProjectSection
-              projectId={projectId}
-              computerId={computer.id}
-              projects={computer.facts?.projects ?? []}
-              onAdded={(id) => {
-                onPick(id);
-                setAdding(false);
-              }}
-            />
+          <div className="settle-in space-y-2 border-t border-border px-3 py-3">
+            <EmptyProjectPicker computerName={computer.name} projects={projects} onPick={pick} />
+            <AddProjectSection projectId={projectId} computerId={computer.id} projects={projects} onAdded={pick} />
           </div>
         )
       }

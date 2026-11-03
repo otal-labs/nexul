@@ -220,7 +220,7 @@ export const useCloneHarnessProject = (computerId: string) =>
   useAddHarnessProject(computerId, (repository: string) => ({ repository }), (project, repository) => `Cloning ${repository} into ${project.path}`);
 
 export const useCreateEmptyHarnessProject = (computerId: string) =>
-  useAddHarnessProject(computerId, (name: string) => ({ name }), (project) => `Created ${project.title} at ${project.path}`);
+  useAddHarnessProject(computerId, (name: string) => ({ name }), (project) => `Added ${project.title} at ${project.path}`);
 
 // Same live-server caveat as useFetchHarnessProjects: falls back to manual provider/model entry on error.
 export const useFetchHarnessProviders = (computerId: string) =>
