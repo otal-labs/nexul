@@ -69,6 +69,12 @@ const (
 	// FrameRestart asks a personal runner to restart itself, answered by FrameRestartResult before it goes.
 	FrameRestart       FrameType = "restart"
 	FrameRestartResult FrameType = "restart_result"
+	// FrameInstallTool asks a personal runner to install tool, git or gh, with its own package manager, answered by
+	// FrameInstallToolResult; FrameGitIdentity sets git_name and git_email where given, answered by FrameGitIdentityResult.
+	FrameInstallTool       FrameType = "install_tool"
+	FrameInstallToolResult FrameType = "install_tool_result"
+	FrameGitIdentity       FrameType = "git_identity"
+	FrameGitIdentityResult FrameType = "git_identity_result"
 	// FrameContainerEvent (runner -> server) is one die, oom or start of a container on a machine runner's host, and
 	// FrameContainerStates a snapshot of that host's containers sent when the event stream (re)starts. The runner
 	// does not know which containers are Nexul's; the server matches them to stacks.
@@ -183,6 +189,11 @@ type Frame struct {
 	Lines     []ContainerLogLine `json:"lines,omitempty"`
 	// Path is where a git_clone lands on the computer; its result names the folder with ~ expanded.
 	Path string `json:"path,omitempty"`
+	// Tool names the tool an install_tool installs, and the one a git_clone_result found missing.
+	Tool string `json:"tool,omitempty"`
+	// GitName and GitEmail carry a git_identity: the global user.name and user.email to set, each only where given.
+	GitName  string `json:"git_name,omitempty"`
+	GitEmail string `json:"git_email,omitempty"`
 	// Token carries a t3_pair_token's one-time T3 Code pairing token; it is never logged.
 	Token string `json:"token,omitempty"`
 	// Facts carries a facts frame's report.
@@ -279,6 +290,10 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameGitCloneResult:      (*Frame).validateGitCloneResult,
 	FrameRestart:             (*Frame).validateID,
 	FrameRestartResult:       (*Frame).validateID,
+	FrameInstallTool:         (*Frame).validateInstallTool,
+	FrameInstallToolResult:   (*Frame).validateID,
+	FrameGitIdentity:         (*Frame).validateGitIdentity,
+	FrameGitIdentityResult:   (*Frame).validateID,
 	FrameFacts:               (*Frame).validateFacts,
 	FrameContainerEvent:      (*Frame).validateContainerEvent,
 	FrameContainerStates:     (*Frame).validateContainerStates,
@@ -585,4 +600,18 @@ func oneOf(v string, opts ...string) bool {
 		}
 	}
 	return false
+}
+
+func (f *Frame) validateInstallTool() error {
+	if f.ID == "" || f.Tool == "" {
+		return fmt.Errorf("%w: install_tool requires id and tool", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateGitIdentity() error {
+	if f.ID == "" || (f.GitName == "" && f.GitEmail == "") {
+		return fmt.Errorf("%w: git_identity requires id and git_name or git_email", apperrs.ErrInvalid)
+	}
+	return nil
 }

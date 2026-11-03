@@ -266,6 +266,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Repositories:       pairingProjectRemotes{projects: store.Projects},
 		Cloner:             computers,
 		Restarter:          computers,
+		Tools:              computers,
+		Identities:         pairingGitIdentities{auth: authSvc},
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,

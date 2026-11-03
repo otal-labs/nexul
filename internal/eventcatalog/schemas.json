@@ -6716,6 +6716,13 @@
                 "version": {
                   "type": "string",
                   "description": "The version the command prints; sent while it is installed."
+                },
+                "install": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The command the Nexul app runs to install the tool when asked, as its arguments; sent while it is missing and the computer has a package manager Nexul installs it with."
                 }
               },
               "required": [

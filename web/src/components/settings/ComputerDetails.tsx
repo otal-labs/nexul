@@ -102,7 +102,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
           </ul>
         </Fact>
       )}
-      {computer.facts && <ComputerFactRows facts={computer.facts} factsAt={computer.facts_at} />}
+      {computer.facts && <ComputerFactRows computer={computer} facts={computer.facts} factsAt={computer.facts_at} />}
       {computer.facts?.docker?.available && <ComputerContainers computerId={computer.id} dockerVersion={computer.facts.docker.version} />}
       <Fact label="MCP token">
         <ComputerMCPToken computerId={computer.id} />

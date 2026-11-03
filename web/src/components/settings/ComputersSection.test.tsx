@@ -191,6 +191,58 @@ describe("ComputersSection", () => {
     expect(screen.getByText("Not installed")).toBeInTheDocument();
   });
 
+  it("installs a missing tool from its row once the person has seen the command it runs", async () => {
+    const install = ["brew", "install", "gh"];
+    serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git", version: "2.47.1" }, { name: "gh", install }], providers: [], projects: [] } })]);
+    mocks.post.mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Install gh" }));
+    expect(await screen.findByText("Install gh on Home?")).toBeInTheDocument();
+    expect(screen.getByText("brew install gh")).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+
+    await user.click(screen.getAllByRole("button", { name: "Install gh" }).at(-1)!);
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/tools", { tool: "gh" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("gh installed on Home"));
+  });
+
+  it("says git has no identity and sets it from the GitHub sign-in after showing it", async () => {
+    serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git" }], providers: [], projects: [] } })]);
+    const serve = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation(async (url: string) =>
+      url === "/api/pairing/git-identity" ? { data: { name: "Alice Example", email: "1+alice@users.noreply.github.com" } } : serve(url),
+    );
+    mocks.post.mockResolvedValue({ data: { name: "Alice Example", email: "1+alice@users.noreply.github.com" } });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    expect(screen.getByText("Not set")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use my GitHub identity" }));
+    expect(await screen.findByText("Alice Example <1+alice@users.noreply.github.com>")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Set identity" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/git-identity"));
+  });
+
+  it("offers no identity when git already has one, or when an older app can't say whether git is there", async () => {
+    const t3 = { state: "answering" };
+    serveComputers([
+      computer({ facts: { t3, tools: [{ name: "git", path: "/usr/bin/git" }], git_name: "Alice", git_email: "alice@example.com", providers: [], projects: [] } }),
+      computer({ id: "c2", name: "Old", facts: { t3, providers: [], projects: [] } }),
+    ]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Old" }));
+    expect(screen.getByText("Alice <alice@example.com>")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use my GitHub identity" })).not.toBeInTheDocument();
+  });
+
   it("asks to open a closed desktop app", async () => {
     serveComputers([computer({ server_url: "", facts: { t3: { state: "not_running", install: "desktop_app" }, providers: [], projects: [] } })]);
     const user = userEvent.setup();

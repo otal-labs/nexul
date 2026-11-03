@@ -1,7 +1,10 @@
 import { ComputerFact } from "@/components/settings/ComputerFact";
+import { ComputerGitIdentityFact } from "@/components/settings/ComputerGitIdentityFact";
+import { ComputerToolFacts } from "@/components/settings/ComputerToolFacts";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { formatBytes } from "@/models/Attachment";
-import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts, type ToolFacts } from "@/models/ComputerFacts";
+import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts } from "@/models/ComputerFacts";
+import type { Computer } from "@/models/Pairing";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 // Past this many, a computer's T3 Code projects end in a count, so the fold stays a glance.
@@ -24,20 +27,6 @@ const ProviderFactLine = ({ provider }: ProviderFactLineProps) => {
   );
 };
 
-interface ToolFactLineProps {
-  tool: ToolFacts;
-}
-
-const ToolFactLine = ({ tool }: ToolFactLineProps) => (
-  <li className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-    <span className="font-mono text-foreground">{tool.name}</span>
-    <SettingsStatus tone={tool.path ? "success" : "warning"} detail={tool.version && <span className="font-mono tabular-nums">{tool.version}</span>}>
-      {tool.path ? "Installed" : "Not installed"}
-    </SettingsStatus>
-    {tool.path && <span className="min-w-0 font-mono break-all text-muted-foreground">{tool.path}</span>}
-  </li>
-);
-
 interface ProjectFactLineProps {
   project: ComputerFacts["projects"][number];
 }
@@ -50,14 +39,14 @@ const ProjectFactLine = ({ project }: ProjectFactLineProps) => (
 );
 
 interface ComputerFactRowsProps {
+  computer: Computer;
   facts: ComputerFacts;
   factsAt: string | undefined;
 }
 
 // What the computer's runner and its T3 Code report; only the computer's owner ever receives them.
-export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
+export const ComputerFactRows = ({ computer, facts, factsAt }: ComputerFactRowsProps) => {
   const system = [facts.os, facts.arch].filter(Boolean).join(" · ");
-  const git = [facts.git_name, facts.git_email && `<${facts.git_email}>`].filter(Boolean).join(" ");
   const github = facts.github_sign_in && GITHUB_SIGN_IN[facts.github_sign_in];
   const hidden = facts.projects.length - SHOWN_PROJECTS;
   return (
@@ -71,15 +60,7 @@ export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
           </ul>
         </ComputerFact>
       )}
-      {facts.tools && facts.tools.length > 0 && (
-        <ComputerFact label="Tools">
-          <ul className="space-y-1">
-            {facts.tools.map((tool) => (
-              <ToolFactLine key={tool.name} tool={tool} />
-            ))}
-          </ul>
-        </ComputerFact>
-      )}
+      {facts.tools && facts.tools.length > 0 && <ComputerToolFacts computerId={computer.id} tools={facts.tools} />}
       {facts.projects.length > 0 && (
         <ComputerFact label="T3 projects">
           <ul className="space-y-1">
@@ -96,11 +77,7 @@ export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
           {system && <span className="ml-2 font-mono text-muted-foreground">{system}</span>}
         </ComputerFact>
       )}
-      {git && (
-        <ComputerFact label="Git identity">
-          <span className="break-all">{git}</span>
-        </ComputerFact>
-      )}
+      <ComputerGitIdentityFact computer={computer} facts={facts} />
       {github && (
         <ComputerFact label="GitHub">
           <SettingsStatus tone={github.tone} detail={github.detail}>

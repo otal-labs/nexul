@@ -130,6 +130,11 @@ func TestCloneProject_ThroughTheRunnerNeedsNoGitSignInOnTheComputer(t *testing.T
 			wantErr: "clone acme/api on Box: invalid: destination path already exists",
 		},
 		{
+			name:    "no git on the computer",
+			runner:  func(context.Context) (string, error) { return "", &MissingToolError{Tool: "git"} },
+			wantErr: "git isn't installed on Box; install it from the computer's row in Settings → Computers",
+		},
+		{
 			name:   "the person stopped waiting",
 			gaveUp: true,
 			runner: func(ctx context.Context) (string, error) {
@@ -308,6 +313,7 @@ func TestCloneProject_ThroughT3_AFailedCloneComesBackAsAnErrorThePersonCanActOn(
 		{"git refused the credentials", &harness.CloneFailedError{Detail: "remote: Invalid username or password.\nfatal: Authentication failed for 'https://github.com/acme/api.git/'"}, signIn},
 		{"a private repository git cannot see", &harness.CloneFailedError{Detail: "remote: Repository not found.\nfatal: repository 'https://github.com/acme/api.git/' not found"}, signIn},
 		{"any other failure", &harness.CloneFailedError{Detail: "fatal: unable to access 'https://github.com/acme/api.git/': Could not resolve host: github.com"}, "invalid: couldn't clone acme/api on Box: fatal: unable to access 'https://github.com/acme/api.git/': Could not resolve host: github.com"},
+		{"no git on the computer", &harness.CloneFailedError{Detail: "spawn git ENOENT"}, "git isn't installed on Box; install it from the computer's row in Settings → Computers"},
 		{"T3 itself failed", assert.AnError, "clone acme/api on Box: " + assert.AnError.Error()},
 	}
 	for _, tt := range tests {

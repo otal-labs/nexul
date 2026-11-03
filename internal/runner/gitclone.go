@@ -42,6 +42,9 @@ func (h *Handler) CloneRepository(ctx context.Context, computerID, repo, path, t
 	if err != nil {
 		return "", fmt.Errorf("ask the runner of computer %s to clone %s: %w", computerID, repo, err)
 	}
+	if f.Tool != "" {
+		return "", &MissingToolError{Tool: f.Tool}
+	}
 	if f.Error != "" {
 		return "", fmt.Errorf("%w: %s", apperrs.ErrInvalid, f.Error)
 	}
@@ -52,15 +55,18 @@ func (h *Handler) CloneRepository(ctx context.Context, computerID, repo, path, t
 
 // answerForComputer answers what the server asks a personal runner to do on its computer.
 func (c *Client) answerForComputer(ctx context.Context, conn *websocket.Conn, f Frame) {
-	if f.Type == FrameGitClone {
+	switch f.Type {
+	case FrameGitClone:
 		c.answerGitClone(ctx, conn, f)
-		return
-	}
-	if f.Type == FrameRestart {
+	case FrameRestart:
 		c.answerRestart(ctx, conn, f)
-		return
+	case FrameInstallTool:
+		c.answerInstallTool(ctx, conn, f)
+	case FrameGitIdentity:
+		c.answerGitIdentity(ctx, conn, f)
+	default:
+		c.answerPairToken(ctx, conn, f.ID)
 	}
-	c.answerPairToken(ctx, conn, f.ID)
 }
 
 // answerGitClone clones a repository for the server and answers with the folder or why git failed.
@@ -70,7 +76,7 @@ func (c *Client) answerGitClone(ctx context.Context, conn *websocket.Conn, f Fra
 		path, err := c.gitClone(ctx, f)
 		if err != nil {
 			c.log.Warn("clone failed", "runner", c.cfg.Name, "repo", f.Repo, "error", err)
-			c.sendFrame(ctx, conn, Frame{Type: FrameGitCloneResult, ID: f.ID, Error: err.Error()})
+			c.sendFrame(ctx, conn, Frame{Type: FrameGitCloneResult, ID: f.ID, Error: err.Error(), Tool: missingTool(err)})
 			return
 		}
 		c.sendFrame(ctx, conn, Frame{Type: FrameGitCloneResult, ID: f.ID, Path: path})
@@ -88,7 +94,7 @@ func (c *Client) gitClone(ctx context.Context, f Frame) (string, error) {
 	}
 	git, err := lookTool("git")
 	if err != nil {
-		return "", fmt.Errorf("git clone %s: %w", f.Repo, err)
+		return "", &MissingToolError{Tool: "git"}
 	}
 	ctx, cancel := context.WithTimeout(ctx, gitCloneTimeout)
 	defer cancel()

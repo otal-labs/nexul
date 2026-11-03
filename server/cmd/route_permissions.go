@@ -221,6 +221,8 @@ var routePermissions = map[string][]string{
 	"POST /api/pairing/computers/{id}/mcp-token":                        none,
 	"POST /api/pairing/computers/{id}/pair":                             none,
 	"POST /api/pairing/computers/{id}/restart":                          none,
+	"POST /api/pairing/computers/{id}/tools":                            none,
+	"POST /api/pairing/computers/{id}/git-identity":                     none,
 	"POST /api/pairing/computers/{id}/projects":                         none,
 	"POST /api/pairing/computers/{id}/repair":                           none,
 	"PUT /api/pairing/computers/{id}/setup/choices":                     none,
