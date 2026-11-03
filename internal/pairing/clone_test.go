@@ -287,12 +287,12 @@ func TestAddProject_TakesARepositoryOrANameButNotBothOrNeither(t *testing.T) {
 	}
 }
 
-func TestCreateEmptyProject_AFolderThatIsAlreadyAProjectIsAConflict(t *testing.T) {
+func TestCreateEmptyProject_AFolderThatIsAlreadyAProjectReturnsThatProject(t *testing.T) {
 	t.Parallel()
 	svc, c, calls := newCloneService(t, "/home/me/Code/notes", "/home/me/Code/api")
-	_, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, "notes")
-	require.ErrorIs(t, err, apperrs.ErrConflict)
-	assert.Contains(t, err.Error(), "/home/me/Code/notes")
+	project, err := svc.CreateEmptyProject(t.Context(), "u1", c.ID, "notes")
+	require.NoError(t, err)
+	assert.Equal(t, "/home/me/Code/notes", project.Path)
 	assert.Empty(t, *calls, "T3 would register the same folder twice")
 }
 

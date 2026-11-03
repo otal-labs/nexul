@@ -369,7 +369,7 @@ func computerProjectCreateTool(s *Service) mcptool.Tool {
 			"when computer_list with the computer's id lists none for the work. With repository the Nexul app there "+
 			"clones it with a read-only token, so the computer needs no GitHub sign-in (an older app, or no GitHub App "+
 			"key, leaves it to the computer's own git credentials); with name it makes an empty folder, which a "+
-			"computer with no T3 project needs for setup. Either lands in the folder most of the computer's T3 "+
+			"computer with no T3 project needs for setup, or returns the T3 project already in that folder. Either lands in the folder most of the computer's T3 "+
 			"projects share, or ~/Code when it has none. Returns the new project's id, the t3_project_id play_run "+
 			"takes, once the clone is done; a failed clone leaves no project behind, and on a computer paired before "+
 			"cloning existed it fails until computer_pair pairs it again.",

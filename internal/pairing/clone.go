@@ -145,8 +145,9 @@ func (s *Service) CreateEmptyProject(ctx context.Context, userID, computerID, na
 	if err != nil {
 		return harness.Project{}, err
 	}
+	// A create the person never saved leaves the folder registered, so asking again hands back that project.
 	if i := slices.IndexFunc(existing, func(p harness.Project) bool { return p.Path == path }); i >= 0 {
-		return harness.Project{}, fmt.Errorf("%w: %s already has the T3 project %q at %s; use it instead", apperrs.ErrConflict, session.Name, existing[i].Title, path)
+		return existing[i], nil
 	}
 	project, err := client.CreateProject(ctx, session.Session(), name, path)
 	if err != nil {
