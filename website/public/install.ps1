@@ -50,7 +50,10 @@
       if ($got -ne $want) { throw "checksum mismatch for $asset; refusing to install it" }
       New-Item -ItemType Directory -Force -Path $binDir | Out-Null
       $exe = Join-Path $binDir 'nexul.exe'
-      Copy-Item -Force (Join-Path $tmp 'nexul.exe') $exe
+      # A running nexul, as a computer's task runs it, can't be overwritten, but it can be moved aside.
+      Remove-Item -Force "$exe.old" -ErrorAction SilentlyContinue
+      if ((Test-Path $exe) -and (Get-FileHash $exe -Algorithm SHA256).Hash -ne $want) { Move-Item -Force $exe "$exe.old" }
+      if (-not (Test-Path $exe)) { Copy-Item (Join-Path $tmp 'nexul.exe') $exe }
     }
     finally {
       Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

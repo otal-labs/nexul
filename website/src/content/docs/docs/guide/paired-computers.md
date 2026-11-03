@@ -52,6 +52,8 @@ On Windows the command needs no administrator, because everything it installs is
 
 Its log is `%LOCALAPPDATA%\Nexul\computer\service.log`. To remove it, remove the computer in Nexul, or run `nexul uninstall computer`: it tells Nexul, ends and deletes the task, and deletes `%LOCALAPPDATA%\Nexul` and its Path entry once the command ends.
 
+Running the command again on a computer that already has the Nexul app keeps the app and its credential, and leaves the new token unused. It starts the app if it isn't running, and puts back its program, task or service if something deleted them, such as Windows Security. An app added for another Nexul instance, or one that lost its credential, is left alone: remove it with `nexul uninstall computer` first.
+
 ### A computer with no systemd
 
 A container, or any Linux host that isn't running systemd, has no service manager to register the Nexul app or T3 Code with. There the command registers nothing: it detects that systemd isn't running (`computer.sh` does too, and passes `--foreground` on), or you force it with `--foreground`, and it needs no `sudo`. The dialog's **Container or no systemd** command is this one. Run it as the account the app is for (a root login in a container is that account), from a shell you can leave open:

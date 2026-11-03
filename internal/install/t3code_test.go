@@ -34,6 +34,14 @@ var (
 		th.t3.up.Store(false)
 		require.NoError(t, os.Remove(filepath.Join(th.Home, ".t3", "userdata", "server-runtime.json")))
 	}
+	t3DesktopNeverOpened t3State = func(t *testing.T, th *testHost) {
+		t3Nothing(t, th)
+		th.aliceHas(t, "AppData/Local/Programs/t3code/T3 Code (Beta).exe", "", 0o644)
+	}
+	t3WingetUpToDate t3State = func(t *testing.T, th *testHost) {
+		t3Nothing(t, th)
+		th.exec.set("winget install", "Found an existing package already installed.", errors.New("exit status 0x8a15002b"))
+	}
 )
 
 // launcherMode is the desktop launcher's mode: Windows has no execute bit.
@@ -98,12 +106,17 @@ func TestInstallT3_ReusesWhatItFindsAndInstallsOnlyWhenThereIsNone(t *testing.T)
 		{"windows", "command line idle", t3CommandLine, nil, "start it with t3 serve"},
 		{"windows", "none", t3Nothing, []string{"winget install --id T3Tools.T3Code --exact --silent --accept-source-agreements --accept-package-agreements"},
 			"winget install T3Tools.T3Code). Pass --no-t3 to skip this."},
+		{"windows", "desktop app installed, never opened", t3DesktopNeverOpened, nil, "Open T3 Code"},
+		{"windows", "none, though winget has it installed", t3WingetUpToDate,
+			[]string{"winget install --id T3Tools.T3Code --exact --silent --accept-source-agreements --accept-package-agreements"}, "the desktop app is already installed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.goos+", "+tt.name, func(t *testing.T) {
 			th := newTestHost(t)
 			th.sudoFromAlice(t)
 			th.GOOS = tt.goos
+			t.Setenv("LOCALAPPDATA", filepath.Join(th.Home, "AppData", "Local"))
+			t.Setenv("ProgramFiles", "")
 			tt.state(t, th)
 			installers := actAsAlice(t, th)
 			alice := person{name: "alice", uid: 1000, gid: 1000, home: th.Home}
