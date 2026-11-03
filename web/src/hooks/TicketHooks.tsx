@@ -163,7 +163,8 @@ export const useSetTicketPerson = () =>
   useTicketEdit(
     requires("tickets:write", async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data),
-    ({ role, login }) => (role === TicketRole.Tester ? { tester: login } : { developer: login }),
+    // The id goes with the login, or the old person's id would keep matching until the server answers.
+    ({ role, login }) => (role === TicketRole.Tester ? { tester: login, tester_id: "" } : { developer: login, developer_id: "" }),
   );
 
 export const useSetTicketDueOn = () =>

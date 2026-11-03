@@ -107,6 +107,7 @@ A stack you watch adds a row when one of its services crashes and another when i
 
 - Drag a card between columns to change its status.
 - Group cards into swimlanes by category, such as a sprint. Dragging a card to another swimlane changes its category.
+- The face at the end of a card's key is whoever acts next: the tester while the card sits in a Testing column, otherwise the developer. A grey face means no one is set. Click it to pick someone, or **No one**, without opening the ticket (it needs `tickets:write`).
 - A card shows a spinner and how long it's been going beside its key while a play runs on the ticket, or while `@Agent` answers in its thread.
 - **Filter** by category, label, type, and status, or **Search**.
 - **Playing** narrows the board to tickets with a play running or waiting on an answer. It shows while at least one is.

@@ -129,9 +129,9 @@ describe("TicketCard", () => {
 
   it("renders the developer's GitHub avatar outside testing columns", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(screen.getByRole("img", { name: "developer onik97" })).toBeInTheDocument();
-    expect(screen.getByTitle("onik97")).toHaveAttribute("src", "https://github.com/onik97.png");
-    expect(screen.queryByTitle("lena")).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Developer: onik97" })).toBeInTheDocument();
+    expect(screen.getByTitle("Developer: onik97")).toHaveAttribute("src", "https://github.com/onik97.png");
+    expect(screen.queryByTitle("Tester: lena")).not.toBeInTheDocument();
   });
 
   it("shows what a blocked card waits on", async () => {
@@ -172,13 +172,13 @@ describe("TicketCard", () => {
       return base(url, config);
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "qa")} />);
-    expect(await screen.findByRole("img", { name: "tester lena" })).toBeInTheDocument();
-    expect(screen.queryByTitle("onik97")).not.toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Tester: lena" })).toBeInTheDocument();
+    expect(screen.queryByTitle("Developer: onik97")).not.toBeInTheDocument();
   });
 
-  it("renders no avatar when the column's person is unset", () => {
+  it("renders the default face when the column's person is unset", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open", "")} />);
-    expect(screen.queryByRole("img", { name: /developer/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Developer: no one" })).toBeInTheDocument();
   });
 
   it("shows a chat indicator when the ticket has a thread", async () => {

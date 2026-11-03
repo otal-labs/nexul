@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
@@ -22,5 +23,19 @@ describe("PersonPickerList", () => {
 
     expect(await screen.findByRole("button", { name: /Alice/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Bob/ })).not.toBeInTheDocument();
+  });
+
+  it("checks whoever holds the role, and drops No one while a search is typed so it never reads as a match", async () => {
+    mocks.get.mockResolvedValue({ data: { people: [{ user_id: "u-1", login: "alice", display_name: "Alice", avatar_url: "" }] } });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <PersonPickerList projectId="p-web" selected="alice" onSelect={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("button", { name: /Alice/, pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /No one/, pressed: false })).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: "Search people" }), "ali");
+    expect(screen.queryByRole("button", { name: /No one/ })).not.toBeInTheDocument();
   });
 });
