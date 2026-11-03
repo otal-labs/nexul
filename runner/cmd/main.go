@@ -60,6 +60,7 @@ func main() {
 		Personal:          cfg.Mode == runner.ModePersonal,
 		StreamURL:         cfg.StreamURL(),
 		T3Home:            cfg.T3Home,
+		T3InstallingFile:  cfg.T3InstallingFile(),
 		T3Supervised:      cfg.T3Supervised,
 		RunnerLog:         runnerLog,
 		Containers:        runner.HostContainerWatch(),

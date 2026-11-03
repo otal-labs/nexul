@@ -506,7 +506,7 @@ func (f *Frame) validateGitCloneResult() error {
 }
 
 func (f *Frame) validateFacts() error {
-	if f.Facts == nil || !oneOf(f.Facts.T3.State, T3Answering, T3NotRunning, T3Missing, T3NotLoopback) {
+	if f.Facts == nil || !oneOf(f.Facts.T3.State, T3Answering, T3NotRunning, T3Missing, T3NotLoopback, T3Installing) {
 		return fmt.Errorf("%w: facts requires facts with a valid T3 Code state", apperrs.ErrInvalid)
 	}
 	return nil

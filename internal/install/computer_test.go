@@ -230,6 +230,73 @@ func TestInstallComputer_Failures(t *testing.T) {
 	}
 }
 
+func TestInstallComputer_ConnectsTheRunnerBeforeInstallingT3Code(t *testing.T) {
+	tests := []struct {
+		name       string
+		windows    bool
+		installsT3 string
+		startsRun  string
+	}{
+		{"linux", false, "install.sh", "systemctl restart nexul-computer.service"},
+		{"windows", true, "winget install", "schtasks.exe /run /tn nexul-computer"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			th.sudoFromAlice(t)
+			dir := filepath.Join(th.Home, ".local", "share", "nexul", "computer")
+			if tt.windows {
+				th.onWindows(t)
+				dir = filepath.Join(th.Home, "AppData", "Local", "Nexul", "computer")
+			}
+			t3Nothing(t, th)
+			actAsAlice(t, th)
+			installT3, record := th.exec.onRun, map[string]bool{}
+			th.exec.onRun = func(line string) {
+				if strings.Contains(line, tt.installsT3) {
+					record["runner started first"] = th.exec.ran(tt.startsRun)
+					record["marked while installing"] = fileExists(filepath.Join(dir, "t3-installing"))
+				}
+				installT3(line)
+			}
+
+			require.NoError(t, th.installComputer(t))
+
+			assert.Equal(t, map[string]bool{"runner started first": true, "marked while installing": true}, record)
+			assert.NoFileExists(t, filepath.Join(dir, "t3-installing"), "the marker goes once T3 Code is installed")
+			out := th.out.String()
+			assert.Less(t, strings.Index(out, "Runner ...."), strings.Index(out, "T3 Code ...."), out)
+		})
+	}
+
+	t.Run("a T3 Code it finds leaves no marker", func(t *testing.T) {
+		th := newTestHost(t)
+		th.sudoFromAlice(t)
+		marked := false
+		th.exec.onRun = func(string) {
+			marked = marked || fileExists(filepath.Join(th.Home, ".local", "share", "nexul", "computer", "t3-installing"))
+		}
+
+		require.NoError(t, th.installComputer(t))
+
+		assert.False(t, marked)
+	})
+
+	t.Run("T3 Code failing to install leaves the runner connected and no marker", func(t *testing.T) {
+		th := newTestHost(t)
+		th.onWindows(t)
+		t3Nothing(t, th)
+		th.exec.set("winget install", "", errors.New("exit status 0x80070005"))
+		dir := filepath.Join(th.Home, "AppData", "Local", "Nexul", "computer")
+
+		require.ErrorContains(t, th.installComputer(t), "0x80070005")
+
+		assert.FileExists(t, filepath.Join(dir, "unit.json"), "the runner stays; running the command again keeps it")
+		assert.True(t, th.exec.ran("schtasks.exe /run /tn nexul-computer"))
+		assert.NoFileExists(t, filepath.Join(dir, "t3-installing"))
+	})
+}
+
 func TestInstallComputer_Again_KeepsTheRunnerAndPutsBackWhatIsGone(t *testing.T) {
 	const (
 		taskQuery = "schtasks.exe /query /tn nexul-computer /fo csv /nh"

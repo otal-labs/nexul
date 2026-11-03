@@ -43,6 +43,7 @@ const t3Check = (computer: Computer): Check => {
     const detail = [`T3 Code ${t3.version ?? ""}`.trim(), t3.port && `port ${t3.port}`].filter(Boolean).join(" · ");
     return { ...base, detail, state: "passed", label: "Found" };
   }
+  if (t3.state === "installing") return { ...base, detail: "The command is installing T3 Code", state: "waiting", label: "Installing" };
   if (t3.state === "not_running" && t3.install === "desktop_app") return { ...base, detail: "Open T3 Code on the computer", state: "warning", label: "Closed" };
   if (t3.state === "not_running") return { ...base, detail: t3.restart_error ?? "Its background service isn't answering", state: "warning", label: "Not running" };
   if (t3.state === "missing") return { ...base, detail: "Not installed; run the command again without --no-t3", state: "failed", label: "Missing" };
@@ -71,6 +72,7 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
   if (presence === "connected") return { tone: "success", text: "T3 Code answering" };
   if (presence === "rejected") return { tone: "destructive", text: "T3 Code refused the session", detail: "re-pair to connect again" };
   if (computer.pair_error) return { tone: "destructive", text: "Pairing failed", detail: computer.pair_error };
+  if (t3?.state === "installing") return { tone: "info", text: "Installing T3 Code" };
   if (t3?.state === "not_running" && t3.install === "desktop_app") return { tone: "warning", text: "Open T3 Code" };
   if (t3?.state === "not_running") return { tone: "warning", text: "T3 Code not running" };
   if (t3?.state === "missing") return { tone: "destructive", text: "T3 Code not installed" };

@@ -19,6 +19,8 @@ const (
 	wingetUpToDate = "0x8a15002b"
 	// t3DesktopFolder is where the desktop app's installer puts it, under %LOCALAPPDATA%\Programs or %ProgramFiles%.
 	t3DesktopFolder = "t3code"
+	// t3InstallingMarker is the runner's T3InstallingMarker, the file beside its credential saying T3 Code is being installed.
+	t3InstallingMarker = "t3-installing"
 )
 
 // t3Found is what the install finds of T3 Code in the person's home.

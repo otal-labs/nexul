@@ -6614,12 +6614,13 @@
             "properties": {
               "state": {
                 "type": "string",
-                "description": "answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach.",
+                "description": "answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach; installing: the Nexul installer is installing it.",
                 "enum": [
                   "answering",
                   "not_running",
                   "missing",
-                  "not_loopback"
+                  "not_loopback",
+                  "installing"
                 ]
               },
               "install": {

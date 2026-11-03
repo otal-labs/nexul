@@ -136,6 +136,14 @@ func (c *RunnerConfig) wsPath(path string) string {
 	return u.String()
 }
 
+// T3InstallingFile is the installer's T3 Code marker, beside the credential; "" for a runner with no credential file.
+func (c *RunnerConfig) T3InstallingFile() string {
+	if c.CredentialFile == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(c.CredentialFile), T3InstallingMarker)
+}
+
 // defaultT3Home is T3 Code's own default base directory, ~/.t3.
 func defaultT3Home() string {
 	home, err := os.UserHomeDir()

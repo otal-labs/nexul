@@ -189,7 +189,7 @@ func TestInstallComputer_WithNoT3_LeavesT3CodeAlone(t *testing.T) {
 	assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the runner is still installed")
 }
 
-func TestInstallComputer_AT3CodeThatCannotBeStartedStopsBeforeTheCodeIsSpent(t *testing.T) {
+func TestInstallComputer_AT3CodeThatCannotBeStarted_KeepsTheRunnerSoTheSameCommandWorksAgain(t *testing.T) {
 	const asAlice = "runuser -u alice -- env HOME={home} XDG_RUNTIME_DIR=/run/user/1000 "
 	tests := []struct {
 		name    string
@@ -218,8 +218,14 @@ func TestInstallComputer_AT3CodeThatCannotBeStartedStopsBeforeTheCodeIsSpent(t *
 			err := th.runInstall(t.Context(), []string{"computer", "--token", computerToken(t, th.web.URL)})
 
 			require.ErrorContains(t, err, tt.wantErr)
-			assert.Empty(t, th.instance.calls("/api/runners/enroll"), "the code is not spent, so the same command works again")
-			assert.NoDirExists(t, filepath.Join(th.Home, ".local", "share", "nexul", "computer"))
+			assert.Len(t, th.instance.calls("/api/runners/enroll"), 1)
+			assert.NoFileExists(t, filepath.Join(th.Home, ".local", "share", "nexul", "computer", "t3-installing"))
+
+			th.exec.answers = nil
+			th.t3.up.Store(true)
+			th.aliceHas(t, ".t3/userdata/server-runtime.json", `{"version":1,"port":`+strconv.Itoa(th.t3.port())+`}`, 0o600)
+			require.NoError(t, th.runInstall(t.Context(), []string{"computer", "--token", computerToken(t, th.web.URL)}), "the same command again")
+			assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "its token is spent once, by the runner")
 		})
 	}
 }

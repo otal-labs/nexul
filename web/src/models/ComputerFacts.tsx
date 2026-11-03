@@ -31,7 +31,7 @@ export interface ToolFacts {
 
 export type GitHubSignIn = "gh" | "helper" | "none";
 
-export type T3State = "answering" | "not_running" | "missing" | "not_loopback";
+export type T3State = "answering" | "not_running" | "missing" | "not_loopback" | "installing";
 
 export interface T3Facts {
   state: T3State;
@@ -62,6 +62,7 @@ const T3_STATE: Record<T3State, { tone: SettingsStatusTone; text: string }> = {
   not_running: { tone: "warning", text: "Not running" },
   missing: { tone: "destructive", text: "Not installed" },
   not_loopback: { tone: "destructive", text: "Listens beyond this computer" },
+  installing: { tone: "info", text: "Installing" },
 };
 
 const INSTALL_LABEL: Record<NonNullable<T3Facts["install"]>, string> = {
