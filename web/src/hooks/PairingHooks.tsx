@@ -9,6 +9,7 @@ import { getPATsKey } from "@/hooks/AuthHooks";
 import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
+  checkoutFixLink,
   leftoverSessionNote,
   type Computer,
   type HarnessProject,
@@ -63,7 +64,8 @@ const blockedReadiness = (data: ResolveResponse): HarnessReadiness => {
   const copy = HARNESS_READINESS_COPY[state];
   const passes = state === "needs_location" ? [] : (data.passed_over ?? []);
   const message = passes.length > 0 ? `${copy.message} ${passOverLines(passes)}.` : copy.message;
-  return { state, message, passedOver: passes, ...(copy.link && { link: copy.link }) };
+  const link = checkoutFixLink(passes) ?? copy.link;
+  return { state, message, passedOver: passes, ...(link && { link }) };
 };
 
 // One request lists the viewer's computers and those shared with them; each hook selects its half.

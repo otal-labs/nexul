@@ -96,6 +96,16 @@ describe("useHarnessReadiness", () => {
     );
   });
 
+  it("links to the Projects tab when a passed-over computer lacks the project", async () => {
+    const offline = { computer_id: "c1", name: "laptop", why: "offline", text: "laptop is offline" };
+    const missing = { computer_id: "c2", name: "box", why: "no_checkout", text: "box doesn't have this project" };
+    mockRoutes({ resolve: { ok: false, reason: "no_computer_ready", passed_over: [offline, missing] }, presence: {} });
+    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
+    await waitFor(() =>
+      expect(result.current).toMatchObject({ link: { to: "/settings/pairing/projects", label: "Add it to a computer" } }),
+    );
+  });
+
   it("passes project_id through to the resolve call when given", async () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness("proj-1"), { wrapper });

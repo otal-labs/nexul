@@ -148,10 +148,10 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("link", { name: "Pair it again" })).not.toBeInTheDocument();
   });
 
-  it("names each computer the run waits on and why, and sends its person to their computers", async () => {
+  it("names each computer the run waits on and why, and sends its person to add the project", async () => {
     mockApi(() => playQueue({ items: [waiting] }), "u-alice");
     renderSection();
     expect(await screen.findByText(/Laptop is offline; Workstation doesn't have this project/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Your computers" })).toHaveAttribute("href", "/settings/pairing");
+    expect(screen.getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/settings/pairing/projects");
   });
 });

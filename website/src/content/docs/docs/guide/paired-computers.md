@@ -224,7 +224,7 @@ The page says why once, above or beside its play buttons, and each button repeat
 | No computer is paired to run plays. | Add a computer, or finish adding one. |
 | Your computer's pairing has expired or was revoked. | Press **Re-pair now** on the computer's row. |
 | None of your computers has this project yet. | Pick a computer and its T3 project in the run dialog, or **Add** it to a computer on the Projects tab. |
-| None of your computers can take a run right now. | Fix one of the reasons it lists for each computer, below. |
+| None of your computers can take a run right now. | Fix one of the reasons it lists for each computer, below. When one lacks the project, the link opens the Projects tab. |
 | @Agent can't use a provider on a computer until its setup is done. | Run setup for that computer. |
 | T3 Code on your computer is offline. | Check the computer is **Online** and T3 Code is running on it. |
 
