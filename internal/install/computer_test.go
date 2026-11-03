@@ -796,6 +796,29 @@ func TestInstallComputer_OnWindows_RunsTheRunnerAsThePersonsOwnLogonTask(t *test
 	assert.Contains(t, th.out.String(), "Logs           "+filepath.Join(dir, "service.log"))
 }
 
+func TestInstallComputer_OnWindows_SaysSoWhenWindowsSecurityDeletesTheCommandAsItStarts(t *testing.T) {
+	th := newTestHost(t)
+	th.onWindows(t)
+	ctl := filepath.Join(th.Home, "AppData", "Local", "Nexul", "nexul.exe")
+	th.exec.onRun = func(line string) {
+		if line == "schtasks.exe /run /tn nexul-computer" {
+			require.NoError(t, os.Remove(ctl))
+		}
+	}
+
+	err := th.installComputer(t)
+
+	require.ErrorContains(t, err, ctl+" was deleted as the runner started, which is Windows Security quarantining it")
+	require.ErrorContains(t, err, "then run the command again")
+	dir := filepath.Join(th.Home, "AppData", "Local", "Nexul", "computer")
+	assert.FileExists(t, filepath.Join(dir, "credential"), "the runner stays for the next run to put back")
+
+	th.exec.onRun = nil
+	require.NoError(t, th.installComputer(t), "the same command, once the file is allowed")
+	assert.FileExists(t, ctl)
+	assert.Len(t, th.instance.calls("/api/runners/enroll"), 1)
+}
+
 func TestInstallComputer_OnWindows_RefusesTheSystemAccount(t *testing.T) {
 	th := newTestHost(t)
 	th.onWindows(t)

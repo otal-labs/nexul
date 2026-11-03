@@ -52,6 +52,8 @@ On Windows the command needs no administrator, because everything it installs is
 
 Its log is `%LOCALAPPDATA%\Nexul\computer\service.log`. To remove it, remove the computer in Nexul, or run `nexul uninstall computer`: it tells Nexul, ends and deletes the task, and deletes `%LOCALAPPDATA%\Nexul` and its Path entry once the command ends.
 
+Windows Security can take the unsigned `nexul.exe` for a threat (a `Trojan:Win32/Bearfoos` detection) as it downloads or as its task first starts it, and delete it with the task. Running PowerShell as administrator makes no difference. The command then says so instead of reporting success: restore the file under **Windows Security** > **Virus & threat protection** > **Protection history** (**Actions** > **Allow on device**), then run the command again.
+
 Running the command again on a computer that already has the Nexul app keeps the app and its credential, and leaves the new token unused. It starts the app if it isn't running, and puts back its program, task or service if something deleted them, such as Windows Security. An app added for another Nexul instance, or one that lost its credential, is left alone: remove it with `nexul uninstall computer` first.
 
 ### A computer with no systemd
