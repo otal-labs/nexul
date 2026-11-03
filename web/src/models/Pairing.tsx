@@ -547,6 +547,17 @@ export interface ReadinessLink {
 
 export const COMPUTERS_SETTINGS_PATH = "/settings/pairing";
 export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_SETTINGS_PATH, label: "Add a computer" };
+export const COMPUTER_PROJECTS_PATH = `${COMPUTERS_SETTINGS_PATH}/projects`;
+
+const CHECKOUT_FIX_LINKS: Partial<Record<PassOver["why"], ReadinessLink>> = {
+  no_checkout: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
+  clone_failed: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
+  ambiguous_checkout: { to: COMPUTER_PROJECTS_PATH, label: "Pick a checkout" },
+};
+
+// A computer passed over for its checkout is fixed on the Projects tab, so that link wins over the generic one.
+export const checkoutFixLink = (passes: PassOver[]): ReadinessLink | undefined =>
+  passes.map((p) => CHECKOUT_FIX_LINKS[p.why]).find((link) => link !== undefined);
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, { message: string; link?: ReadinessLink }> = {
@@ -557,7 +568,7 @@ export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "
   },
   needs_location: {
     message: "None of your computers has this project yet.",
-    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Add it to a computer" },
+    link: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
   },
   no_computer_ready: {
     message: "None of your computers can take a run right now.",

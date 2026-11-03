@@ -48,7 +48,7 @@ describe("waitingWhy and waitingSentence", () => {
       ],
     });
     expect(waitingSentence(item)).toBe("laptop is offline; build-box doesn't have this project");
-    expect(waitingLink(item)?.to).toBe("/settings/pairing");
+    expect(waitingLink(item)?.to).toBe("/settings/pairing/projects");
   });
 
   it("reads a run waiting only for room as busy, with nothing to fix", () => {

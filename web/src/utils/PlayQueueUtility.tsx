@@ -1,5 +1,5 @@
 import type { PlayType } from "@/models/Play";
-import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, passOverLines, type ReadinessLink } from "@/models/Pairing";
+import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, checkoutFixLink, passOverLines, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
 
@@ -55,7 +55,7 @@ export const waitingSentence = (item: PlayQueueItem): string => {
 
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
 export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined =>
-  item.status === "queued" && !onlyFull(item) ? setupGaps[item.reason]?.link : undefined;
+  item.status === "queued" && !onlyFull(item) ? (checkoutFixLink(waitingOn(item)) ?? setupGaps[item.reason]?.link) : undefined;
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^nobody to run it on: no one has picked a computer for it$/, () => "no one has picked a computer for it"],
