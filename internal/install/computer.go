@@ -124,6 +124,11 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p, nil, false) }); err != nil {
 		return errors.Join(err, clearMarker(marker))
 	}
+	if h.GOOS == "windows" {
+		if err := (logonTask{h}).survivesStart(ctx); err != nil {
+			return errors.Join(err, clearMarker(marker))
+		}
+	}
 	if err := errors.Join(h.installT3(ctx, p, o), clearMarker(marker)); err != nil {
 		return err
 	}

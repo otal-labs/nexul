@@ -39,14 +39,19 @@
     $asset = 'nexul-windows-amd64.exe'
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("nexul-" + [guid]::NewGuid())
     New-Item -ItemType Directory -Path $tmp | Out-Null
+    # Windows Security can quarantine nexul.exe as it lands, which reads as a file that is gone or "contains a virus".
+    $blocked = "Windows Security blocked $asset as it downloaded. Restore it under Windows Security > Virus & threat protection > Protection history (Actions > Allow on device), then run the command again."
     try {
       Write-Host "Downloading nexul $tag (windows/amd64)"
-      Invoke-WebRequest "$releases/$tag/$asset" -OutFile (Join-Path $tmp 'nexul.exe') -UseBasicParsing
+      $file = Join-Path $tmp 'nexul.exe'
+      try { Invoke-WebRequest "$releases/$tag/$asset" -OutFile $file -UseBasicParsing } catch { if ("$_" -match 'virus|unwanted') { throw $blocked }; throw }
       Invoke-WebRequest "$releases/$tag/checksums.txt" -OutFile (Join-Path $tmp 'checksums.txt') -UseBasicParsing
       $line = Get-Content (Join-Path $tmp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1] -eq $asset } | Select-Object -First 1
       if (-not $line) { throw "checksums.txt lists no $asset" }
       $want = ($line -split '\s+')[0]
-      $got = (Get-FileHash (Join-Path $tmp 'nexul.exe') -Algorithm SHA256).Hash
+      $got = (Get-FileHash $file -Algorithm SHA256 -ErrorAction SilentlyContinue -ErrorVariable unreadable).Hash
+      if ("$unreadable" -match 'virus|unwanted' -or -not (Test-Path $file)) { throw $blocked }
+      if ($unreadable) { throw "could not read the downloaded $asset`: $unreadable" }
       if ($got -ne $want) { throw "checksum mismatch for $asset; refusing to install it" }
       New-Item -ItemType Directory -Force -Path $binDir | Out-Null
       $exe = Join-Path $binDir 'nexul.exe'

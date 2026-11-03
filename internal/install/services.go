@@ -306,6 +306,25 @@ func (l logonTask) install(ctx context.Context, u Unit) error {
 	return err
 }
 
+// survivesStart gives the runner's first start a moment, since Windows Security can delete an unsigned nexul.exe as the
+// task launches it, taking the task with it, which would leave an install that said it worked and never runs. The runner
+// and its credential stay, so running the command again after allowing the file puts the task back.
+func (l logonTask) survivesStart(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(2 * l.h.PollInterval):
+	}
+	dir := l.h.unitDir(computerUnit)
+	for _, path := range []string{l.h.ctlPath(), filepath.Join(dir, l.h.exeName(binaryFor(kindRunner)))} {
+		if !fileExists(path) {
+			return fmt.Errorf("%s was deleted as the runner started, which is Windows Security quarantining it; restore it under "+
+				"Windows Security > Virus & threat protection > Protection history (Actions > Allow on device), then run the command again", path)
+		}
+	}
+	return nil
+}
+
 // state is the task's status as Task Scheduler words it, lowercased (running, ready, disabled), or not installed.
 func (l logonTask) state(ctx context.Context, u Unit) string {
 	out, err := l.h.Exec.Run(ctx, "schtasks.exe", "/query", "/tn", u.Name, "/fo", "csv", "/nh")
