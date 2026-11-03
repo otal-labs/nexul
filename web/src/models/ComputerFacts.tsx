@@ -15,9 +15,18 @@ export interface ComputerFacts {
   free_disk_bytes?: number;
   // Absent from a runner older than container logs.
   docker?: { available: boolean; version?: string };
+  // Each tool Nexul runs on the computer, found or not; absent from a runner older than this report.
+  tools?: ToolFacts[];
   providers: ProviderFacts[];
   // repository is the checkout's git remote as T3 normalizes it, such as github.com/acme/api; absent until T3 resolved it.
   projects: { id: string; title: string; path: string; repository?: string }[];
+}
+
+// One command Nexul runs on the computer; path and version are absent while it is not installed.
+export interface ToolFacts {
+  name: "git" | "gh";
+  path?: string;
+  version?: string;
 }
 
 export type GitHubSignIn = "gh" | "helper" | "none";

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,4 +35,44 @@ func TestMergePaths_KeepsTheFirstOrderAndAddsWhatItLacks(t *testing.T) {
 	sep := string(filepath.ListSeparator)
 	got := mergePaths("/brew/bin"+sep+"/usr/bin", "/usr/bin"+sep+"/sbin"+sep)
 	assert.Equal(t, "/brew/bin"+sep+"/usr/bin"+sep+"/sbin", got)
+}
+
+// TestLookTool_FindsAToolInstalledAfterTheRunnerStarted: a tool whose folder reaches the saved PATH after the runner
+// started is found on the next lookup, with no restart.
+func TestLookTool_FindsAToolInstalledAfterTheRunnerStarted(t *testing.T) {
+	installed := t.TempDir()
+	file := "nexul-test-tool"
+	if runtime.GOOS == "windows" {
+		file += ".exe"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(installed, file), nil, 0o755))
+	t.Setenv("PATH", t.TempDir())
+	saved := ""
+	stubSavedPath(t, func() (string, error) { return saved, nil })
+
+	_, err := lookTool("nexul-test-tool")
+	require.Error(t, err, "not installed yet")
+
+	saved = installed
+	path, err := lookTool("nexul-test-tool")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(installed, file), path)
+}
+
+func TestLookTool_UnreadableSavedPath_KeepsTheRunnersOwn(t *testing.T) {
+	own := t.TempDir()
+	t.Setenv("PATH", own)
+	stubSavedPath(t, func() (string, error) { return "", errors.New("access denied") })
+
+	_, err := lookTool("nexul-test-tool")
+
+	require.Error(t, err)
+	assert.Equal(t, own, os.Getenv("PATH"))
+}
+
+func stubSavedPath(t *testing.T, read func() (string, error)) {
+	t.Helper()
+	before := savedPath
+	savedPath = read
+	t.Cleanup(func() { savedPath = before })
 }

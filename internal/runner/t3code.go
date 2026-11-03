@@ -72,6 +72,7 @@ type Facts struct {
 	GitHubSignIn  string       `json:"github_sign_in,omitempty" enum:"gh,helper,none" jsonschema:"How the person's own account can authenticate to GitHub for a push or a pull request: gh: the GitHub CLI is signed in; helper: a git credential helper is configured; none: neither. Absent from runners older than this report."`
 	FreeDiskBytes int64        `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
 	Docker        *DockerFacts `json:"docker,omitempty" jsonschema:"Docker as the person the runner runs as reaches it; absent from runners older than container logs."`
+	Tools         []ToolFacts  `json:"tools,omitempty" jsonschema:"Each tool Nexul runs on the computer, found or not; absent from runners older than this report."`
 }
 
 // DockerFacts is Docker on the computer as its runner found it.
@@ -79,6 +80,16 @@ type DockerFacts struct {
 	Available bool   `json:"available" jsonschema:"Whether docker version reached a Docker daemon as the person the runner runs as."`
 	Version   string `json:"version,omitempty" jsonschema:"The Docker daemon's version; sent while available."`
 }
+
+// ToolFacts is one command Nexul runs on the computer, as its runner finds it on the PATH a process started now gets.
+type ToolFacts struct {
+	Name    string `json:"name" enum:"git,gh" jsonschema:"The command: git clones projects, gh pushes and opens pull requests."`
+	Path    string `json:"path,omitempty" jsonschema:"Where the command is installed; absent when it is not."`
+	Version string `json:"version,omitempty" jsonschema:"The version the command prints; sent while it is installed."`
+}
+
+// requiredTools are the commands Nexul itself runs on a computer, in the order a report lists them.
+var requiredTools = []string{"git", "gh"}
 
 // How the person's own account signs in to GitHub, as its runner tells.
 const (
@@ -203,11 +214,12 @@ func (c *Client) facts(ctx context.Context) *Facts {
 	}
 	f := &Facts{
 		Hostname: hostname, OS: runtime.GOOS, Arch: runtime.GOARCH, RunnerVersion: version.Version, T3: c.t3.withRestart(c.t3Probe(ctx).facts),
-		Cloudflared:  cloudflaredVersion(commandLine(ctx, "cloudflared", "--version")),
+		Cloudflared:  printedVersion(commandLine(ctx, "cloudflared", "--version")),
 		GitName:      commandLine(ctx, "git", "config", "--global", "user.name"),
 		GitEmail:     commandLine(ctx, "git", "config", "--global", "user.email"),
 		GitHubSignIn: githubSignIn(ctx),
 		Docker:       c.dockerFacts(ctx),
+		Tools:        toolFacts(ctx),
 	}
 	c.dockerAvailable.Store(f.Docker.Available)
 	if home, err := os.UserHomeDir(); err == nil {
@@ -261,7 +273,7 @@ func commandLine(ctx context.Context, name string, args ...string) string {
 
 // runCommand is what a command prints and whether it ran and exited 0, bounded by factCommandTimeout.
 func runCommand(ctx context.Context, name string, args ...string) (string, bool) {
-	path, err := exec.LookPath(name)
+	path, err := lookTool(name)
 	if err != nil {
 		return "", false
 	}
@@ -271,8 +283,22 @@ func runCommand(ctx context.Context, name string, args ...string) (string, bool)
 	return string(out), err == nil
 }
 
-// cloudflaredVersion is the version in cloudflared's "cloudflared version 2025.9.1 (built ...)" line.
-func cloudflaredVersion(line string) string {
+// toolFacts finds each required tool and the version it prints.
+func toolFacts(ctx context.Context) []ToolFacts {
+	out := make([]ToolFacts, 0, len(requiredTools))
+	for _, name := range requiredTools {
+		path, err := lookTool(name)
+		if err != nil {
+			out = append(out, ToolFacts{Name: name})
+			continue
+		}
+		out = append(out, ToolFacts{Name: name, Path: path, Version: printedVersion(commandLine(ctx, path, "--version"))})
+	}
+	return out
+}
+
+// printedVersion is the version in a "<tool> version 2.47.1 (...)" line, as cloudflared, git and gh print it.
+func printedVersion(line string) string {
 	fields := strings.Fields(line)
 	if len(fields) >= 3 && fields[1] == "version" {
 		return fields[2]
@@ -515,7 +541,7 @@ func lastLine(b []byte) string {
 
 // findT3 is T3 Code's command: t3 on PATH, else the desktop app's launcher in home, else the command-line install.
 func findT3(home string) string {
-	if path, err := exec.LookPath("t3"); err == nil {
+	if path, err := lookTool("t3"); err == nil {
 		return path
 	}
 	launcher := "t3"

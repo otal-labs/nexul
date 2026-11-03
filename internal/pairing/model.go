@@ -93,6 +93,7 @@ type Facts struct {
 	GitHubSignIn  string            `json:"github_sign_in,omitempty"`
 	FreeDiskBytes int64             `json:"free_disk_bytes,omitempty"`
 	Docker        *DockerFacts      `json:"docker,omitempty"`
+	Tools         []ToolFacts       `json:"tools,omitempty"`
 	Providers     []ProviderFacts   `json:"providers"`
 	Projects      []harness.Project `json:"projects"`
 }
@@ -114,6 +115,13 @@ type T3Facts struct {
 type DockerFacts struct {
 	Available bool   `json:"available"`
 	Version   string `json:"version,omitempty"`
+}
+
+// ToolFacts is one command Nexul runs on the computer: git or gh, with where it is and its version, both empty when missing.
+type ToolFacts struct {
+	Name    string `json:"name"`
+	Path    string `json:"path,omitempty"`
+	Version string `json:"version,omitempty"`
 }
 
 // t3Answering is the T3Facts state of a T3 Code answering on the computer's loopback.

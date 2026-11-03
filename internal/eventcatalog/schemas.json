@@ -6694,6 +6694,34 @@
             "required": [
               "available"
             ]
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The command: git clones projects, gh pushes and opens pull requests.",
+                  "enum": [
+                    "git",
+                    "gh"
+                  ]
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Where the command is installed; absent when it is not."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "The version the command prints; sent while it is installed."
+                }
+              },
+              "required": [
+                "name"
+              ]
+            },
+            "description": "Each tool Nexul runs on the computer, found or not; absent from runners older than this report."
           }
         },
         "required": [
