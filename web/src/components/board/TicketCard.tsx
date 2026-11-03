@@ -4,11 +4,10 @@ import { CircleHelp, Clock, LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { personLabel } from "@nexul/client-core/person";
 import { findTicketPerson } from "@nexul/client-core/ticketPeople";
 
-import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { CardPerson } from "@/components/board/CardPerson";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
@@ -35,13 +34,15 @@ interface TicketCardProps {
 
 interface TicketCardBodyProps {
   ticket: Ticket;
+  // The person on the eyebrow opens a picker; off on the drag overlay and for a viewer who can't write.
+  assignable?: boolean;
 }
 
 // At most two labels show beside the type; the rest count as +N.
 const CARD_LABELS = 2;
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
-export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
+export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBodyProps) => {
   const { prefix, ticketTypes, labelColors, threadIndicators, statuses, activeTrails, people } = useBoardCardData();
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
   const shown = findTicketPerson(people, person);
@@ -59,11 +60,6 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   // A bug keeps its red; every other type's icon is muted, so the card's colour is its labels and its status, not a second accent.
   const typeIconColor = type.trim().toLowerCase() === "bug" ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
 
-  const avatar = person.login && (
-    <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-      <PersonAvatar login={person.login} name={personLabel(shown)} src={shown.avatar_url} className="size-4" />
-    </span>
-  );
   const hiddenLabels = labels.slice(fitting);
   const labelRun = labels.length > 0 && (
     <>
@@ -150,7 +146,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
           {run}
           {thread}
         </span>
-        {avatar}
+        <CardPerson ticket={ticket} person={person} shown={shown} assignable={assignable} />
       </span>
       {/* Balanced, not pretty: pretty leaves a title like "…with open blockers" on a one-word last line. */}
       <span dir="auto" title={ticket.title} className="line-clamp-3 text-row font-book leading-snug break-words text-balance">{ticket.title}</span>
@@ -235,7 +231,7 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
       )}
     >
       <span data-wash aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-success/15 opacity-0" />
-      <TicketCardBody ticket={ticket} />
+      <TicketCardBody ticket={ticket} assignable={draggable} />
     </div>
   );
 };

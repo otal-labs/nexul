@@ -1,3 +1,4 @@
+| A board card's person is reassigned from the card: a click on its avatar opens the person picker, and an unset person shows a default face (2026-11-03) | Assigning meant opening every ticket and its rail, one at a time, across a board. Against dragging a face from the developer stack onto a card: dnd-kit already owns pressing a card, and a second drag on the same surface gave no keyboard path. The face picks the role the card shows (the tester in a testing-stage column, else the developer), so it edits the person the card says acts next |
 # Design language: glass over a light field
 
 This file is the visual spec of record for all three surfaces: the web app in
@@ -747,7 +748,7 @@ dashed slot as the place to land.
 
 A card is three rows. An eyebrow in 11px mono leads: the key, then at its end
 the run marks, the thread mark and the 16px avatar of whoever acts next, all
-centred on the key's cap height. The run timer shows one unit ("45s", "16m",
+centred on the key's cap height. For a viewer who can write the ticket the avatar is a button (a 24px hit area, a `muted-foreground` ring at 40% on hover and while open) that opens the person picker for that role under a microheader naming it, the current person checked; with no one set it is the default face, a `muted-foreground` disc at 20% holding a user glyph in `muted-foreground`. The run timer shows one unit ("45s", "16m",
 "2h"); on a narrow card the thread mark gives way first, then the timer, and
 the spinner stays. The title takes the
 card's full width under it, in 13px (`text-row`) at weight 450 (`font-book`; 500 read as bold at that
