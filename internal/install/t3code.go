@@ -12,8 +12,14 @@ import (
 	"time"
 )
 
-// t3DesktopWinget is T3 Code's desktop app, what Windows gets since T3 Code has no Windows service.
-const t3DesktopWinget = "T3Tools.T3Code"
+const (
+	// t3DesktopWinget is T3 Code's desktop app, what Windows gets since T3 Code has no Windows service.
+	t3DesktopWinget = "T3Tools.T3Code"
+	// wingetUpToDate is winget's exit code for a package that is installed with no newer version to move to.
+	wingetUpToDate = "0x8a15002b"
+	// t3DesktopFolder is where the desktop app's installer puts it, under %LOCALAPPDATA%\Programs or %ProgramFiles%.
+	t3DesktopFolder = "t3code"
+)
 
 // t3Found is what the install finds of T3 Code in the person's home.
 type t3Found struct {
@@ -75,7 +81,7 @@ func (h *Host) findT3(ctx context.Context, p person, port int) t3Found {
 	if h.GOOS == "windows" {
 		launcher = "t3.cmd"
 	}
-	found.desktop = h.isExecutable(filepath.Join(t3Home, "bin", launcher))
+	found.desktop = h.isExecutable(filepath.Join(t3Home, "bin", launcher)) || h.t3DesktopInstalled(p)
 	if path, err := h.LookPath("t3"); err == nil {
 		found.command = path
 	}
@@ -83,6 +89,24 @@ func (h *Host) findT3(ctx context.Context, p person, port int) t3Found {
 		found.command = cli
 	}
 	return found
+}
+
+// t3DesktopInstalled finds the Windows desktop app where its installer puts it, since its launcher in ~/.t3/bin only
+// appears once the app has been opened.
+func (h *Host) t3DesktopInstalled(p person) bool {
+	if h.GOOS != "windows" {
+		return false
+	}
+	roots := []string{filepath.Join(envOr(os.Getenv, "LOCALAPPDATA", filepath.Join(p.home, "AppData", "Local")), "Programs")}
+	if programFiles := os.Getenv("ProgramFiles"); programFiles != "" {
+		roots = append(roots, programFiles)
+	}
+	for _, root := range roots {
+		if apps, _ := filepath.Glob(filepath.Join(root, t3DesktopFolder, "T3 Code*.exe")); len(apps) > 0 { // a bad pattern is the only error, and this one is fixed
+			return true
+		}
+	}
+	return false
 }
 
 // isExecutable reports a program file; Windows has no execute bit, so there any file is one.
@@ -233,6 +257,9 @@ func (h *Host) ensureLibatomic(ctx context.Context) error {
 
 func (h *Host) installT3Desktop(ctx context.Context) (string, error) {
 	_, err := h.Exec.Run(ctx, "winget", "install", "--id", t3DesktopWinget, "--exact", "--silent", "--accept-source-agreements", "--accept-package-agreements")
+	if err != nil && strings.Contains(err.Error(), wingetUpToDate) {
+		return "the desktop app is already installed: Open T3 Code once, and Nexul pairs it once it runs", nil
+	}
 	if err != nil {
 		return "", err
 	}

@@ -273,6 +273,9 @@ func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag str
 	if existing != nil && !foreground && fileExists(h.userUnitPath(p)) {
 		return h.moveToSystemService(ctx, *existing, p)
 	}
+	if existing != nil && !foreground {
+		return h.keepComputerRunner(ctx, *existing, o.Server, tag, p)
+	}
 	if existing != nil {
 		return "", errors.New("this computer already has its runner; remove it first with: nexul uninstall computer")
 	}
@@ -371,6 +374,49 @@ func (h *Host) moveToSystemService(ctx context.Context, u Unit, p person) (strin
 		return "", err
 	}
 	return u.Name + ", " + u.Host + ", moved from your user service", nil
+}
+
+// keepComputerRunner is a second run of the command on a computer whose runner the same instance enrolled: the runner
+// keeps its credential and the token goes unused, and a runner whose program, task or service is gone, as when Windows
+// Security deletes them, is put back and started.
+func (h *Host) keepComputerRunner(ctx context.Context, u Unit, server, tag string, p person) (string, error) {
+	enrolledWith := strings.TrimSuffix(u.Env["NEXUL_SERVER_URL"], "/")
+	if enrolledWith != server {
+		return "", fmt.Errorf("this computer already has its runner, for %s; remove it first with: nexul uninstall computer", enrolledWith)
+	}
+	if !fileExists(u.Env["NEXUL_CREDENTIAL_FILE"]) {
+		return "", errors.New("this computer's runner has lost its credential; remove it with nexul uninstall computer, then run the command again")
+	}
+	restored := !fileExists(u.Exec)
+	if restored {
+		if err := h.releaseAsset(ctx, tag, h.assetName(binaryFor(kindRunner)), u.Exec); err != nil {
+			return "", err
+		}
+		u.Version = tag
+		if err := h.saveUnit(u); err != nil {
+			return "", err
+		}
+		if err := h.giveTo(p, u.Dir); err != nil {
+			return "", err
+		}
+	}
+	if !restored && h.computerRunning(ctx, u) {
+		return u.Name + ", " + u.Host + ", already installed and running", nil
+	}
+	if err := h.computerHost().install(ctx, u); err != nil {
+		return "", err
+	}
+	return u.Name + ", " + u.Host + ", already installed, started again", nil
+}
+
+// computerRunning reports whether the OS runs the computer's runner right now. Windows words a task's status in its
+// own language, so elsewhere a running task reads as stopped, and registering it again leaves it running.
+func (h *Host) computerRunning(ctx context.Context, u Unit) bool {
+	if h.GOOS == "windows" {
+		return logonTask{h}.state(ctx, u) == "running"
+	}
+	state := h.services().state(ctx, u)
+	return state == "active" || state == "running"
 }
 
 // userUnitPath is where an earlier release put the runner's systemd user unit.

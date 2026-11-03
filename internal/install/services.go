@@ -306,6 +306,19 @@ func (l logonTask) install(ctx context.Context, u Unit) error {
 	return err
 }
 
+// state is the task's status as Task Scheduler words it, lowercased (running, ready, disabled), or not installed.
+func (l logonTask) state(ctx context.Context, u Unit) string {
+	out, err := l.h.Exec.Run(ctx, "schtasks.exe", "/query", "/tn", u.Name, "/fo", "csv", "/nh")
+	if err != nil {
+		return "not installed"
+	}
+	fields := strings.Split(firstLine(out, ""), ",")
+	if len(fields) < 3 {
+		return "unknown"
+	}
+	return strings.ToLower(strings.Trim(fields[len(fields)-1], `" `))
+}
+
 func (l logonTask) remove(ctx context.Context, u Unit) error {
 	if _, err := l.h.Exec.Run(ctx, "schtasks.exe", "/query", "/tn", u.Name); err != nil {
 		return nil

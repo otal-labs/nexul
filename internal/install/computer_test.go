@@ -3,6 +3,7 @@ package install
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -227,14 +228,106 @@ func TestInstallComputer_Failures(t *testing.T) {
 			assertHomeIsAlices(t, th)
 		})
 	}
+}
 
-	t.Run("twice", func(t *testing.T) {
-		th := newTestHost(t)
-		th.sudoFromAlice(t)
-		require.NoError(t, th.installComputer(t))
-		require.ErrorContains(t, th.installComputer(t), "already has its runner")
-		assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the second code is not spent")
-	})
+func TestInstallComputer_Again_KeepsTheRunnerAndPutsBackWhatIsGone(t *testing.T) {
+	const (
+		taskQuery = "schtasks.exe /query /tn nexul-computer /fo csv /nh"
+		taskRun   = "schtasks.exe /run /tn nexul-computer"
+		restart   = "systemctl restart nexul-computer.service"
+	)
+	tests := []struct {
+		name     string
+		windows  bool
+		between  func(t *testing.T, th *testHost, dir string)
+		wantRan  []string
+		wantSkip []string
+		wantOut  string
+	}{
+		{"linux, running: left as it is", false, func(_ *testing.T, th *testHost, _ string) {
+			th.exec.set("systemctl is-active nexul-computer.service", "active", nil)
+		}, nil, []string{restart}, "already installed and running"},
+		{"linux, stopped: started again", false, func(_ *testing.T, th *testHost, _ string) {
+			th.exec.set("systemctl is-active nexul-computer.service", "inactive", errors.New("exit status 3"))
+		}, []string{restart}, nil, "already installed, started again"},
+		{"windows, running: left as it is", true, func(_ *testing.T, th *testHost, _ string) {
+			th.exec.set(taskQuery, `"\nexul-computer","N/A","Running"`, nil)
+		}, nil, []string{taskRun}, "already installed and running"},
+		{"windows, its task and command deleted: both put back and started", true, func(t *testing.T, th *testHost, dir string) {
+			require.NoError(t, os.Remove(filepath.Join(filepath.Dir(dir), "nexul.exe")))
+			th.exec.set(taskQuery, "", errors.New("exit status 1"))
+		}, []string{taskRun}, nil, "already installed, started again"},
+		{"windows, its runner deleted: downloaded again and started", true, func(t *testing.T, th *testHost, dir string) {
+			require.NoError(t, os.Remove(filepath.Join(dir, "nexul-runner.exe")))
+			th.exec.set(taskQuery, `"\nexul-computer","N/A","Ready"`, nil)
+		}, []string{taskRun}, nil, "already installed, started again"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			th.sudoFromAlice(t)
+			dir := filepath.Join(th.Home, ".local", "share", "nexul", "computer")
+			runner := filepath.Join(dir, "nexul-runner")
+			if tt.windows {
+				th.onWindows(t)
+				dir = filepath.Join(th.Home, "AppData", "Local", "Nexul", "computer")
+				runner = filepath.Join(dir, "nexul-runner.exe")
+			}
+			require.NoError(t, th.installComputer(t))
+			tt.between(t, th, dir)
+			th.exec.calls = nil
+			th.out.Reset()
+
+			require.NoError(t, th.installComputer(t))
+
+			assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the second token is not spent")
+			assert.Equal(t, "cred-laptop\n", readFile(t, filepath.Join(dir, "credential")), "the runner keeps its credential")
+			assert.FileExists(t, runner)
+			if tt.windows {
+				assert.FileExists(t, filepath.Join(filepath.Dir(dir), "nexul.exe"), "the command step puts the command back")
+			}
+			for _, c := range tt.wantRan {
+				assert.True(t, th.exec.ran(c), c)
+			}
+			for _, c := range tt.wantSkip {
+				assert.False(t, th.exec.ran(c), c)
+			}
+			assert.Contains(t, th.out.String(), "nexul-computer, computer-ab12cd34, "+tt.wantOut)
+		})
+	}
+
+	refusals := []struct {
+		name    string
+		change  func(t *testing.T, dir string)
+		wantErr string
+	}{
+		{"enrolled with another instance", func(t *testing.T, dir string) {
+			path := filepath.Join(dir, "unit.json")
+			var u Unit
+			require.NoError(t, json.Unmarshal([]byte(readFile(t, path)), &u))
+			u.Env["NEXUL_SERVER_URL"] = "https://other.example.com"
+			data, err := json.Marshal(u)
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(path, data, 0o600))
+		}, "already has its runner, for https://other.example.com"},
+		{"its credential gone", func(t *testing.T, dir string) {
+			require.NoError(t, os.Remove(filepath.Join(dir, "credential")))
+		}, "has lost its credential"},
+	}
+	for _, tt := range refusals {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			th.sudoFromAlice(t)
+			require.NoError(t, th.installComputer(t))
+			dir := filepath.Join(th.Home, ".local", "share", "nexul", "computer")
+			tt.change(t, dir)
+
+			require.ErrorContains(t, th.installComputer(t), tt.wantErr)
+
+			assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the second token is not spent")
+			assert.FileExists(t, filepath.Join(dir, "unit.json"), "the runner already there stays")
+		})
+	}
 }
 
 // userServiceInstall lays out a runner as an earlier release installed it: its record under alice's home and a
