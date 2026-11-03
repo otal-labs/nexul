@@ -33,6 +33,16 @@ const (
 	T3NotRunning  = "not_running"
 	T3Missing     = "missing"
 	T3NotLoopback = "not_loopback"
+	T3Installing  = "installing"
+)
+
+const (
+	// T3InstallingMarker is the file `nexul install computer` keeps beside the credential while it installs T3 Code.
+	T3InstallingMarker = "t3-installing"
+	// t3InstallingFor bounds how long the marker counts, so one an interrupted install left behind runs out.
+	t3InstallingFor = 30 * time.Minute
+	// t3DesktopFolder is where T3 Code's Windows installer puts the desktop app, under %LOCALAPPDATA%\Programs.
+	t3DesktopFolder = "t3code"
 )
 
 const (
@@ -100,7 +110,7 @@ const (
 
 // T3Facts is T3 Code on the computer as its runner found it.
 type T3Facts struct {
-	State        string     `json:"state" enum:"answering,not_running,missing,not_loopback" jsonschema:"answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach."`
+	State        string     `json:"state" enum:"answering,not_running,missing,not_loopback,installing" jsonschema:"answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach; installing: the Nexul installer is installing it."`
 	Install      string     `json:"install,omitempty" enum:"service,command_line,desktop_app" jsonschema:"How T3 Code is installed: its background service, the command line, or the desktop app; absent when unknown."`
 	Port         int        `json:"port,omitempty" jsonschema:"The loopback port T3 Code answers on; sent while answering."`
 	Version      string     `json:"version,omitempty" jsonschema:"T3 Code's server version; sent while answering."`
@@ -326,10 +336,44 @@ func (c *Client) t3Probe(ctx context.Context) t3Probed {
 			return t3Probed{facts: T3Facts{State: T3Answering, Install: install, Port: int(ap.Port()), Version: version}, serviceManaged: serviceManaged}
 		}
 	}
+	state := T3NotRunning
 	if t3 == "" {
-		return t3Probed{facts: T3Facts{State: T3Missing}}
+		state, install = T3Missing, ""
 	}
-	return t3Probed{facts: T3Facts{State: T3NotRunning, Install: install}}
+	if t3 == "" && c.findT3Desktop() {
+		state, install = T3NotRunning, T3InstallDesktopApp
+	}
+	if c.t3Installing() {
+		state = T3Installing
+	}
+	return t3Probed{facts: T3Facts{State: state, Install: install}}
+}
+
+// t3Installing reports the installer's marker beside the credential while it is fresh.
+func (c *Client) t3Installing() bool {
+	if c.cfg.T3InstallingFile == "" {
+		return false
+	}
+	info, err := os.Stat(c.cfg.T3InstallingFile)
+	return err == nil && time.Since(info.ModTime()) < t3InstallingFor
+}
+
+// findT3Desktop finds the Windows desktop app where its installer puts it, before its first launch writes the launcher.
+func findT3Desktop() bool {
+	if runtime.GOOS != "windows" {
+		return false
+	}
+	for _, place := range [][2]string{{"LOCALAPPDATA", "Programs"}, {"ProgramFiles", ""}} {
+		base := os.Getenv(place[0])
+		if base == "" {
+			continue
+		}
+		root := filepath.Join(base, place[1])
+		if apps, _ := filepath.Glob(filepath.Join(root, t3DesktopFolder, "T3 Code*.exe")); len(apps) > 0 { // a bad pattern is the only error, and this one is fixed
+			return true
+		}
+	}
+	return false
 }
 
 // t3Keeper probes T3 Code every t3ProbeInterval and restarts a background service that stopped answering. A T3 Code

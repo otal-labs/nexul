@@ -48,6 +48,8 @@ type ClientConfig struct {
 	StreamURL string
 	// T3Home is T3 Code's base directory, whose runtime file names the port it listens on.
 	T3Home string
+	// T3InstallingFile is the marker `nexul install computer` keeps while it installs T3 Code; empty for none.
+	T3InstallingFile string
 	// T3Supervised means a supervisor on the computer restarts T3 Code, so the runner never does.
 	T3Supervised bool
 	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
@@ -81,6 +83,8 @@ type Client struct {
 	dial        func(ctx context.Context, network, address string) (net.Conn, error)
 	// findT3 locates T3 Code's command for a home, "" when it is not installed.
 	findT3 func(home string) string
+	// findT3Desktop finds a Windows desktop app that has not been opened yet, so it has no launcher.
+	findT3Desktop func() bool
 	// t3 keeps a personal runner's T3 Code background service running.
 	t3 *t3Keeper
 	// dockerFacts reads Docker on the computer; dockerAvailable is what the last facts report said.
@@ -112,7 +116,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, findT3Desktop: findT3Desktop, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
 	c.t3.supervised = cfg.T3Supervised
 	return c

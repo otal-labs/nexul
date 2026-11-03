@@ -147,6 +147,7 @@ describe("AddComputerDialog", () => {
   it.each([
     ["dropped moments ago", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: true } }, "Computer connected", "Reconnecting", /waiting for it to come back/],
     ["went offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: false } }, "Computer connected", "Offline", /journalctl -u nexul-computer/],
+    ["is installing T3 Code", { runner: connected, facts: facts({ state: "installing" }) }, "T3 Code found", "Installing", /the command is installing t3 code/i],
     ["has a closed desktop app", { runner: connected, facts: facts({ state: "not_running", install: "desktop_app" }) }, "T3 Code found", "Closed", /open t3 code on the computer/i],
     ["has a stopped service", { runner: connected, facts: facts({ state: "not_running", install: "service", restart_error: "no user manager" }) }, "T3 Code found", "Not running", /no user manager/],
     ["has no T3 Code", { runner: connected, facts: facts({ state: "missing" }) }, "T3 Code found", "Missing", /without --no-t3/],

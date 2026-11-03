@@ -1,6 +1,7 @@
 package install
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -113,18 +114,63 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err != nil {
 		return err
 	}
-	t3, err := h.installT3For(ctx, p, o, foreground)
+	if foreground {
+		return h.installComputerForeground(ctx, ho, tag, p, o)
+	}
+	marker, err := h.markT3Installing(ctx, p, o)
 	if err != nil {
 		return err
 	}
-	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p, t3, foreground) }); err != nil {
+	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p, nil, false) }); err != nil {
+		return errors.Join(err, clearMarker(marker))
+	}
+	if err := errors.Join(h.installT3(ctx, p, o), clearMarker(marker)); err != nil {
 		return err
 	}
-	if foreground {
-		h.foregroundStarted(p, ho.Server)
-		return h.RunComputer(ctx)
-	}
 	h.printComputerInstalled(p, o, ho.Server)
+	return nil
+}
+
+// installComputerForeground lays out T3 Code first, since the supervisor runs it with the runner, then runs both.
+func (h *Host) installComputerForeground(ctx context.Context, ho HostOptions, tag string, p person, o ComputerOptions) error {
+	t3, err := h.installT3Foreground(ctx, p, o)
+	if err != nil {
+		return err
+	}
+	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p, t3, true) }); err != nil {
+		return err
+	}
+	h.foregroundStarted(p, ho.Server)
+	return h.RunComputer(ctx)
+}
+
+// markT3Installing leaves the runner's marker for T3 Code being installed before the runner starts, so the computer
+// connects showing T3 Code installing rather than missing; "" when the install will find T3 Code instead.
+func (h *Host) markT3Installing(ctx context.Context, p person, o ComputerOptions) (string, error) {
+	found := h.findT3(ctx, p, cmp.Or(o.T3Port, h.T3Port))
+	if o.NoT3 || found.answering || found.desktop || found.command != "" {
+		return "", nil
+	}
+	dir := h.unitDir(computerUnit)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("create %s: %w", dir, err)
+	}
+	marker := filepath.Join(dir, t3InstallingMarker)
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		return "", fmt.Errorf("write %s: %w", marker, err)
+	}
+	return marker, h.giveTo(p, dir)
+}
+
+// clearMarker removes the T3 Code marker, and its folder when a failed install left nothing else in it.
+func clearMarker(marker string) error {
+	if marker == "" {
+		return nil
+	}
+	if err := removeIfPresent(marker); err != nil {
+		return fmt.Errorf("remove %s: %w", marker, err)
+	}
+	_ = os.Remove(filepath.Dir(marker)) // fails while the runner's files are in it, which is when it stays
 	return nil
 }
 
@@ -135,15 +181,6 @@ func (h *Host) installerPerson(foreground bool) (person, error) {
 		return h.foregroundPerson()
 	}
 	return h.computerPerson()
-}
-
-// installT3For makes T3 Code answer for the install: through its own service, or under the supervisor, which returns
-// the command line it runs T3 Code with.
-func (h *Host) installT3For(ctx context.Context, p person, o ComputerOptions, foreground bool) ([]string, error) {
-	if foreground {
-		return h.installT3Foreground(ctx, p, o)
-	}
-	return nil, h.installT3(ctx, p, o)
 }
 
 func (h *Host) printComputerInstalled(p person, o ComputerOptions, server string) {

@@ -100,7 +100,7 @@ type Facts struct {
 
 // T3Facts is T3 Code on the computer as its runner found it.
 type T3Facts struct {
-	// State is answering, not_running, missing or not_loopback.
+	// State is answering, not_running, missing, not_loopback or installing.
 	State string `json:"state"`
 	// Install is service, command_line or desktop_app, "" when unknown.
 	Install string `json:"install,omitempty"`

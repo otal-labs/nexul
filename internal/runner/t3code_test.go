@@ -187,6 +187,48 @@ func TestPersonalRunner_ReportsT3CodesStateAndInstall(t *testing.T) {
 	}
 }
 
+func TestT3Probe_WhileTheInstallerInstallsT3Code_ReportsInstalling(t *testing.T) {
+	t3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"serverVersion":"0.0.34","orchestrationProtocolVersion":2}`))
+	}))
+	t.Cleanup(t3.Close)
+	u, err := url.Parse(t3.URL)
+	require.NoError(t, err)
+	port, err := strconv.Atoi(u.Port())
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		home      string
+		t3        string
+		markerAge time.Duration // 0 for no marker
+		desktop   bool
+		want      T3Facts
+	}{
+		{"marker, nothing installed yet", t.TempDir(), "", time.Second, false, T3Facts{State: T3Installing}},
+		{"marker, installed but not started yet", t.TempDir(), "/usr/bin/t3", time.Second, false, T3Facts{State: T3Installing, Install: T3InstallCommandLine}},
+		{"marker, and it answers", writeRuntimeFile(t, `{"host":"127.0.0.1","port":`+u.Port()+`}`), "", time.Second, false, T3Facts{State: T3Answering, Port: port, Version: "0.0.34"}},
+		{"a marker an interrupted install left", t.TempDir(), "", time.Hour, false, T3Facts{State: T3Missing}},
+		{"no marker, desktop app installed but never opened", t.TempDir(), "", 0, true, T3Facts{State: T3NotRunning, Install: T3InstallDesktopApp}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestClient("ws://127.0.0.1:1", &fakeExecutor{})
+			c.cfg.Personal, c.cfg.T3Home = true, tt.home
+			c.cfg.T3InstallingFile = filepath.Join(t.TempDir(), T3InstallingMarker)
+			c.findT3 = func(string) string { return tt.t3 }
+			c.findT3Desktop = func() bool { return tt.desktop }
+			if tt.markerAge > 0 {
+				require.NoError(t, os.WriteFile(c.cfg.T3InstallingFile, nil, 0o600))
+				at := time.Now().Add(-tt.markerAge)
+				require.NoError(t, os.Chtimes(c.cfg.T3InstallingFile, at, at))
+			}
+
+			assert.Equal(t, tt.want, c.t3Probe(t.Context()).facts)
+		})
+	}
+}
+
 // fakeT3 writes a t3 command that checks it was asked for a pairing token in home, then runs body.
 func fakeT3(t *testing.T, home, body string) string {
 	t.Helper()
