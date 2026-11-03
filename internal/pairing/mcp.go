@@ -63,6 +63,7 @@ type computerPairIn struct {
 	Position      *int    `json:"position,omitempty" jsonschema:"Place in your order, 0 for first: runs go to the first computer that can take them."`
 	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
 	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
+	Restart       bool    `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer instead of pairing, so it starts again with the PATH the computer saved since, such as after installing git; its connection drops for a few seconds while it restarts."`
 }
 
 type computerDeleteIn struct {
@@ -319,7 +320,7 @@ func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
 		"Pairs T3 Code on one of your computers now through its Nexul app, minting a one-time token there and "+
 			"exchanging it for a harness session. A computer from computer_create pairs, and re-pairs before its "+
-			"session ends, on its own once its Nexul app connects. With name, position, runs_at_once or "+
+			"session ends, on its own once its Nexul app connects. With restart it restarts the Nexul app on the computer and pairs nothing. With name, position, runs_at_once or "+
 			"chat_project_id it only changes those and pairs nothing. Returns the computer; after pairing, run "+
 			"computer_setup_run next.",
 		mcptool.Hints{},
@@ -334,6 +335,12 @@ func computerPairTool(s *Service) mcptool.Tool {
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
 	userID := mcpActorID(ctx)
+	if in.Restart {
+		if err := s.RestartApp(ctx, userID, in.ID); err != nil {
+			return nil, err
+		}
+		return s.ownComputer(ctx, userID, in.ID)
+	}
 	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil {
 		return s.PairComputer(ctx, userID, in.ID)
 	}

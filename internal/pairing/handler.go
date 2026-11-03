@@ -32,6 +32,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", retired)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", retired)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/pair", h.pairComputer)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/restart", h.restartApp)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", retired)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/mcp-token", h.getMCPToken)
@@ -481,4 +482,12 @@ func actorID(r *http.Request) string {
 		return a.ID
 	}
 	return ""
+}
+
+func (h *Handler) restartApp(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RestartApp(r.Context(), actorID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

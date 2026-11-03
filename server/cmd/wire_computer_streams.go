@@ -227,3 +227,16 @@ func (t asLoopback) RoundTrip(req *http.Request) (*http.Response, error) {
 func isComputerHost(req *http.Request) bool {
 	return strings.HasSuffix(req.URL.Hostname(), pairing.ComputerHostSuffix)
 }
+
+// RestartApp is pairing's seam for restarting the Nexul app on a computer through its runner.
+func (r *runnerComputers) RestartApp(ctx context.Context, computerID string) error {
+	h := r.handler.Load()
+	if h == nil {
+		return apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	err := h.RestartComputerRunner(ctx, computerID)
+	if errors.Is(err, runner.ErrCannotRestart) {
+		return fmt.Errorf("%w: the Nexul app on it is too old to restart from here; restart it on the computer", apperrs.ErrConflict)
+	}
+	return err
+}

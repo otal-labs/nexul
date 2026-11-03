@@ -66,6 +66,9 @@ const (
 	// FrameGitClone asks a personal runner to clone repo into path with git_token, answered by FrameGitCloneResult.
 	FrameGitClone       FrameType = "git_clone"
 	FrameGitCloneResult FrameType = "git_clone_result"
+	// FrameRestart asks a personal runner to restart itself, answered by FrameRestartResult before it goes.
+	FrameRestart       FrameType = "restart"
+	FrameRestartResult FrameType = "restart_result"
 	// FrameContainerEvent (runner -> server) is one die, oom or start of a container on a machine runner's host, and
 	// FrameContainerStates a snapshot of that host's containers sent when the event stream (re)starts. The runner
 	// does not know which containers are Nexul's; the server matches them to stacks.
@@ -274,6 +277,8 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameT3PairToken:         (*Frame).validateT3PairToken,
 	FrameGitClone:            (*Frame).validateGitClone,
 	FrameGitCloneResult:      (*Frame).validateGitCloneResult,
+	FrameRestart:             (*Frame).validateID,
+	FrameRestartResult:       (*Frame).validateID,
 	FrameFacts:               (*Frame).validateFacts,
 	FrameContainerEvent:      (*Frame).validateContainerEvent,
 	FrameContainerStates:     (*Frame).validateContainerStates,
