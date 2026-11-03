@@ -82,9 +82,13 @@ func (c *Client) gitClone(ctx context.Context, f Frame) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	git, err := lookTool("git")
+	if err != nil {
+		return "", fmt.Errorf("git clone %s: %w", f.Repo, err)
+	}
 	ctx, cancel := context.WithTimeout(ctx, gitCloneTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "git", "clone", "--quiet", "--", "https://github.com/"+f.Repo+".git", path)
+	cmd := exec.CommandContext(ctx, git, "clone", "--quiet", "--", "https://github.com/"+f.Repo+".git", path)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_CONFIG_COUNT=1",
 		"GIT_CONFIG_KEY_0=http.extraheader", "GIT_CONFIG_VALUE_0="+basicAuthHeader(f.GitToken))
 	out, err := cmd.CombinedOutput()

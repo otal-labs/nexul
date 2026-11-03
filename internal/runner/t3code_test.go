@@ -95,6 +95,7 @@ func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[user]\n\tname = Alice Example\n\temail = alice@example.com\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(bin, "cloudflared"), []byte("#!/bin/sh\necho 'cloudflared version 2025.9.1 (built 2025-09-22-1200 UTC)'\n"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "gh"), []byte("#!/bin/sh\necho 'gh version 2.63.2 (2024-12-05)'\n"), 0o700))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	got := firstFacts(t, writeRuntimeFile(t, `{"host":"127.0.0.1","port":`+u.Port()+`}`), "")
@@ -106,6 +107,11 @@ func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
 	assert.Equal(t, "2025.9.1", got.Cloudflared)
 	assert.Equal(t, "Alice Example", got.GitName)
 	assert.Equal(t, "alice@example.com", got.GitEmail)
+	require.Len(t, got.Tools, 2)
+	assert.Equal(t, "git", got.Tools[0].Name)
+	assert.NotEmpty(t, got.Tools[0].Path)
+	assert.Regexp(t, `^\d+\.\d+`, got.Tools[0].Version)
+	assert.Equal(t, ToolFacts{Name: "gh", Path: filepath.Join(bin, "gh"), Version: "2.63.2"}, got.Tools[1])
 	assert.Positive(t, got.FreeDiskBytes, "free space in the home folder")
 }
 
@@ -467,4 +473,11 @@ func TestRestartT3_ReachesThePersonsUserManager(t *testing.T) {
 			assert.Equal(t, runDir+" unix:path="+filepath.Join(runDir, "bus")+"\n", string(got))
 		})
 	}
+}
+
+func TestToolFacts_MissingTool_HasNoPathOrVersion(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	stubSavedPath(t, func() (string, error) { return "", nil })
+
+	assert.Equal(t, []ToolFacts{{Name: "git"}, {Name: "gh"}}, toolFacts(t.Context()))
 }

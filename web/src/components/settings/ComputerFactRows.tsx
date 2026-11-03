@@ -1,7 +1,7 @@
 import { ComputerFact } from "@/components/settings/ComputerFact";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { formatBytes } from "@/models/Attachment";
-import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts } from "@/models/ComputerFacts";
+import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts, type ToolFacts } from "@/models/ComputerFacts";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 // Past this many, a computer's T3 Code projects end in a count, so the fold stays a glance.
@@ -23,6 +23,20 @@ const ProviderFactLine = ({ provider }: ProviderFactLineProps) => {
     </li>
   );
 };
+
+interface ToolFactLineProps {
+  tool: ToolFacts;
+}
+
+const ToolFactLine = ({ tool }: ToolFactLineProps) => (
+  <li className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+    <span className="font-mono text-foreground">{tool.name}</span>
+    <SettingsStatus tone={tool.path ? "success" : "warning"} detail={tool.version && <span className="font-mono tabular-nums">{tool.version}</span>}>
+      {tool.path ? "Installed" : "Not installed"}
+    </SettingsStatus>
+    {tool.path && <span className="min-w-0 font-mono break-all text-muted-foreground">{tool.path}</span>}
+  </li>
+);
 
 interface ProjectFactLineProps {
   project: ComputerFacts["projects"][number];
@@ -53,6 +67,15 @@ export const ComputerFactRows = ({ facts, factsAt }: ComputerFactRowsProps) => {
           <ul className="space-y-1">
             {facts.providers.map((provider) => (
               <ProviderFactLine key={provider.id} provider={provider} />
+            ))}
+          </ul>
+        </ComputerFact>
+      )}
+      {facts.tools && facts.tools.length > 0 && (
+        <ComputerFact label="Tools">
+          <ul className="space-y-1">
+            {facts.tools.map((tool) => (
+              <ToolFactLine key={tool.name} tool={tool} />
             ))}
           </ul>
         </ComputerFact>

@@ -177,6 +177,20 @@ describe("ComputersSection", () => {
     expect(screen.getAllByRole("term").filter((t) => t.textContent === "GitHub")).toHaveLength(2);
   });
 
+  it("lists each tool the computer has, with its version and where it is, and the ones it lacks", async () => {
+    const tools = [{ name: "git", path: "C:\\Program Files\\Git\\cmd\\git.exe", version: "2.47.1.windows.1" }, { name: "gh" }];
+    serveComputers([computer({ facts: { t3: { state: "answering" }, tools, providers: [], projects: [] } })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    expect(screen.getAllByRole("term").filter((t) => t.textContent === "Tools")).toHaveLength(1);
+    expect(screen.getByText("2.47.1.windows.1")).toBeInTheDocument();
+    expect(screen.getByText("C:\\Program Files\\Git\\cmd\\git.exe")).toBeInTheDocument();
+    expect(screen.getByText("Installed")).toBeInTheDocument();
+    expect(screen.getByText("Not installed")).toBeInTheDocument();
+  });
+
   it("asks to open a closed desktop app", async () => {
     serveComputers([computer({ server_url: "", facts: { t3: { state: "not_running", install: "desktop_app" }, providers: [], projects: [] } })]);
     const user = userEvent.setup();
