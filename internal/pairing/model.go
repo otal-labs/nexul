@@ -122,6 +122,8 @@ type ToolFacts struct {
 	Name    string `json:"name"`
 	Path    string `json:"path,omitempty"`
 	Version string `json:"version,omitempty"`
+	// Install is the command the computer's Nexul app runs to install the tool while it is missing, when it knows one.
+	Install []string `json:"install,omitempty"`
 }
 
 // t3Answering is the T3Facts state of a T3 Code answering on the computer's loopback.

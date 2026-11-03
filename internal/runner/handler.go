@@ -609,7 +609,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Commit: f.Commit, Services: f.Services,
 		})
-	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken, FrameGitCloneResult, FrameRestartResult:
+	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken, FrameGitCloneResult, FrameRestartResult, FrameInstallToolResult, FrameGitIdentityResult:
 		h.deliverReply(c, f)
 		return nil
 	case FrameFacts:
@@ -703,7 +703,7 @@ func (h *Handler) deliverReply(c *runnerConn, f Frame) {
 		h.deliverLogs(f)
 	case FrameHarnessDialRefused:
 		h.deliverRefusal(c, f)
-	case FrameT3PairToken, FrameGitCloneResult, FrameRestartResult:
+	case FrameT3PairToken, FrameGitCloneResult, FrameRestartResult, FrameInstallToolResult, FrameGitIdentityResult:
 		h.deliverAnswer(c, f)
 	}
 }

@@ -33,6 +33,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", retired)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/pair", h.pairComputer)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/restart", h.restartApp)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/tools", h.installTool)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/git-identity", h.setGitIdentity)
+	mux.HandleFunc("GET /api/pairing/git-identity", h.getGitIdentity)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", retired)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/mcp-token", h.getMCPToken)
@@ -490,4 +493,37 @@ func (h *Handler) restartApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) installTool(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Tool string `json:"tool"`
+	}
+	if err := httpx.DecodeJSON(r, &in); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.InstallTool(r.Context(), actorID(r), r.PathValue("id"), in.Tool); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) setGitIdentity(w http.ResponseWriter, r *http.Request) {
+	set, err := h.svc.SetGitIdentity(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, set)
+}
+
+func (h *Handler) getGitIdentity(w http.ResponseWriter, r *http.Request) {
+	id, err := h.svc.GitHubGitIdentity(r.Context(), actorID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, id)
 }

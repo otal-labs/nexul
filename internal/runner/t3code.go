@@ -93,9 +93,10 @@ type DockerFacts struct {
 
 // ToolFacts is one command Nexul runs on the computer, as its runner finds it on the PATH a process started now gets.
 type ToolFacts struct {
-	Name    string `json:"name" enum:"git,gh" jsonschema:"The command: git clones projects, gh pushes and opens pull requests."`
-	Path    string `json:"path,omitempty" jsonschema:"Where the command is installed; absent when it is not."`
-	Version string `json:"version,omitempty" jsonschema:"The version the command prints; sent while it is installed."`
+	Name    string   `json:"name" enum:"git,gh" jsonschema:"The command: git clones projects, gh pushes and opens pull requests."`
+	Path    string   `json:"path,omitempty" jsonschema:"Where the command is installed; absent when it is not."`
+	Version string   `json:"version,omitempty" jsonschema:"The version the command prints; sent while it is installed."`
+	Install []string `json:"install,omitempty" jsonschema:"The command the Nexul app runs to install the tool when asked, as its arguments; sent while it is missing and the computer has a package manager Nexul installs it with."`
 }
 
 // requiredTools are the commands Nexul itself runs on a computer, in the order a report lists them.
@@ -299,7 +300,7 @@ func toolFacts(ctx context.Context) []ToolFacts {
 	for _, name := range requiredTools {
 		path, err := lookTool(name)
 		if err != nil {
-			out = append(out, ToolFacts{Name: name})
+			out = append(out, ToolFacts{Name: name, Install: installCommand(runtime.GOOS, name, isRoot())})
 			continue
 		}
 		out = append(out, ToolFacts{Name: name, Path: path, Version: printedVersion(commandLine(ctx, path, "--version"))})

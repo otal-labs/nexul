@@ -27,6 +27,8 @@ export interface ToolFacts {
   name: "git" | "gh";
   path?: string;
   version?: string;
+  // The command the computer's Nexul app runs to install it while it is missing, when it knows one.
+  install?: string[];
 }
 
 export type GitHubSignIn = "gh" | "helper" | "none";

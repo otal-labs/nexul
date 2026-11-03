@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -91,6 +93,10 @@ func (r *runnerComputers) CloneRepository(ctx context.Context, computerID, repos
 	dir, err := h.CloneRepository(ctx, computerID, repository, path, token)
 	if errors.Is(err, runner.ErrCannotClone) {
 		return "", pairing.ErrCloneThroughT3
+	}
+	var missing *runner.MissingToolError
+	if errors.As(err, &missing) {
+		return "", &pairing.MissingToolError{Tool: missing.Tool}
 	}
 	return dir, err
 }
@@ -239,4 +245,55 @@ func (r *runnerComputers) RestartApp(ctx context.Context, computerID string) err
 		return fmt.Errorf("%w: the Nexul app on it is too old to restart from here; restart it on the computer", apperrs.ErrConflict)
 	}
 	return err
+}
+
+// errRunnerTooOldForTools refuses an install or a git identity on a computer whose Nexul app can't take one yet.
+var errRunnerTooOldForTools = fmt.Errorf("%w: the Nexul app on it is too old for this; it updates itself, then try again", apperrs.ErrConflict)
+
+// InstallTool is pairing's seam for installing a tool on a computer through its runner.
+func (r *runnerComputers) InstallTool(ctx context.Context, computerID, tool string) error {
+	h := r.handler.Load()
+	if h == nil {
+		return apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	err := h.InstallTool(ctx, computerID, tool)
+	if errors.Is(err, runner.ErrCannotInstall) {
+		return errRunnerTooOldForTools
+	}
+	return err
+}
+
+// SetGitIdentity is pairing's seam for setting git's identity on a computer through its runner.
+func (r *runnerComputers) SetGitIdentity(ctx context.Context, computerID, name, email string) error {
+	h := r.handler.Load()
+	if h == nil {
+		return apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	err := h.SetGitIdentity(ctx, computerID, name, email)
+	if errors.Is(err, runner.ErrCannotInstall) {
+		return errRunnerTooOldForTools
+	}
+	var missing *runner.MissingToolError
+	if errors.As(err, &missing) {
+		return &pairing.MissingToolError{Tool: missing.Tool}
+	}
+	return err
+}
+
+// pairingGitIdentities gives pairing the git identity of a person's GitHub sign-in: their GitHub name, else login, and
+// GitHub's no-reply address, so no email of theirs is read or written anywhere.
+type pairingGitIdentities struct{ auth *auth.Service }
+
+func (g pairingGitIdentities) GitHubIdentity(ctx context.Context, userID string) (pairing.GitIdentity, error) {
+	identities, err := g.auth.ListIdentities(ctx, userID)
+	if err != nil {
+		return pairing.GitIdentity{}, err
+	}
+	for _, id := range identities {
+		if id.Provider != auth.ProviderGitHub || id.ProviderUserID == "" || id.Login == "" {
+			continue
+		}
+		return pairing.GitIdentity{Name: cmp.Or(id.Name, id.Login), Email: id.ProviderUserID + "+" + id.Login + "@users.noreply.github.com"}, nil
+	}
+	return pairing.GitIdentity{}, fmt.Errorf("%w: no GitHub sign-in", apperrs.ErrNotFound)
 }

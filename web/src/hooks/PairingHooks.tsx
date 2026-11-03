@@ -25,6 +25,7 @@ import {
   type PassOver,
   passOverLines,
 } from "@/models/Pairing";
+import { missingToolOf } from "@/models/ComputerTools";
 import { ownComputers } from "@/models/SharedComputer";
 import { notViewing } from "@/stores/viewAsStore";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -214,7 +215,11 @@ const useAddHarnessProject = <V,>(computerId: string, body: (input: V) => object
       void client.invalidateQueries({ queryKey: [getHarnessProjectsKey, computerId], exact: true });
       toast.success(message(project, input));
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => {
+      // A missing tool is toasted by the button that started the clone, with its offer to install it.
+      if (missingToolOf(error)) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 

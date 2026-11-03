@@ -64,6 +64,8 @@ type computerPairIn struct {
 	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
 	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 	Restart       bool    `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer instead of pairing, so it starts again with the PATH the computer saved since, such as after installing git; its connection drops for a few seconds while it restarts."`
+	InstallTool   string  `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools, instead of pairing; ask the person first, since it runs their package manager there. It returns once the tool is installed."`
+	GitIdentity   bool    `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none, instead of pairing; it never replaces a name or email already set."`
 }
 
 type computerDeleteIn struct {
@@ -320,7 +322,7 @@ func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
 		"Pairs T3 Code on one of your computers now through its Nexul app, minting a one-time token there and "+
 			"exchanging it for a harness session. A computer from computer_create pairs, and re-pairs before its "+
-			"session ends, on its own once its Nexul app connects. With restart it restarts the Nexul app on the computer and pairs nothing. With name, position, runs_at_once or "+
+			"session ends, on its own once its Nexul app connects. With restart it restarts the Nexul app on the computer, with install_tool it installs git or gh there, and with git_identity it sets git's name and email from your GitHub sign-in; each pairs nothing. With name, position, runs_at_once or "+
 			"chat_project_id it only changes those and pairs nothing. Returns the computer; after pairing, run "+
 			"computer_setup_run next.",
 		mcptool.Hints{},
@@ -337,6 +339,18 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 	userID := mcpActorID(ctx)
 	if in.Restart {
 		if err := s.RestartApp(ctx, userID, in.ID); err != nil {
+			return nil, err
+		}
+		return s.ownComputer(ctx, userID, in.ID)
+	}
+	if in.InstallTool != "" {
+		if err := s.InstallTool(ctx, userID, in.ID, in.InstallTool); err != nil {
+			return nil, err
+		}
+		return s.ownComputer(ctx, userID, in.ID)
+	}
+	if in.GitIdentity {
+		if _, err := s.SetGitIdentity(ctx, userID, in.ID); err != nil {
 			return nil, err
 		}
 		return s.ownComputer(ctx, userID, in.ID)

@@ -142,6 +142,10 @@ A computer's Nexul app reports on it when it connects and every 6 hours: its hos
 
 On Windows, the Nexul app reads your PATH from Windows' saved settings before it runs `git`, `gh` or `t3`, so a tool you install while it is running is found on the next clone or report, with no restart. On Linux and macOS it reads your login shell's PATH when it starts.
 
+A tool that is missing shows **Install git** or **Install gh** when the computer has a package manager Nexul installs it with: winget on Windows, Homebrew on macOS, and apt, dnf or pacman on Linux. The button first shows the exact command the app will run, and runs it only once you agree. On Windows, the installer may ask someone at the computer to allow it; on Linux the command runs through `sudo -n`, so it needs sudo without a password, and otherwise says what to run yourself. The app finds the tool straight after, and its facts refresh, so a clone you retry works at once. A clone that fails because git is missing says so and offers **Install git** too.
+
+When git on the computer has no name or email, **Git identity** reads **Not set** and offers **Use my GitHub identity**: your GitHub name and GitHub's no-reply address for you (`<id>+<login>@users.noreply.github.com`), shown before it is set. It fills in only what is missing and never replaces a name or email already there. An agent does both with `computer_pair`, passing `install_tool` or `git_identity`.
+
 **Restart Nexul app** in a computer's **…** menu restarts the app on that computer, as restarting its service there would, so it starts again with everything installed since. While play runs are going on the computer it asks first, since its connection to Nexul drops for a few seconds. The row reads **Reconnecting** until the app is back, then its facts refresh. An agent does the same with `computer_pair` and `restart`.
 
 Facts are yours alone. Nobody else sees them, a workspace Owner included, and an agent reads them through `computer_list` only when it acts for you.

@@ -71,6 +71,9 @@ func (s *Service) cloneThroughT3(ctx context.Context, client harness.Client, ses
 	defer cancel()
 	project, err := client.CloneProject(ctx, session.Session(), name, "https://github.com/"+repository+".git", path)
 	var failed *harness.CloneFailedError
+	if errors.As(err, &failed) && gitMissing.MatchString(failed.Detail) {
+		return harness.Project{}, &MissingToolError{Tool: "git", ComputerID: session.ID, Computer: session.Name}
+	}
 	if errors.As(err, &failed) && gitSignInFailure.MatchString(failed.Detail) {
 		return harness.Project{}, fmt.Errorf("%w: %s has no GitHub sign-in, so it couldn't clone %s: sign in with `gh auth login` on it, or update the Nexul app on it so Nexul can clone with a token", apperrs.ErrInvalid, session.Name, repository)
 	}
@@ -96,7 +99,7 @@ func (s *Service) cloneThroughRunner(ctx context.Context, client harness.Client,
 		return harness.Project{}, err
 	}
 	if err != nil {
-		return harness.Project{}, fmt.Errorf("clone %s on %s: %w", repository, session.Name, err)
+		return harness.Project{}, onComputer(fmt.Errorf("clone %s on %s: %w", repository, session.Name, err), session)
 	}
 	project, err := client.CreateProject(ctx, session.Session(), name, dir)
 	if err != nil {

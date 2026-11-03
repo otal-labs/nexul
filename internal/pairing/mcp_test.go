@@ -269,6 +269,23 @@ func TestComputerPair_WithRestart_RestartsTheAppAndPairsNothing(t *testing.T) {
 	assert.Empty(t, f.exch.pairedURL, "a restart pairs nothing")
 }
 
+func TestComputerPair_WithInstallToolOrGitIdentity_DoesThatAndPairsNothing(t *testing.T) {
+	t.Parallel()
+	f := newRunnerFixture(t, Computer{Name: "Laptop", Facts: &Facts{Tools: []ToolFacts{{Name: "git", Path: "/usr/bin/git"}, {Name: "gh", Install: []string{"brew", "install", "gh"}}}}})
+	tools := &fakeTools{}
+	f.svc.tools, f.svc.identities = tools, fakeIdentities{id: aliceOnGitHub}
+	ctx := actorCtx(t, "u-alice")
+
+	_, err := callTool(t, ctx, f.svc, "computer_pair", `{"id": "c-laptop", "install_tool": "gh"}`)
+	require.NoError(t, err)
+	_, err = callTool(t, ctx, f.svc, "computer_pair", `{"id": "c-laptop", "git_identity": true}`)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"c-laptop/gh"}, tools.installed)
+	assert.Equal(t, []GitIdentity{aliceOnGitHub}, tools.identities)
+	assert.Empty(t, f.exch.pairedURL, "neither pairs")
+}
+
 func TestComputerPair_WithName_OnlyRenames(t *testing.T) {
 	t.Parallel()
 	f := newRunnerFixture(t, Computer{Name: "Laptop"})
