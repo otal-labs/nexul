@@ -56,6 +56,10 @@ func (c *Client) answerForComputer(ctx context.Context, conn *websocket.Conn, f 
 		c.answerGitClone(ctx, conn, f)
 		return
 	}
+	if f.Type == FrameRestart {
+		c.answerRestart(ctx, conn, f)
+		return
+	}
 	c.answerPairToken(ctx, conn, f.ID)
 }
 

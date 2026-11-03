@@ -62,6 +62,8 @@ type Config struct {
 	Repositories ProjectRemotes
 	// Cloner clones through a computer's runner with a token for the repository; nil leaves every clone to T3 Code.
 	Cloner RepositoryCloner
+	// Restarter restarts the Nexul app on a computer through its runner; nil restarts none.
+	Restarter AppRestarter
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -81,6 +83,7 @@ type Service struct {
 	computerAccess ComputerGate
 	repositories   ProjectRemotes
 	cloner         RepositoryCloner
+	restarter      AppRestarter
 	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn claimed, keyed by setupKey, each with the stop for its running
 	// turn, nil until that turn starts.
@@ -100,7 +103,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, settingUp: map[string]context.CancelCauseFunc{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, settingUp: map[string]context.CancelCauseFunc{},
 		pairFailures: map[string]string{},
 	}
 }

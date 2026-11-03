@@ -413,6 +413,44 @@ describe("ComputersSection", () => {
     });
   });
 
+  it("restarts the Nexul app on an idle computer from its menu at once", async () => {
+    serveComputers([computer({ running: 0 })]);
+    mocks.post.mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: "Restart Nexul app" }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/restart"));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith("Restarting the Nexul app on Home");
+  });
+
+  it("asks before restarting the Nexul app while play runs are going on the computer", async () => {
+    serveComputers([computer({ running: 2 })]);
+    mocks.post.mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: "Restart Nexul app" }));
+    expect(await screen.findByText(/2 play runs are going on it/)).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Restart Nexul app" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/restart"));
+  });
+
+  it("offers no restart for an offline computer", async () => {
+    serveComputers([computer({ running: 0, runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: false } })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    expect(screen.queryByRole("button", { name: "Restart Nexul app" })).not.toBeInTheDocument();
+  });
+
   it("removes a computer from its menu only after the confirm", async () => {
     serveComputers([computer()]);
     mocks.del.mockResolvedValue({ data: {} });

@@ -255,6 +255,20 @@ func TestComputerPairAndDelete_ThroughTheRunner(t *testing.T) {
 	assert.NotContains(t, f.repo.computers, "c-laptop")
 }
 
+func TestComputerPair_WithRestart_RestartsTheAppAndPairsNothing(t *testing.T) {
+	t.Parallel()
+	f := newRunnerFixture(t, Computer{Name: "Laptop"})
+	restarter := &fakeRestarter{}
+	f.svc.restarter = restarter
+
+	out, err := callTool(t, actorCtx(t, "u-alice"), f.svc, "computer_pair", `{"id": "c-laptop", "restart": true}`)
+
+	require.NoError(t, err)
+	assert.Equal(t, "c-laptop", out.(computerResult).ID)
+	assert.Equal(t, []string{"c-laptop"}, restarter.asked)
+	assert.Empty(t, f.exch.pairedURL, "a restart pairs nothing")
+}
+
 func TestComputerPair_WithName_OnlyRenames(t *testing.T) {
 	t.Parallel()
 	f := newRunnerFixture(t, Computer{Name: "Laptop"})

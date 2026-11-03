@@ -6,6 +6,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { computersQuery, getComputersKey, getHarnessProjectsKey } from "@/hooks/PairingHooks";
 import { getRunnerEnrollmentsKey } from "@/hooks/RunnerHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { notViewing } from "@/stores/viewAsStore";
 import type { Computer, ComputerEnrollment, RenameComputerFormData } from "@/models/Pairing";
 import { sharedComputerName, sharedComputers } from "@/models/SharedComputer";
@@ -65,4 +66,35 @@ export const useRenameComputer = (computerId: string) => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
     },
   });
+};
+
+const runsGoing = (running: number) => `${running} play ${running === 1 ? "run is" : "runs are"} going on it.`;
+
+// Restarts the Nexul app on a computer, asking first while play runs are going on it; the row then reads Reconnecting
+// until the app is back, and the facts it reports refresh the row.
+export const useRestartApp = (computer: Computer) => {
+  const client = useQueryClient();
+  const { open: confirm } = useConfirmationDialog();
+  const restart = useMutation({
+    mutationFn: requires("none", async () => {
+      await api.post(`/api/pairing/computers/${computer.id}/restart`);
+    }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getComputersKey] });
+      toast.success(`Restarting the Nexul app on ${computer.name}`);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const ask = async () => {
+    const ok =
+      computer.running === 0 ||
+      (await confirm({
+        title: `Restart the Nexul app on ${computer.name}?`,
+        message: `${runsGoing(computer.running)} Its connection to Nexul drops for a few seconds while the app restarts.`,
+        confirmLabel: "Restart Nexul app",
+        destructive: false,
+      }));
+    if (ok) restart.mutate();
+  };
+  return { restart: ask, isPending: restart.isPending };
 };

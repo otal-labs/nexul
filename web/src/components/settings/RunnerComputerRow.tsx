@@ -13,7 +13,7 @@ import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/S
 import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
-import { usePairNow } from "@/hooks/ComputerHooks";
+import { usePairNow, useRestartApp } from "@/hooks/ComputerHooks";
 import { useDeleteComputer } from "@/hooks/PairingHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -42,6 +42,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const remove = useDeleteComputer();
   const update = useUpdateSkills(computer.id);
   const pairNow = usePairNow(computer);
+  const restartApp = useRestartApp(computer);
   const { open: openRename } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const openPermissions = usePermissionsDialog();
@@ -93,6 +94,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const actions: RowAction[] = [
     ...(!pairing && primary !== "setup" ? [{ label: setupLabel, onSelect: () => setSetupOpen(true) }] : []),
     ...(connected && primary !== "repair" ? [{ label: "Re-pair now", disabled: pairNow.isPending, onSelect: () => pairNow.mutate() }] : []),
+    ...(connected ? [{ label: "Restart Nexul app", disabled: restartApp.isPending, onSelect: () => void restartApp.restart() }] : []),
     { label: "Share…", onSelect: () => void openPermissions(computerEntity({ id: computer.id, name })) },
     { label: "Rename", onSelect: () => void rename() },
     ...moveActions,
