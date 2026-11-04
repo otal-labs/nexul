@@ -53,9 +53,17 @@ export const waitingSentence = (item: PlayQueueItem): string => {
   return setupGaps[item.reason]?.sentence || waitingWhy(item);
 };
 
+// An auto play's own computers outrank the person's and the project's, so a run held on them is fixed in the auto play.
+const autoPlayComputersLink = (item: PlayQueueItem, wsPath: (path: string) => string): ReadinessLink | undefined => {
+  if (item.auto_play_id === "" || item.computer_ids.length === 0 || setupGaps[item.reason]?.link !== YOUR_COMPUTERS_LINK) return undefined;
+  return { to: wsPath(`/plays/${item.play_id}`), label: "Auto play's computers" };
+};
+
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
-export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined =>
-  item.status === "queued" && !onlyFull(item) ? (checkoutFixLink(waitingOn(item)) ?? setupGaps[item.reason]?.link) : undefined;
+export const waitingLink = (item: PlayQueueItem, wsPath: (path: string) => string): ReadinessLink | undefined => {
+  if (item.status !== "queued" || onlyFull(item)) return undefined;
+  return checkoutFixLink(waitingOn(item)) ?? autoPlayComputersLink(item, wsPath) ?? setupGaps[item.reason]?.link;
+};
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^nobody to run it on: no one has picked a computer for it$/, () => "no one has picked a computer for it"],
