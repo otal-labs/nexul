@@ -114,17 +114,19 @@ describe("a play's auto plays", () => {
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));
     const toggle = screen.getByRole("switch", { name: "Switch auto play ap-1 on or off" });
     await user.click(toggle);
-    expect(toggle).not.toBeChecked();
-    expect(mocks.patch).toHaveBeenCalledWith(
-      "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
-      expect.objectContaining({ enabled: false, moment: "ticket.unblocked" }),
-    );
+    await waitFor(() => {
+      expect(toggle).not.toBeChecked();
+      expect(mocks.patch).toHaveBeenCalledWith(
+        "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
+        expect.objectContaining({ enabled: false, moment: "ticket.unblocked" }),
+      );
+    });
     refuse(new Error("no"));
     await waitFor(() => expect(toggle).toBeChecked());
 
     mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 1 } });
     await pickOption(user, "Auto plays per ticket a day", "7");
-    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 });
+    await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 }));
     expect(screen.queryByRole("combobox", { name: /runs at once/i })).not.toBeInTheDocument();
   });
 
@@ -176,9 +178,9 @@ describe("a play's auto plays", () => {
     autoPlays = [];
     const { user } = await openAutoPlays();
     expect(await screen.findByText(/Starts only when someone runs it/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Add auto play" }));
+    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
 
-    await user.click(screen.getByRole("button", { name: "Add a condition" }));
+    await user.click(await screen.findByRole("button", { name: "Add a condition" }));
     await user.click(screen.getByRole("button", { name: "Type values" }));
     await user.click(await screen.findByRole("checkbox", { name: "Bug" }));
     await user.keyboard("{Escape}");
@@ -230,7 +232,7 @@ describe("a play's auto plays", () => {
     expect(await screen.findByText(/auto plays a day/)).toHaveTextContent("Each ticket runs at most 5 auto plays a day");
 
     await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));
-    expect(screen.getByRole("combobox", { name: "Moment" })).toBeDisabled();
+    expect(await screen.findByRole("combobox", { name: "Moment" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Add a condition" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
@@ -254,9 +256,11 @@ describe("a play's auto plays", () => {
     const { user } = await openAutoPlays();
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
     await user.click(await screen.findByRole("switch", { name: "Switch auto play ap-1 on or off" }));
-    expect(mocks.patch).toHaveBeenCalledWith(
-      "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
-      expect.objectContaining({ enabled: false, memory_ids: ["m-gone", "m-1"] }),
+    await waitFor(() =>
+      expect(mocks.patch).toHaveBeenCalledWith(
+        "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
+        expect.objectContaining({ enabled: false, memory_ids: ["m-gone", "m-1"] }),
+      ),
     );
 
     await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));

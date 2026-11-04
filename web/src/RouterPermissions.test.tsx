@@ -7,10 +7,13 @@ import {
   AccessPage,
   AutomationPage,
   AutomationsPage,
+  BoardPage,
   ConfigurationPage,
+  HomePage,
   InboxPage,
   MemoriesPage,
   RunnersPage,
+  TopologyPage,
   WorkspaceEntryPage,
   YourSettingsPage,
 } from "@/pageChunks";
@@ -68,13 +71,23 @@ const renderAt = (path: string) => {
   );
 };
 
-// The pages are lazy chunks; loading them once here keeps each case waiting on its render, not on transforming a page's
-// module graph under full-suite load.
+// A route loads its page's chunk even to say it is not found; loading each page a case opens once here keeps every case waiting on its render, not on a transform under full-suite load.
 beforeAll(async () => {
   await Promise.all(
-    [AccessPage, AutomationPage, AutomationsPage, ConfigurationPage, InboxPage, MemoriesPage, RunnersPage, WorkspaceEntryPage, YourSettingsPage].map((page) =>
-      page.preload(),
-    ),
+    [
+      AccessPage,
+      AutomationPage,
+      AutomationsPage,
+      BoardPage,
+      ConfigurationPage,
+      HomePage,
+      InboxPage,
+      MemoriesPage,
+      RunnersPage,
+      TopologyPage,
+      WorkspaceEntryPage,
+      YourSettingsPage,
+    ].map((page) => page.preload()),
   );
 }, 60_000);
 

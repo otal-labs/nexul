@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,7 +81,7 @@ describe("TemplateRolesSection", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: "New template role" }));
-    await user.type(screen.getByRole("textbox", { name: "Name" }), "Contractor");
+    await user.type(await screen.findByRole("textbox", { name: "Name" }), "Contractor");
     await user.type(screen.getByRole("textbox", { name: "Description" }), "Works the tickets they're given.");
     await user.click(screen.getByRole("tab", { name: /^Workspace/ }));
     await user.click(screen.getByRole("switch", { name: /^Show locked actions/ }));
@@ -89,7 +89,7 @@ describe("TemplateRolesSection", () => {
     await user.click(screen.getByRole("switch", { name: /^Your computer/ }));
     await user.click(screen.getByRole("button", { name: "Create role" }));
 
-    expect(mocks.put).toHaveBeenCalledWith("/api/templates/role", { key: "", body: expect.any(String) });
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/templates/role", { key: "", body: expect.any(String) }));
     expect(JSON.parse(mocks.put.mock.calls[0]![1].body)).toEqual({
       name: "Contractor",
       description: "Works the tickets they're given.",
