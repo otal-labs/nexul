@@ -16,8 +16,8 @@
 	--page-ease: var(--ease-out);
 }
 * { box-sizing: border-box; }
-html { scroll-padding-top: 88px; }
-body { margin: 0; background: var(--page-bg); color: var(--page-fg); font-family: var(--page-sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+html { scroll-padding-top: 88px; overflow-x: clip; }
+body { margin: 0; overflow-x: clip; background: var(--page-bg); color: var(--page-fg); font-family: var(--page-sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 button, a { -webkit-tap-highlight-color: transparent; }
