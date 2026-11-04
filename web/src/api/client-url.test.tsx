@@ -1,6 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 // The URL builders are evaluated at module scope, so each test re-imports the module with a fresh environment (vi.resetModules + dynamic import).
+
+// Transforming the client's module graph once here keeps the first case's budget for its own import, not a cold transform under full-suite load.
+beforeAll(async () => {
+  await import("@/api/client");
+}, 60_000);
 
 const load = async () => {
   vi.resetModules();
