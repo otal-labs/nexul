@@ -9,14 +9,14 @@ import (
 
 // Client implements harness.Client with per-method function fields; an unset field returns the zero value and nil.
 type Client struct {
-	KindValue       harness.Kind
-	PairFn          func(ctx context.Context, serverURL, secret string) (harness.PairResult, error)
-	VersionFn       func(ctx context.Context, serverURL string) (string, error)
-	ListProjectsFn  func(ctx context.Context, s harness.Session) ([]harness.Project, error)
-	CloneProjectFn  func(ctx context.Context, s harness.Session, title, remoteURL, path string) (harness.Project, error)
-	CanCloneFn      func(ctx context.Context, s harness.Session) (bool, error)
-	CreateProjectFn func(ctx context.Context, s harness.Session, title, path string) (harness.Project, error)
-	ListProvidersFn func(ctx context.Context, s harness.Session) ([]harness.Provider, error)
+	KindValue          harness.Kind
+	PairFn             func(ctx context.Context, serverURL, secret string) (harness.PairResult, error)
+	VersionFn          func(ctx context.Context, serverURL string) (string, error)
+	ListProjectsFn     func(ctx context.Context, s harness.Session) ([]harness.Project, error)
+	CloneProjectFn     func(ctx context.Context, s harness.Session, title, remoteURL, path string) (harness.Project, error)
+	CanCloneFn         func(ctx context.Context, s harness.Session) (bool, error)
+	CreateProjectFn    func(ctx context.Context, s harness.Session, title, path string) (harness.Project, error)
+	ListProvidersFn    func(ctx context.Context, s harness.Session) ([]harness.Provider, error)
 	ListAllProvidersFn func(ctx context.Context, s harness.Session) (harness.ProviderList, error)
 	HoldFn             func(ctx context.Context, s harness.Session) (harness.Conn, error)
 	StartTurnFn        func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
