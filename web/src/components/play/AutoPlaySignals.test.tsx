@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -155,10 +155,11 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("link", { name: "Pair it again" })).not.toBeInTheDocument();
   });
 
-  it("names each computer the run waits on and why, and sends its person to add the project", async () => {
+  it("names each computer the run waits on and why on its own line, and sends its person to add the project", async () => {
     mockApi(() => playQueue({ items: [waiting] }), "u-alice");
     renderSection();
-    expect(await screen.findByText(/Laptop is offline; Workstation doesn't have this project/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/settings/pairing/projects");
+    expect((await screen.findByText(/Laptop is offline/)).textContent).toMatch(/^Alice .* · Laptop is offline$/);
+    const last = screen.getByText(/Workstation doesn't have this project/);
+    expect(within(last).getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/settings/pairing/projects");
   });
 });
