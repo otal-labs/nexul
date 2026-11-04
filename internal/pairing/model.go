@@ -82,20 +82,21 @@ func sharedView(c Computer) Computer {
 // Facts is what a computer's owner reads about it (ADR 0146): its runner's report, and what its T3 Code last listed
 // through the runner, kept while T3 Code is not answering.
 type Facts struct {
-	Hostname      string            `json:"hostname,omitempty"`
-	OS            string            `json:"os,omitempty"`
-	Arch          string            `json:"arch,omitempty"`
-	RunnerVersion string            `json:"runner_version,omitempty"`
-	T3            T3Facts           `json:"t3"`
-	Cloudflared   string            `json:"cloudflared,omitempty"`
-	GitName       string            `json:"git_name,omitempty"`
-	GitEmail      string            `json:"git_email,omitempty"`
-	GitHubSignIn  string            `json:"github_sign_in,omitempty"`
-	FreeDiskBytes int64             `json:"free_disk_bytes,omitempty"`
-	Docker        *DockerFacts      `json:"docker,omitempty"`
-	Tools         []ToolFacts       `json:"tools,omitempty"`
-	Providers     []ProviderFacts   `json:"providers"`
-	Projects      []harness.Project `json:"projects"`
+	Hostname         string                 `json:"hostname,omitempty"`
+	OS               string                 `json:"os,omitempty"`
+	Arch             string                 `json:"arch,omitempty"`
+	RunnerVersion    string                 `json:"runner_version,omitempty"`
+	T3               T3Facts                `json:"t3"`
+	Cloudflared      string                 `json:"cloudflared,omitempty"`
+	GitName          string                 `json:"git_name,omitempty"`
+	GitEmail         string                 `json:"git_email,omitempty"`
+	GitHubSignIn     string                 `json:"github_sign_in,omitempty"`
+	FreeDiskBytes    int64                  `json:"free_disk_bytes,omitempty"`
+	Docker           *DockerFacts           `json:"docker,omitempty"`
+	Tools            []ToolFacts            `json:"tools,omitempty"`
+	Providers        []ProviderFacts        `json:"providers"`
+	MissingProviders []MissingProviderFacts `json:"missing_providers,omitempty"`
+	Projects         []harness.Project      `json:"projects"`
 }
 
 // T3Facts is T3 Code on the computer as its runner found it.
@@ -139,6 +140,13 @@ type ProviderFacts struct {
 	Models  []ModelFacts   `json:"models"`
 }
 
+// MissingProviderFacts is a provider T3 Code has switched on whose CLI it can't find; placement and setup never see it.
+type MissingProviderFacts struct {
+	ID     string `json:"id"`
+	Driver string `json:"driver"`
+	Name   string `json:"name"`
+}
+
 // ModelFacts is one model a provider offers, named as T3 Code names it.
 type ModelFacts struct {
 	Slug string `json:"slug"`
@@ -153,6 +161,14 @@ func providerFacts(providers []harness.Provider) []ProviderFacts {
 			models = append(models, ModelFacts{Slug: m.Slug, Name: m.Name})
 		}
 		out = append(out, ProviderFacts{ID: p.ID, Driver: p.Driver, Name: p.Name, Version: p.Version, SignIn: p.SignIn, Models: models})
+	}
+	return out
+}
+
+func missingProviderFacts(providers []harness.Provider) []MissingProviderFacts {
+	var out []MissingProviderFacts
+	for _, p := range providers {
+		out = append(out, MissingProviderFacts{ID: p.ID, Driver: p.Driver, Name: p.Name})
 	}
 	return out
 }

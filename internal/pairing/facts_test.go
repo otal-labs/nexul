@@ -179,3 +179,24 @@ func TestAddProject_TheStoredFactsListTheNewProject(t *testing.T) {
 
 	assert.Equal(t, listed, f.stored(t).Facts.Projects)
 }
+
+// TestHandleFactsReported_KeepsAProviderWithoutItsCLIApart: a provider T3 Code has switched on but can't find the CLI
+// of is stored as missing, beside the usable ones placement reads, and kept while T3 Code stops answering.
+func TestHandleFactsReported_KeepsAProviderWithoutItsCLIApart(t *testing.T) {
+	t.Parallel()
+	f := newFactsFixture(t)
+	f.exch.ListAllProvidersFn = func(context.Context, harness.Session) (harness.ProviderList, error) {
+		return harness.ProviderList{
+			Usable:  []harness.Provider{{ID: "claudeAgent", Driver: "claudeAgent", Name: "Claude", SignIn: harness.SignedIn}},
+			Missing: []harness.Provider{{ID: "codex", Driver: "codex", Name: "Codex"}},
+		}, nil
+	}
+
+	require.NoError(t, f.svc.HandleFactsReported(t.Context(), reportEvent(t, laptopReport("answering", 5e10))))
+	c := f.stored(t)
+	assert.Equal(t, []ProviderFacts{{ID: "claudeAgent", Driver: "claudeAgent", Name: "Claude", SignIn: harness.SignedIn, Models: []ModelFacts{}}}, c.Facts.Providers)
+	assert.Equal(t, []MissingProviderFacts{{ID: "codex", Driver: "codex", Name: "Codex"}}, c.Facts.MissingProviders)
+
+	require.NoError(t, f.svc.HandleFactsReported(t.Context(), reportEvent(t, laptopReport("not_running", 5e10))))
+	assert.Equal(t, []MissingProviderFacts{{ID: "codex", Driver: "codex", Name: "Codex"}}, f.stored(t).Facts.MissingProviders)
+}

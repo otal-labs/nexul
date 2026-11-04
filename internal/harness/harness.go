@@ -174,6 +174,12 @@ type Provider struct {
 	Models  []ProviderModel `json:"models"`
 }
 
+// ProviderList is every provider a harness has switched on: Usable can run a turn, Missing has no CLI the harness can find.
+type ProviderList struct {
+	Usable  []Provider
+	Missing []Provider
+}
+
 // SignIn is whether a provider's CLI is signed in to its account.
 type SignIn string
 
@@ -477,6 +483,8 @@ type Client interface {
 	// CanClone is whether the session may start a clone, read without starting one; true when the harness does not say.
 	CanClone(ctx context.Context, s Session) (bool, error)
 	ListProviders(ctx context.Context, s Session) ([]Provider, error)
+	// ListAllProviders is ListProviders plus the providers switched on whose CLI is missing, read together.
+	ListAllProviders(ctx context.Context, s Session) (ProviderList, error)
 	// Hold keeps a live connection open for presence; a harness with nothing to hold returns a nil Conn.
 	Hold(ctx context.Context, s Session) (Conn, error)
 	// StartTurn starts one turn; title names a freshly created session, ignored when SessionID is reused.

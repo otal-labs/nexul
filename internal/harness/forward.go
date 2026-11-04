@@ -67,6 +67,10 @@ func (f forward) ListProviders(ctx context.Context, s Session) ([]Provider, erro
 	return follow(ctx, f, s, func(c Client) ([]Provider, error) { return c.ListProviders(ctx, s) })
 }
 
+func (f forward) ListAllProviders(ctx context.Context, s Session) (ProviderList, error) {
+	return follow(ctx, f, s, func(c Client) (ProviderList, error) { return c.ListAllProviders(ctx, s) })
+}
+
 func (f forward) Hold(ctx context.Context, s Session) (Conn, error) {
 	return follow(ctx, f, s, func(c Client) (Conn, error) { return c.Hold(ctx, s) })
 }

@@ -18,6 +18,8 @@ export interface ComputerFacts {
   // Each tool Nexul runs on the computer, found or not; absent from a runner older than this report.
   tools?: ToolFacts[];
   providers: ProviderFacts[];
+  // Providers T3 Code has switched on whose CLI it can't find; absent when there are none.
+  missing_providers?: MissingProviderFacts[];
   // repository is the checkout's git remote as T3 normalizes it, such as github.com/acme/api; absent until T3 resolved it.
   projects: { id: string; title: string; path: string; repository?: string }[];
 }
@@ -52,6 +54,12 @@ export interface ProviderFacts {
   version?: string;
   sign_in: "signed_in" | "signed_out" | "unknown";
   models: { slug: string; name: string }[];
+}
+
+export interface MissingProviderFacts {
+  id: string;
+  driver: string;
+  name: string;
 }
 
 // The relay address a computer with a personal runner is reached at; people never need to see it.

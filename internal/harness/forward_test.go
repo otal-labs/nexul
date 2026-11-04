@@ -29,6 +29,9 @@ func scripted(kind harness.Kind, err error) (*harnesstest.Client, *[]string) {
 		ListProvidersFn: func(context.Context, harness.Session) ([]harness.Provider, error) {
 			return nil, rec("ListProviders")
 		},
+		ListAllProvidersFn: func(context.Context, harness.Session) (harness.ProviderList, error) {
+			return harness.ProviderList{}, rec("ListAllProviders")
+		},
 		HoldFn: func(context.Context, harness.Session) (harness.Conn, error) { return nil, rec("Hold") },
 		StartTurnFn: func(context.Context, harness.Target, string, harness.TurnPrompts) (harness.StartResult, error) {
 			return harness.StartResult{SessionID: string(kind)}, rec("StartTurn")
@@ -63,6 +66,10 @@ var calls = []struct {
 	}},
 	{"ListProviders", true, func(ctx context.Context, c harness.Client) error {
 		_, err := c.ListProviders(ctx, laptop)
+		return err
+	}},
+	{"ListAllProviders", true, func(ctx context.Context, c harness.Client) error {
+		_, err := c.ListAllProviders(ctx, laptop)
 		return err
 	}},
 	{"Hold", true, func(ctx context.Context, c harness.Client) error {

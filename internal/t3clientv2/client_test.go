@@ -40,6 +40,10 @@ var sessionCalls = []struct {
 		_, err := h.ListProviders(ctx, s)
 		return err
 	}},
+	{"ListAllProviders", func(ctx context.Context, h *Harness, s harness.Session) error {
+		_, err := h.ListAllProviders(ctx, s)
+		return err
+	}},
 	{"Hold", func(ctx context.Context, h *Harness, s harness.Session) error {
 		c, err := h.Hold(ctx, s)
 		if err == nil {
@@ -153,6 +157,11 @@ func TestSessionCalls_Protocol2_ReturnWhatProtocol1Returns(t *testing.T) {
 		Models: []harness.ProviderModel{{Slug: "claude-opus-5-5", Name: "Claude Opus 5.5", IsDefault: true}}}}, providers)
 	dial := t3rpctest.WaitFor(t, f.Dialed, "providers dial")
 	assert.Equal(t, url.Values{"orchestrationProtocol": {"2"}, "clientAppVersion": {"nexul/dev"}}, dial)
+
+	list, err := h.ListAllProviders(ctx, laptop(f))
+	require.NoError(t, err)
+	assert.Equal(t, providers, list.Usable, "the same read as ListProviders")
+	t3rpctest.WaitFor(t, f.Dialed, "all providers dial")
 
 	projects, err := h.ListProjects(ctx, laptop(f))
 	require.NoError(t, err)

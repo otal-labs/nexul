@@ -115,6 +115,18 @@ func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (provide
 	return c.Providers()
 }
 
+// ListAllProviders implements harness.Client from the same handshake config as ListProviders.
+func (h *Harness) ListAllProviders(ctx context.Context, s harness.Session) (list harness.ProviderList, err error) {
+	c, err := h.connect(ctx, s)
+	if err != nil {
+		return harness.ProviderList{}, err
+	}
+	defer func() {
+		err = errors.Join(err, c.Close())
+	}()
+	return c.ProviderList()
+}
+
 // Hold implements harness.Client: the WebSocket itself is the presence signal T3 shows for a paired client.
 func (h *Harness) Hold(ctx context.Context, s harness.Session) (harness.Conn, error) {
 	c, err := h.connect(ctx, s)
