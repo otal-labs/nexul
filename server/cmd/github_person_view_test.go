@@ -85,6 +85,10 @@ func (g *twoPeopleOnGitHub) handler() http.Handler {
 		_, _ = fmt.Fprint(w, `{"token":"ghs_clone","expires_at":"2099-01-01T00:00:00Z"}`) // test server: write errors are irrelevant
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.UserAgent(), "go-github/") {
+			http.NotFound(w, r) // another process on the host probing the port is not a Nexul read
+			return
+		}
 		g.mu.Lock()
 		g.requests = append(g.requests, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
 		g.mu.Unlock()
@@ -107,6 +111,9 @@ func newPersonViewFixture(t *testing.T) personViewFixture {
 	gh := &twoPeopleOnGitHub{}
 	srv := httptest.NewServer(gh.handler())
 	t.Cleanup(srv.Close)
+	probe, err := http.Get(srv.URL) // stands in for another process on the host probing the new port
+	require.NoError(t, err)
+	require.NoError(t, probe.Body.Close())
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
