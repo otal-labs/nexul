@@ -26,6 +26,8 @@ describe("outcomeText", () => {
   });
 });
 
+const wsPath = (path: string) => `/acme${path}`;
+
 describe("waitingWhy and waitingSentence", () => {
   it.each([
     ["", "next in line", "next in line"],
@@ -48,17 +50,25 @@ describe("waitingWhy and waitingSentence", () => {
       ],
     });
     expect(waitingSentence(item)).toBe("laptop is offline; build-box doesn't have this project");
-    expect(waitingLink(item)?.to).toBe("/settings/pairing/projects");
+    expect(waitingLink(item, wsPath)?.to).toBe("/settings/pairing/projects");
   });
 
   it("reads a run waiting only for room as busy, with nothing to fix", () => {
     const full = { computer_id: "c-1", name: "laptop", why: "full" as const, text: "laptop is full (2 of 2 running)" };
     const item = queueItem({ reason: "no_computer_ready", waiting_on: [full] });
-    expect([waitingWhy(item), waitingLink(item)]).toEqual(["computers busy", undefined]);
+    expect([waitingWhy(item), waitingLink(item, wsPath)]).toEqual(["computers busy", undefined]);
+  });
+
+  it("sends a run held on its auto play's own computers to that auto play, not to the person's computers", () => {
+    const picked = { run_on: "computer" as const, computer_ids: ["c-1"], computer_id: "c-1" };
+    expect(waitingLink(queueItem({ ...picked, reason: "offline" }), wsPath)).toEqual({ to: "/acme/plays/play-1", label: "Auto play's computers" });
+    expect(waitingLink(queueItem({ ...picked, reason: "no_computer_ready" }), wsPath)?.to).toBe("/acme/plays/play-1");
+    expect(waitingLink(queueItem({ ...picked, reason: "setup_required" }), wsPath)?.label).toBe("Run setup");
+    expect(waitingLink(queueItem({ reason: "offline" }), wsPath)).toEqual({ to: "/settings/pairing", label: "Your computers" });
   });
 
   it("links nothing for a hold settings can't fix", () => {
-    expect(waitingLink(queueItem({ reason: "ticket busy" }))).toBeUndefined();
-    expect(waitingLink(queueItem({ reason: "offline", status: "dispatching" }))).toBeUndefined();
+    expect(waitingLink(queueItem({ reason: "ticket busy" }), wsPath)).toBeUndefined();
+    expect(waitingLink(queueItem({ reason: "offline", status: "dispatching" }), wsPath)).toBeUndefined();
   });
 });

@@ -11,6 +11,7 @@ import { usePerson } from "@/hooks/PeopleHooks";
 import { useCancelQueuedRun } from "@/hooks/PlayQueueHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useActionState } from "@/hooks/useActionState";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
 import { waitingLink, waitingSentence } from "@/utils/PlayQueueUtility";
@@ -29,7 +30,8 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
   const mine = me?.user.id === item.person_id;
-  const link = waitingLink(item);
+  const wsPath = useWorkspacePath();
+  const link = waitingLink(item, wsPath);
   const canCancel = item.status === "queued" && (mine || canWrite);
 
   const onCancel = () => {
