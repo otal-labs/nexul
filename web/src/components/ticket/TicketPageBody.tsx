@@ -6,7 +6,7 @@ import { TicketNotesTab } from "@/components/note/TicketNotesTab";
 import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { TicketDetailsToggle } from "@/components/ticket/TicketDetailsToggle";
-import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
+import { ticketBodyLayout, ticketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TicketRail } from "@/components/ticket/TicketRail";
 import { TicketThreadPreview } from "@/components/ticket/TicketThreadPreview";
 import { useFetchTicketNotes } from "@/hooks/NoteHooks";
@@ -37,6 +37,8 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
   const waiting = useTicketRunState(ticket.project_id, ticket.id) === "waiting";
   const { current, tabPath } = useTabPath();
   const onNotes = hasNotes && current === "notes";
+  const onThread = hasThread && current === "thread";
+  const body = ticketBodyLayout(onThread);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsId = useId();
 
@@ -54,11 +56,11 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
         layout={layout}
         {...projectProp}
         frameBody={(article) => (
-          <div className={layout.body}>
+          <div className={body.body}>
             {!onNotes && <TicketDetailsToggle open={detailsOpen} onOpenChange={setDetailsOpen} controls={detailsId} className={layout.detailsToggle} />}
             {!onNotes && (
-              <div id={detailsId} className={cn(layout.rail, detailsOpen && layout.railOpen)}>
-                <div className={layout.railScroll}>
+              <div id={detailsId} className={cn(body.rail, detailsOpen && layout.railOpen)}>
+                <div className={body.railScroll}>
                   <TicketRail ticket={ticket} workspaceId={workspaceId} {...handlers} />
                 </div>
               </div>
@@ -66,8 +68,8 @@ export const TicketPageBody = ({ ticket, project, workspaceId, embedded, ...hand
             <PageTabs
               label="Ticket sections"
               tabs={tabs}
-              className={cn(layout.tabs, onNotes && layout.tabsWide)}
-              trailing={hasThread && current === "thread" && <TicketThreadMenu workspaceId={workspaceId} ticketId={ticket.id} />}
+              className={cn(body.tabs, onNotes && layout.tabsWide)}
+              trailing={onThread && <TicketThreadMenu workspaceId={workspaceId} ticketId={ticket.id} />}
             >
               <PageTabsContent value="ticket" className={layout.ticketTab}>
                 {article}
