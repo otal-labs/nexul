@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { getTicketsKey } from "@/hooks/TicketCache";
@@ -11,6 +11,7 @@ import { BoardPage } from "@/pages/BoardPage";
 import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
+import { loadTicketForm } from "@/utils/loadTicketForm";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -135,6 +136,11 @@ const mockCategoryCreate = () => {
   });
 };
 
+// The New ticket dialog waits on the editor's chunk; loading it once here keeps each case waiting on the dialog, not on transforming the editor under full-suite load.
+beforeAll(async () => {
+  await loadTicketForm();
+}, 60_000);
+
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
@@ -187,16 +193,18 @@ describe("BoardPage", () => {
     await user.type(await screen.findByLabelText("Title"), "Ship board create");
     await user.click(screen.getByRole("button", { name: "Create ticket" }));
 
-    expect(api.post).toHaveBeenCalledWith("/api/tickets", {
-      title: "Ship board create",
-      body: "",
-      project_id: "p-1",
-      doc_id: "",
-      developer: "",
-      tester: "",
-      category_id: "",
-      type_id: "ticket-type-task",
-    });
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith("/api/tickets", {
+        title: "Ship board create",
+        body: "",
+        project_id: "p-1",
+        doc_id: "",
+        developer: "",
+        tester: "",
+        category_id: "",
+        type_id: "ticket-type-task",
+      }),
+    );
   });
 
   it("creates a category for the scoped project and shows it as a swimlane", async () => {
@@ -209,7 +217,7 @@ describe("BoardPage", () => {
     await user.type(screen.getByLabelText("Name"), "Sprint 2");
     await user.click(screen.getByRole("button", { name: "Create category" }));
 
-    expect(api.post).toHaveBeenCalledWith("/api/categories", { project_id: "p-1", name: "Sprint 2", color: "" });
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/categories", { project_id: "p-1", name: "Sprint 2", color: "" }));
     expect(await screen.findByRole("region", { name: "Sprint 2 swimlane" })).toBeInTheDocument();
   });
 
@@ -224,7 +232,8 @@ describe("BoardPage", () => {
     await user.type(screen.getByLabelText("Name"), "Sprint 2");
     await user.click(screen.getByRole("button", { name: "Create category" }));
 
-    expect(api.post).toHaveBeenCalledWith("/api/categories", { project_id: "p-2", name: "Sprint 2", color: "" });
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/categories", { project_id: "p-2", name: "Sprint 2", color: "" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.queryByRole("region", { name: "Sprint 2 swimlane" })).not.toBeInTheDocument();
   });
 

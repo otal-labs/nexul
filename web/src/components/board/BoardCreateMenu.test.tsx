@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { loadTicketForm } from "@/utils/loadTicketForm";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -43,6 +44,11 @@ const renderWithDialogs = () =>
       <ContextAwareConfirmation.ConfirmationRoot />
     </QueryClientProvider>,
   );
+
+// The bug dialog waits on the editor's chunk; loading it once here keeps each case waiting on the dialog, not on transforming the editor under full-suite load.
+beforeAll(async () => {
+  await loadTicketForm();
+}, 60_000);
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
@@ -107,7 +113,7 @@ describe("BoardCreateMenu", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(await screen.findByRole("button", { name: "Report a bug" }));
     const dialog = await screen.findByRole("dialog");
-    await vi.waitFor(() => expect(within(dialog).getByLabelText("Body")).toHaveTextContent("Steps to reproduce"));
+    await waitFor(() => expect(within(dialog).getByLabelText("Body")).toHaveTextContent("Steps to reproduce"));
     await user.type(within(dialog).getByRole("textbox", { name: "Title" }), "random crash");
     await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
     expect(await within(dialog).findByText("Pick the ticket this bug was found in, or tick Origin unknown")).toBeInTheDocument();
@@ -115,7 +121,7 @@ describe("BoardCreateMenu", () => {
 
     await user.click(within(dialog).getByRole("checkbox", { name: "Origin unknown" }));
     await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith(
         "/api/tickets",
         expect.objectContaining({ title: "random crash", type_id: "tt-bug", origin_unknown: true, origin_id: "" }),
@@ -135,9 +141,9 @@ describe("BoardCreateMenu", () => {
     await user.type(await within(dialog).findByRole("textbox", { name: "Title" }), "books 500s");
     await user.click(within(dialog).getByRole("button", { name: "Found in…" }));
     await user.click(await screen.findByRole("button", { name: /BKS-1/ }));
-    expect(within(dialog).getByRole("button", { name: "Found in BKS-1" })).toBeInTheDocument();
+    expect(await within(dialog).findByRole("button", { name: "Found in BKS-1" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(api.post).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({ origin_id: "t-1", origin_unknown: false })),
     );
   });
