@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { queueItem } from "@/test/playQueueItem";
-import { outcomeText, waitingLink, waitingSentence, waitingWhy } from "@/utils/PlayQueueUtility";
+import { outcomeText, waitingLines, waitingLink, waitingWhy } from "@/utils/PlayQueueUtility";
 
 describe("outcomeText", () => {
   it.each([
@@ -28,7 +28,7 @@ describe("outcomeText", () => {
 
 const wsPath = (path: string) => `/acme${path}`;
 
-describe("waitingWhy and waitingSentence", () => {
+describe("waitingWhy and waitingLines", () => {
   it.each([
     ["", "next in line", "next in line"],
     ["offline", "computer offline", "their computer is offline"],
@@ -38,7 +38,7 @@ describe("waitingWhy and waitingSentence", () => {
     ["setup_required", "computer setup not done", "the computer's setup isn't done"],
   ])("says the held reason %j in plain words", (reason, why, sentence) => {
     const item = queueItem({ reason });
-    expect([waitingWhy(item), waitingSentence(item)]).toEqual([why, sentence]);
+    expect([waitingWhy(item), waitingLines(item)]).toEqual([why, [sentence]]);
   });
 
   it("names each computer the run waits on, to its person", () => {
@@ -49,7 +49,7 @@ describe("waitingWhy and waitingSentence", () => {
         { computer_id: "c-2", name: "build-box", why: "no_checkout", text: "build-box doesn't have this project" },
       ],
     });
-    expect(waitingSentence(item)).toBe("laptop is offline; build-box doesn't have this project");
+    expect(waitingLines(item)).toEqual(["laptop is offline", "build-box doesn't have this project"]);
     expect(waitingLink(item, wsPath)?.to).toBe("/settings/pairing/projects");
   });
 

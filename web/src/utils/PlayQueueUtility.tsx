@@ -1,5 +1,5 @@
 import type { PlayType } from "@/models/Play";
-import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, checkoutFixLink, passOverLines, type ReadinessLink } from "@/models/Pairing";
+import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, checkoutFixLink, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
 
@@ -46,11 +46,11 @@ export const waitingWhy = (item: PlayQueueItem): string => {
 const waitingOn = (item: PlayQueueItem) => item.waiting_on ?? [];
 const onlyFull = (item: PlayQueueItem) => waitingOn(item).length > 0 && waitingOn(item).every((p) => p.why === "full");
 
-// waitingWhy as a sentence: each computer and why it can't take the run when the server named them, else the gap.
-export const waitingSentence = (item: PlayQueueItem): string => {
-  if (item.status !== "queued") return waitingWhy(item);
-  if (waitingOn(item).length > 0) return passOverLines(waitingOn(item));
-  return setupGaps[item.reason]?.sentence || waitingWhy(item);
+// waitingWhy as sentences: one per computer and why it can't take the run when the server named them, else the gap.
+export const waitingLines = (item: PlayQueueItem): string[] => {
+  if (item.status !== "queued") return [waitingWhy(item)];
+  if (waitingOn(item).length > 0) return waitingOn(item).map((p) => p.text);
+  return [setupGaps[item.reason]?.sentence || waitingWhy(item)];
 };
 
 // An auto play's own computers outrank the person's and the project's, so a run held on them is fixed in the auto play.
