@@ -2442,7 +2442,8 @@ Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
   everywhere (small against the 18px lede under it) and 40px (a showcase size
   on a page people read in sequence).
 - The home page's headline is 40px at 320, 44 from 414, 56 from 768, 68 from
-  1024 and 76 from 1280; its section titles are Fraunces at 30, 36 and 40px.
+  1024 and 76 from 1280; its section titles are Fraunces at 30, 36 and 40px,
+  the closing install title 48px from 1024 and 52 from 1280.
 - A roadmap or changelog hero headline is 36px rising to 56px from 1100px.
 - The 404's "Page not found" is 32px, 40px from 768px.
 
@@ -2582,7 +2583,9 @@ Showing the product.
   screenshot's top-left corner rounded at 8px. Below 768px it switches to a
   480x600 crop of the board's top-left so cards stay legible.
 - Weight: the hero is about 16KB on a phone and 36KB on a 1x desktop; the four
-  lazy step shots add about 65KB on a 1x desktop and 105KB on a 2x phone.
+  lazy step shots add about 115KB (AVIF) on a 1x desktop, where their 768px
+  rows pick the 960w file (65KB at 640w in the old 560px grid), and the same
+  on a 2x phone.
 - Rejected: a muted loop of the app (board, palette, ticket; 85KB at 1x and
   soft on a retina screen, about three times that at 2x, unreadable at 375px,
   motion beside the headline, and the reduced-motion still is the same
@@ -2595,15 +2598,39 @@ Showing the product.
 
 Accent. The ember is the copy button, the one primary action on the page;
 the platform switcher is the app's xs segmented control (well and raised
-thumb, 32px tall, a 44px hit area), links stay ink, and status keeps its hues
-(the connection and beta dots).
+thumb, 32px tall, a 44px hit area), links are ink with the prose links'
+`brand` underline (4px below, 2px on hover) and no arrow glued to the label,
+and status keeps its hues (the connection and beta dots).
 
-Hero install block. It sits in the headline's column, left-aligned with it,
-32px under the lede and at most 480px wide, so the curl command fits on one
-line from 768px and the block reads as part of the copy. Rejected: a second
+Composition. No eyebrow over any heading: each section's title says what it
+is. The sections, in order:
+- The hero: from 1100px the headline holds seven of twelve columns and the
+  lede with the install block holds the other five, top-aligned with it, so
+  the board shot starts about 400px down at 1440x900 instead of 650px;
+  below 1100px they stack.
+- The four steps of the one feature, a ruled row each: from 1024px the copy
+  on four columns and its shot on eight (768px wide at 1440, against 560px in
+  a two-by-two grid, where the doc and log text read at 0.9x), numbered by
+  the list in the mono face beside the title.
+- The agents band (`surface-2`), the example transcript leading on seven
+  columns from 1024px and its copy on five.
+- Your servers: the title split over its copy, then the instance and its two
+  runners drawn across the page from 768px (instance, connector, the two
+  machines stacked), then the guide's six areas as full-width ruled rows,
+  name on four columns and line on seven.
+- The close: the install block again beside its title, on the canvas with
+  the light field's warm and cool glows at its corners and a hairline above.
+Rejected: the steps as a two-by-two grid of small shots, the infrastructure
+drawing squeezed into a half column at every width, and the closing install
+as a second `surface-2` band (it repeated the agents band's paper).
+
+Hero install block. It sits under the lede, left-aligned with it, at most
+480px wide, so the curl command fits on one line from 768px and the block
+reads as part of the copy. Rejected: the install block alone in a second
 column to the right of the lede (from 1024px it started 240px below the
 headline's top, the eye went from the lede into empty space, and the block
-floated away from the text it belongs to).
+floated away from the text it belongs to); the lede moving into that column
+with it fixes this, as the eye goes headline, lede, command.
 
 Install command. One line always, the copy button inline. The command is mono
 12px under 414px, 12.5px to 768 and 13px above; when it is wider than its box
