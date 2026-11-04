@@ -951,10 +951,13 @@ then the presence bar; it is read only, and the rail edits. Under the header a
 line tab row holds Ticket and Thread, each tab past the first at its own path
 segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
 rail sits beside the tabs behind a hairline rule that runs down from the
-header's rule, so it never floats, on Ticket and Thread alike, and the tabs and the rail scroll on their own;
+header's rule, so it never floats, on Ticket and Thread alike;
 narrower, the rail folds behind a Details row above the tab row, closed by
-default, so the body starts under the header; open, it takes the height the
-tabs leave above 10rem. Notes is laid out as Ticket: the
+default, so the body starts under the header. On Ticket and Notes everything
+under the header scrolls as one page, the rail and open Details with it, so
+the wheel moves the ticket wherever the pointer sits; Thread scrolls its own
+stream above the composer, so beside it the rail scrolls on its own, and open
+Details takes the height the tabs leave above 10rem. Notes is laid out as Ticket: the
 picked note open on the left at the body's measure, headed as its dialog is,
 and a Notes rail of rows (file, time, the summary clamped to two lines) with
 the picked one on the active edge, in place of the ticket's rail; the newest
