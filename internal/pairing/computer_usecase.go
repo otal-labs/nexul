@@ -260,9 +260,9 @@ func (s *Service) recordFacts(ctx context.Context, userID, computerID string, re
 		next = *computer.Facts
 	}
 	if reported != nil {
-		providers, projects := next.Providers, next.Projects
+		providers, missing, projects := next.Providers, next.MissingProviders, next.Projects
 		next = *reported
-		next.Providers, next.Projects = providers, projects
+		next.Providers, next.MissingProviders, next.Projects = providers, missing, projects
 	}
 	if reported == nil || reported.T3.State == t3Answering {
 		s.readT3Snapshot(ctx, userID, computerID, &next)
@@ -297,8 +297,8 @@ func sameFacts(stored *Facts, next Facts) (bool, error) {
 	return bytes.Equal(a, b), nil
 }
 
-// readT3Snapshot sets facts' providers and projects to what the computer's T3 Code lists through its runner; a computer
-// with no live session, or a T3 Code that does not answer, keeps the last ones read.
+// readT3Snapshot sets facts' providers, missing providers and projects to what the computer's T3 Code lists through its
+// runner; a computer with no live session, or a T3 Code that does not answer, keeps the last ones read.
 func (s *Service) readT3Snapshot(ctx context.Context, userID, computerID string, facts *Facts) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if errors.Is(err, apperrs.ErrInvalid) {
@@ -311,13 +311,13 @@ func (s *Service) readT3Snapshot(ctx context.Context, userID, computerID string,
 	}
 	ctx, cancel := context.WithTimeout(ctx, snapshotTimeout)
 	defer cancel()
-	providers, err := s.harnessProviders(ctx, session)
-	if err != nil {
-		log.Warn("computer facts: T3 Code listed no providers", "computer_id", computerID, "error", err)
-		return
-	}
 	client, err := s.client(session.Kind)
 	if err != nil {
+		return
+	}
+	providers, err := client.ListAllProviders(ctx, session.Session())
+	if err != nil {
+		log.Warn("computer facts: T3 Code listed no providers", "computer_id", computerID, "error", err)
 		return
 	}
 	projects, err := client.ListProjects(ctx, session.Session())
@@ -325,7 +325,7 @@ func (s *Service) readT3Snapshot(ctx context.Context, userID, computerID string,
 		log.Warn("computer facts: T3 Code listed no projects", "computer_id", computerID, "error", err)
 		return
 	}
-	facts.Providers, facts.Projects = providerFacts(providers), projects
+	facts.Providers, facts.MissingProviders, facts.Projects = providerFacts(providers.Usable), missingProviderFacts(providers.Missing), projects
 }
 
 // pairThroughRunner pairs c through its runner; a failure leaves c as it was and stays its row's reason until one succeeds.

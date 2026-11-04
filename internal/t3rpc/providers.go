@@ -65,20 +65,33 @@ type optionDescriptor struct {
 
 // Providers reads usable provider instances from the handshake's config, no extra RPC.
 func (c *Conn) Providers() ([]harness.Provider, error) {
+	list, err := c.ProviderList()
+	return list.Usable, err
+}
+
+// ProviderList reads the usable provider instances and the enabled ones whose CLI T3 Code can't find, in one decode.
+func (c *Conn) ProviderList() (harness.ProviderList, error) {
 	var config struct {
 		Providers []configProvider `json:"providers"`
 	}
 	if err := json.Unmarshal(c.config, &config); err != nil {
-		return nil, fmt.Errorf("decode server config providers: %w", err)
+		return harness.ProviderList{}, fmt.Errorf("decode server config providers: %w", err)
 	}
-	providers := make([]harness.Provider, 0, len(config.Providers))
+	list := harness.ProviderList{Usable: make([]harness.Provider, 0, len(config.Providers))}
 	for _, p := range config.Providers {
-		if p.InstanceID == "" || !p.Enabled || !p.Installed || p.Availability == "unavailable" {
+		if p.InstanceID == "" || !p.Enabled {
 			continue
 		}
 		name := p.DisplayName
 		if name == "" {
 			name = p.Driver
+		}
+		if !p.Installed {
+			list.Missing = append(list.Missing, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name})
+			continue
+		}
+		if p.Availability == "unavailable" {
+			continue
 		}
 		models := make([]harness.ProviderModel, 0, len(p.Models))
 		for _, m := range p.Models {
@@ -87,9 +100,9 @@ func (c *Conn) Providers() ([]harness.Provider, error) {
 			}
 			models = append(models, providerModel(m))
 		}
-		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, SignIn: signIn(p.Auth.Status), Models: models})
+		list.Usable = append(list.Usable, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, SignIn: signIn(p.Auth.Status), Models: models})
 	}
-	return providers, nil
+	return list, nil
 }
 
 func providerModel(m configModel) harness.ProviderModel {

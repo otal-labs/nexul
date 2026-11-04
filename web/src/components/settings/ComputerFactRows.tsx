@@ -3,7 +3,7 @@ import { ComputerGitIdentityFact } from "@/components/settings/ComputerGitIdenti
 import { ComputerToolFacts } from "@/components/settings/ComputerToolFacts";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { formatBytes } from "@/models/Attachment";
-import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type ProviderFacts } from "@/models/ComputerFacts";
+import { GITHUB_SIGN_IN, SIGN_IN, type ComputerFacts, type MissingProviderFacts, type ProviderFacts } from "@/models/ComputerFacts";
 import type { Computer } from "@/models/Pairing";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -27,6 +27,17 @@ const ProviderFactLine = ({ provider }: ProviderFactLineProps) => {
   );
 };
 
+interface MissingProviderFactLineProps {
+  provider: MissingProviderFacts;
+}
+
+const MissingProviderFactLine = ({ provider }: MissingProviderFactLineProps) => (
+  <li className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+    <span className="break-words text-foreground">{provider.name}</span>
+    <SettingsStatus tone="warning">Not installed</SettingsStatus>
+  </li>
+);
+
 interface ProjectFactLineProps {
   project: ComputerFacts["projects"][number];
 }
@@ -49,13 +60,17 @@ export const ComputerFactRows = ({ computer, facts, factsAt }: ComputerFactRowsP
   const system = [facts.os, facts.arch].filter(Boolean).join(" · ");
   const github = facts.github_sign_in && GITHUB_SIGN_IN[facts.github_sign_in];
   const hidden = facts.projects.length - SHOWN_PROJECTS;
+  const missing = facts.missing_providers ?? [];
   return (
     <>
-      {facts.providers.length > 0 && (
+      {(facts.providers.length > 0 || missing.length > 0) && (
         <ComputerFact label="Provider CLIs">
           <ul className="space-y-1">
             {facts.providers.map((provider) => (
               <ProviderFactLine key={provider.id} provider={provider} />
+            ))}
+            {missing.map((provider) => (
+              <MissingProviderFactLine key={provider.id} provider={provider} />
             ))}
           </ul>
         </ComputerFact>

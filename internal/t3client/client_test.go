@@ -389,6 +389,10 @@ func TestSessionCalls_T3RefusesTheProtocol1Dial_MovesOnOrRefuses(t *testing.T) {
 			_, err := h.ListProviders(ctx, s)
 			return err
 		}},
+		{"ListAllProviders", func(ctx context.Context, h *Harness, s harness.Session) error {
+			_, err := h.ListAllProviders(ctx, s)
+			return err
+		}},
 		{"Hold", func(ctx context.Context, h *Harness, s harness.Session) error {
 			_, err := h.Hold(ctx, s)
 			return err

@@ -191,6 +191,29 @@ describe("ComputersSection", () => {
     expect(screen.getByText("Not installed")).toBeInTheDocument();
   });
 
+  it("lists a provider switched on whose CLI is missing as not installed, beside the installed ones", async () => {
+    const providers = [{ id: "claudeAgent", driver: "claudeAgent", name: "Claude", sign_in: "signed_in" as const, models: [] }];
+    const missing_providers = [{ id: "codex", driver: "codex", name: "Codex" }];
+    serveComputers([computer({ facts: { t3: { state: "answering" }, providers, missing_providers, projects: [] } })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    const row = screen.getByText("Codex").closest("li");
+    expect(row).toHaveTextContent("Not installed");
+    expect(screen.getByText("Claude").closest("li")).toHaveTextContent("Signed in");
+  });
+
+  it("lists the provider CLIs row when every provider switched on is missing", async () => {
+    serveComputers([computer({ facts: { t3: { state: "answering" }, providers: [], missing_providers: [{ id: "codex", driver: "codex", name: "Codex" }], projects: [] } })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    expect(screen.getAllByRole("term").filter((t) => t.textContent === "Provider CLIs")).toHaveLength(1);
+    expect(screen.getByText("Codex").closest("li")).toHaveTextContent("Not installed");
+  });
+
   it("installs a missing tool from its row once the person has seen the command it runs", async () => {
     const install = ["brew", "install", "gh"];
     serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git", version: "2.47.1" }, { name: "gh", install }], providers: [], projects: [] } })]);

@@ -73,3 +73,35 @@ func TestConn_Providers_DriverNameFallback(t *testing.T) {
 	assert.Equal(t, "opencode", providers[0].Name)
 	assert.Equal(t, harness.SignInUnknown, providers[0].SignIn, "a provider reporting no auth is unknown")
 }
+
+// TestConn_ProviderList_EnabledWithoutItsCLIIsMissing: a provider switched on whose CLI T3 Code can't find is listed as
+// missing, never usable, so placement and setup still see only the installed ones.
+func TestConn_ProviderList_EnabledWithoutItsCLIIsMissing(t *testing.T) {
+	t.Parallel()
+	c := &Conn{config: json.RawMessage(`{"providers":[
+		{"instanceId":"claudeAgent","driver":"claudeAgent","displayName":"Claude","enabled":true,"installed":true,"models":[]},
+		{"instanceId":"codex","driver":"codex","displayName":"Codex","enabled":true,"installed":false,"availability":"unavailable","models":[]},
+		{"instanceId":"opencode","driver":"opencode","enabled":true,"installed":false,"models":[]},
+		{"instanceId":"cursor","driver":"cursor","enabled":false,"installed":false,"models":[]}
+	]}`)}
+
+	list, err := c.ProviderList()
+	require.NoError(t, err)
+	require.Len(t, list.Usable, 1)
+	assert.Equal(t, "claudeAgent", list.Usable[0].ID)
+	assert.Equal(t, []harness.Provider{
+		{ID: "codex", Driver: "codex", Name: "Codex"},
+		{ID: "opencode", Driver: "opencode", Name: "opencode"},
+	}, list.Missing, "a disabled provider is neither")
+
+	usable, err := c.Providers()
+	require.NoError(t, err)
+	assert.Equal(t, list.Usable, usable)
+}
+
+func TestConn_ProviderList_BadConfigFails(t *testing.T) {
+	t.Parallel()
+	c := &Conn{config: json.RawMessage(`{"providers":{}}`)}
+	_, err := c.ProviderList()
+	require.ErrorContains(t, err, "decode server config providers")
+}

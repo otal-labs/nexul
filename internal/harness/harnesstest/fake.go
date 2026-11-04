@@ -17,14 +17,15 @@ type Client struct {
 	CanCloneFn      func(ctx context.Context, s harness.Session) (bool, error)
 	CreateProjectFn func(ctx context.Context, s harness.Session, title, path string) (harness.Project, error)
 	ListProvidersFn func(ctx context.Context, s harness.Session) ([]harness.Provider, error)
-	HoldFn          func(ctx context.Context, s harness.Session) (harness.Conn, error)
-	StartTurnFn     func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
-	WatchFn         func(ctx context.Context, t harness.Target) (harness.StartResult, error)
-	InterruptFn     func(ctx context.Context, t harness.Target) error
-	AnswerFn        func(ctx context.Context, t harness.Target, requestID string, answer harness.QuestionAnswer) error
-	AnswerSecretFn  func(ctx context.Context, t harness.Target, requestID, secret string) error
-	SettleFn        func(ctx context.Context, t harness.Target) error
-	SteerFn         func(ctx context.Context, t harness.Target) error
+	ListAllProvidersFn func(ctx context.Context, s harness.Session) (harness.ProviderList, error)
+	HoldFn             func(ctx context.Context, s harness.Session) (harness.Conn, error)
+	StartTurnFn        func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
+	WatchFn            func(ctx context.Context, t harness.Target) (harness.StartResult, error)
+	InterruptFn        func(ctx context.Context, t harness.Target) error
+	AnswerFn           func(ctx context.Context, t harness.Target, requestID string, answer harness.QuestionAnswer) error
+	AnswerSecretFn     func(ctx context.Context, t harness.Target, requestID, secret string) error
+	SettleFn           func(ctx context.Context, t harness.Target) error
+	SteerFn            func(ctx context.Context, t harness.Target) error
 }
 
 // Registry wraps c as the sole client of its kind (KindT3Code when unset).
@@ -84,6 +85,15 @@ func (c *Client) ListProviders(ctx context.Context, s harness.Session) ([]harnes
 		return nil, nil
 	}
 	return c.ListProvidersFn(ctx, s)
+}
+
+// ListAllProviders lists ListProvidersFn's providers as usable when ListAllProvidersFn is unset.
+func (c *Client) ListAllProviders(ctx context.Context, s harness.Session) (harness.ProviderList, error) {
+	if c.ListAllProvidersFn != nil {
+		return c.ListAllProvidersFn(ctx, s)
+	}
+	usable, err := c.ListProviders(ctx, s)
+	return harness.ProviderList{Usable: usable}, err
 }
 
 func (c *Client) Hold(ctx context.Context, s harness.Session) (harness.Conn, error) {
