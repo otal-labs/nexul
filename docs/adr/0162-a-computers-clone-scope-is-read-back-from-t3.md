@@ -35,3 +35,7 @@ Rejected: T3's `projects.createNew`, which puts the folder under T3's own `~/.t3
 other projects.
 
 Decided 2026-10-21.
+
+Amended 2026-11-05: setup no longer refuses. A computer added with `computer.sh` gets a fresh T3 Code with no
+project, so every new computer hit the refusal. Setup now creates `nexul-chat` by the same rule and makes it the
+computer's chat folder, so `@Agent` chats outside a project have somewhere to run too.
