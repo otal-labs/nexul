@@ -110,6 +110,10 @@ const workspaceRoutes: RouteObject[] = [
   },
 ];
 
+// AreaGate loads a gated route's page only once the viewer may open it, so the handle carries the page too.
+const withGatedPage = (route: RouteObject): RouteObject =>
+  (route.handle as RouteAccess | undefined)?.area === undefined ? route : { ...route, handle: { ...route.handle, page: route.element } };
+
 const buildRoutes = (loggedIn: boolean): RouteObject[] => [
   {
     element: <Layout />,
@@ -153,7 +157,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                           </AccessSetupGate>
                         </ProjectRevokedGate>
                       ),
-                      children: workspaceRoutes,
+                      children: workspaceRoutes.map(withGatedPage),
                     },
                   ],
                 },
@@ -172,7 +176,7 @@ export const AppRouter = () => {
   const routes = useMemo(() => buildRoutes(loggedIn), [loggedIn]);
   const router = useMemo(() => createBrowserRouter(routes), [routes]);
   // The page the URL opens on loads alongside the bootstrap request, and the router waits for it, so the page renders in
-  // the same pass as the shell instead of behind a fallback React holds for 300ms.
+  // the same pass as the shell instead of behind a fallback React holds for 300ms. A gated page waits in AreaGate instead.
   const [pageLoaded, setPageLoaded] = useState(false);
   useEffect(() => {
     void preloadMatchedPages(routes).then(() => setPageLoaded(true));

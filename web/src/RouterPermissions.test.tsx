@@ -23,6 +23,13 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/hooks/useLiveEvents", () => ({ useLiveEvents: vi.fn() }));
 
+// Records each load of the topology page's chunk, the heaviest one, which a stand-in keeps cheap to render.
+const { pageLoads } = vi.hoisted(() => ({ pageLoads: [] as string[] }));
+vi.mock("@/pages/TopologyPage", () => {
+  pageLoads.push("TopologyPage");
+  return { TopologyPage: () => <h1>Topology</h1> };
+});
+
 vi.mock("@/api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/client")>();
   return { ...actual, api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
@@ -96,6 +103,25 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   useSessionStore.setState({ token: "t", isLoggedIn: true });
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+});
+
+// A module loads once per file, so the denied case runs before anything opens the page.
+describe("gated page chunks", () => {
+  it("a viewer who can't open a gated route sees not found without loading the page's chunk", async () => {
+    mockApi([], ["chat:read"]);
+    renderAt("/acme/topology");
+
+    expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+    expect(pageLoads).toEqual([]);
+  });
+
+  it("a viewer who can open it waits on the chunk, then sees the page", async () => {
+    mockApi([], ["topology:read"]);
+    renderAt("/acme/topology");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Topology" })).toBeInTheDocument();
+    expect(pageLoads).toEqual(["TopologyPage"]);
+  });
 });
 
 describe("route permissions", () => {

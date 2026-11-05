@@ -135,6 +135,7 @@ skipped and lint errors do not.
 | Every non-GET route writes an audit row unless it is listed as read-only | `TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod` in `server/cmd/audit_integration_test.go` |
 | No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |
 | The web shell loads no page, editor, canvas, voice or shader | `web/src/pageChunks.test.tsx` |
+| A gated page's chunk loads only for a viewer who may open it | the gated page chunks cases in `web/src/RouterPermissions.test.tsx` |
 | Requests one live frame or one phone session sends | `web/src/hooks/liveRequests.test.tsx`, `native/src/hooks/requestCounts.test.tsx` |
 | `client-core/` lint, tests and coverage | the web job: `bun run lint` covers the folder, and vitest runs its tests and counts its code toward the 80% gate; each app's typecheck compiles what it imports |
 | A phone query cached until pushed names a topic, and its topics and payload fields exist in the catalog | `bun run typecheck` in `native/`, through the `@ts-expect-error` cases in `native/src/lib/liveQuery.test.ts` |
