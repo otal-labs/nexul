@@ -39,7 +39,9 @@ if [ -z "$foreground" ]; then
     fail "run the command from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
 fi
 
-token=${1:-}
+# A terminal without bracketed paste leaves its markers, such as a trailing ~, on the token; a token is only these characters.
+esc=$(printf '\033')
+token=$(printf '%s' "${1:-}" | sed "s/$esc\[20[01]~//g" | tr -cd 'A-Za-z0-9._-')
 [ -n "$token" ] || fail "run the whole command Add a computer shows: it ends in one token"
 shift
 case " $* " in

@@ -77,9 +77,17 @@ main() {
   # Piped from curl, stdin is this script; the installer's questions go to the terminal instead, when there is one.
   if (: </dev/tty) 2>/dev/null; then
     $run_as "$BIN_DIR/nexul" install "$@" </dev/tty
+    path_hint "$@"
     return
   fi
   $run_as "$BIN_DIR/nexul" install "$@"
+  path_hint "$@"
+}
+
+# path_hint says where a computer's commands went: a terminal opened before ~/.local/bin existed never searches it.
+path_hint() {
+  [ "${1:-}" = computer ] || return 0
+  printf '\nIf this terminal cannot find nexul or t3, they are in %s: open a new login, or run\n  export PATH="%s:%s"\n' "$BIN_DIR" "$BIN_DIR" "\$PATH"
 }
 
 # foreground_requested reports --foreground among the arguments: a computer for a host with no systemd, installed with no sudo.
