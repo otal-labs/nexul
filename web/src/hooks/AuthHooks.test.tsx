@@ -61,10 +61,11 @@ beforeEach(() => {
   vi.mocked(api.put).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.delete).mockReset();
+  vi.mocked(toast.success).mockClear();
 });
 
 describe("useCompleteOwnerWizard", () => {
-  it("posts the instance URL and invalidates /me", async () => {
+  it("posts the instance URL, invalidates /me, and leaves the wizard's next step uncovered by a toast", async () => {
     const completed = { ...me, needs_owner_wizard: false, needs_first_login_wizard: false };
     vi.mocked(api.post).mockResolvedValue({ data: completed });
     vi.mocked(api.get).mockResolvedValue({ data: completed });
@@ -79,6 +80,7 @@ describe("useCompleteOwnerWizard", () => {
     });
     expect(api.get).toHaveBeenCalledWith("/api/auth/me");
     expect(client.getQueryData(["getMe"])).toEqual(completed);
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });
 

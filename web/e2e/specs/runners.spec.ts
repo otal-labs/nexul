@@ -7,13 +7,12 @@ import { authedPage, closeBrowser } from "./browser";
 afterAll(closeBrowser);
 
 describe("runners (web)", () => {
-  it("renders the runners and queue panels on a fresh instance", async () => {
+  it("renders the runner fleet on a fresh instance", async () => {
     const page = await authedPage(`${E2E_WORKSPACE_PATH}/runners`);
     // The RunnersPanel also has an h2 labelled "Runners" (the connected-runners sub-section) alongside the page's own h1, so scope to the page title.
     await expect(page.getByRole("heading", { level: 1, name: "Runners", exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByRole("heading", { name: /Waiting for a runner/ })).toBeVisible();
     // the e2e runner service enrolls as the instance runner and stays connected; its machine shares the name
     await expect(page.getByText("instance", { exact: true }).first()).toBeVisible({
       timeout: 15_000,

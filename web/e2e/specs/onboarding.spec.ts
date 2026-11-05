@@ -39,7 +39,8 @@ describe("onboarding wizards", () => {
     await expect(page.getByLabel(/project/i)).toHaveCount(0);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
-    // Connect your tools is the last step; no computer is needed to finish.
+    // Connect your tools is the last step; no computer is needed to finish. Wait for it, or the click lands on the workspace step's busy Continue.
+    await expect(page.getByRole("heading", { name: "Connect your tools" })).toBeVisible();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Workspace ready" })).toBeVisible();
 
