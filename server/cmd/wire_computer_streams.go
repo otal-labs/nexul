@@ -251,14 +251,21 @@ func (r *runnerComputers) RestartApp(ctx context.Context, computerID string) err
 var errRunnerTooOldForTools = fmt.Errorf("%w: the Nexul app on it is too old for this; it updates itself, then try again", apperrs.ErrConflict)
 
 // InstallTool is pairing's seam for installing a tool on a computer through its runner.
-func (r *runnerComputers) InstallTool(ctx context.Context, computerID, tool string) error {
+func (r *runnerComputers) InstallTool(ctx context.Context, computerID, tool, sudoPassword string) error {
 	h := r.handler.Load()
 	if h == nil {
 		return apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
-	err := h.InstallTool(ctx, computerID, tool)
+	err := h.InstallTool(ctx, computerID, tool, sudoPassword)
 	if errors.Is(err, runner.ErrCannotInstall) {
 		return errRunnerTooOldForTools
+	}
+	if errors.Is(err, runner.ErrCannotTakeSudoPassword) {
+		return fmt.Errorf("%w: the Nexul app on it is too old to take a sudo password; run the command on the computer, or try again once it updates itself", apperrs.ErrConflict)
+	}
+	var sudo *runner.SudoPasswordError
+	if errors.As(err, &sudo) {
+		return &pairing.SudoPasswordError{Detail: sudo.Detail}
 	}
 	return err
 }

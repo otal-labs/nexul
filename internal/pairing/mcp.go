@@ -64,7 +64,7 @@ type computerPairIn struct {
 	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
 	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 	Restart       bool    `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer instead of pairing, so it starts again with the PATH the computer saved since, such as after installing git; its connection drops for a few seconds while it restarts."`
-	InstallTool   string  `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools, instead of pairing; ask the person first, since it runs their package manager there. It returns once the tool is installed."`
+	InstallTool   string  `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools, instead of pairing; ask the person first, since it runs their package manager there. It returns once the tool is installed; where sudo wants a password it refuses, since only the Install button in Settings → Computers takes one."`
 	GitIdentity   bool    `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none, instead of pairing; it never replaces a name or email already set."`
 }
 
@@ -344,7 +344,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 		return s.ownComputer(ctx, userID, in.ID)
 	}
 	if in.InstallTool != "" {
-		if err := s.InstallTool(ctx, userID, in.ID, in.InstallTool); err != nil {
+		if err := s.InstallTool(ctx, userID, in.ID, in.InstallTool, ""); err != nil {
 			return nil, err
 		}
 		return s.ownComputer(ctx, userID, in.ID)

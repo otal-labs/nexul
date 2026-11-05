@@ -232,6 +232,37 @@ describe("ComputersSection", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("gh installed on Home"));
   });
 
+  it("asks for the sudo password when sudo wants one, keeps asking while it is wrong, and sends it with that install", async () => {
+    const install = ["sudo", "-n", "apt-get", "install", "-y", "git"];
+    serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", install }], providers: [], projects: [] } })]);
+    const sudoRefused = (message: string) => ({ message, response: { data: { error: message, details: { sudo_password_needed: true, computer_id: "c1" } } } });
+    mocks.errorMessage.mockImplementation((error: { message: string }) => error.message);
+    mocks.post
+      .mockRejectedValueOnce(sudoRefused("installing git needs your sudo password"))
+      .mockRejectedValueOnce(sudoRefused("that sudo password was wrong"))
+      .mockResolvedValueOnce({ data: undefined });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Install git" }));
+    await user.click(screen.getAllByRole("button", { name: "Install git" }).at(-1)!);
+    expect(await screen.findByText("Sudo password for Home")).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Sudo password"), "hunter3");
+    await user.click(screen.getAllByRole("button", { name: "Install git" }).at(-1)!);
+    expect(await screen.findByText("that sudo password was wrong")).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Sudo password"));
+    await user.type(screen.getByLabelText("Sudo password"), "hunter2");
+    await user.click(screen.getAllByRole("button", { name: "Install git" }).at(-1)!);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("git installed on Home"));
+    expect(mocks.post).toHaveBeenNthCalledWith(1, "/api/pairing/computers/c1/tools", { tool: "git", sudo_password: undefined });
+    expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/tools", { tool: "git", sudo_password: "hunter2" });
+    await waitFor(() => expect(screen.queryByText("Sudo password for Home")).not.toBeInTheDocument());
+  });
+
   it("says git has no identity and sets it from the GitHub sign-in after showing it", async () => {
     serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git" }], providers: [], projects: [] } })]);
     const serve = mocks.get.getMockImplementation()!;

@@ -1,4 +1,5 @@
 import type { AxiosError } from "axios";
+import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
 import type { ToolFacts } from "@/models/ComputerFacts";
@@ -21,3 +22,11 @@ export const missingToolOf = (error: unknown): { tool: ToolName; computerId: str
 
 // A git identity as git writes it in a commit.
 export const gitAuthor = (identity: { name?: string | undefined; email?: string | undefined }) => [identity.name, identity.email && `<${identity.email}>`].filter(Boolean).join(" ");
+
+export const SudoPasswordFormSchema = z.object({ password: z.string().min(1, "Enter the password") });
+
+export type SudoPasswordFormData = z.infer<typeof SudoPasswordFormSchema>;
+
+// Whether a failed install says sudo on the computer wants the person's password, or got a wrong one.
+export const sudoPasswordNeeded = (error: unknown) =>
+  ((error as AxiosError<ApiErrorBody> | null)?.response?.data?.details as { sudo_password_needed?: unknown } | undefined)?.sudo_password_needed === true;

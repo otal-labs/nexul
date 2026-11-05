@@ -5,9 +5,18 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { CommandRow } from "@/components/pairing/CommandRow";
+import { SudoPasswordForm } from "@/components/settings/SudoPasswordForm";
 import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { gitAuthor, type GitIdentity, type ToolName } from "@/models/ComputerTools";
+import { useFormDialog } from "@/hooks/useFormDialog";
+import {
+  gitAuthor,
+  sudoPasswordNeeded,
+  SudoPasswordFormSchema,
+  type GitIdentity,
+  type SudoPasswordFormData,
+  type ToolName,
+} from "@/models/ComputerTools";
 import type { Computer } from "@/models/Pairing";
 
 export const getGitIdentityKey = "getGitIdentity";
@@ -15,23 +24,47 @@ export const getGitIdentityKey = "getGitIdentity";
 // What running the install asks of someone at the computer, by the command it runs.
 const installNote = (command: string[]) => {
   if (command[0] === "winget") return "The Nexul app runs this on the computer. Windows may ask someone there to allow it.";
-  if (command[0] === "sudo") return "The Nexul app runs this on the computer. It needs sudo without a password.";
+  if (command[0] === "sudo") return "The Nexul app runs this on the computer, and asks for your sudo password if sudo wants it.";
   return "The Nexul app runs this on the computer.";
 };
 
-// Installs git or gh on a computer with the command its app reported, once the person has read that command and agreed.
+interface InstallRequest {
+  tool: ToolName;
+  computer: Computer;
+  sudoPassword?: string;
+}
+
+// Installs git or gh on a computer with the command its app reported, once the person has read that command and agreed;
+// when sudo there wants a password, it asks for it and sends it with the install alone.
 export const useInstallTool = (computerId: string) => {
   const client = useQueryClient();
   const { open: confirm } = useConfirmationDialog();
+  const { open: openForm } = useFormDialog();
+  const askSudoPassword = (request: InstallRequest, send: (request: InstallRequest) => Promise<void>) =>
+    openForm<SudoPasswordFormData>({
+      title: `Sudo password for ${request.computer.name}`,
+      description: `Installing ${request.tool} runs sudo there. Nexul passes the password on for this install and never keeps it.`,
+      schema: SudoPasswordFormSchema,
+      okLabel: `Install ${request.tool}`,
+      form: <SudoPasswordForm install={(sudoPassword) => send({ ...request, sudoPassword })} />,
+      formOptions: { defaultValues: { password: "" } },
+    });
   const install = useMutation({
-    mutationFn: requires("none", async ({ tool }: { tool: ToolName; computer: Computer }) => {
-      await api.post(`/api/pairing/computers/${computerId}/tools`, { tool });
+    mutationFn: requires("none", async ({ tool, sudoPassword }: InstallRequest) => {
+      await api.post(`/api/pairing/computers/${computerId}/tools`, { tool, sudo_password: sudoPassword });
     }),
     onSuccess: async (_, { tool, computer }) => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success(`${tool} installed on ${computer.name}`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error, request) => {
+      if (request.sudoPassword !== undefined) return;
+      if (sudoPasswordNeeded(error)) {
+        void askSudoPassword(request, install.mutateAsync);
+        return;
+      }
+      toast.error(errorMessage(error));
+    },
   });
   const ask = async (tool: ToolName) => {
     const computer = (await client.ensureQueryData(computersQuery)).find((c) => c.id === computerId);

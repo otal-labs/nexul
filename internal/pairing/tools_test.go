@@ -14,16 +14,18 @@ import (
 
 // fakeTools records what the runner was asked to install and set, failing with err.
 type fakeTools struct {
-	mu         sync.Mutex
-	installed  []string
-	identities []GitIdentity
-	err        error
+	mu            sync.Mutex
+	installed     []string
+	sudoPasswords []string
+	identities    []GitIdentity
+	err           error
 }
 
-func (f *fakeTools) InstallTool(_ context.Context, computerID, tool string) error {
+func (f *fakeTools) InstallTool(_ context.Context, computerID, tool, sudoPassword string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.installed = append(f.installed, computerID+"/"+tool)
+	f.sudoPasswords = append(f.sudoPasswords, sudoPassword)
 	return f.err
 }
 
@@ -83,7 +85,7 @@ func TestInstallTool(t *testing.T) {
 				runners.runners["c1"] = ComputerRunner{}
 			}
 
-			err := svc.InstallTool(t.Context(), "u1", "c1", tt.tool)
+			err := svc.InstallTool(t.Context(), "u1", "c1", tt.tool, "")
 
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
@@ -96,11 +98,27 @@ func TestInstallTool(t *testing.T) {
 	}
 }
 
+func TestInstallTool_SudoWantsAPassword_AsksForItOnThatComputer(t *testing.T) {
+	t.Parallel()
+	apt := []string{"sudo", "-n", "apt-get", "install", "-y", "git"}
+	svc, _, tools := newToolsService(t, &Facts{Tools: []ToolFacts{{Name: "git", Install: apt}}})
+	tools.err = &SudoPasswordError{Detail: "that sudo password was wrong"}
+
+	err := svc.InstallTool(t.Context(), "u1", "c1", "git", "hunter2")
+
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	var sudo *SudoPasswordError
+	require.ErrorAs(t, err, &sudo)
+	assert.Equal(t, "that sudo password was wrong", err.Error())
+	assert.Equal(t, SudoPasswordDetails{SudoPasswordNeeded: true, ComputerID: "c1"}, sudo.ErrorDetails())
+	assert.Equal(t, []string{"hunter2"}, tools.sudoPasswords, "the password goes to the computer as given")
+}
+
 func TestInstallTool_SomeoneElsesComputerIsNotFound(t *testing.T) {
 	t.Parallel()
 	svc, _, _ := newToolsService(t, &Facts{Tools: []ToolFacts{{Name: "git", Install: winget}}})
 
-	require.ErrorIs(t, svc.InstallTool(t.Context(), "u2", "c1", "git"), apperrs.ErrNotFound)
+	require.ErrorIs(t, svc.InstallTool(t.Context(), "u2", "c1", "git", ""), apperrs.ErrNotFound)
 }
 
 func TestSetGitIdentity(t *testing.T) {
@@ -166,7 +184,7 @@ func TestTools_NotWired_IsFatal(t *testing.T) {
 	svc, repo, _ := newComputerService()
 	repo.computers["c1"] = Computer{ID: "c1", UserID: "u1", Name: "Laptop"}
 
-	require.ErrorIs(t, svc.InstallTool(t.Context(), "u1", "c1", "git"), apperrs.ErrFatal)
+	require.ErrorIs(t, svc.InstallTool(t.Context(), "u1", "c1", "git", ""), apperrs.ErrFatal)
 	_, err := svc.GitHubGitIdentity(t.Context(), "u1")
 	require.ErrorIs(t, err, apperrs.ErrFatal)
 }

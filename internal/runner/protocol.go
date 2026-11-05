@@ -70,7 +70,8 @@ const (
 	FrameRestart       FrameType = "restart"
 	FrameRestartResult FrameType = "restart_result"
 	// FrameInstallTool asks a personal runner to install tool, git or gh, with its own package manager, answered by
-	// FrameInstallToolResult; FrameGitIdentity sets git_name and git_email where given, answered by FrameGitIdentityResult.
+	// FrameInstallToolResult, which sets sudo_password_needed when sudo wants the password the next ask carries;
+	// FrameGitIdentity sets git_name and git_email where given, answered by FrameGitIdentityResult.
 	FrameInstallTool       FrameType = "install_tool"
 	FrameInstallToolResult FrameType = "install_tool_result"
 	FrameGitIdentity       FrameType = "git_identity"
@@ -191,6 +192,10 @@ type Frame struct {
 	Path string `json:"path,omitempty"`
 	// Tool names the tool an install_tool installs, and the one a git_clone_result found missing.
 	Tool string `json:"tool,omitempty"`
+	// SudoPassword is the person's sudo password with an install_tool that needs one; it is never logged or kept.
+	SudoPassword string `json:"sudo_password,omitempty"`
+	// SudoPasswordNeeded marks an install_tool_result whose sudo asked for a password: none was sent, or it was wrong.
+	SudoPasswordNeeded bool `json:"sudo_password_needed,omitempty"`
 	// GitName and GitEmail carry a git_identity: the global user.name and user.email to set, each only where given.
 	GitName  string `json:"git_name,omitempty"`
 	GitEmail string `json:"git_email,omitempty"`
