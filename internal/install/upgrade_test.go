@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -207,7 +208,7 @@ func TestRunUpgrade_Detach_StartsATransientUnit(t *testing.T) {
 	calls := th.exec.callsTo("systemd-run")
 	require.Len(t, calls, 1)
 	self, _ := th.Executable()
-	assert.Regexp(t, `^systemd-run --unit nexul-upgrade-[a-z2-7]{8} --collect --quiet `+self+` upgrade --version v0.2.2 --yes$`, calls[0])
+	assert.Regexp(t, `^systemd-run --unit nexul-upgrade-[a-z2-7]{8} --collect --quiet `+regexp.QuoteMeta(self)+` upgrade --version v0.2.2 --yes$`, calls[0])
 	assert.Contains(t, th.out.String(), "journalctl -u nexul-upgrade-")
 }
 

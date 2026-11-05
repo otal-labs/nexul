@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -109,9 +110,11 @@ func TestEnrollOnFirstStart_WaitsForTheCodeAndTheServer(t *testing.T) {
 		data, err := os.ReadFile(cfg.CredentialFile)
 		require.NoError(t, err)
 		assert.Equal(t, "nxr_new\n", string(data))
-		info, err := os.Stat(cfg.CredentialFile)
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		if runtime.GOOS != "windows" {
+			info, err := os.Stat(cfg.CredentialFile)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		}
 		require.Len(t, sent, 3)
 		assert.Equal(t, "nxe_abc", sent[0]["code"])
 		assert.Equal(t, "instance", sent[0]["name"])

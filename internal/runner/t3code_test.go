@@ -35,6 +35,7 @@ func personalClient(t *testing.T, home, t3 string, logs *bytes.Buffer, serve fun
 	c := newTestClient(wsURL(wsTestServer(t, serve)), &fakeExecutor{})
 	c.cfg.Personal, c.cfg.T3Home = true, home
 	c.findT3 = func(string) string { return t3 }
+	c.findT3Desktop = func() bool { return false }
 	if logs != nil {
 		c.log = slog.New(slog.NewTextHandler(logs, nil))
 	}
@@ -45,6 +46,14 @@ func personalClient(t *testing.T, home, t3 string, logs *bytes.Buffer, serve fun
 	})
 	t.Cleanup(stop)
 	return stop
+}
+
+// skipShellFakes skips a test whose fake commands are shell scripts, which Windows cannot run.
+func skipShellFakes(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake commands are shell scripts")
+	}
 }
 
 // firstFacts is the first facts frame a personal runner sends once connected.
@@ -75,6 +84,7 @@ func firstFacts(t *testing.T, home, t3 string) Facts {
 // TestPersonalRunner_ReportsItsComputerOnConnect: the first facts frame carries T3 Code's state and install, and the
 // computer's system, git identity, cloudflared and free disk as the person's own account finds them.
 func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
+	skipShellFakes(t)
 	t3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/t3/environment" {
 			http.NotFound(w, r)
@@ -119,6 +129,7 @@ func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
 // helper, a signed-out CLI falls back to the helper, and a computer with neither says none so plays that push can be
 // warned about.
 func TestPersonalRunner_ReportsHowItSignsInToGitHub(t *testing.T) {
+	skipShellFakes(t)
 	gitPath, err := exec.LookPath("git")
 	require.NoError(t, err)
 	tests := []struct {
@@ -232,6 +243,7 @@ func TestT3Probe_WhileTheInstallerInstallsT3Code_ReportsInstalling(t *testing.T)
 // fakeT3 writes a t3 command that checks it was asked for a pairing token in home, then runs body.
 func fakeT3(t *testing.T, home, body string) string {
 	t.Helper()
+	skipShellFakes(t)
 	path := filepath.Join(t.TempDir(), "t3")
 	script := "#!/bin/sh\n" +
 		`[ "$*" = "auth pairing create --json --ttl 5m --label Nexul" ] || { echo "unexpected args: $*" >&2; exit 3; }` + "\n" +

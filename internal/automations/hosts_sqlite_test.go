@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -572,9 +573,11 @@ func TestWriteInstanceEnrollment_UntilTheInstanceHostEnrolls(t *testing.T) {
 	file := filepath.Join(f.enrollDir, "automations-instance")
 
 	require.NoError(t, f.hosts.WriteInstanceEnrollment(t.Context()))
-	info, err := os.Stat(file)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(file)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	}
 	code, err := os.ReadFile(file)
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(code), hostcred.CodePrefix))

@@ -105,6 +105,7 @@ func githubAt(t *testing.T, base string) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	git(t, "", "config", "--global", "url."+base+".insteadOf", "https://github.com/")
@@ -154,7 +155,12 @@ func TestPersonalRunner_SendsTheTokenToGitHubAndAnswersWhyGitFailed(t *testing.T
 
 	got, logs := gitCloneAnswer(t)
 
-	assert.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:secret-clone-tok")), <-headers)
+	select {
+	case h := <-headers:
+		assert.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:secret-clone-tok")), h)
+	default:
+		t.Fatalf("git answered without asking the server: %s", got.Error)
+	}
 	assert.Contains(t, got.Error, "git clone acme/api failed")
 	assert.Empty(t, got.Path)
 	assert.NotContains(t, got.Error+logs, "secret-clone-tok")

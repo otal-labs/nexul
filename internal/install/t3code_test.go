@@ -24,11 +24,11 @@ var (
 	}
 	t3Desktop t3State = func(t *testing.T, th *testHost) {
 		t3Nothing(t, th)
-		th.aliceHas(t, ".t3/bin/"+desktopLauncher(th), "", launcherMode(th))
+		th.aliceHas(t, ".t3/bin/"+desktopLauncher(th), "", launcherMode(t, th))
 	}
 	t3CommandLine t3State = func(t *testing.T, th *testHost) {
 		t3Nothing(t, th)
-		th.aliceHas(t, ".local/bin/"+desktopLauncher(th), "", launcherMode(th))
+		th.aliceHas(t, ".local/bin/"+desktopLauncher(th), "", launcherMode(t, th))
 	}
 	t3Nothing t3State = func(t *testing.T, th *testHost) {
 		th.t3.up.Store(false)
@@ -45,10 +45,11 @@ var (
 )
 
 // launcherMode is the desktop launcher's mode: Windows has no execute bit.
-func launcherMode(th *testHost) os.FileMode {
+func launcherMode(t *testing.T, th *testHost) os.FileMode {
 	if th.GOOS == "windows" {
 		return 0o644
 	}
+	skipOnWindows(t, "Linux and macOS find t3 by its execute bit, which a file on Windows cannot carry")
 	return 0o755
 }
 
@@ -59,7 +60,10 @@ func desktopLauncher(th *testHost) string {
 	return "t3"
 }
 
-var installerPath = regexp.MustCompile(`\S*/nexul-t3-[^/ ]+/install\.sh`)
+var installerPath = regexp.MustCompile(`\S*[/\\]nexul-t3-[^/\\ ]+[/\\]install\.sh`)
+
+// localT3 is the t3 command T3 Code's installer leaves in alice's ~/.local/bin, under the {home} placeholder.
+var localT3 = filepath.Join("{home}", ".local", "bin", "t3")
 
 // actAsAlice makes the commands the install runs as alice do what they would: T3 Code's installer puts t3 in her
 // ~/.local/bin, and its service then answers. It records the installer each run was handed.
@@ -83,7 +87,7 @@ func TestInstallT3_ReusesWhatItFindsAndInstallsOnlyWhenThereIsNone(t *testing.T)
 		asAliceLinux  = "runuser -u alice -- env HOME={home} XDG_RUNTIME_DIR=/run/user/1000 "
 		asAliceDarwin = "sudo -u alice env HOME={home} "
 	)
-	linuxService := []string{"loginctl enable-linger alice", "systemctl start user@1000.service", asAliceLinux + "{home}/.local/bin/t3 service install"}
+	linuxService := []string{"loginctl enable-linger alice", "systemctl start user@1000.service", asAliceLinux + localT3 + " service install"}
 	tests := []struct {
 		goos      string
 		name      string
@@ -99,8 +103,8 @@ func TestInstallT3_ReusesWhatItFindsAndInstallsOnlyWhenThereIsNone(t *testing.T)
 			"Pass --no-t3 to skip this."},
 		{"darwin", "answering under its own service", t3ServiceAnswering, nil, "running on port {port}\n"},
 		{"darwin", "desktop app closed", t3Desktop, nil, "Open T3 Code"},
-		{"darwin", "command line idle", t3CommandLine, []string{asAliceDarwin + "{home}/.local/bin/t3 service install"}, "running on port {port} as alice's background service"},
-		{"darwin", "none", t3Nothing, []string{asAliceDarwin + "sh {installer}", asAliceDarwin + "{home}/.local/bin/t3 service install"}, "installed, running on port {port}"},
+		{"darwin", "command line idle", t3CommandLine, []string{asAliceDarwin + localT3 + " service install"}, "running on port {port} as alice's background service"},
+		{"darwin", "none", t3Nothing, []string{asAliceDarwin + "sh {installer}", asAliceDarwin + localT3 + " service install"}, "installed, running on port {port}"},
 		{"windows", "answering", t3Answering, nil, "running on port {port}\n"},
 		{"windows", "desktop app closed", t3Desktop, nil, "Open T3 Code"},
 		{"windows", "command line idle", t3CommandLine, nil, "start it with t3 serve"},
@@ -197,7 +201,7 @@ func TestInstallComputer_AT3CodeThatCannotBeStarted_KeepsTheRunnerSoTheSameComma
 		wantErr string
 	}{
 		{"its installer fails", asAlice + "sh", "T3 Code's installer failed; install T3 Code yourself from https://t3.codes, or run the command again with --no-t3"},
-		{"its service does not start", asAlice + "{home}/.local/bin/t3 service install", "background service did not start"},
+		{"its service does not start", asAlice + localT3 + " service install", "background service did not start"},
 		{"its service never answers", "", "nothing answers on port"},
 	}
 	for _, tt := range tests {
