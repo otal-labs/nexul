@@ -498,12 +498,14 @@ func (h *Handler) restartApp(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) installTool(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Tool string `json:"tool"`
+		// SudoPassword is handed to the computer's sudo for this install alone; it is never logged or kept.
+		SudoPassword string `json:"sudo_password"`
 	}
 	if err := httpx.DecodeJSON(r, &in); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.InstallTool(r.Context(), actorID(r), r.PathValue("id"), in.Tool); err != nil {
+	if err := h.svc.InstallTool(r.Context(), actorID(r), r.PathValue("id"), in.Tool, in.SudoPassword); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

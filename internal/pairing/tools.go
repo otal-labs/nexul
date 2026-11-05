@@ -12,8 +12,9 @@ import (
 
 // ComputerTools installs a tool on a computer and sets its git identity, through its runner.
 type ComputerTools interface {
-	// InstallTool has computerID's runner install tool with the command its facts named; it returns once installed.
-	InstallTool(ctx context.Context, computerID, tool string) error
+	// InstallTool has computerID's runner install tool with the command its facts named, handing sudoPassword to sudo
+	// when given; it returns once installed, or a SudoPasswordError when sudo wants a password.
+	InstallTool(ctx context.Context, computerID, tool, sudoPassword string) error
 	// SetGitIdentity sets git's global user.name and user.email on computerID, each only where given.
 	SetGitIdentity(ctx context.Context, computerID, name, email string) error
 }
@@ -63,6 +64,27 @@ func (e *MissingToolError) ErrorDetails() any {
 	return MissingToolDetails{MissingTool: e.Tool, ComputerID: e.ComputerID}
 }
 
+// SudoPasswordError is an install the computer's sudo refused for want of the person's password, or a wrong one.
+type SudoPasswordError struct {
+	Detail     string
+	ComputerID string
+}
+
+func (e *SudoPasswordError) Error() string { return e.Detail }
+
+func (e *SudoPasswordError) Unwrap() error { return apperrs.ErrConflict }
+
+// SudoPasswordDetails is a SudoPasswordError's machine-readable side, so the web asks for the password.
+type SudoPasswordDetails struct {
+	SudoPasswordNeeded bool   `json:"sudo_password_needed"`
+	ComputerID         string `json:"computer_id"`
+}
+
+// ErrorDetails satisfies httpx.DetailedError.
+func (e *SudoPasswordError) ErrorDetails() any {
+	return SudoPasswordDetails{SudoPasswordNeeded: true, ComputerID: e.ComputerID}
+}
+
 // onComputer names c on a missing tool err carries, so the person reads which computer lacks it; any other err is as is.
 func onComputer(err error, c Computer) error {
 	var missing *MissingToolError
@@ -72,8 +94,9 @@ func onComputer(err error, c Computer) error {
 	return &MissingToolError{Tool: missing.Tool, ComputerID: c.ID, Computer: c.Name}
 }
 
-// InstallTool installs git or gh on one of the caller's own computers with the command its facts showed them.
-func (s *Service) InstallTool(ctx context.Context, userID, computerID, tool string) error {
+// InstallTool installs git or gh on one of the caller's own computers with the command its facts showed them; the
+// sudo password, when given, goes to the computer for this install only.
+func (s *Service) InstallTool(ctx context.Context, userID, computerID, tool, sudoPassword string) error {
 	if !slices.Contains(installableTools, tool) {
 		return fmt.Errorf("%w: tool must be git or gh", apperrs.ErrInvalid)
 	}
@@ -91,7 +114,12 @@ func (s *Service) InstallTool(ctx context.Context, userID, computerID, tool stri
 	if len(c.Facts.Tools[i].Install) == 0 {
 		return fmt.Errorf("%w: %s has no package manager Nexul installs %s with; install it yourself", apperrs.ErrConflict, c.Name, tool)
 	}
-	if err := s.tools.InstallTool(ctx, c.ID, tool); err != nil {
+	err = s.tools.InstallTool(ctx, c.ID, tool, sudoPassword)
+	var sudo *SudoPasswordError
+	if errors.As(err, &sudo) {
+		return &SudoPasswordError{Detail: sudo.Detail, ComputerID: c.ID}
+	}
+	if err != nil {
 		return fmt.Errorf("install %s on %s: %w", tool, c.Name, err)
 	}
 	return nil
