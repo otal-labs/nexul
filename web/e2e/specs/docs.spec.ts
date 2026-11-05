@@ -19,8 +19,8 @@ describe("docs (web)", () => {
     const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForLoadState("networkidle");
 
-    // The sidebar also has a "New doc in {project}" button per project (ticket 13), so use the page-level exact "New doc" button instead of an ambiguous regex.
-    await page.getByRole("button", { name: "New doc", exact: true }).click();
+    // The list pane's header carries an icon-only "New doc" too, so take the overview's.
+    await page.getByRole("region", { name: "Docs overview" }).getByRole("button", { name: "New doc", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel(/title/i).fill(TITLE);
     await dialog.getByRole("button", { name: /create/i }).click();
@@ -32,7 +32,8 @@ describe("docs (web)", () => {
   it("opens the doc detail view", async () => {
     const page = await authedPage(`${E2E_WORKSPACE_PATH}/docs`);
     await page.waitForLoadState("networkidle");
-    await page.getByRole("main").getByText(TITLE).click();
+    // The list pane names the doc as well, so open it from the overview.
+    await page.getByRole("region", { name: "Docs overview" }).getByText(TITLE, { exact: true }).click();
     await page.waitForLoadState("networkidle");
     // DocDetail renders the title as an editable Input once the collab session connects, not a static heading, since docs are inline-editable with no read-only state while live.
     await expect(page.getByLabel("Title", { exact: true })).toHaveValue(TITLE);

@@ -48,9 +48,9 @@ export const useCompleteOwnerWizard = () => {
   return useMutation({
     mutationFn: requires("none", async (instance_url: string) =>
       (await api.post<MeResponse>("/api/auth/onboarding/owner", { instance_url })).data),
+    // No toast: the owner is made mid-wizard, and its Workspace ready view says so at the finish.
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
-      toast.success("Workspace ready");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
