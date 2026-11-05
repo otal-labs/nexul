@@ -47,13 +47,14 @@ listed there, so a new guide page goes into the group it belongs to; `bun run
 test` fails while a guide page is missing from it, and the build fails if
 the file names a page that does not exist. Contributing pages are every page
 in `contributing/`, ordered by `sidebar.order`. `src/lib/docs-tree.ts` turns
-both into the page tree, and the docs home shows one card grid per group from
-the same list.
+both into the page tree, and the docs home lists each group's pages as rows
+(title and description) from the same list.
 
 Every page is also served as markdown at its URL with `.md` in place of the
 trailing slash (`/docs/guide/install.md`), which is what the Copy page button
 copies. Search is a static index built into `/api/search` and searched in the
-browser.
+browser. Each highlighted code block gets its copy button at build time, from
+`src/lib/rehype-code-copy.ts`.
 
 ## Installer downloads
 

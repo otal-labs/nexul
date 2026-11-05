@@ -17,12 +17,21 @@
 	--fd-banner-height: var(--site-header-height);
 }
 
+/* A heading jumped to lands 16px under the header, and under the on-this-page bar below 1280px. */
 html {
-	scroll-padding-top: calc(var(--site-header-height) + 3rem);
+	overflow-x: clip;
+	scroll-padding-top: calc(var(--site-header-height) + 40px + 16px);
 	font-feature-settings: 'cv11', 'ss01';
 }
 
+@media (min-width: 1280px) {
+	html {
+		scroll-padding-top: calc(var(--site-header-height) + 16px);
+	}
+}
+
 body {
+	overflow-x: clip;
 	background: var(--background);
 	-webkit-font-smoothing: antialiased;
 }
@@ -58,8 +67,8 @@ body {
 	transform: none;
 }
 
-/* Sidebar, in the app sidebar's grammar: on the canvas, microheader groups, muted rows, the open page lifted with an
-   ember edge. */
+/* Sidebar, in the app sidebar's grammar: on the canvas, sentence-case group labels, muted rows, the open page as the
+   app's current row (a fixed brand tint, an ink label and the ember edge), so it never reads as the hover. */
 
 #nd-sidebar,
 #nd-sidebar > div {
@@ -67,12 +76,10 @@ body {
 }
 
 :is(#nd-sidebar, #nd-sidebar-mobile) p {
-	margin-top: 1.75rem;
-	font-family: var(--font-mono-stack);
-	font-size: 11px;
+	margin-top: 1.5rem;
+	font-size: 12px;
 	font-weight: 500;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
+	line-height: 16px;
 	color: var(--muted-foreground);
 }
 
@@ -81,7 +88,8 @@ body {
 }
 
 :is(#nd-sidebar, #nd-sidebar-mobile) a[data-active] {
-	padding-block: 6px;
+	min-height: 32px;
+	padding-block: 4px;
 	border-radius: var(--shape-md);
 	font-size: 14px;
 	color: var(--muted-foreground);
@@ -99,7 +107,7 @@ body {
 }
 
 :is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='true'] {
-	background: var(--accent);
+	background: var(--brand-tint);
 	color: var(--foreground);
 	font-weight: 500;
 }
@@ -140,15 +148,182 @@ div:has(+ #nd-sidebar-mobile) {
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 18px no-repeat;
 }
 
-#nd-sidebar-mobile .site-menu-links {
-	padding: 4px 0 0;
+/* The drawer scrolls as one list: the page tree, then the site's links after a hairline, so the links never pin over the
+   tree. Its rows are the phone menu's 44px. */
+#nd-sidebar-mobile {
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 
-/* Page heading: the title in the display face, as the app's page titles. */
+#nd-sidebar-mobile > div:has(> [data-radix-scroll-area-viewport]) {
+	flex: none;
+	overflow: visible;
+}
+
+#nd-sidebar-mobile [data-radix-scroll-area-viewport] {
+	overflow: visible !important;
+}
+
+#nd-sidebar-mobile a[data-active] {
+	min-height: 44px;
+}
+
+/* The close button sits on the first row instead of a row of its own and stays there as the tree scrolls, over a fade
+   that shows once the tree has moved; the scrollbar keeps clear of the corners. */
+#nd-sidebar-mobile > div:first-child {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	height: 0;
+	padding: 0;
+	overflow: visible;
+}
+
+#nd-sidebar-mobile > div:first-child > div {
+	position: relative;
+	justify-content: flex-end;
+	padding: 16px 12px 0 0;
+}
+
+#nd-sidebar-mobile > div:first-child::before {
+	content: '';
+	position: absolute;
+	inset: 0 0 auto;
+	height: 72px;
+	opacity: 0;
+	pointer-events: none;
+	background: linear-gradient(var(--popover) 60%, transparent);
+}
+
+#nd-sidebar-mobile [data-radix-scroll-area-viewport] > div > a:first-child {
+	margin-inline-end: 48px;
+}
+
+#nd-sidebar-mobile::-webkit-scrollbar-track {
+	margin-block: var(--shape-xl);
+}
+
+/* The tree fades into the sheet's foot while there is more below, instead of stopping on a flat line, and the fade goes
+   once the end is reached. */
+#nd-sidebar-mobile::after {
+	content: '';
+	position: sticky;
+	bottom: 0;
+	flex: none;
+	height: 40px;
+	margin-top: -40px;
+	pointer-events: none;
+	background: linear-gradient(transparent, var(--popover) 80%);
+}
+
+@supports (animation-timeline: --list) {
+	#nd-sidebar-mobile {
+		scroll-timeline: --list block;
+	}
+
+	#nd-sidebar-mobile::after {
+		opacity: 0;
+		/* Longhands: folded into the shorthand, the timeline would void the whole declaration. */
+		animation-name: list-foot;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: --list;
+		animation-range: calc(100% - 40px) 100%;
+	}
+
+	#nd-sidebar-mobile > div:first-child::before {
+		animation-name: list-head;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: --list;
+		animation-range: 0 24px;
+	}
+}
+
+@keyframes list-foot {
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes list-head {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+/* The hairline over the site links spans the links' own box, the same inset on both sides with or without a scrollbar. */
+#nd-sidebar-mobile > div:has(> .site-menu-links) {
+	border-top: 0;
+	padding-top: 0;
+}
+
+#nd-sidebar-mobile .site-menu-links {
+	border-top: 1px solid var(--border);
+	padding: 12px 0 0;
+}
+
+/* The links' words start on the tree's edge. */
+#nd-sidebar-mobile .site-menu-links a {
+	padding-inline: 8px;
+}
+
+/* The reading column: 672px of text with the rail 64px after it, and the whole layout centred in the width left over,
+   so a wide window grows the margins, never the line. */
+#nd-docs-layout {
+	--fd-layout-width: calc(var(--fd-sidebar-width) + 42rem + 6rem + var(--fd-toc-width));
+}
+
+[data-layout-main] {
+	justify-items: start;
+}
+
+#nd-page {
+	max-width: calc(42rem + 2rem);
+	gap: 0;
+}
+
+@media (min-width: 768px) {
+	#nd-page {
+		max-width: calc(42rem + 3rem);
+	}
+}
+
+@media (min-width: 1280px) {
+	#nd-page {
+		max-width: calc(42rem + 4rem);
+	}
+}
+
+/* Page heading: the group and Copy page on one row, then the title in the display face and its lede on the full
+   measure. */
+
+.docs-heading {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 16px;
+}
+
+.docs-heading-row {
+	display: flex;
+	min-height: 28px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 8px;
+}
 
 .docs-eyebrow {
-	font-family: var(--font-mono-stack);
-	font-size: 12px;
+	font-size: 13px;
+	line-height: 20px;
 	color: var(--muted-foreground);
 }
 
@@ -157,10 +332,56 @@ div:has(+ #nd-sidebar-mobile) {
 	text-wrap: balance;
 }
 
+.docs-lede {
+	margin-top: 12px;
+	font-size: 16px;
+	line-height: 26px;
+	text-wrap: pretty;
+	color: var(--muted-foreground);
+}
+
 @media (min-width: 768px) {
 	.docs-title {
 		font-size: 32px;
 	}
+
+	.docs-lede {
+		font-size: 18px;
+		line-height: 28px;
+	}
+}
+
+/* Copy page and Edit this page: quiet outline controls, Copy page at the row's 28px. */
+
+[data-copy-page],
+.docs-copy-page {
+	border-color: var(--border) !important;
+	background: transparent !important;
+	color: var(--muted-foreground) !important;
+	border-radius: var(--shape-md) !important;
+}
+
+.docs-copy-page {
+	height: 28px;
+	gap: 4px !important;
+	padding-inline: 8px !important;
+	font-size: 12px !important;
+}
+
+.docs-copy-page svg {
+	width: 14px;
+	height: 14px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:is([data-copy-page], .docs-copy-page):hover {
+		background: var(--accent) !important;
+		color: var(--foreground) !important;
+	}
+}
+
+:is([data-copy-page], .docs-copy-page):active {
+	background: var(--accent) !important;
 }
 
 /* The app's still light field, at half strength and only beside the reading column (the sidebar and the
@@ -193,14 +414,22 @@ div:has(+ #nd-sidebar-mobile) {
 	--tw-prose-bullets: var(--muted-foreground);
 	--tw-prose-counters: var(--muted-foreground);
 	--tw-prose-hr: var(--border);
-	line-height: 1.75;
+	line-height: 1.7;
 }
 
-.prose :is(h2, h3, h4) {
+.prose :is(h2, h3, h4):not(.not-prose *) {
 	font-weight: 600;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.022em;
 	line-height: 1.25;
 	text-wrap: balance;
+}
+
+.prose h2:not(.not-prose *) {
+	font-size: 24px;
+}
+
+.prose h3:not(.not-prose *) {
+	font-size: 18px;
 }
 
 .prose p {
@@ -223,7 +452,10 @@ div:has(+ #nd-sidebar-mobile) {
 	}
 }
 
+/* A chip cut by a line break draws its hairline and padding on both halves. */
 .prose :not(pre) > code {
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
 	border: 1px solid var(--border);
 	border-radius: var(--shape-sm);
 	background: var(--muted);
@@ -238,36 +470,171 @@ div:has(+ #nd-sidebar-mobile) {
 	font-style: normal;
 }
 
-/* Code: the app's console, dark on either canvas; long lines scroll inside it rather than the page. */
+/* Code: the app's console, dark on either canvas, with a copy button. A long line scrolls inside it, its cut edge faded
+   while there is more to the right; the box carries the console so the fade never takes its border. */
 
-.prose pre.shiki {
-	overflow-x: auto;
+.code-block {
+	position: relative;
+	overflow: clip;
 	margin-block: 1.25em;
-	border: 1px solid #232323;
+	border: 1px solid var(--console-edge);
 	border-radius: var(--shape-lg);
-	background: #0b0b0b !important;
-	padding: 14px 0;
+	background: var(--console);
+	color: var(--console-ink);
+}
+
+.prose .code-block pre.shiki {
+	--scrollbar: var(--console-scrollbar);
+	--scrollbar-hover: var(--console-scrollbar-hover);
+	overflow-x: auto;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent !important;
+	padding: 16px 48px 16px 0;
 	font-size: 13px;
 	line-height: 1.65;
 }
 
-.prose pre.shiki code {
+.prose .code-block pre[data-overflow]:not([data-at-end]) {
+	mask-image: linear-gradient(to left, transparent 40px, var(--console) 72px);
+}
+
+/* A finger scrolls the line and the fade says there is more, so phones draw no bar. */
+@media (pointer: coarse) {
+	.prose .code-block pre.shiki {
+		scrollbar-width: none;
+	}
+
+	.prose .code-block pre.shiki::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+.prose .code-block pre.shiki code {
 	border: 0;
 	padding: 0;
 	background: none;
 	font-size: inherit;
 }
 
-/* Tables are ruled data, not boxed cells: a hairline under each row, a muted header over a stronger rule. */
+/* Centred on the first line: half of its 1.65 leading at the console's 13px, plus the 16px padding, less half the button. */
+.code-copy {
+	position: absolute;
+	top: calc(16px + 1.65em / 2 - 16px);
+	font-size: 13px;
+	right: 8px;
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	border-radius: var(--shape-md);
+	background: var(--console);
+	color: var(--console-control);
+	transition:
+		background-color 150ms var(--ease-standard),
+		color 150ms var(--ease-standard);
+}
+
+.code-copy::after {
+	content: '';
+	position: absolute;
+	inset: -6px;
+}
+
+.code-copy:disabled {
+	visibility: hidden;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.code-copy:hover {
+		background: color-mix(in oklab, var(--console) 88%, white);
+		color: white;
+		transition-duration: 0ms;
+	}
+}
+
+.code-copy:active {
+	background: color-mix(in oklab, var(--console) 82%, white);
+}
+
+.code-copy svg {
+	grid-area: 1 / 1;
+	transition:
+		opacity 150ms var(--ease-out),
+		transform 150ms var(--ease-out),
+		filter 150ms var(--ease-out);
+}
+
+.code-copy .icon-done {
+	opacity: 0;
+	transform: scale(0.6);
+	filter: blur(2px);
+}
+
+.code-copy[data-copied] .icon-copy {
+	opacity: 0;
+	transform: scale(0.6);
+	filter: blur(2px);
+}
+
+.code-copy[data-copied] .icon-done {
+	opacity: 1;
+	transform: none;
+	filter: none;
+	transition:
+		opacity 150ms var(--ease-out),
+		transform 350ms var(--ease-spring-pop),
+		filter 150ms var(--ease-out);
+}
+
+:root[data-input='key'] .code-copy svg {
+	transition: none;
+}
+
+.code-block .copy-status {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.code-copy[data-copy-failed] + .copy-status {
+	top: 48px;
+	right: 8px;
+	z-index: 2;
+	width: auto;
+	height: auto;
+	max-width: calc(100% - 16px);
+	padding: 8px 12px;
+	border-radius: var(--shape-lg);
+	background: var(--popover);
+	box-shadow:
+		0 0 0 1px var(--panel-ring),
+		var(--shadow-elevated);
+	color: var(--foreground);
+	font-size: 12px;
+	clip-path: none;
+	white-space: normal;
+}
+
+/* Tables are ruled data, not boxed cells: a hairline under each row, a muted header over a stronger rule. Collapsed,
+   so the row rules draw; separate borders swallow them. */
 
 .prose table {
 	display: block;
 	overflow-x: auto;
+	border: 0;
+	border-collapse: collapse;
+	border-radius: 0;
+	background: none;
 	font-size: 14px;
 	font-variant-numeric: tabular-nums;
 }
 
-.prose thead {
+.prose thead tr {
 	border-bottom: 1px solid color-mix(in oklab, var(--foreground) 22%, transparent);
 }
 
@@ -275,6 +642,7 @@ div:has(+ #nd-sidebar-mobile) {
 	color: var(--muted-foreground);
 	font-size: 13px;
 	font-weight: 500;
+	white-space: nowrap;
 }
 
 .prose tbody tr {
@@ -285,26 +653,89 @@ div:has(+ #nd-sidebar-mobile) {
 	border: 0;
 	padding: 8px 16px 8px 0;
 	background: none;
+	text-align: start;
+	vertical-align: top;
 }
 
-/* The on-this-page rail: muted rows, the section in view in ink. */
+/* A name stays whole: one cut at its hyphen reads as two names. The table scrolls sideways instead. */
+.prose td code {
+	border: 0;
+	background: none;
+	padding: 0;
+	white-space: nowrap;
+}
 
-#nd-toc a {
+/* The on-this-page rail, beside the page and in the bar below 1280px: a straight hairline, the section in view in ink with
+   a 2px ink thumb over the line. Never the ember: the open page in the sidebar is the screen's one "here". */
+
+/* The rail's title sits on the line of the page's group name, its first row level with the title. */
+#nd-toc {
+	padding-top: 62px;
+}
+
+#toc-title {
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 16px;
+	margin-bottom: 8px;
+}
+
+#toc-title svg {
+	display: none;
+}
+
+:is(#nd-toc, [data-toc-popover]) div:has(> a[data-active]) {
+	border-left: 1px solid var(--border);
+}
+
+:is(#nd-toc, [data-toc-popover]) div:has(> a[data-active]) > div:first-child,
+:is(#nd-toc, [data-toc-popover]) a[data-active] > svg {
+	display: none;
+}
+
+:is(#nd-toc, [data-toc-popover]) a[data-active] {
+	padding-block: 4px !important;
+	padding-inline-start: 12px !important;
+	font-size: 13px;
+	line-height: 20px;
 	color: var(--muted-foreground);
+	text-wrap: pretty;
 }
 
-#nd-toc a[data-active='true'] {
+:is(#nd-toc, [data-toc-popover]) a[data-active][style*='32px'] {
+	padding-inline-start: 24px !important;
+}
+
+:is(#nd-toc, [data-toc-popover]) a[data-active][style*='44px'] {
+	padding-inline-start: 36px !important;
+}
+
+:is(#nd-toc, [data-toc-popover]) a[data-active='true'] {
 	color: var(--foreground);
 }
 
-/* Copy page and Edit this page: quiet outline controls. */
+:is(#nd-toc, [data-toc-popover]) a[data-active='true']::before {
+	content: '';
+	position: absolute;
+	left: -1px;
+	top: 4px;
+	bottom: 4px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--foreground);
+}
 
-[data-copy-page],
-.docs-copy-page {
-	border-color: var(--border) !important;
-	background: transparent !important;
-	color: var(--muted-foreground) !important;
-	border-radius: var(--shape-md) !important;
+@media (hover: hover) and (pointer: fine) {
+	:is(#nd-toc, [data-toc-popover]) a[data-active='false']:hover {
+		color: var(--foreground);
+	}
+}
+
+/* Text scrolls under the bar below 1280px, so it is opaque, not frosted. */
+[data-toc-popover] header {
+	background: var(--background) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
 }
 
 /* Inside the docs grid the shared header spans the window, above the sidebar and the table of contents. */
@@ -313,29 +744,66 @@ div:has(+ #nd-sidebar-mobile) {
 	inset-inline: 0;
 }
 
-/* The docs home: one card per page, the app's card on the canvas. */
+/* The docs home: each group a list of rows under its name, a hairline under each row. From 1024px the list flows down
+   two columns, each a stack of its own, so a row is as tall as its own text and no row is left alone on a line. */
 
 .docs-group-label {
-	font-family: var(--font-mono-stack);
-	font-size: 11px;
+	margin-bottom: 4px;
+	font-size: 13px;
 	font-weight: 500;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
+	line-height: 20px;
 	color: var(--muted-foreground);
 }
 
-.doc-card {
-	box-shadow:
-		inset 0 1px 0 0 var(--panel-highlight),
-		0 0 0 1px var(--panel-ring),
-		var(--shadow-card);
-	transition: background-color 150ms var(--ease-standard);
+@media (min-width: 1024px) {
+	.docs-index-list {
+		columns: 2;
+		column-gap: 32px;
+	}
+}
+
+.docs-index-list > li {
+	break-inside: avoid;
+	border-bottom: 1px solid var(--border);
+}
+
+/* The row reaches 8px past the text on each side, so its pressed fill has room while the text keeps the column's edge. */
+.docs-index-row {
+	display: flex;
+	min-height: 44px;
+	flex-direction: column;
+	gap: 2px;
+	margin-inline: -8px;
+	border-radius: var(--shape-md);
+	padding: 12px 8px;
+}
+
+.docs-index-title {
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 22px;
+	color: var(--foreground);
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+
+.docs-index-description {
+	font-size: 13px;
+	line-height: 20px;
+	color: var(--muted-foreground);
+	text-wrap: pretty;
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.doc-card:hover {
-		background: color-mix(in oklab, var(--card) 92%, var(--foreground));
+	.docs-index-row:hover .docs-index-title {
+		text-decoration-color: var(--brand);
 	}
+}
+
+.docs-index-row:active {
+	background: var(--accent);
 }
 
 /* Search: the app's command palette surface, hung at 14% of the viewport so a changing result count only moves its foot. */
@@ -361,7 +829,6 @@ div:has(+ #nd-sidebar-mobile) {
 		top: 14vh !important;
 	}
 }
-
 
 /* Motion. The drawer is the phone menu's sheet on the same clock (site-header.css); Radix waits for these keyframes
    before it unmounts the drawer. Search opens on the app's dialog clock from a pointer and at once from a key. */
@@ -465,8 +932,15 @@ div:has(+ #nd-sidebar-mobile)[data-state='closed'] {
 		animation: overlay-out 150ms var(--ease-standard) both;
 	}
 
-	:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active],
-	.doc-card {
+	:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active] {
 		transition: none;
+	}
+
+	/* The copy mark still says it copied, as a fade in place. */
+	.code-copy svg,
+	.code-copy[data-copied] svg {
+		transform: none;
+		filter: none;
+		transition: opacity 150ms var(--ease-standard) !important;
 	}
 }

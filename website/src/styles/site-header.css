@@ -190,13 +190,13 @@
 	font-size: 11px;
 }
 
-/* The phone menu: the landing pages' <dialog> and the docs sidebar drawer are one sheet, the app's frosted sheet
-   floating 8px from the right edge. */
+/* The phone menu: the landing pages' <dialog> and the docs sidebar drawer are one sheet, the app's solid sheet floating
+   8px from the right edge. A fixed box's percentages leave out a classic scrollbar, where 100vw counts it. */
 .site-sheet,
 #nd-sidebar-mobile {
 	position: fixed;
 	inset: 8px 8px 8px auto;
-	width: min(320px, calc(100vw - 56px));
+	width: min(320px, calc(100% - 56px));
 	height: auto;
 	max-height: none;
 	margin: 0;
@@ -204,9 +204,7 @@
 	border: 1px solid transparent;
 	border-top-color: var(--panel-highlight);
 	border-radius: var(--shape-xl);
-	background: color-mix(in oklab, var(--popover) 88%, transparent);
-	-webkit-backdrop-filter: blur(24px) saturate(1.4);
-	backdrop-filter: blur(24px) saturate(1.4);
+	background: var(--popover);
 	box-shadow:
 		0 0 0 1px var(--panel-ring),
 		var(--shadow-overlay);
@@ -258,7 +256,7 @@
 
 .site-menu-links a[aria-current='page'] {
 	position: relative;
-	background: var(--accent);
+	background: var(--brand-tint);
 	color: var(--foreground);
 	font-weight: 500;
 }
@@ -267,14 +265,14 @@
 	content: '';
 	position: absolute;
 	left: 0;
-	inset-block: 10px;
+	inset-block: 8px;
 	width: 2px;
 	border-radius: 2px;
 	background: var(--brand);
 }
 
 .site-menu-external {
-	gap: 10px;
+	gap: 8px;
 }
 
 .site-menu-external svg {

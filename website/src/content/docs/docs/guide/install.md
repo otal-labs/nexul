@@ -77,7 +77,7 @@ Deployed containers, cloudflared first, reach Nexul at `http://host.docker.inter
 | --- | --- | --- |
 | `nexul-server` | `nexul` | The web app, the API, the MCP server and the logs UI, all on the web port |
 | `nexul-openobserve` | `nexul` | Logs, metrics and traces, on localhost only |
-| `nexul-runner-instance` | root | Builds and deploys on this server. See [Runners](/docs/guide/runners/) |
+| `nexul-runner-instance` | `root` | Builds and deploys on this server. See [Runners](/docs/guide/runners/) |
 | `nexul-automations-instance` | `nexul` | Runs the default automations. See [Automations](/docs/guide/automations/) |
 
 Each service's binary and settings live under `/opt/nexul`. Run `journalctl -u <service>` to see what one is doing.

@@ -1,14 +1,32 @@
 ---
-import DocsGroupSection from './DocsGroupSection.astro';
-import type { docsGroups } from '../../lib/docs-tree';
+import { docUrl, type docsGroups } from '../../lib/docs-tree';
 
 interface Props {
 	groups: ReturnType<typeof docsGroups>;
 }
 
 const { groups } = Astro.props;
+const id = (label: string) => `group-${label.toLowerCase().replaceAll(' ', '-')}`;
 ---
 
-<div class="not-prose mt-6 flex flex-col gap-12">
-	{groups.map((group) => <DocsGroupSection group={group} />)}
+<div class="not-prose mt-10 flex flex-col gap-10">
+	{
+		groups.map((group) => (
+			<section aria-labelledby={id(group.label)}>
+				<h2 id={id(group.label)} class="docs-group-label">
+					{group.label}
+				</h2>
+				<ul class="docs-index-list">
+					{group.pages.map((page) => (
+						<li>
+							<a href={docUrl(page.id)} class="docs-index-row">
+								<span class="docs-index-title">{page.label ?? page.title}</span>
+								<span class="docs-index-description">{page.description}</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		))
+	}
 </div>

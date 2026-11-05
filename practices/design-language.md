@@ -89,7 +89,7 @@ in the three token files; this table holds the roles.
 | `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
 | `well-shade` | `oklch(0 0 0 / 0.45)` | `foreground` at 7% | the board's column well, laid over the panel as a shade so it separates in every palette; a palette with a black panel (Brutalism) sets it lighter, white at 2.5% | web only |
 | `edge-shade` | `oklch(0 0 0 / 0.35)` | `oklch(0.2 0.02 265 / 0.1)` | the 10px gradient a sticky grid column (the Access grids' names, a pinned People column) casts on what scrolls under it | web only |
-| `scrollbar` / `scrollbar-hover` | `foreground` at 18% / 34% | `foreground` at 22% / 40% | a scroller's thumb at rest and under the pointer | web only |
+| `scrollbar` / `scrollbar-hover` | `foreground` at 18% / 34% | `foreground` at 22% / 40% | a scroller's thumb at rest and under the pointer | web and site; the site's console sets its own, `console-scrollbar` / `console-scrollbar-hover`, white at 18% / 34% |
 | `media` | `oklch(0.16 0 0)` | `oklch(0.16 0 0)` | behind a camera feed or a shared screen, and the name chip over one (at 80%): it frames media, not the theme, so it stays near-black in every palette and mode | web only |
 | `panel` | `card` 60% into `background` | `card` | the panel, painted opaque as `panel-opaque`; `--panel-opacity` (85%) sets its mix | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
 | `panel-opaque` | `panel` at `--panel-opacity` over `background` | same | the fill of every panel, and of a band rows scroll under inside one (a list's pinned group row, a record's pinned crumbs) | web only |
@@ -101,7 +101,7 @@ in the three token files; this table holds the roles.
 | `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour | site: Fumadocs' `fd-primary` is this ink |
 | `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
 | `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light | |
-| `brand-tint` | `brand` at 16% | `brand` at 12% | your own chat bubble, under ink: the one bubble in the stream reads as yours without shouting over it | web mixes it from `brand` per palette; phone: precomputed over `background`, `oklch(0.218 0.029 29)` dark, `oklch(0.904 0.021 28)` light |
+| `brand-tint` | `brand` at 16% | `brand` at 12% | your own chat bubble, under ink: the one bubble in the stream reads as yours without shouting over it | web mixes it from `brand` per palette; site: the same mix, as the docs' current row and the phone menu's; phone: precomputed over `background`, `oklch(0.218 0.029 29)` dark, `oklch(0.904 0.021 28)` light |
 | `success` | `#4ade80` | `#15803d` | health, success, and open pull requests | |
 | `warning` | `#fbbf24` | `#8a6100` | in-flight states, as text and icons | |
 | `warning-mark` | `#fbbf24` | `#a07800` | a `warning` dot or fill; 3.5:1 on every light surface, enough for a mark, and a clear amber beside the `brand` ember where `warning` reads as a darker orange at dot size | site: none, it has no status dot |
@@ -115,6 +115,7 @@ in the three token files; this table holds the roles.
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
 | `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain. The still field behind the app draws warm and low only: `field-mid` lit the middle, under the panels, whose flat fill turned its falloff into a disc, so it stays for the showcase surfaces' live field | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
 | `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
+| `console` / `console-edge` / `console-ink` / `console-control` | `#0b0b0b` / `#232323` / `#d4d4d4` / `#a3a3a3` | same | the docs' code blocks: the console fill, its hairline, its text and its copy button, dark in both modes | site only; its token hues are in `website/src/lib/shiki-mono.ts` |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
 | `font-mono` | JetBrains Mono Variable | same | technical data | phone: `JetBrains Mono`, one embedded family with its weights |
@@ -2422,9 +2423,10 @@ each for a reason recorded below:
 
 Tokens. `website/src/styles/tokens.css` holds the app's values under the app's
 names (`--background`, `--surface-2`, `--card`, `--popover`, `--foreground`,
-`--muted-foreground`, `--accent`, `--brand`, `--brand-foreground`, `--border`,
-`--input`, `--focus`, the status hues, the panel and field values, the
-shadows, `--shape-*` and the curves) and maps Fumadocs' `--color-fd-*` onto
+`--muted-foreground`, `--accent`, `--brand`, `--brand-foreground`, `--brand-tint`,
+`--border`, `--input`, `--focus`, `--scrollbar`, the status hues, the panel and
+field values, the shadows, `--shape-*` and the curves, plus the docs console's
+`--console-*`) and maps Fumadocs' `--color-fd-*` onto
 them: `fd-primary` is the ink, as the app's `primary`; `fd-ring` is `focus`;
 `fd-overlay` is the dialog scrim (the canvas at 60%). Colours are written once
 with `light-dark()`; shadows, which change geometry between modes, are
@@ -2489,13 +2491,25 @@ icon in the phone bar too (four icons beside the wordmark on a docs page at
 filled shape outweighed every other control).
 
 Phone menu. Below 768px every page shows the wordmark, search on docs pages,
-the theme toggle and a menu button. The menu is one sheet everywhere: the
-site's frosted sheet, 8px from the right edge at 12px, up to 320px wide, over
-the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
-Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
-sidebar drawer, the page tree first and the same links at its foot. GitHub is
-a row like the others with its mark before the word. Rows are 44px, the
-current one `bg-accent` with the `brand` edge; its close mark is an X on both.
+the theme toggle and a menu button. The menu is one sheet everywhere: a solid
+`popover` sheet, 8px from the right edge at 12px, up to 320px wide (a fixed
+box's percentage, so a classic scrollbar never sits over it), over the dialog
+scrim. On the landing pages it is a `<dialog>` holding Docs, Roadmap,
+Changelog and GitHub, as tall as its links; on docs pages it is the sidebar
+drawer, one scroller holding the page tree and then, after a hairline,
+Roadmap, Changelog and GitHub. Its close mark sits on the first row and stays
+there as the tree scrolls, over a fade that shows once the tree has moved; the
+list fades into the sheet's foot over 40px while there is more below, and the
+hairline over the links is inset the same on both sides. Docs is left out
+there: the tree starts with the docs home, so the drawer shows one current
+mark. GitHub is a row like the others with its mark before the word.
+Rows are 44px, the current one the app's current row
+(`brand-tint`, an ink label at 500, the 2px `brand` edge 8px in); its close
+mark is an X on both. Rejected: the frosted sheet (the app made panels and
+dialogs opaque on 2026-11-02), the links pinned as the drawer's foot (at 812px
+tall they took 211px and cut the tree under a group label, with Docs a second
+current mark beside the open page) and `bg-accent` for the current row (the
+same fill as the hover).
 
 Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
 dark, sun in light). The palette lands in one frame with every colour
@@ -2523,32 +2537,87 @@ hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
 canvas, under the 4.5:1 body text needs; it passes only on the app's white
 sheet) and a 2px underline at rest (heavy in a paragraph with several links).
 
+Reading column. The text holds a 42rem (672px) measure at every width, Inter
+16px at 1.7, `h2` 24px and `h3` 18px at 600. The on-this-page rail sits 64px
+after it, and the layout (sidebar, column, rail) is centred in the width left
+over, so a wide window grows the margins, never the line. A heading jumped to
+lands 16px under the header (and under the on-this-page bar below 1280px).
+Rejected: the column at the library's 900px (about 100 characters a line at
+1440px, the lede wrapping around Copy page).
+
+Heading. The page's group in Inter 13px muted on one row with Copy page at
+its end, then the Fraunces title and its muted lede (16px, 18px from 768px)
+12px under it, both on the full measure. Rejected: Copy page beside the title
+(it narrowed the title and the lede wrapped around it) and the group in mono
+(mono is for technical data, and a group name is not).
+
 Docs sidebar. The app sidebar's grammar on the canvas: the docs home as the
-first row, above the groups, so it is marked when open; mono microheader
-groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
-lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
-from its top and bottom.
+first row, above the groups, so it is marked when open; group labels in Inter
+12px at 500, muted and sentence case, with no icon, as the app's sidebar
+labels; 14px muted rows with the `bg-accent/60` hover that lands at once and
+lets go over 150ms; the open page the app's current row (`brand-tint`, an ink
+label at 500, the 2px `brand` edge 8px in from its top and bottom), 32px
+rows on a desktop and 44px in the phone drawer. Rejected: 36px desktop rows
+(the first screen at 1440px lost a group of reach), mono uppercase tracked
+group labels (a fourth voice beside the title, the body and the code, and
+the app had already moved its sidebar labels to sentence case)
+and the open page in `bg-accent`
+(the hover's own fill, so the open page read as a hovered row).
 
-Code. A console in both modes: `#0b0b0b`, a `#232323` hairline, 8px,
-13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
-`#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
-ember keywords (the accent on something that is not an action; YAML keys read
-as links) and the app's editor hues (green strings read as success and indigo
-as a second accent on a reading page). Astro's own highlighter is off so the
-docs highlighter sees each block's language; with it on, every block rendered
-as plain text.
+On this page. The rail beside the column from 1280px and the bar under the
+header below it list the page's `h2` and `h3` (an `h3` 12px further in) at
+13/20 muted, on a straight 1px `border` hairline; the one section in view
+(the first heading inside the viewport) is ink with a 2px ink thumb over the
+hairline beside it. "On this page" is Inter 12px at 500, level with the
+heading's group row. The bar below 1280px is opaque, as the header is.
+Rejected: the library's rail (a line that curved at every depth change, an
+ember dot for a thumb, and every heading in view marked at once) and an ember
+thumb (the open page in the sidebar is the screen's one ember "here").
 
-Tables, inline code, cards. Tables are the app's ruled data: a hairline under
-each row, a muted 13px header over a stronger rule, tabular figures. Inline
-code is mono at 0.85em on `muted` with a hairline. The docs home cards are
-the app's card (`card`, the panel ring and lit top edge, 8px) under mono
-microheader groups. A group's grid takes the most columns, up to two at 768px,
-three at 1024px and four from 1280px, that leave no row holding one card; at
-two columns an odd last card spans the row. The docs content has no callouts or blockquotes; a
-blockquote takes the app's 2px rule in `foreground` at 25%.
+Code. A console in both modes: `console` (`#0b0b0b`) in a `console-edge`
+(`#232323`) hairline, 8px, `console-ink` 13px mono at 1.65 with 16px padding,
+emphasis from a grey ramp (keywords `#f5f5f5`, strings `#a3a3a3`, comments and
+punctuation `#7c7c7c`, comments italic; the ramp lives in
+`website/src/lib/shiki-mono.ts`). Every block carries a copy button, built
+into the page at build time: a 32px ghost icon in `console-control`, centred on
+the first line, with the home page's icon swap and "Copied" announcement. A
+line wider than the block scrolls inside it, its cut edge fading out before
+the copy button until the end is reached; the 6px thumb shows on a mouse and
+no bar on a touch screen. Rejected: comments and punctuation at `#737373`
+(4.15:1 on the console, under 4.5:1), a `brand` copy button (the ember is the
+home page's one primary action, not a mark on every block), ember keywords
+(the accent on something that is not an action; YAML keys read as links) and
+the app's editor hues (green strings read as success and indigo as a second
+accent on a reading page). Astro's own highlighter is off so the docs
+highlighter sees each block's language; with it on, every block rendered as
+plain text.
 
-Copy page. A quiet outline control (`border` hairline, muted text, 6px) beside
-the title.
+Tables and inline code. Tables are the app's ruled data: collapsed, no box
+and no fill, a hairline under each row, a muted 13px header that does not
+wrap over a stronger rule, tabular figures; a table wider than the column
+scrolls sideways. Code in a cell is bare mono that never breaks. Inline code
+in prose is mono at 0.85em on `muted` with a hairline, its chip drawn on both
+halves when a line break cuts it. The docs content has no callouts or
+blockquotes; a blockquote takes the app's 2px rule in `foreground` at 25%.
+Rejected: separate borders (the library's `border-collapse: separate`
+swallowed the row rules, so tables read as filled boxes).
+
+Docs home. Each group is a list of rows on the canvas under its name (Inter
+13px at 500, muted): the page's title in Inter 15px at 500 over its
+description in 13px muted, a hairline under each row; from 1024px the list
+flows down two columns, each a stack of its own, so a row is as tall as its
+own text. A row's title takes the `brand` underline under the pointer,
+and a press fills the row with `accent`. Picked by the owner on 2026-11-04
+from four built variants. The rows take the index from 5,197px to 4,181px tall
+at 375px; at 1440px it grows from 2,253px to 2,732px, two columns in the
+reading measure against four card columns. Rejected: two columns sharing grid
+rows (a row took the height of the page beside it, up to 40px of dead space),
+the app's card per page (a box per item where rows already separate), one
+card per group of hairline rows (the owner chose the lighter rows) and
+one-line rows in a card (long descriptions cut at 1440px).
+
+Copy page. A quiet 28px outline control (`border` hairline, muted text,
+6px) at the end of the heading's group row.
 
 Search. The app's command palette surface (the popover glass at 12px over the
 dialog scrim), 40rem wide, hung at 14% of the viewport from 768px.

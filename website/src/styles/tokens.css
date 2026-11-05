@@ -48,6 +48,7 @@
 	--primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.17 0.005 265));
 	--brand: light-dark(oklch(0.565 0.19 35), oklch(0.68 0.2 35));
 	--brand-foreground: light-dark(oklch(1 0 0), oklch(0.16 0.03 35));
+	--brand-tint: light-dark(color-mix(in oklab, var(--brand) 12%, transparent), color-mix(in oklab, var(--brand) 16%, transparent));
 
 	--success: light-dark(#15803d, #4ade80);
 	--warning: light-dark(#8a6100, #fbbf24);
@@ -63,6 +64,16 @@
 	--panel-opacity: 85%;
 	--panel-ring: light-dark(oklch(0.2 0.01 265 / 0.08), oklch(1 0 0 / 0.07));
 	--panel-highlight: light-dark(oklch(1 0 0 / 0.9), oklch(1 0 0 / 0.05));
+	--scrollbar: light-dark(color-mix(in oklab, var(--foreground) 22%, transparent), color-mix(in oklab, var(--foreground) 18%, transparent));
+	--scrollbar-hover: light-dark(color-mix(in oklab, var(--foreground) 40%, transparent), color-mix(in oklab, var(--foreground) 34%, transparent));
+
+	/* The docs console, dark in both modes; its token hues live in src/lib/shiki-mono.ts. */
+	--console: #0b0b0b;
+	--console-edge: #232323;
+	--console-scrollbar: oklch(1 0 0 / 0.18);
+	--console-scrollbar-hover: oklch(1 0 0 / 0.34);
+	--console-ink: #d4d4d4;
+	--console-control: #a3a3a3;
 
 	--field-warm: light-dark(color-mix(in oklab, oklch(0.565 0.19 35) 30%, transparent), color-mix(in oklab, oklch(0.68 0.2 35) 34%, transparent));
 	--field-pink: light-dark(oklch(0.75 0.14 350 / 0.2), oklch(0.6 0.17 350 / 0.12));
@@ -114,6 +125,41 @@
 	--shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
 	--shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
 	--panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
+}
+
+/* One scrollbar, no arrows, as the app's. Chromium draws the platform's arrowed bar for any non-auto scrollbar-width or
+   -color, so those stay in Firefox. */
+@layer base {
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	::-webkit-scrollbar-track,
+	::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+
+	::-webkit-scrollbar-button {
+		display: none;
+	}
+
+	::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		border-radius: 9999px;
+		background: var(--scrollbar) padding-box;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background-color: var(--scrollbar-hover);
+	}
+
+	@supports not selector(::-webkit-scrollbar) {
+		* {
+			scrollbar-width: thin;
+			scrollbar-color: var(--scrollbar) transparent;
+		}
+	}
 }
 
 ::selection {
