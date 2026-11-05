@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +88,9 @@ func startPersonalRunner(t *testing.T, c privacyCast, srv *httptest.Server, enro
 // protocol 2 whose T3 Code answers protocol 1 is refused through the runner as before (ADR 0113), and pairing it
 // again now over HTTP or MCP says the same.
 func TestIntegration_PersonalRunnerPairsT3CodeWithNoHumanInput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake t3 is a shell script")
+	}
 	bin := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(bin, "t3"), []byte("#!/bin/sh\necho '{\"id\":\"pc-1\",\"credential\":\"pair-token\"}'\n"), 0o700))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))

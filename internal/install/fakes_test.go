@@ -18,12 +18,14 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/platform/version"
@@ -442,4 +444,23 @@ func (f *fakeExec) callsTo(prefix string) []string {
 		}
 	}
 	return out
+}
+
+// skipOnWindows skips a test of the Linux or macOS installer that cannot run on a Windows machine, saying why.
+func skipOnWindows(t *testing.T, why string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip(why)
+	}
+}
+
+// assertMode checks a file's permission bits; Windows has none to check, so every file reads 0666 there.
+func assertMode(t *testing.T, want os.FileMode, path string, msgAndArgs ...any) {
+	t.Helper()
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		return
+	}
+	assert.Equal(t, want, info.Mode().Perm(), msgAndArgs...)
 }

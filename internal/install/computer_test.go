@@ -96,9 +96,7 @@ func TestInstallComputer_RunsTheRunnerAsASystemServiceOfThePersonWhoTypedSudo(t 
 	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
 	assert.Equal(t, "cred-laptop\n", readFile(t, filepath.Join(dir, "credential")))
 	for _, f := range []string{"credential", "env"} {
-		info, err := os.Stat(filepath.Join(dir, f))
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), f)
+		assertMode(t, 0o600, filepath.Join(dir, f), f)
 	}
 	env, err := readEnvFile(filepath.Join(dir, "env"))
 	require.NoError(t, err)

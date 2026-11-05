@@ -25,6 +25,7 @@ func TestRun_ServiceHostWithoutAUnit_IsAUsageError(t *testing.T) {
 }
 
 func TestServiceHost_OffWindows_Refuses(t *testing.T) {
+	skipOnWindows(t, "on Windows service-host is the real Service Control Manager host")
 	th := newTestHost(t)
 	require.ErrorContains(t, th.serviceHost("nexul-server"), "not Windows")
 }
@@ -328,6 +329,7 @@ func TestInstall_NotRoot_ChangesNothing(t *testing.T) {
 }
 
 func TestInstall_PortTaken_FailsBeforeAnyStep(t *testing.T) {
+	skipOnWindows(t, linuxDirNotFull)
 	th := newTestHost(t)
 	withVersion(t, "v0.2.1")
 	th.PortFree = func(int) bool { return false }
@@ -381,6 +383,9 @@ func TestInstallDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.want != "" {
+				skipOnWindows(t, linuxDirNotFull)
+			}
 			got, err := installDir(tt.dir)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -640,3 +645,5 @@ func TestLocalPort_ReturnsAPortThatCanBeBound(t *testing.T) {
 	require.NoError(t, err, "the probe listener is closed, so the port is free to bind")
 	require.NoError(t, l.Close())
 }
+
+const linuxDirNotFull = "a Linux directory such as /data/nexul is not a full path on Windows"

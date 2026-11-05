@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,9 +63,7 @@ func TestInstallHost_Runner_EnrollsAndRunsAsRootWithItsOwnDirectory(t *testing.T
 	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
 	assert.Equal(t, "cred-edge\n", readFile(t, filepath.Join(dir, "credential")))
 	for _, f := range []string{"credential", "env"} {
-		info, err := os.Stat(filepath.Join(dir, f))
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), f)
+		assertMode(t, 0o600, filepath.Join(dir, f), f)
 	}
 	env, err := readEnvFile(filepath.Join(dir, "env"))
 	require.NoError(t, err)
@@ -122,9 +121,7 @@ func TestInstallHost_Automations_RunsAsNexulWithItsSudoersRule(t *testing.T) {
 	assert.NotContains(t, unit, "docker.service")
 	sudoers := filepath.Join(th.Paths.Sudoers, "nexul-automations-jobs")
 	assert.Equal(t, "nexul ALL=(root) NOPASSWD: "+ctl+" uninstall automations jobs --detach\n", readFile(t, sudoers))
-	info, err := os.Stat(sudoers)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o440), info.Mode().Perm())
+	assertMode(t, 0o440, sudoers)
 	assert.True(t, th.exec.ran("visudo -cf "+sudoers+".new"))
 	assert.True(t, th.exec.ran("chown -R nexul:nexul "+dir))
 	assert.False(t, th.exec.ran("docker"), "an automations host does not need Docker")
@@ -262,7 +259,7 @@ func TestUninstallHost_Detach(t *testing.T) {
 		calls := th.exec.callsTo("systemd-run")
 		require.Len(t, calls, 1)
 		self, _ := th.Executable()
-		assert.Regexp(t, `^systemd-run --unit nexul-uninstall-[a-z2-7]{8} --collect --quiet `+self+` uninstall runner edge --yes$`, calls[0])
+		assert.Regexp(t, `^systemd-run --unit nexul-uninstall-[a-z2-7]{8} --collect --quiet `+regexp.QuoteMeta(self)+` uninstall runner edge --yes$`, calls[0])
 	})
 	t.Run("a non-root caller on Linux goes through sudo -n exactly as called", func(t *testing.T) {
 		th := newTestHost(t)

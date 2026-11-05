@@ -45,6 +45,7 @@ func TestEnsureDockerMac(t *testing.T) {
 	})
 
 	t.Run("no docker installs Colima with Homebrew and starts it at login", func(t *testing.T) {
+		skipOnWindows(t, symlinkNeedsAdmin)
 		th := newTestHost(t)
 		onMac(t, th)
 
@@ -71,6 +72,7 @@ func TestEnsureDockerMac(t *testing.T) {
 	})
 
 	t.Run("no Homebrew with a terminal runs Homebrew's installer attached", func(t *testing.T) {
+		skipOnWindows(t, symlinkNeedsAdmin)
 		th := newTestHost(t)
 		onMac(t, th)
 		th.lookPath(map[string]string{})
@@ -163,6 +165,7 @@ func TestEnsureComposeMac(t *testing.T) {
 		assert.Equal(t, "2.40.0", v)
 	})
 	t.Run("a missing plugin comes from Homebrew and is linked", func(t *testing.T) {
+		skipOnWindows(t, symlinkNeedsAdmin)
 		th := newTestHost(t)
 		onMac(t, th)
 		th.set("docker compose version", "", errors.New("'compose' is not a docker command"))
@@ -284,15 +287,15 @@ func TestPlatformNames(t *testing.T) {
 
 	mac := &Host{GOOS: "darwin", GOARCH: "arm64", Home: "/Users/onik"}
 	assert.Equal(t, "nexul-darwin-arm64", mac.assetName("nexul"))
-	assert.Equal(t, "/Users/onik/nexul", mac.defaultDir())
+	assert.Equal(t, filepath.Join("/Users/onik", "nexul"), mac.defaultDir())
 	assert.Equal(t, "localhost", mac.PublicIP())
 
 	linux := &Host{GOOS: "linux"}
 	assert.Equal(t, DefaultDir, linux.defaultDir())
 	noEnv := func(string) string { return "" }
 	macPaths := pathsFor("darwin", "/Users/onik", noEnv)
-	assert.Equal(t, "/Users/onik/Library/Application Support/nexul/nexul.conf", macPaths.Config)
-	assert.Equal(t, "/Users/onik/Library/LaunchAgents", macPaths.Services)
+	assert.Equal(t, filepath.Join("/Users/onik", "Library", "Application Support", "nexul", "nexul.conf"), macPaths.Config)
+	assert.Equal(t, filepath.Join("/Users/onik", "Library", "LaunchAgents"), macPaths.Services)
 	linuxPaths := pathsFor("linux", "/root", noEnv)
 	assert.Equal(t, "/etc/nexul/nexul.conf", linuxPaths.Config)
 	assert.Equal(t, "/opt/nexul", linuxPaths.UnitRoot)
@@ -314,3 +317,5 @@ func TestReplaceFile_MovesOverTheOldFile(t *testing.T) {
 	assert.Equal(t, "new", string(got))
 	assert.NoFileExists(t, src)
 }
+
+const symlinkNeedsAdmin = "linking the compose plugin needs Developer Mode or an elevated shell on Windows"

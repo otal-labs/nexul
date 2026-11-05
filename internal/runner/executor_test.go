@@ -910,11 +910,11 @@ func TestShellExecutor_checkoutPath_FallsBackToTheRunnersStackRoot(t *testing.T)
 	e := NewShellExecutor(nil, ExecutorConfig{StackRoot: "/srv/nexul"}, testLogger())
 	got, err := e.checkoutPath(DeployRequestedEvent{StackSlug: "api"})
 	require.NoError(t, err)
-	assert.Equal(t, "/srv/nexul/stacks/api/repo", got)
+	assert.Equal(t, filepath.Join("/srv/nexul", "stacks", "api", "repo"), got)
 
 	got, err = e.checkoutPath(DeployRequestedEvent{StackSlug: "api", StackRoot: "/data/nexul"})
 	require.NoError(t, err)
-	assert.Equal(t, "/data/nexul/stacks/api/repo", got, "the machine's stack root wins")
+	assert.Equal(t, filepath.Join("/data/nexul", "stacks", "api", "repo"), got, "the machine's stack root wins")
 
 	_, err = newTestExecutor(nil).checkoutPath(DeployRequestedEvent{StackSlug: "api"})
 	require.Error(t, err)

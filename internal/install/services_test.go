@@ -2,7 +2,6 @@ package install
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,6 +17,7 @@ func TestSystemd_WithoutSystemd_Refuses(t *testing.T) {
 }
 
 func TestSystemdUnit_OpenObserveIsCapped(t *testing.T) {
+	skipOnWindows(t, "a unit joins its env file path with the host's separator, a backslash on Windows")
 	u := Unit{Name: "nexul-openobserve", Kind: kindLogs, Dir: "/opt/nexul/openobserve", Exec: "/opt/nexul/openobserve/openobserve", WorkDir: "/data/nexul/logs", User: "nexul"}
 	assert.Equal(t, `[Unit]
 Description=Nexul logs (OpenObserve)
@@ -88,9 +88,7 @@ func TestLaunchd_Install_WritesThePlistAndBootstrapsIt(t *testing.T) {
 </dict>
 </plist>
 `, readFile(t, plist))
-	info, err := os.Stat(plist)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "the plist carries the unit's secrets")
+	assertMode(t, 0o600, plist, "the plist carries the unit's secrets")
 	assert.Equal(t, []string{
 		"launchctl bootout gui/501/io.nexul.nexul-runner-edge",
 		"launchctl enable gui/501/io.nexul.nexul-runner-edge",

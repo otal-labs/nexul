@@ -1,8 +1,8 @@
 package storage
 
 import (
+	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,8 +58,10 @@ INSERT INTO github_installation_workspaces (account_login, workspace_id, assigne
 func TestGitHubInstallationsRepo_WritesItsEventOnlyWhenTheAssignmentChanges(t *testing.T) {
 	s := newTestStore(t)
 	ctx := t.Context()
+	var sent int
 	event := func() eventbus.OutboxEvent {
-		return eventbus.OutboxEvent{ID: time.Now().Format(time.RFC3339Nano), Topic: repository.TopicInstallationAssigned, Payload: repository.InstallationEvent{AccountID: 11}}
+		sent++
+		return eventbus.OutboxEvent{ID: "evt-" + strconv.Itoa(sent), Topic: repository.TopicInstallationAssigned, Payload: repository.InstallationEvent{AccountID: 11}}
 	}
 	outbox := func() int {
 		var n int

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -233,9 +234,11 @@ func TestService_WriteInstanceEnrollment(t *testing.T) {
 		require.NoError(t, svc.WriteInstanceEnrollment(context.Background()))
 
 		path := filepath.Join(dir, "runner-instance")
-		info, err := os.Stat(path)
-		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		if runtime.GOOS != "windows" {
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		}
 		code, err := os.ReadFile(path)
 		require.NoError(t, err)
 		stored, ok := repo.codes[hostcred.Hash(string(code))]

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -217,9 +218,11 @@ func TestService_WriteSetupCode(t *testing.T) {
 	first, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(string(first), setupCodePrefix))
-	info, err := os.Stat(path)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	}
 	valid, err := s.setupCodeValid(ctx, string(first), s.cfg.Now())
 	require.NoError(t, err)
 	assert.True(t, valid)
