@@ -482,9 +482,10 @@ func TestStartSetup_SessionFailures_FailTheProvider(t *testing.T) {
 				return start(ctx, target, title, prompts)
 			}
 		}, "Could not start the setup turn: boom", 0},
-		{"no project to run in", func(f *setupFixture) {
+		{"no project to run in, and making one fails", func(f *setupFixture) {
 			f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return nil, nil }
-		}, "Laptop has no T3 project and setup runs its turns inside one; create one under Settings → Computers → Projects → Create empty project, or run computer_project_create with a name", 0},
+			f.exch.CreateProjectFn = func(context.Context, harness.Session, string, string) (harness.Project, error) { return harness.Project{}, errBoom }
+		}, "make a folder for setup on Laptop: create nexul-chat on Laptop: boom", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -724,6 +725,44 @@ func TestResolveSetupTurnTarget_NoLinkedProject_UsesTheHarnessFirstProject(t *te
 	f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return nil, errBoom }
 	_, err = f.svc.ResolveSetupTurnTarget(t.Context(), "u1", f.computer.ID, "claude", "")
 	require.ErrorIs(t, err, errBoom)
+}
+
+func TestStartSetup_ComputerWithNoProject_MakesOneFolderAndKeepsItAsTheChatFolder(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	var (
+		mu      sync.Mutex
+		created []string
+		listed  []harness.Project
+	)
+	f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(listed), nil
+	}
+	f.exch.CreateProjectFn = func(_ context.Context, _ harness.Session, title, path string) (harness.Project, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		created = append(created, path)
+		p := harness.Project{ID: "t3-" + title, Title: title, Path: path}
+		listed = append(listed, p)
+		return p, nil
+	}
+
+	run := f.start(t)
+
+	assert.True(t, f.finished(t, run.RunID).Confirmed, "a fresh T3 Code with no project still finishes setup")
+	assert.Equal(t, []string{"~/Code/nexul-chat"}, created, "two providers' turns at once make the folder once")
+	f.mu.Lock()
+	projects := slices.Clone(f.projects)
+	f.mu.Unlock()
+	require.NotEmpty(t, projects)
+	for _, p := range projects {
+		assert.Equal(t, "t3-nexul-chat", p, "every setup session runs in the folder setup made")
+	}
+	stored, err := f.repo.GetComputer(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "t3-nexul-chat", stored.ChatProjectID, "a chat outside any project has somewhere to run next")
 }
 
 func TestSetupInstructions_PerDriver(t *testing.T) {

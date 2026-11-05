@@ -97,6 +97,8 @@ type Service struct {
 	setupRuns sync.WaitGroup
 	// tokenMu keeps two setup runs starting at once from each minting the computer's token, which would revoke the other's.
 	tokenMu sync.Mutex
+	// setupFolderMu keeps two providers' setup turns on a computer with no T3 project from each making its setup folder.
+	setupFolderMu sync.Mutex
 	// pairMu guards pairFailures: why each computer's last pairing through its runner failed.
 	pairMu       sync.Mutex
 	pairFailures map[string]string
@@ -663,7 +665,7 @@ func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (
 }
 
 // ResolveSetupTurnTarget skips the setup gate for the wizard's setup turn only; TestResolveSetupTurnTarget_OnlyTheWizardCallsIt guards it.
-// A picked projectID wins over the computer's chat folder, which wins over its first T3 project.
+// A picked projectID wins over the computer's chat folder, which wins over its first T3 project, made when it has none.
 func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID, provider, projectID string) (*ResolvedTarget, error) {
 	if strings.TrimSpace(computerID) == "" {
 		return nil, fmt.Errorf("%w: a setup turn needs its computer", apperrs.ErrInvalid)
@@ -695,9 +697,30 @@ func (s *Service) setupTurnInFirstProject(ctx context.Context, userID, computerI
 		return nil, fmt.Errorf("list projects on %s: %w", session.Name, err)
 	}
 	if len(projects) == 0 {
-		return nil, fmt.Errorf("%w: %s has no T3 project and setup runs its turns inside one; create one under Settings → Computers → Projects → Create empty project, or run computer_project_create with a name", apperrs.ErrInvalid, session.Name)
+		project, err := s.makeSetupFolder(ctx, userID, session)
+		if err != nil {
+			return nil, err
+		}
+		projects = []harness.Project{project}
 	}
 	return &ResolvedTarget{Computer: session, HarnessProjectID: projects[0].ID, Provider: strings.TrimSpace(provider)}, nil
+}
+
+// setupFolderName is the empty T3 project setup makes on a computer that has none, kept as the computer's chat folder.
+const setupFolderName = "nexul-chat"
+
+// makeSetupFolder gives a freshly installed T3 Code the project setup runs in, and makes it the computer's chat folder.
+func (s *Service) makeSetupFolder(ctx context.Context, userID string, session Computer) (harness.Project, error) {
+	s.setupFolderMu.Lock()
+	defer s.setupFolderMu.Unlock()
+	project, err := s.AddProject(ctx, userID, session.ID, "", setupFolderName)
+	if err != nil {
+		return harness.Project{}, fmt.Errorf("make a folder for setup on %s: %w", session.Name, err)
+	}
+	if _, err := s.UpdateComputer(ctx, userID, session.ID, ComputerPatch{ChatProjectID: &project.ID}); err != nil {
+		logging.FromCtx(ctx).Warn("setup folder not kept as the chat folder", "computer_id", session.ID, "error", err)
+	}
+	return project, nil
 }
 
 // requireSetup is the setup gate (ADR 0063); an empty provider is pinned to the harness's first so the checked one runs.
