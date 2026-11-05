@@ -1469,9 +1469,11 @@ are in `practices/testing.md` section 10.
   React is fast enough for most renders.
 - Every route page is a lazy chunk declared in `pageChunks.tsx`; the page the
   URL opens loads beside the bootstrap request and the rest preload once the
-  first screen settles. The shell (`Layout`, the sidebar, the command
-  palette) never statically imports a page, the rich-text editor, the
-  topology canvas, voice or the shader; a dialog that carries the editor
+  first screen settles. A route whose handle names an area loads its page
+  only once `AreaGate` lets the viewer in, so a viewer turned away never
+  downloads it; `RouterPermissions.test.tsx` counts that load. The shell
+  (`Layout`, the sidebar, the command palette) never statically imports a
+  page, the rich-text editor, the topology canvas, voice or the shader; a dialog that carries the editor
   loads its form when it opens (`loadTicketForm`, `LazyCreateDocForm`).
   `pageChunks.test.tsx` fails when the shell's import graph picks one up
   again.

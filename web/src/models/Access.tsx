@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { AREA_PERMISSION, type Area } from "@nexul/client-core/permissions";
 
 import type { InstanceArea } from "@/models/Permission";
@@ -23,6 +25,8 @@ export interface RouteAccess {
   area?: RouteArea;
   // A page that shows a project, which waits while the one-time access setup is open (ADR 0148).
   needsProject?: boolean;
+  // A gated route's element, which AreaGate loads only once the viewer may open the area.
+  page?: ReactNode;
 }
 
 // A door into the project wizard needs what its first steps write: a new project, creating it and its setup; adding a service, scanning the repository (which takes projects:create), then the project, stack and deploy writes.

@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { matchRoutes, type RouteObject } from "react-router";
 
 import { whenIdle } from "@/lib/idle";
+import type { RouteAccess } from "@/models/Access";
 import { loadTicketForm } from "@/utils/loadTicketForm";
 
 // Every page is its own chunk: a cold start loads the shell and the page it opens on, the rest once the first screen settles.
@@ -12,8 +13,13 @@ const page = <M, C extends ComponentType<Record<string, never>>>(load: () => Pro
   // A page already loaded resolves synchronously, so it renders in the same pass instead of behind a fallback React holds for 300ms.
   const resolved = (component: C) => ({ then: (fulfil: (m: { default: C }) => void) => fulfil({ default: component }) });
   const Page = lazy(() => (loaded ? (resolved(loaded) as unknown as Promise<{ default: C }>) : preload().then((component) => ({ default: component }))));
-  return Object.assign(Page, { preload });
+  return Object.assign(Page, { preload, isLoaded: () => loaded !== undefined });
 };
+
+interface PageChunk {
+  preload: () => Promise<unknown>;
+  isLoaded: () => boolean;
+}
 
 export const AccessPage = page(() => import("@/pages/AccessPage"), (m) => m.AccessPage);
 export const AutomationPage = page(() => import("@/pages/AutomationPage"), (m) => m.AutomationPage);
@@ -76,15 +82,25 @@ const warmed: (() => Promise<unknown>)[] = [
   loadTicketForm,
 ];
 
-const preloadElement = (node: ReactNode): Promise<unknown>[] => {
+const pagesIn = (node: ReactNode): PageChunk[] => {
   if (!isValidElement<{ children?: ReactNode }>(node)) return [];
-  const own = (node.type as { preload?: () => Promise<unknown> }).preload?.();
-  return [...(own ? [own] : []), ...preloadElement(node.props.children)];
+  const own = node.type as Partial<PageChunk>;
+  return [...(own.preload && own.isLoaded ? [own as PageChunk] : []), ...pagesIn(node.props.children)];
 };
 
-// Settles once every page the URL opens on has loaded, failed loads included: the route's error screen reports those.
+// Whether every page an element renders has loaded, so it renders without suspending.
+export const pagesLoaded = (node: ReactNode) => pagesIn(node).every((chunk) => chunk.isLoaded());
+
+// Settles once every page the element renders has loaded, failed loads included: the route's error screen reports those.
+export const loadPages = (node: ReactNode) => Promise.allSettled(pagesIn(node).map((chunk) => chunk.preload()));
+
+// Settles once the pages the URL opens on have loaded; a gated route's page is left to AreaGate, for a viewer it lets in.
 export const preloadMatchedPages = (routes: RouteObject[]) =>
-  Promise.allSettled((matchRoutes(routes, window.location) ?? []).flatMap((match) => preloadElement(match.route.element)));
+  Promise.allSettled(
+    (matchRoutes(routes, window.location) ?? [])
+      .filter((match) => (match.route.handle as RouteAccess | undefined)?.area === undefined)
+      .map((match) => loadPages(match.route.element)),
+  );
 
 const SETTLE_POLL_MS = 500;
 
