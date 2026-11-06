@@ -2626,8 +2626,26 @@ one-line rows in a card (long descriptions cut at 1440px).
 Copy page. A quiet 28px outline control (`border` hairline, muted text,
 6px) at the end of the heading's group row.
 
-Search. The app's command palette surface (the popover glass at 12px over the
-dialog scrim), 40rem wide, hung at 14% of the viewport from 768px.
+Search. The app's command palette: a solid `popover` at 12px over the dialog
+scrim, 40rem wide, hung at 14% of the viewport from 768px. It searches headings
+and paragraphs, never table rows; a page shows at most three hits, one per
+section. A hit is the palette's two-line 48px row: the section's heading in
+14px ink at 500 with its page muted after it, then a one-line excerpt from a
+few words before the first match. A section name never shrinks: it takes what
+its page name leaves and at least 75% of the line, so its page stays named and
+gives way first; a hit in a page's intro names the page once. A match is ink at
+600 to the end of its word, with no underline or fill, and the active row is
+the palette's (`accent`, the 2px `brand` edge). A page that matched by its
+title alone keeps its description as the second line; a page whose only hits
+were table rows is left out. The list fades into the dialog's foot over 40px
+while more lies below. Pages whose title matches come before pages that matched
+in their text. On a touch screen the close control is a 44px X, not the Esc
+keycap. Nothing found reads "No results for" and the query in mono, over the
+docs home, Install and Upgrade as rows to start from. Picked by the owner on
+2026-11-04 from four built variants. Rejected: the library's results (a hit was
+a whole paragraph or a flattened table row, every match underlined), hits
+grouped under a page row (fewer hits fit) and one-line rows without an excerpt
+(nothing said why a section matched).
 
 ### Home page
 

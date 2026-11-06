@@ -53,7 +53,8 @@ both into the page tree, and the docs home lists each group's pages as rows
 Every page is also served as markdown at its URL with `.md` in place of the
 trailing slash (`/docs/guide/install.md`), which is what the Copy page button
 copies. Search is a static index built into `/api/search` and searched in the
-browser. Each highlighted code block gets its copy button at build time, from
+browser; `/api/headings` names the section each hit lands in. Each highlighted
+code block gets its copy button at build time, from
 `src/lib/rehype-code-copy.ts`.
 
 ## Installer downloads

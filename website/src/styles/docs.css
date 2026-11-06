@@ -203,9 +203,9 @@ div:has(+ #nd-sidebar-mobile) {
 	margin-block: var(--shape-xl);
 }
 
-/* The tree fades into the sheet's foot while there is more below, instead of stopping on a flat line, and the fade goes
+/* A list fades into its panel's foot while there is more below, instead of stopping on a flat line, and the fade goes
    once the end is reached. */
-#nd-sidebar-mobile::after {
+:is(#nd-sidebar-mobile, #fd-search-list)::after {
 	content: '';
 	position: sticky;
 	bottom: 0;
@@ -217,11 +217,11 @@ div:has(+ #nd-sidebar-mobile) {
 }
 
 @supports (animation-timeline: --list) {
-	#nd-sidebar-mobile {
+	:is(#nd-sidebar-mobile, #fd-search-list) {
 		scroll-timeline: --list block;
 	}
 
-	#nd-sidebar-mobile::after {
+	:is(#nd-sidebar-mobile, #fd-search-list)::after {
 		opacity: 0;
 		/* Longhands: folded into the shorthand, the timeline would void the whole declaration. */
 		animation-name: list-foot;
@@ -258,6 +258,15 @@ div:has(+ #nd-sidebar-mobile) {
 	to {
 		opacity: 1;
 	}
+}
+
+/* Space after the last result as its margin: list padding would lift the sticky fade off the foot. */
+#fd-search-list {
+	padding-bottom: 0;
+}
+
+#fd-search-list > :last-child {
+	margin-bottom: 8px;
 }
 
 /* The hairline over the site links spans the links' own box, the same inset on both sides with or without a scrollbar. */
@@ -834,15 +843,15 @@ div:has(+ #nd-sidebar-mobile) {
 	background: var(--accent);
 }
 
-/* Search: the app's command palette surface, hung at 14% of the viewport so a changing result count only moves its foot. */
+/* Search: the app's command palette, solid popover over the dialog scrim, hung at 14% of the viewport so a changing
+   result count only moves its foot. Each hit is the palette's two-line row: the section and its page, then the line
+   that matched. */
 
 .site-search-dialog {
 	border: 1px solid transparent !important;
 	border-top-color: var(--panel-highlight) !important;
 	border-radius: var(--shape-xl) !important;
-	background: color-mix(in oklab, var(--popover) 88%, transparent) !important;
-	-webkit-backdrop-filter: blur(24px) saturate(1.4);
-	backdrop-filter: blur(24px) saturate(1.4);
+	background: var(--popover) !important;
 	box-shadow:
 		0 0 0 1px var(--panel-ring),
 		var(--shadow-overlay) !important;
@@ -852,10 +861,140 @@ div:has(+ #nd-sidebar-mobile) {
 	border-color: var(--border) !important;
 }
 
+/* A touch screen has no Escape key, so there the close control is an X with a 44px target. */
+.search-close-mark {
+	display: none;
+	width: 18px;
+	height: 18px;
+}
+
+@media (pointer: coarse) {
+	.search-close {
+		width: 44px;
+		height: 44px;
+		margin-inline-end: -8px;
+		border-color: transparent !important;
+		background: transparent !important;
+	}
+
+	.search-close-key {
+		display: none;
+	}
+
+	.search-close-mark {
+		display: block;
+	}
+}
+
 @media (min-width: 768px) {
 	.site-search-dialog {
 		top: 14vh !important;
 	}
+}
+
+.site-search-dialog [role='option'] {
+	display: flex;
+	min-width: 0;
+	min-height: 48px;
+	flex-direction: column;
+	justify-content: center;
+	gap: 0;
+	border-radius: var(--shape-md);
+	padding: 4px 12px;
+}
+
+.site-search-dialog [role='option'][aria-selected='true']::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 8px;
+	bottom: 8px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--brand);
+}
+
+.search-line {
+	display: flex;
+	min-width: 0;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.search-heading,
+.search-excerpt,
+.search-where {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* A section name never shrinks: it takes what its page name (measured into --where) leaves, the 8px gap and 4px of
+   slack aside, and at least three quarters of the line. */
+.search-heading {
+	flex: none;
+	max-width: max(75%, 100% - var(--where, 0px) - 12px);
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 20px;
+	color: var(--foreground);
+}
+
+.search-where {
+	flex: 0 100 auto;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--muted-foreground);
+}
+
+.search-excerpt {
+	font-size: 13px;
+	line-height: 20px;
+	color: var(--muted-foreground);
+}
+
+.search-excerpt strong,
+.search-heading strong {
+	color: var(--foreground);
+	font-weight: 600;
+}
+
+.search-empty {
+	font-size: 14px;
+	color: var(--muted-foreground);
+}
+
+.search-empty > p {
+	padding: 32px 16px 24px;
+	text-align: center;
+}
+
+/* Nothing found still leaves somewhere to start: the palette's rows, under a hairline. */
+.search-start {
+	display: flex;
+	flex-direction: column;
+	border-top: 1px solid var(--border);
+	padding: 4px 0 8px;
+}
+
+.search-start a {
+	display: flex;
+	min-height: 48px;
+	flex-direction: column;
+	justify-content: center;
+	border-radius: var(--shape-md);
+	padding: 4px 12px;
+	color: inherit;
+	text-decoration: none;
+}
+
+.search-start a:is(:hover, :focus-visible) {
+	background: var(--accent);
+}
+
+.search-empty code {
+	font-family: var(--font-mono-stack);
+	color: var(--foreground);
 }
 
 /* Motion. The drawer is the phone menu's sheet on the same clock (site-header.css); Radix waits for these keyframes
