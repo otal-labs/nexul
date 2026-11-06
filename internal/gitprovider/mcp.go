@@ -26,19 +26,18 @@ type pullRequestListIn struct {
 
 // prSummary is a pull request in a list, its body left for pull_request_get.
 type prSummary struct {
-	Number          int      `json:"number"`
-	Title           string   `json:"title"`
-	State           PRState  `json:"state"`
-	Author          string   `json:"author"`
-	BaseBranch      string   `json:"base_branch"`
-	HeadSHA         string   `json:"head_sha"`
-	LinkedTicketIDs []string `json:"linked_ticket_ids,omitempty"`
+	Number     int     `json:"number"`
+	Title      string  `json:"title"`
+	State      PRState `json:"state"`
+	Author     string  `json:"author"`
+	BaseBranch string  `json:"base_branch"`
+	HeadSHA    string  `json:"head_sha"`
 }
 
 func pullRequestListTool(p GitProvider, g Gate) mcptool.Tool {
 	return mcptool.New("pull_request_list", "List pull requests",
-		"Lists a repository's pull requests from the git provider, newest first, with title, author, base branch, and "+
-			"the tickets they name. Use pull_request_get for one pull request's body and the tickets, docs, bugs, and "+
+		"Lists a repository's pull requests from the git provider, newest first, with title, author, and base branch. "+
+			"Use pull_request_get for one pull request's body and the tickets, docs, bugs, and "+
 			"decisions behind it. Covers only the 100 most recent pull requests in the state.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in pullRequestListIn) (any, error) {
@@ -57,7 +56,7 @@ func pullRequestListTool(p GitProvider, g Gate) mcptool.Tool {
 			for _, pr := range prs {
 				out = append(out, prSummary{
 					Number: pr.Number, Title: pr.Title, State: pr.State, Author: pr.Author,
-					BaseBranch: pr.BaseBranch, HeadSHA: pr.HeadSHA, LinkedTicketIDs: pr.LinkedTicketIDs,
+					BaseBranch: pr.BaseBranch, HeadSHA: pr.HeadSHA,
 				})
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil

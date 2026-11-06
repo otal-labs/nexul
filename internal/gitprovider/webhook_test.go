@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -25,11 +26,11 @@ func prEventPayload(action string, merged bool) []byte {
 		"number": 7,
 		"pull_request": map[string]any{
 			"number": 7,
-			"title":  "Fix login",
-			"body":   "Fixes #42",
+			"title":  "REF-42 Fix login",
+			"body":   "Also covers ref-43.",
 			"state":  "open",
 			"merged": merged,
-			"head":   map[string]any{"ref": "ticket/42-fix-login", "sha": "abc123"},
+			"head":   map[string]any{"ref": "feature/REF-42-fix-login", "sha": "abc123"},
 			"base":   map[string]any{"ref": "main"},
 			"user":   map[string]any{"login": "onik97"},
 		},
@@ -77,7 +78,8 @@ func serveWebhook(t *testing.T, h *WebhookHandler, req *http.Request) *httptest.
 
 func TestWebhookHandler_Opened(t *testing.T) {
 	bus := newFakeBus()
-	h := NewWebhookHandler("shhh", bus)
+	resolver := &fakeTicketResolver{ids: map[string]string{"REF-42": "t-42", "REF-43": "t-43"}}
+	h := NewWebhookHandler("shhh", bus).WithTicketResolver(resolver)
 	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("opened", false)))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -88,8 +90,9 @@ func TestWebhookHandler_Opened(t *testing.T) {
 	assert.Equal(t, "acme", got.Owner)
 	assert.Equal(t, "app", got.Repo)
 	assert.Equal(t, 7, got.PR.Number)
-	assert.Equal(t, "Fixes #42", got.PR.Body)
-	assert.Equal(t, []string{"42"}, got.PR.LinkedTicketIDs)
+	assert.Equal(t, "Also covers ref-43.", got.PR.Body)
+	assert.Equal(t, []string{"REF-42", "REF-43"}, resolver.keys, "the title, body and branch name the keys, each once")
+	assert.Equal(t, []string{"t-42", "t-43"}, got.PR.LinkedTicketIDs)
 	assert.Equal(t, "abc123", got.PR.HeadSHA)
 	assert.Equal(t, "main", got.PR.BaseBranch)
 	assert.Equal(t, "onik97", got.PR.Author)
@@ -387,4 +390,13 @@ func TestWebhookHandler_EventsWithoutADomainEvent_PublishOnlyTheEnvelope(t *test
 			assert.Equal(t, TopicProviderEvent, bus.published[0].Topic)
 		})
 	}
+}
+
+func TestWebhookHandler_TicketResolverFails_Returns500SoGitHubRedelivers(t *testing.T) {
+	bus := newFakeBus()
+	h := NewWebhookHandler("shhh", bus).WithTicketResolver(&fakeTicketResolver{err: errors.New("database is locked")})
+	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("opened", false)))
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.NotEqual(t, TopicPROpened, bus.lastPublished().Topic, "no PR event goes out without its links")
 }

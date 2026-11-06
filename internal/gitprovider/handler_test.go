@@ -25,8 +25,8 @@ func newGitHandler(p GitProvider) http.Handler {
 
 func prsHandler(t *testing.T) http.Handler {
 	return newGitHandler(&fakeProvider{prs: []*PR{
-		{Number: 1, Title: "Fix login", State: PRStateOpen, Author: "alice", LinkedTicketIDs: []string{"42"}},
-		{Number: 2, Title: "Wire FTS", State: PRStateOpen, Author: "bob", LinkedTicketIDs: []string{"42", "43"}},
+		{Number: 1, Title: "Fix login", State: PRStateOpen, Author: "alice"},
+		{Number: 2, Title: "Wire FTS", State: PRStateOpen, Author: "bob"},
 	}})
 }
 
@@ -70,12 +70,4 @@ func TestGitHandler_GetRepo(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &repo))
 		assert.Equal(t, "acme", repo.Owner)
 	})
-}
-
-func TestGitHandler_ListPRs_LinkedTicketCount(t *testing.T) {
-	rec := serve(t, prsHandler(t), http.MethodGet, "/api/repos/acme/app/prs")
-	require.Equal(t, http.StatusOK, rec.Code)
-	var prs []*PR
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &prs))
-	assert.Len(t, prs[1].LinkedTicketIDs, 2, "the review badge counts linked tickets from the pr payload")
 }

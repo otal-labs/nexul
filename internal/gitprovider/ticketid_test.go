@@ -6,34 +6,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLinkedTicketIDs(t *testing.T) {
+func TestTicketKeys(t *testing.T) {
 	tests := []struct {
-		name       string
-		body       string
-		headBranch string
-		want       []string
+		name                string
+		title, body, branch string
+		want                []string
 	}{
-		{"issue keyword in body", "Fixes #123", "", []string{"123"}},
-		{"lowercase keyword", "closes #7", "", []string{"7"}},
-		{"multiple keywords", "fixes #1\nresolves #2", "", []string{"1", "2"}},
-		{"ticket id in body", "Refs TICKET-456", "", []string{"456"}},
-		{"bare ticket mention", "ticket-9 is blocking", "", []string{"9"}},
-		{"keyword and branch", "Fixes #1", "ticket/123-fix-login", []string{"1", "123"}},
-		{"branch only", "", "ticket/42", []string{"42"}},
-		{"branch with slug", "", "ticket/42-slug-name", []string{"42"}},
-		{"branch with underscore", "", "ticket/42_slug", []string{"42"}},
-		{"refs/heads prefixed branch", "", "refs/heads/ticket/7-fix", []string{"7"}},
-		{"feature branch", "", "feature/foo", nil},
-		{"no refs", "just a body", "main", nil},
-		{"empty everything", "", "", nil},
-		{"deduplicates across body and branch", "Fixes #42", "ticket/42-fix", []string{"42"}},
-		{"deduplicates within body", "Fixes #1\nfixes #1", "", []string{"1"}},
-		{"ignores non-referencing issue numbers", "see issue #999", "", nil},
+		{"key leading the title", "NEXUL-112 Show each auto play", "", "", []string{"NEXUL-112"}},
+		{"lowercase key in the body is uppercased", "", "fixes ref-7", "", []string{"REF-7"}},
+		{"key inside a branch path", "", "", "feature/REF-42-fix-login", []string{"REF-42"}},
+		{"prefix with a digit", "", "", "V2API-3", []string{"V2API-3"}},
+		{"keys across fields keep their order", "REF-1", "and WEB-2", "ref-3-x", []string{"REF-1", "WEB-2", "REF-3"}},
+		{"one key named twice is listed once", "REF-42 fix", "Closes REF-42", "ref-42", []string{"REF-42"}},
+		{"a prefix longer than five characters is no key", "", "TICKETS-9", "", nil},
+		{"an issue number is no key", "", "Fixes #42", "ticket/42", nil},
+		{"nothing named", "Fix login", "", "main", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := LinkedTicketIDs(tt.body, tt.headBranch)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, TicketKeys(tt.title, tt.body, tt.branch))
 		})
 	}
 }
