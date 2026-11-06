@@ -645,7 +645,7 @@ mono time in the title line's corner (none while a run is in flight), so
 the line under it takes the row's full width: a muted line of
 where it shows (`On In progress`, or the type for other plays), a bolt and
 `2 auto on` counting the auto plays switched on (in a tight row its words give
-way first, leaving the bolt and the count; the stage never cuts), `Off` and a muted label when disabled, and only when the play needs a
+way first, then the stage cuts; the count and the status never do), `Off` and a muted label when disabled, and only when the play needs a
 look now a status mark and word, first that applies: `3 running`,
 `2 need answers`, `Last run failed`. The open play is one page of sections, not
 tabs: the header (the Enabled switch in its action cluster before Edit and
