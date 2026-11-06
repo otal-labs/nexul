@@ -9,7 +9,7 @@ interface ClarificationRoundsFeedProps {
   readOnly: boolean;
 }
 
-// Every round that asked something, oldest first; one row is open at a time, the first unanswered on load and again
+// Every round that asked something, newest first; one row is open at a time, the first unanswered on load and again
 // when a new round arrives, and earlier rounds fold.
 export const ClarificationRoundsFeed = ({ clarification, readOnly }: ClarificationRoundsFeedProps) => {
   const rounds = askedRounds(clarification);
@@ -37,11 +37,11 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
 
   return (
     <div className="mt-5 space-y-6">
-      {rounds.map((round, i) => (
+      {[...rounds].reverse().map((round, i) => (
         <ClarificationRoundSection
           key={round.round}
           round={round}
-          number={i + 1}
+          number={rounds.length - i}
           current={current}
           readOnly={locked}
           folded={folded(round)}
