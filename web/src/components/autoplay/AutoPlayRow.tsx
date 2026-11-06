@@ -52,7 +52,7 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
       data-off={!autoPlay.enabled || undefined}
       className={cn(leavingRowClass, "group/row flex items-start gap-3 bg-card pr-4 hover:bg-accent")}
     >
-      <button type="button" onClick={() => onOpen(autoPlay)} className="inset-focus min-w-0 flex-1 rounded-md py-3 pl-4 text-left">
+      <button type="button" onClick={() => onOpen(autoPlay)} className="inset-focus m-0.5 mr-0 min-w-0 flex-1 rounded-md py-2.5 pl-3.5 text-left">
         <AutoPlayClauses autoPlay={autoPlay} subject={subject} />
       </button>
       {/* One 20px box on the moment's line, so the switch and the menu centre on it however far the clauses wrap. */}
