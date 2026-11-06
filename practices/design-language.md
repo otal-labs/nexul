@@ -644,7 +644,8 @@ the label (two lines at most, as every list pane title) with the last run's
 mono time in the title line's corner (none while a run is in flight), so
 the line under it takes the row's full width: a muted line of
 where it shows (`On In progress`, or the type for other plays), a bolt and
-`2 auto on` counting the auto plays switched on, `Off` and a muted label when disabled, and only when the play needs a
+`2 auto on` counting the auto plays switched on (in a tight row its words give
+way first, then the stage cuts; the count and the status never do), `Off` and a muted label when disabled, and only when the play needs a
 look now a status mark and word, first that applies: `3 running`,
 `2 need answers`, `Last run failed`. The open play is one page of sections, not
 tabs: the header (the Enabled switch in its action cluster before Edit and
@@ -653,15 +654,32 @@ figures left out: `5 running · 6 need answers · 1 failed this week · 17 runs
 this week · last 2h ago`, the last dropped while a run is in flight, `Not
 run yet` before the first), a facts strip (Shows on, Excluded, Template),
 Starts by itself (one bordered list; a row is the moment in 14px medium,
-then every condition and every priority rule in 12px, values in foreground
-and the glue muted, never "and 2 more"; the queue and limits in a footer on
-`surface-2`), Runs (a Needs answer block of the waiting runs, oldest first and
+then 12px labelled lines on a 72px muted label column, If, Priority and Runs
+on, each value hanging beside its label however far it wraps and a clause the
+rule lacks left out; every condition and every priority rule spelled out,
+never "and 2 more", values in foreground at normal weight and the glue and
+labels muted; an off row turns its moment muted, never faded, its switch at
+full ink; switch and `…` centred on the moment's line; the queue in
+the card's `surface-2` footer only while something is queued, one sentence of
+whose computers the runs wait for and why ("2 queued for Alice's computers,
+waiting their turn"); Runs on names a place, never a role ("The developer's
+computers"), and a yes/no rule reads as a phrase ("Has a linked PR"); an
+off row keeps its labels muted and dims its values to `foreground` at 80%;
+then Limits, a `well-shade` well of label rows (a well straight on the panel
+takes `well-shade`, because `surface-2` is barely a step from the dark
+panel), the daily cap on ticket plays and, under a 12px medium "Your
+computers · runs at once" subhead, each of the viewer's computers, its whole
+name wrapping, with the 1–5 segmented control, every control on one right
+edge with the row `…` pulled in to meet it, the block absent when neither
+applies), Runs (a Needs answer block of the waiting runs, oldest first and
 five at most with Show all N, then Recent, newest first, ten at a time with
 Show more; each 40px row the status mark, a ticket's key in a mono column,
 the target's title in medium, the run's summary muted ("Needs Sam's
 answer" for a waiting run), who started it, and the mono time; in narrow
 runs the starter gives way first, then the summary, so the title keeps
-its room; an empty Runs is the same card with one muted line), then Instructions in a well, ten lines then Show all.
+its room; its Needs answer and Recent subheads sit on the section's edge; an
+empty Runs is the same card with one muted line), then Instructions in a
+`well-shade` well, ten lines then Show all.
 `PlayDetail` and `PlayListRow` in `web/src/components/play/` are the reference.
 
 Inbox. One row per doc or ticket however many notifications it has: the
@@ -1337,7 +1355,9 @@ and ask before they act. A card that edits values saves from its footer with
 disabled (the flat disabled tint) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
 Saved with a check for 1.4s. Settings that apply the moment they are picked
-(Appearance) have no Save. Copying uses
+(Appearance, a play's Limits) have no Save and no confirmation: the control
+shows the value picked while it saves, and only a failed save says so, in an
+error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks

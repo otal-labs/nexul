@@ -94,7 +94,7 @@ describe("the plays list", () => {
     renderPlaysPage();
     await screen.findByText("3 plays in Acme");
 
-    expect(screen.getAllByText(/ auto on$/).map((mark) => mark.parentElement?.textContent)).toEqual(["On In progress·2 auto on·Off"]);
+    expect(screen.getAllByText("auto on").map((mark) => mark.closest(".text-xs")?.textContent)).toEqual(["On In progress·2 auto on·Off"]);
   });
 
   it.each([

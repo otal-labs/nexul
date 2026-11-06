@@ -14,7 +14,7 @@ interface PlayRunListProps {
 
 export const PlayRunList = ({ label, count, runs, onOpen, children }: PlayRunListProps) => (
   <div>
-    <p className="mb-1 flex items-center gap-1.5 px-3 text-xs text-muted-foreground">
+    <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
       {label}
       {count !== undefined && <span className="font-mono tabular-nums">{count}</span>}
     </p>

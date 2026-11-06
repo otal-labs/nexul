@@ -35,7 +35,7 @@ export const PlayInstructionsSection = ({ play }: PlayInstructionsSectionProps) 
         Instructions
       </Microheader>
       {play.instructions !== "" && (
-        <div className="rounded-lg bg-surface-2 px-4 py-3">
+        <div className="rounded-lg bg-well-shade px-4 py-3">
           {/* Ten lines, faded, until opened, so the runs above stay the page's first read; Show all appears only when it cuts. */}
           <p
             ref={markClamped}

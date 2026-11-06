@@ -99,8 +99,6 @@ export const useFetchAutoPlayLimits = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-const limitsToast = (limits: AutoPlayLimits) => `Each ticket now runs at most ${limits.daily_cap_per_ticket} auto plays a day`;
-
 export const useSetAutoPlayLimits = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
@@ -108,7 +106,6 @@ export const useSetAutoPlayLimits = (workspaceId: string) => {
       (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), patch)).data),
     onSuccess: (limits) => {
       client.setQueryData([getAutoPlayLimitsKey, workspaceId], limits);
-      toast.success(limitsToast(limits));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

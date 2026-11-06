@@ -1,8 +1,7 @@
 import { PlusIcon } from "lucide-react";
 
-import { AutoPlayCapLine } from "@/components/autoplay/AutoPlayCapLine";
 import { AutoPlayRow } from "@/components/autoplay/AutoPlayRow";
-import { ComputerRunsLine } from "@/components/autoplay/ComputerRunsLine";
+import { AutoPlayLimits } from "@/components/autoplay/AutoPlayLimits";
 import { PlayQueueNowLine } from "@/components/autoplay/PlayQueueNowLine";
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
@@ -48,13 +47,12 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
               ))}
             </EnterList>
           )}
-          <div className="space-y-1 border-t bg-surface-2 px-4 py-2.5 empty:hidden">
+          <div className="border-t bg-surface-2 px-4 py-2 empty:hidden">
             <PlayQueueNowLine play={play} />
-            {subject === "ticket" && <AutoPlayCapLine workspaceId={play.workspace_id} canWrite={canWrite} />}
-            <ComputerRunsLine />
           </div>
         </div>
       )}
+      {autoPlays && <AutoPlayLimits workspaceId={play.workspace_id} ticket={subject === "ticket"} canWrite={canWrite} />}
     </section>
   );
 };
