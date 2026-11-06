@@ -32,12 +32,13 @@ type shellThread struct {
 	ActivityRunStatus *string `json:"activityRunStatus"`
 	DeletedAt         *string `json:"deletedAt"`
 	// Status is the latest run's status, "idle" without one.
-	Status             string  `json:"status"`
-	LatestRunStartedAt *string `json:"latestRunStartedAt"`
+	Status                 string            `json:"status"`
+	LatestRunStartedAt     *string           `json:"latestRunStartedAt"`
+	PendingBackgroundTasks []json.RawMessage `json:"pendingBackgroundTasks"`
 }
 
 func (t shellThread) update() harness.SessionUpdate {
-	u := harness.SessionUpdate{SessionID: t.ID, Gone: t.DeletedAt != nil}
+	u := harness.SessionUpdate{SessionID: t.ID, Gone: t.DeletedAt != nil, Background: len(t.PendingBackgroundTasks) > 0}
 	if t.LatestRunID != nil && t.ran() {
 		u.Latest = *t.LatestRunID
 	}

@@ -155,5 +155,24 @@ describe("the chat follower", () => {
       expect(useAgentStreamStore.getState().queued).toEqual({});
       expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("working on the first one");
     });
+
+    it("marks a ticket on every board's cached answer while its thread's work runs past the turn, leaving the bubble alone", async () => {
+      const client = chat();
+      const known = { active: {}, waiting: {}, started: {}, queued: {}, background: { "t-7": true } };
+      client.setQueryData(["getActiveTrails", "ticket", "p-1"], known);
+      client.setQueryData(["getActiveTrails", "doc", "p-1"], { ...known, background: {} });
+      const frame = (background: boolean) =>
+        followFrame(chatFollower, "chat.agent.stream", { conversation_id: "c-1", message_id: "", text: "", streaming: false, ticket_id: "t-1", background }, client);
+      await stream({ text: "starting the monitor" });
+
+      await frame(true);
+      expect(client.getQueryData(["getActiveTrails", "ticket", "p-1"])).toMatchObject({ background: { "t-1": true, "t-7": true } });
+      expect(client.getQueryData(["getActiveTrails", "doc", "p-1"])).toMatchObject({ background: {} });
+      expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("starting the monitor");
+
+      await frame(false);
+      expect(client.getQueryData(["getActiveTrails", "ticket", "p-1"])).toMatchObject({ background: { "t-7": true } });
+      expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("starting the monitor");
+    });
   });
 });

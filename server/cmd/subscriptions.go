@@ -517,6 +517,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Queue:     store.PlayQueue,
 		Facts:     playsFacts{store: store},
 		Logger:    logger,
+
+		Background: agentSvc,
 	})
 	if err := svc.playsRunner.ResumeRunsAfterRestart(ctx); err != nil {
 		logger.Error("plays: resume runs after restart", "error", err)
@@ -525,6 +527,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	agentSvc.SetFollower(svc.playsRunner)
 	agentSvc.SetContinuer(svc.playsRunner)
 	svc.presenceKeeper.SetOnSession(agentSvc.OnSessionUpdate)
+	mustSubscribe(ctx, bus, "agent.background", pairing.TopicPresenceChanged, " to forget a dropped computer's background work", agentSvc.HandlePresenceChanged)
 
 	// A moment an auto play waits for queues its run; a run ending frees a slot in someone's queue (ADR 0132).
 	for _, topic := range plays.MomentTopics {

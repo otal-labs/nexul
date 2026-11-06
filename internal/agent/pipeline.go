@@ -45,6 +45,8 @@ type StreamFrame struct {
 	Queued          bool   `json:"queued,omitempty"`
 	// TicketID names a ticket thread's ticket, so its board card shows the turn as work under way.
 	TicketID string `json:"ticket_id,omitempty"`
+	// Background, when set, is whether the ticket thread has harness work running past its turn; the frame carries nothing else.
+	Background *bool `json:"background,omitempty"`
 }
 
 // Conversation is the pipeline's slice of a chat conversation (ADR 0017 seam onto chat).
@@ -240,8 +242,10 @@ type Service struct {
 	ended  map[string]endedTurn     // ticket or doc id -> its thread's last turn, until that thread is settled
 	// following holds the conversations a catch-up was started on, until its turn ends (ADR 0127).
 	following map[string]bool
-	follower  ThreadFollower
-	continuer RunContinuer
+	// background holds the ticket threads, by harness thread, the harness reports work running on past its turn.
+	background map[string]backgroundWork
+	follower   ThreadFollower
+	continuer  RunContinuer
 }
 
 // activeTurn is an in-flight turn: the client it runs on and the target to interrupt.
@@ -286,6 +290,7 @@ func NewService(cfg Config) *Service {
 		active:        map[string][]*activeTurn{},
 		ended:         map[string]endedTurn{},
 		following:     map[string]bool{},
+		background:    map[string]backgroundWork{},
 	}
 }
 

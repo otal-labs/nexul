@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleHelp, Clock, LoaderCircle, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -8,8 +8,8 @@ import { findTicketPerson } from "@nexul/client-core/ticketPeople";
 
 import type { DropTargetData } from "@/components/board/dragMove";
 import { CardPerson } from "@/components/board/CardPerson";
+import { CardRunMarks } from "@/components/board/CardRunMarks";
 import { animateNearSlot } from "@/components/board/dragPreview";
-import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
@@ -17,14 +17,12 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { getProjectKey } from "@/hooks/ProjectHooks";
 import { ticketIdByKeyQuery, ticketQuery } from "@/hooks/TicketHooks";
-import { useRunState } from "@/hooks/TrailHooks";
 import { useFittingChildren } from "@/hooks/useFittingChildren";
 import { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
-import { useTicketAgentTurnStart } from "@/stores/agentStreamStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface TicketCardProps {
@@ -43,16 +41,10 @@ const CARD_LABELS = 2;
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
 export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBodyProps) => {
-  const { prefix, ticketTypes, labelColors, threadIndicators, statuses, activeTrails, people } = useBoardCardData();
+  const { prefix, ticketTypes, labelColors, threadIndicators, statuses, people } = useBoardCardData();
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
   const shown = findTicketPerson(people, person);
   const hasThread = threadIndicators?.[ticket.id] === true;
-  const runState = useRunState("ticket", ticket.id, activeTrails);
-  const runStartedAt = activeTrails?.started[ticket.id];
-  const runQueued = activeTrails?.queued[ticket.id] !== undefined;
-  // A mention with no play behind it is a plain turn, with no trail; the card still shows the Agent at work.
-  const turnStartedAt = useTicketAgentTurnStart(ticket.id);
-  const turning = runState === undefined && turnStartedAt !== undefined;
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
@@ -96,40 +88,6 @@ export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBo
       )}
     </>
   );
-  const run = (
-    <>
-      {runState === undefined && runQueued && !turning && (
-        <Clock className="size-3 shrink-0 text-info" role="img" aria-label="Play queued">
-          <title>Play queued</title>
-        </Clock>
-      )}
-      {runState === "waiting" && (
-        <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="Play waiting for an answer">
-          <title>Play waiting for an answer</title>
-        </CircleHelp>
-      )}
-      {runState !== undefined && runState !== "waiting" && (
-        <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running">
-          <title>Play running</title>
-        </LoaderCircle>
-      )}
-      {runState !== undefined && runState !== "waiting" && runStartedAt !== undefined && (
-        <span className="-ml-0.5">
-          <RunTimer startedAt={runStartedAt} />
-        </span>
-      )}
-      {turning && (
-        <>
-          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Agent working">
-            <title>Agent working</title>
-          </LoaderCircle>
-          <span className="-ml-0.5">
-            <RunTimer startedAt={new Date(turnStartedAt).toISOString()} />
-          </span>
-        </>
-      )}
-    </>
-  );
   const thread = hasThread && (
     <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a thread">
       <title>Has a thread</title>
@@ -143,7 +101,7 @@ export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBo
         <span className="shrink-0 tabular-nums">{prefix}-{ticket.number}</span>
         {/* Marks wrap out of the clipped line from the end, the thread first, then the timer; the empty before keeps a lone icon on the key's line. */}
         <span className="flex h-4 min-w-0 flex-1 flex-wrap content-start items-center justify-end gap-x-1.5 overflow-hidden before:h-4 before:content-['']">
-          {run}
+          <CardRunMarks ticketId={ticket.id} />
           {thread}
         </span>
         <CardPerson ticket={ticket} person={person} shown={shown} assignable={assignable} />

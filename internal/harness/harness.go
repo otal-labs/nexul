@@ -222,6 +222,8 @@ type SessionUpdate struct {
 	Latest string
 	// Working is whether a turn on the session is under way.
 	Working bool
+	// Background is work the session left running past its turn: a command, a monitor or a subagent.
+	Background bool
 	// Gone is a session deleted in the harness.
 	Gone bool
 }

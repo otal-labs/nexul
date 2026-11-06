@@ -89,6 +89,14 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	return slices.DeleteFunc(list, func(t *Trail) bool { return playID != "" && t.PlayID != playID }), nil
 }
 
+// backgroundTargets takes only targets already checked readable, since the harness's report carries no access of its own.
+func (r *Runner) backgroundTargets(targetType TargetType, ids []string) map[string]bool {
+	if r.background == nil || targetType != TargetTicket {
+		return map[string]bool{}
+	}
+	return r.background.BackgroundTickets(ids)
+}
+
 // ActiveTrails maps each target with an active trail to that trail; targets the caller cannot read are left out, not refused.
 func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]*Trail, error) {
 	if !targetType.valid() {
