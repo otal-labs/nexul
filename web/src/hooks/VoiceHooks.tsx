@@ -11,23 +11,22 @@ import type { LiveFollower } from "@/lib/live";
 
 export const getVoiceOccupancyKey = "getVoiceOccupancy";
 
+// Only a fetch seeds the store: a reader mounting on cached data must not roll back the frames applied since.
 const useFetchVoiceOccupancy = (enabled: boolean) =>
   useQuery({
     queryKey: [getVoiceOccupancyKey],
-    queryFn: async () => (await api.get<VoiceOccupancy>("/api/voice/occupancy")).data,
+    queryFn: async () => {
+      const { data } = await api.get<VoiceOccupancy>("/api/voice/occupancy");
+      useVoiceOccupancyStore.getState().hydrate(data);
+      return data;
+    },
     enabled,
   });
 
-// Seeds voiceOccupancyStore once, then it stays live off voice.occupancy.changed frames — no refetching after.
+// Seeded by the fetch, then kept live by voice.occupancy.changed frames.
 export const useVoiceOccupancy = (enabled = true): VoiceOccupancy => {
-  const { data } = useFetchVoiceOccupancy(enabled);
-  const hydrate = useVoiceOccupancyStore((s) => s.hydrate);
-  const occupancy = useVoiceOccupancyStore((s) => s.occupancy);
-  useEffect(() => {
-    if (data) hydrate(data);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
-  return occupancy;
+  useFetchVoiceOccupancy(enabled);
+  return useVoiceOccupancyStore((s) => s.occupancy);
 };
 
 type LiveKit = typeof import("livekit-client");

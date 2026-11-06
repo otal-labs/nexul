@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
+import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { useHiddenThreadStore } from "@/stores/hiddenThreadStore";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
@@ -179,6 +180,31 @@ describe("ChatSidebarSection", () => {
 
     expect(await screen.findByText("chat-page")).toBeInTheDocument();
     expect(useVoiceCallStore.getState().activeConversationId).toBe("c3");
+  });
+
+  it("keeps someone who just joined listed when the channel's call opens after their join", async () => {
+    // The app's client keeps a snapshot fresh for 30s, so the call section's mount reads the cached one.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } });
+    const CallSection = () => {
+      useVoiceOccupancy();
+      return null;
+    };
+    const tree = (callOpen: boolean) => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ChatSidebarSection collapsed={false} />
+          {callOpen && <CallSection />}
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(tree(false));
+    expect(await screen.findByTitle("Dana")).toBeInTheDocument();
+
+    act(() => useVoiceOccupancyStore.getState().setChannel("c3", [...occupancy.c3, { identity: "u1", name: "Onik" }]));
+    rerender(tree(true));
+
+    expect(await screen.findByTitle("Onik")).toBeInTheDocument();
+    expect(screen.getByTitle("Dana")).toBeInTheDocument();
   });
 
   it("lists doc threads under Threads, titled with their doc", async () => {
