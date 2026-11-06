@@ -484,7 +484,9 @@ func TestStartSetup_SessionFailures_FailTheProvider(t *testing.T) {
 		}, "Could not start the setup turn: boom", 0},
 		{"no project to run in, and making one fails", func(f *setupFixture) {
 			f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return nil, nil }
-			f.exch.CreateProjectFn = func(context.Context, harness.Session, string, string) (harness.Project, error) { return harness.Project{}, errBoom }
+			f.exch.CreateProjectFn = func(context.Context, harness.Session, string, string) (harness.Project, error) {
+				return harness.Project{}, errBoom
+			}
 		}, "make a folder for setup on Laptop: create nexul-chat on Laptop: boom", 0},
 	}
 	for _, tt := range tests {
