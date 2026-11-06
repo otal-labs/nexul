@@ -11,6 +11,7 @@ import {
   markCachedMessageDeleted,
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
+import { getActiveTrailsKey, type ActiveTargets } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import type { ConversationDeleted, Message } from "@/models/Chat";
 import type { Handoff } from "@/models/Handoff";
@@ -35,7 +36,19 @@ interface AgentStreamPayload {
   // Set only on a frame saying the turn answering this message entered or left the harness's queue, as queued says.
   queued_message_id?: string;
   queued?: boolean;
+  // Set only on a frame saying the ticket thread's harness work running past its turn started or ended.
+  background?: boolean;
 }
+
+// A frame names no project, so every board's cached answer takes it; a card only reads its own ticket's entry.
+const markBackground = (client: QueryClient, ticketId: string, running: boolean) =>
+  client.setQueriesData<ActiveTargets>({ queryKey: [getActiveTrailsKey, "ticket"] }, (known) => {
+    if (!known) return known;
+    const background = { ...known.background };
+    delete background[ticketId];
+    if (running) background[ticketId] = true;
+    return { ...known, background };
+  });
 
 // Message frames carry the whole message, so they patch the cached list instead of triggering a refetch.
 interface MessagePayload {
@@ -132,7 +145,11 @@ export const chatFollower: LiveFollower = {
     markCachedMessageDeleted(client, conversationId, messageId, deletedAt);
     return refetchUnread(client, [workspaceId, ...holdingWorkspaces(client, conversationId)]);
   },
-  "chat.agent.stream": (p: AgentStreamPayload) => {
+  "chat.agent.stream": (p: AgentStreamPayload, { client }) => {
+    if (p.background !== undefined) {
+      if (p.ticket_id) markBackground(client, p.ticket_id, p.background);
+      return;
+    }
     if (p.queued_message_id) {
       useAgentStreamStore.getState().setQueued(p.queued_message_id, p.queued === true);
       return;

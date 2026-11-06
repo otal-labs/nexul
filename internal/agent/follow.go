@@ -42,11 +42,17 @@ func (s *Service) SetFollower(f ThreadFollower) {
 // is watching: work under way, or a turn newer than the last one a turn here saw end (ADR 0127). It never blocks the
 // harness's stream for longer than one lookup.
 func (s *Service) OnSessionUpdate(userID, computerID string, u harness.SessionUpdate) {
-	if u.Gone || u.SessionID == "" || userID == "" {
+	if u.SessionID == "" || userID == "" {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), lookupWithin)
 	defer cancel()
+	if u.Gone || !u.Background {
+		s.endBackground(ctx, u.SessionID)
+	}
+	if u.Gone {
+		return
+	}
 	conv, err := s.conversations.ConversationByThread(ctx, u.SessionID)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return
@@ -54,6 +60,9 @@ func (s *Service) OnSessionUpdate(userID, computerID string, u harness.SessionUp
 	if err != nil {
 		s.log.Warn("agent: read the conversation of a harness thread failed", "thread", u.SessionID, "error", err)
 		return
+	}
+	if u.Background {
+		s.noteBackground(ctx, u.SessionID, computerID, conv)
 	}
 	if !s.claimFollow(conv.ID) {
 		return

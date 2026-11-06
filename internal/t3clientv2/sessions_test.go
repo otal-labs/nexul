@@ -21,6 +21,8 @@ func TestWatchSessions_ReportsEachThreadsNewsOnceUntilClosed(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 2)
 	f.ShellThreads = []any{shellRow("th-1", "run-1", nil, 4), shellRow("th-2", nil, nil, 0)}
+	monitoring := shellRow("th-1", "run-2", nil, 13)
+	monitoring["pendingBackgroundTasks"] = []any{map[string]any{"taskId": "task-1", "kind": "monitor", "description": "Watch the tests"}}
 	updates := make(chan harness.SessionUpdate, 16)
 
 	conn, err := h.WatchSessions(t.Context(), laptop(f), func(u harness.SessionUpdate) { updates <- u })
@@ -30,13 +32,17 @@ func TestWatchSessions_ReportsEachThreadsNewsOnceUntilClosed(t *testing.T) {
 		map[string]any{"kind": "thread.updated", "sequence": 2, "location": "active", "thread": shellRow("th-1", "run-1", nil, 9)},
 		map[string]any{"kind": "thread.updated", "sequence": 3, "location": "active", "thread": shellRow("th-1", "run-2", "running", 10)},
 		map[string]any{"kind": "thread.updated", "sequence": 4, "location": "active", "thread": shellRow("th-1", "run-2", "waiting", 12)},
-		map[string]any{"kind": "thread.removed", "sequence": 5, "location": "active", "threadId": "th-2"},
+		map[string]any{"kind": "thread.updated", "sequence": 5, "location": "active", "thread": monitoring},
+		map[string]any{"kind": "thread.updated", "sequence": 6, "location": "active", "thread": shellRow("th-1", "run-2", nil, 14)},
+		map[string]any{"kind": "thread.removed", "sequence": 7, "location": "active", "threadId": "th-2"},
 	))
 
 	want := []harness.SessionUpdate{
 		{SessionID: "th-1", Latest: "run-1"},
 		{SessionID: "th-2"},
 		{SessionID: "th-1", Latest: "run-2", Working: true},
+		{SessionID: "th-1", Latest: "run-2"},
+		{SessionID: "th-1", Latest: "run-2", Background: true},
 		{SessionID: "th-1", Latest: "run-2"},
 		{SessionID: "th-2", Gone: true},
 	}

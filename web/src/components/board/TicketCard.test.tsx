@@ -270,6 +270,23 @@ describe("TicketCard", () => {
     expect(screen.queryByLabelText("Agent working")).not.toBeInTheDocument();
   });
 
+  it("marks work the turn left running in the background, never beside a spinner", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
+      if (url === "/api/plays/runs/active") return { data: { active: {}, background: { "t-1": true } } };
+      return { data: [] };
+    });
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(await screen.findByLabelText("Working in the background")).toBeInTheDocument();
+
+    act(() => useAgentStreamStore.getState().setStream("c-1", { messageId: "", text: "", streaming: true, ticketId: "t-1" }));
+    expect(screen.getByLabelText("Agent working")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Working in the background")).not.toBeInTheDocument();
+
+    act(() => useAgentStreamStore.getState().clearStream("c-1"));
+    expect(screen.getByLabelText("Working in the background")).toBeInTheDocument();
+  });
+
   it("shows no chat indicator when the ticket has no thread", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/tickets") return { data: [ticket("t-1", "Fix login", "open")] };

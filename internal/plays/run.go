@@ -262,6 +262,8 @@ type RunnerConfig struct {
 	Rounds ClarifyRounds
 	// Checkouts is optional; nil names every project source with no checkout on the run's computer.
 	Checkouts Checkouts
+	// Background is optional; nil means no ticket shows harness work left running past its turn.
+	Background BackgroundReader
 	// Queue and Facts are optional; without both no auto play matches and the queue never runs.
 	Queue  QueueRepo
 	Facts  FactReader
@@ -269,6 +271,11 @@ type RunnerConfig struct {
 	Now    func() time.Time
 	// SilenceTimeout defaults to HarnessSilenceTimeout; tests shorten it.
 	SilenceTimeout time.Duration
+}
+
+// BackgroundReader says which tickets' threads have harness work running after their turn ended.
+type BackgroundReader interface {
+	BackgroundTickets(ticketIDs []string) map[string]bool
 }
 
 // Runner starts play runs and keeps their trails (ADR 0055).
@@ -297,6 +304,8 @@ type Runner struct {
 	silence   time.Duration
 	// kick wakes the queue's dispatcher; one buffered kick is enough, since a pass reads everything due.
 	kick chan struct{}
+	// background is optional, see RunnerConfig.Background.
+	background BackgroundReader
 
 	starts starterLocks
 
@@ -321,7 +330,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, computers: cfg.Computers, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, queue: cfg.Queue, facts: cfg.Facts,
+		live: cfg.Live, users: cfg.Users, computers: cfg.Computers, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, background: cfg.Background, queue: cfg.Queue, facts: cfg.Facts,
 		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1),
 		runs: map[string]*trailObserver{},
 	}

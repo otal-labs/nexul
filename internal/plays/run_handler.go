@@ -299,12 +299,13 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	if targetType == "" && q.Has("ticket_ids") {
 		targetType, raw = TargetTicket, q.Get("ticket_ids")
 	}
-	var ids []string
+	var ids, listed []string
 	if raw != "" {
 		ids = strings.Split(raw, ",")
 	}
 	if projectID := q.Get("project_id"); projectID != "" {
-		listed, err := h.targets.TargetIDs(r.Context(), targetType, projectID)
+		var err error
+		listed, err = h.targets.TargetIDs(r.Context(), targetType, projectID)
 		if err != nil {
 			httpx.WriteError(w, err)
 			return
@@ -333,7 +334,7 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	for target, it := range items {
 		queued[target] = it.ID
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started, "queued": queued})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started, "queued": queued, "background": h.runner.backgroundTargets(targetType, listed)})
 }
 
 func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {

@@ -769,7 +769,9 @@ A card is three rows. An eyebrow in 11px mono leads: the key, then at its end
 the run marks, the thread mark and the 16px avatar of whoever acts next, all
 centred on the key's cap height. For a viewer who can write the ticket the avatar is a button (a 24px hit area, a `muted-foreground` ring at 40% on hover and while open) that opens the person picker for that role under a microheader naming it, the current person checked; with no one set it is the default face, a `muted-foreground` disc at 20% holding a user glyph in `muted-foreground`. The run timer shows one unit ("45s", "16m",
 "2h"); on a narrow card the thread mark gives way first, then the timer, and
-the spinner stays. The title takes the
+the spinner stays. Once the turn ends, work it left running in the harness (a
+command, a monitor, a subagent) is a 6px `warning-mark` dot in the run marks'
+place on the `status-pulse`, holding still under reduced motion. The title takes the
 card's full width under it, in 13px (`text-row`) at weight 450 (`font-book`; 500 read as bold at that
 size on a dark card), at most three lines. A blocked card adds "Blocked by" and
 the key on a line of its own. Last comes the type as its icon (a bug in its

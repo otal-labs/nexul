@@ -10,7 +10,8 @@ Decision: Nexul keeps the shell open on every computer it holds, and follows a t
 - **Where it listens.** The presence connection Nexul already holds to a paired computer while its owner has Nexul
   open (a browser tab or the phone app) subscribes to the shell. A harness that can report sessions implements
   `harness.SessionWatcher`; presence uses it in place of `Hold`, so no second connection opens. Each thread is
-  reported only when its newest run, whether a run is working, or its deletion changes.
+  reported only when its newest run, whether a run is working, whether it has background work, or its deletion
+  changes. Background work is never news; it only marks the ticket's board card.
 - **What counts as news.** Every turn that hears its end from the harness records a marker on its conversation
   (`conversations.agent_seen`): the newest run it followed that T3 finished with. A turn that lost the harness
   records none. A thread linked to a conversation has news when no turn here runs on it and either a run is working
