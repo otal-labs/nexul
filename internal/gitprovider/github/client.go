@@ -386,15 +386,14 @@ func toRepo(r *githubapi.Repository) *gitprovider.Repo {
 
 func toPR(p *githubapi.PullRequest) *gitprovider.PR {
 	return &gitprovider.PR{
-		Number:          p.GetNumber(),
-		Title:           p.GetTitle(),
-		Body:            p.GetBody(),
-		State:           gitprovider.PRState(p.GetState()),
-		Merged:          !p.GetMergedAt().IsZero(),
-		HeadSHA:         p.GetHead().GetSHA(),
-		BaseBranch:      p.GetBase().GetRef(),
-		Author:          p.GetUser().GetLogin(),
-		LinkedTicketIDs: gitprovider.LinkedTicketIDs(p.GetBody(), p.GetHead().GetRef()),
+		Number:     p.GetNumber(),
+		Title:      p.GetTitle(),
+		Body:       p.GetBody(),
+		State:      gitprovider.PRState(p.GetState()),
+		Merged:     !p.GetMergedAt().IsZero(),
+		HeadSHA:    p.GetHead().GetSHA(),
+		BaseBranch: p.GetBase().GetRef(),
+		Author:     p.GetUser().GetLogin(),
 	}
 }
 

@@ -1,34 +1,32 @@
 package gitprovider
 
-import "regexp"
-
-var (
-	// refIssueRe matches "fixes #123" / "closes #123" / "resolves #123" / "refs #123".
-	refIssueRe = regexp.MustCompile(`(?i)(?:fixes|closes|resolves|refs)\s+#(\d+)`)
-	// refTicketRe matches "refs TICKET-456" and any bare "ticket-456" mention.
-	refTicketRe = regexp.MustCompile(`(?i)ticket[-_](\d+)`)
-	// ticketBranchRe matches "ticket/123" and "ticket/123-slug".
-	ticketBranchRe = regexp.MustCompile(`(?i)^(?:refs/heads/)?ticket/(\d+)(?:[-_].*)?$`)
+import (
+	"context"
+	"regexp"
+	"strings"
 )
 
-// LinkedTicketIDs extracts ticket refs from a PR body ("fixes #N"/"TICKET-N") and head branch ("ticket/<id>").
-func LinkedTicketIDs(body, headBranch string) []string {
+// ticketKeyRe matches a ticket key, PREFIX-NUMBER (ADR 0004), as a whole word: "NEXUL-112", "feature/ref-42-login".
+var ticketKeyRe = regexp.MustCompile(`\b([A-Za-z][A-Za-z0-9]{1,4}-[0-9]+)\b`)
+
+// TicketKeys returns the ticket keys named in a PR's title, body, and head branch, uppercased, in order, once each.
+func TicketKeys(texts ...string) []string {
 	seen := make(map[string]bool)
-	var ids []string
-	add := func(id string) {
-		if id != "" && !seen[id] {
-			seen[id] = true
-			ids = append(ids, id)
+	var keys []string
+	for _, text := range texts {
+		for _, m := range ticketKeyRe.FindAllStringSubmatch(text, -1) {
+			key := strings.ToUpper(m[1])
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			keys = append(keys, key)
 		}
 	}
-	for _, m := range refIssueRe.FindAllStringSubmatch(body, -1) {
-		add(m[1])
-	}
-	for _, m := range refTicketRe.FindAllStringSubmatch(body, -1) {
-		add(m[1])
-	}
-	if m := ticketBranchRe.FindStringSubmatch(headBranch); m != nil {
-		add(m[1])
-	}
-	return ids
+	return keys
+}
+
+// TicketResolver turns the keys a repository's PR names into ticket ids, dropping keys that name no ticket.
+type TicketResolver interface {
+	TicketIDs(ctx context.Context, owner, repo string, keys []string) ([]string, error)
 }

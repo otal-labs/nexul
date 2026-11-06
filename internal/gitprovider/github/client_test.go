@@ -125,8 +125,6 @@ func TestListPRs(t *testing.T) {
 		assert.Contains(t, gotQuery, "state=open")
 		assert.NotContains(t, gotQuery, "per_page")
 		assert.Equal(t, "Fix a", prs[0].Title)
-		assert.Equal(t, []string{"42"}, prs[0].LinkedTicketIDs)
-		assert.Empty(t, prs[1].LinkedTicketIDs)
 	})
 	t.Run("honors state and limit", func(t *testing.T) {
 		var gotQuery string
@@ -147,7 +145,7 @@ func TestListPRs(t *testing.T) {
 }
 
 func TestGetPR(t *testing.T) {
-	t.Run("success parses body tickets", func(t *testing.T) {
+	t.Run("success maps the pull request", func(t *testing.T) {
 		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/repos/acme/app/pulls/7", r.URL.Path)
 			_, _ = fmt.Fprintln(w, prJSON(7, "Fix login", "Refs TICKET-42", "open", false)) // test server: write errors are irrelevant
@@ -156,7 +154,6 @@ func TestGetPR(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 7, pr.Number)
 		assert.Equal(t, "Fix login", pr.Title)
-		assert.Equal(t, []string{"42"}, pr.LinkedTicketIDs)
 		assert.Equal(t, "abc123", pr.HeadSHA)
 		assert.Equal(t, "main", pr.BaseBranch)
 		assert.Equal(t, "onik97", pr.Author)

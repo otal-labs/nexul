@@ -59,7 +59,7 @@ func TestMCPTools_Errors(t *testing.T) {
 
 func TestPullRequestList(t *testing.T) {
 	p := &fakeProvider{prs: []*PR{
-		{Number: 3, Title: "Add cache", Body: "long body", State: PRStateOpen, LinkedTicketIDs: []string{"t-1"}},
+		{Number: 3, Title: "Add cache", Body: "long body", State: PRStateOpen},
 		{Number: 2, Title: "Fix login", State: PRStateOpen},
 	}}
 	got, err := callTool(t, p, &fakeChangeReader{}, "pull_request_list", `{"owner":"acme","repo":"app","limit":1}`)
@@ -68,7 +68,6 @@ func TestPullRequestList(t *testing.T) {
 	assert.Equal(t, PROpts{State: "open", Limit: prScan}, p.listOpts)
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, 3, page.Items[0].Number)
-	assert.Equal(t, []string{"t-1"}, page.Items[0].LinkedTicketIDs)
 	assert.True(t, page.HasMore)
 	b, err := json.Marshal(got)
 	require.NoError(t, err)

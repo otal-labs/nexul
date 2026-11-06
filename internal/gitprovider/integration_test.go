@@ -20,12 +20,12 @@ func TestIntegration_WebhookToTicketLinking(t *testing.T) {
 			return HandlePROpened(ctx, linker, ev)
 		}))
 
-		h := NewWebhookHandler("shhh", bus)
+		h := NewWebhookHandler("shhh", bus).WithTicketResolver(&fakeTicketResolver{ids: map[string]string{"REF-42": "t-42"}})
 		rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("opened", false)))
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, TopicPROpened, bus.lastPublished().Topic)
-		assert.Equal(t, []string{"42"}, linker.linked)
+		assert.Equal(t, []string{"t-42"}, linker.linked)
 	})
 
 }

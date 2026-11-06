@@ -3,6 +3,7 @@ package gitprovider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -22,13 +23,20 @@ type Publisher interface {
 
 // WebhookHandler validates GitHub signatures and publishes a normalized envelope, plus typed git.pr_* topics.
 type WebhookHandler struct {
-	secret []byte
-	bus    Publisher
+	secret  []byte
+	bus     Publisher
+	tickets TicketResolver
 }
 
 // NewWebhookHandler wires a webhook receiver; an empty secret skips signature checks (dev only) and logs a warning.
 func NewWebhookHandler(secret string, bus Publisher) *WebhookHandler {
 	return &WebhookHandler{secret: []byte(secret), bus: bus}
+}
+
+// WithTicketResolver links each PR event to the tickets its keys name; without one, a PR event links none.
+func (h *WebhookHandler) WithTicketResolver(r TicketResolver) *WebhookHandler {
+	h.tickets = r
+	return h
 }
 
 func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -132,10 +140,17 @@ func (h *WebhookHandler) dispatchPullRequest(ctx context.Context, w http.Respons
 		return
 	}
 	ev, ok := mapPREvent(prEvent)
-	if !ok {
+	if !ok || (prEvent.GetAction() != "opened" && prEvent.GetAction() != "closed") {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	pr := prEvent.GetPullRequest()
+	ids, err := h.linkedTicketIDs(ctx, ev.Owner, ev.Repo, TicketKeys(pr.GetTitle(), pr.GetBody(), pr.GetHead().GetRef()))
+	if err != nil {
+		h.failDispatch(ctx, w, err)
+		return
+	}
+	ev.PR.LinkedTicketIDs = ids
 	switch {
 	case prEvent.GetAction() == "opened":
 		if err := h.publish(ctx, TopicPROpened, ev); err != nil {
@@ -278,6 +293,18 @@ func (h *WebhookHandler) dispatchPush(ctx context.Context, w http.ResponseWriter
 	w.WriteHeader(http.StatusOK)
 }
 
+// linkedTicketIDs resolves keys to ticket ids, always a list so the event's linked_ticket_ids is [] and never null.
+func (h *WebhookHandler) linkedTicketIDs(ctx context.Context, owner, repo string, keys []string) ([]string, error) {
+	if h.tickets == nil || len(keys) == 0 {
+		return []string{}, nil
+	}
+	ids, err := h.tickets.TicketIDs(ctx, owner, repo, keys)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ticket keys of %s/%s: %w", owner, repo, err)
+	}
+	return append([]string{}, ids...), nil
+}
+
 // publish wraps a bus publish so transient failures bubble up.
 func (h *WebhookHandler) publish(ctx context.Context, topic string, payload any) error {
 	return h.bus.Publish(ctx, topic, payload)
@@ -298,15 +325,14 @@ func mapPREvent(e *githubapi.PullRequestEvent) (PREvent, bool) {
 		Owner: e.Repo.GetOwner().GetLogin(),
 		Repo:  e.Repo.GetName(),
 		PR: PR{
-			Number:          p.GetNumber(),
-			Title:           p.GetTitle(),
-			Body:            p.GetBody(),
-			State:           PRState(p.GetState()),
-			Merged:          p.GetMerged(),
-			HeadSHA:         p.GetHead().GetSHA(),
-			BaseBranch:      p.GetBase().GetRef(),
-			Author:          p.GetUser().GetLogin(),
-			LinkedTicketIDs: LinkedTicketIDs(p.GetBody(), p.GetHead().GetRef()),
+			Number:     p.GetNumber(),
+			Title:      p.GetTitle(),
+			Body:       p.GetBody(),
+			State:      PRState(p.GetState()),
+			Merged:     p.GetMerged(),
+			HeadSHA:    p.GetHead().GetSHA(),
+			BaseBranch: p.GetBase().GetRef(),
+			Author:     p.GetUser().GetLogin(),
 		},
 	}, true
 }

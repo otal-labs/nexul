@@ -76,6 +76,27 @@ func (f *fakeLinker) LinkPR(_ context.Context, ticketID string, _ PRRef) error {
 	return nil
 }
 
+// fakeTicketResolver answers keys from a map, the way the tickets domain resolves them in the repository's workspace.
+type fakeTicketResolver struct {
+	ids  map[string]string
+	keys []string
+	err  error
+}
+
+func (f *fakeTicketResolver) TicketIDs(_ context.Context, _, _ string, keys []string) ([]string, error) {
+	f.keys = keys
+	if f.err != nil {
+		return nil, f.err
+	}
+	var ids []string
+	for _, k := range keys {
+		if id, ok := f.ids[k]; ok {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
 // fakeProvider is a scriptable GitProvider for use-case and tool tests.
 type fakeProvider struct {
 	repo         *Repo

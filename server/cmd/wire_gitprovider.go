@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -23,6 +24,34 @@ type ticketLinker struct {
 
 func (l ticketLinker) LinkPR(ctx context.Context, ticketID string, ref gitprovider.PRRef) error {
 	return l.svc.LinkPR(ctx, ticketID, tickets.PRRef{Owner: ref.Owner, Repo: ref.Repo, Number: ref.Number, Title: ref.Title, SHA: ref.SHA})
+}
+
+// prTicketResolver resolves the keys a PR names within its repository's workspace (ADR 0089); a key naming no
+// ticket there, or more than one, links nothing rather than a guess.
+type prTicketResolver struct {
+	repoWorkspace interface {
+		OfRepo(ctx context.Context, owner, name string) (string, error)
+	}
+	tickets *tickets.Service
+}
+
+func (r prTicketResolver) TicketIDs(ctx context.Context, owner, repo string, keys []string) ([]string, error) {
+	workspaceID, err := r.repoWorkspace.OfRepo(ctx, owner, repo)
+	if err != nil || workspaceID == "" {
+		return nil, err
+	}
+	var ids []string
+	for _, key := range keys {
+		t, err := r.tickets.Resolve(ctx, workspaceID, key)
+		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrConflict) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, t.ID)
+	}
+	return ids, nil
 }
 
 // ticketPRStates reads a pull request's merged, closed or open state for a ticket link made after the webhook fired.
