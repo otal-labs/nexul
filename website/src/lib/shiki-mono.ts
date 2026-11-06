@@ -10,7 +10,6 @@ export const codeTheme: ThemeRegistration = {
 		{ settings: { foreground: '#d4d4d4' } },
 		{ scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#7c7c7c', fontStyle: 'italic' } },
 		{ scope: ['keyword', 'storage', 'entity.name.tag', 'entity.name.function', 'support.function', 'entity.name.type'], settings: { foreground: '#f5f5f5' } },
-		{ scope: ['string', 'constant', 'variable.other.constant', 'markup.inline.raw'], settings: { foreground: '#a3a3a3' } },
 		{ scope: ['punctuation', 'meta.brace', 'keyword.operator'], settings: { foreground: '#7c7c7c' } },
 	],
 };

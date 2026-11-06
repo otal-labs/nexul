@@ -2540,8 +2540,10 @@ sheet) and a 2px underline at rest (heavy in a paragraph with several links).
 Reading column. The text holds a 42rem (672px) measure at every width, Inter
 16px at 1.7, `h2` 24px and `h3` 18px at 600. The on-this-page rail sits 64px
 after it, and the layout (sidebar, column, rail) is centred in the width left
-over, so a wide window grows the margins, never the line. A heading jumped to
-lands 16px under the header (and under the on-this-page bar below 1280px).
+over, so a wide window grows the margins, never the line; from 1280px the
+rail's 268px counts on a page without one too, so the docs home keeps the
+sidebar where every article has it. A heading jumped to lands 16px under the
+header (and under the on-this-page bar below 1280px).
 Rejected: the column at the library's 900px (about 100 characters a line at
 1440px, the lede wrapping around Copy page).
 
@@ -2569,28 +2571,33 @@ header below it list the page's `h2` and `h3` (an `h3` 12px further in) at
 13/20 muted, on a straight 1px `border` hairline; the one section in view
 (the first heading inside the viewport) is ink with a 2px ink thumb over the
 hairline beside it. "On this page" is Inter 12px at 500, level with the
-heading's group row. The bar below 1280px is opaque, as the header is.
-Rejected: the library's rail (a line that curved at every depth change, an
-ember dot for a thumb, and every heading in view marked at once) and an ember
-thumb (the open page in the sidebar is the screen's one ember "here").
+heading's group row. The bar below 1280px is opaque, as the header is, and
+names the section in view with its chevron. Rejected: the library's rail (a
+line that curved at every depth change, an ember dot for a thumb, and every
+heading in view marked at once), an ember thumb (the open page in the sidebar
+is the screen's one ember "here") and the bar's progress ring (it read as a
+loading spinner).
 
 Code. A console in both modes: `console` (`#0b0b0b`) in a `console-edge`
 (`#232323`) hairline, 8px, `console-ink` 13px mono at 1.65 with 16px padding,
-emphasis from a grey ramp (keywords `#f5f5f5`, strings `#a3a3a3`, comments and
-punctuation `#7c7c7c`, comments italic; the ramp lives in
-`website/src/lib/shiki-mono.ts`). Every block carries a copy button, built
-into the page at build time: a 32px ghost icon in `console-control`, centred on
-the first line, with the home page's icon swap and "Copied" announcement. A
-line wider than the block scrolls inside it, its cut edge fading out before
-the copy button until the end is reached; the 6px thumb shows on a mouse and
-no bar on a touch screen. Rejected: comments and punctuation at `#737373`
-(4.15:1 on the console, under 4.5:1), a `brand` copy button (the ember is the
-home page's one primary action, not a mark on every block), ember keywords
-(the accent on something that is not an action; YAML keys read as links) and
-the app's editor hues (green strings read as success and indigo as a second
-accent on a reading page). Astro's own highlighter is off so the docs
-highlighter sees each block's language; with it on, every block rendered as
-plain text.
+emphasis from a grey ramp (keywords `#f5f5f5`, strings and arguments at the
+console ink, comments and punctuation `#7c7c7c`, comments italic; the ramp
+lives in `website/src/lib/shiki-mono.ts`). Every block carries a copy button,
+built into the page at build time: a 32px ghost icon in `console-control`,
+centred on the first line, with the home page's icon swap and "Copied"
+announcement. A line wider than the block scrolls inside it, its cut edge
+fading out before the copy button until the end is reached; the 6px thumb shows
+on a mouse and no bar on a touch screen. Below 768px a shell command (`sh`,
+`powershell`) wraps instead, each piece on the line's 16px inset, so the whole
+command reads before it is run. Rejected: strings at `#a3a3a3` (the install
+URL, the part a careful reader checks, read dimmer than `curl`), comments and
+punctuation at `#737373` (4.15:1 on the console, under 4.5:1), a `brand` copy
+button (the ember is the home page's one primary action, not a mark on every
+block), ember keywords (the accent on something that is not an action; YAML
+keys read as links) and the app's editor hues (green strings read as success
+and indigo as a second accent on a reading page). Astro's own highlighter is
+off so the docs highlighter sees each block's language; with it on, every block
+rendered as plain text.
 
 Tables and inline code. Tables are the app's ruled data: collapsed, no box
 and no fill, a hairline under each row, a muted 13px header that does not

@@ -36,6 +36,11 @@
 	outline-offset: 2px;
 }
 
+/* The wordmark's 44px target nearly fills the header, so its ring sits on the edge to clear the header's top. */
+.site-header .site-wordmark:focus-visible {
+	outline-offset: 0;
+}
+
 .site-wordmark {
 	display: inline-flex;
 	align-items: center;

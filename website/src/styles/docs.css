@@ -282,6 +282,14 @@ div:has(+ #nd-sidebar-mobile) {
 	--fd-layout-width: calc(var(--fd-sidebar-width) + 42rem + 6rem + var(--fd-toc-width));
 }
 
+/* From 1280px the rail's 268px counts whether a page has a rail or not, so the docs home keeps the sidebar where every
+   article has it. */
+@media (min-width: 1280px) {
+	#nd-docs-layout {
+		--fd-layout-width: calc(var(--fd-sidebar-width) + 42rem + 6rem + 268px);
+	}
+}
+
 [data-layout-main] {
 	justify-items: start;
 }
@@ -511,6 +519,21 @@ div:has(+ #nd-sidebar-mobile) {
 	}
 }
 
+/* On a phone a shell command wraps, so the whole line can be read before it is run; other code keeps its lines. */
+@media (max-width: 767px) {
+	.prose .code-block pre.shiki:is([data-language='sh'], [data-language='powershell']) code {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	/* Each wrapped piece keeps the line's 16px start inset; the block's own padding already clears the copy button. */
+	.prose .code-block pre.shiki:is([data-language='sh'], [data-language='powershell']) .line {
+		-webkit-box-decoration-break: clone;
+		box-decoration-break: clone;
+		padding-inline-end: 0;
+	}
+}
+
 .prose .code-block pre.shiki code {
 	border: 0;
 	padding: 0;
@@ -732,6 +755,11 @@ div:has(+ #nd-sidebar-mobile) {
 }
 
 /* Text scrolls under the bar below 1280px, so it is opaque, not frosted. */
+/* The bar names the section in view; the library's progress ring beside it read as a loading spinner. */
+[data-toc-popover-trigger] svg[role='progressbar'] {
+	display: none;
+}
+
 [data-toc-popover] header {
 	background: var(--background) !important;
 	-webkit-backdrop-filter: none !important;

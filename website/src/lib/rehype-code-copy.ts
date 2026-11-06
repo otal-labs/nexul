@@ -1,4 +1,5 @@
 import type { Element, ElementContent, Root, RootContent } from 'hast';
+import type { ShikiTransformer } from 'shiki';
 
 const svg = (children: ElementContent[], className: string): Element => ({
 	type: 'element',
@@ -46,3 +47,11 @@ function walk(parent: Root | Element) {
 }
 
 export const rehypeCodeCopy = () => (tree: Root) => walk(tree);
+
+// Marks each block with its language, so the styles can treat shell commands apart (they wrap on a phone).
+export const transformerLanguage: ShikiTransformer = {
+	name: 'nexul:language',
+	pre(node) {
+		node.properties['data-language'] = this.options.lang;
+	},
+};
