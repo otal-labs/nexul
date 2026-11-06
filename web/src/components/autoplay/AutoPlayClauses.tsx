@@ -22,7 +22,10 @@ import {
 import { PLAY_STAGE_LABELS } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
-const Part = ({ children, className }: { children: ReactNode; className?: string }) => <span className={cn("font-medium text-foreground", className)}>{children}</span>;
+// A value: foreground on a live rule, muted on one switched off (the row's data-off), so an off row stays legible.
+const Part = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <span className={cn("text-foreground group-data-off/row:text-muted-foreground", className)}>{children}</span>
+);
 
 // A value list reads "frontend, backend or infrastructure", so its own "or" is never confused with the one between rules.
 const listed = (values: string[]) => (values.length < 2 ? values.join("") : `${values.slice(0, -1).join(", ")} or ${values.at(-1)}`);
@@ -62,7 +65,14 @@ const GroupText = ({ group, bracket }: { group: AutoPlayGroup; bracket: boolean 
   );
 };
 
-interface AutoPlaySentenceProps {
+// One labelled clause: the label in the muted column, the value hanging beside it however far it wraps.
+const Clause = ({ label, children }: { label: string; children: ReactNode }) => (
+  <>
+    <span>{label}</span> <span className="min-w-0 text-pretty">{children}</span>{" "}
+  </>
+);
+
+interface AutoPlayClausesProps {
   autoPlay: AutoPlay;
   subject: AutoPlaySubject;
 }
@@ -71,40 +81,35 @@ interface AutoPlaySentenceProps {
 const momentPhrase = (autoPlay: AutoPlay) =>
   `${MOMENT_PHRASES[autoPlay.moment]}${autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : ""}`;
 
-// The moment as the title, then every condition and every priority rule in full; values in foreground weight, the glue muted.
-export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) => {
+// The moment as the title, then If, Priority and Runs on as labelled lines, every condition and priority rule in full.
+export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => {
   const groups = autoPlay.conditions.groups.filter((group) => group.rules.length > 0);
   const priority = autoPlay.priority.rules.filter((rule) => rule.when.rules.length > 0);
 
   return (
-    <span className="flex min-w-0 flex-col gap-0.5 [overflow-wrap:anywhere]">
-      <span className="text-sm font-medium text-foreground">
+    <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
+      <span className="text-sm font-medium text-foreground group-data-off/row:text-muted-foreground">
         When a {subject} {momentPhrase(autoPlay)}
-      </span>
-      {groups.length > 0 && (
-        <span className="text-xs text-pretty text-muted-foreground">
-          {" "}if {joined(groups.map((group, i) => <GroupText key={i} group={group} bracket={groups.length > 1} />), autoPlay.conditions.match)}
-        </span>
-      )}
-      <span className="text-xs text-pretty text-muted-foreground">
-        {" "}
-        <span aria-hidden className="relative -top-0.5">
-          →
-        </span>{" "}
-        {priority.map((rule, i) => (
-          <span key={i}>
-            <Part>{LEVEL_LABELS[rule.level]}</Part>{"\u00a0if\u00a0"}<GroupText group={rule.when} bracket={false} />,{" "}
-          </span>
-        ))}
-        {priority.length > 0 && "else\u00a0"}
-        <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>,{" "}
-        <span className={cn(autoPlay.run_on !== "computer" && "whitespace-nowrap")}>
-          runs on{" "}
+      </span>{" "}
+      <span className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        {groups.length > 0 && (
+          <Clause label="If">{joined(groups.map((group, i) => <GroupText key={i} group={group} bracket={groups.length > 1} />), autoPlay.conditions.match)}</Clause>
+        )}
+        <Clause label="Priority">
+          {priority.map((rule, i) => (
+            <span key={i}>
+              <Part>{LEVEL_LABELS[rule.level]}</Part>{" if "}<GroupText group={rule.when} bracket={false} />,{" "}
+            </span>
+          ))}
+          {priority.length > 0 && "else "}
+          <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>
+        </Clause>
+        <Clause label="Runs on">
           <Part>
             {autoPlay.run_on !== "computer" && RUN_ON_LABELS[autoPlay.run_on]}
             {autoPlay.run_on === "computer" && <ComputersPhrase autoPlay={autoPlay} />}
           </Part>
-        </span>
+        </Clause>
       </span>
     </span>
   );

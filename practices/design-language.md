@@ -653,9 +653,17 @@ figures left out: `5 running · 6 need answers · 1 failed this week · 17 runs
 this week · last 2h ago`, the last dropped while a run is in flight, `Not
 run yet` before the first), a facts strip (Shows on, Excluded, Template),
 Starts by itself (one bordered list; a row is the moment in 14px medium,
-then every condition and every priority rule in 12px, values in foreground
-and the glue muted, never "and 2 more"; the queue and limits in a footer on
-`surface-2`), Runs (a Needs answer block of the waiting runs, oldest first and
+then 12px labelled lines on a 72px muted label column, If, Priority and Runs
+on, each value hanging beside its label however far it wraps and a clause the
+rule lacks left out; every condition and every priority rule spelled out,
+never "and 2 more", values in foreground at normal weight and the glue and
+labels muted; an off row turns its moment and values muted, never faded, its
+switch at full ink; switch and `…` centred on the moment's line; the queue in
+the card's `surface-2` footer only while something is queued; then Limits, a
+`surface-2` well of label rows, the daily cap on ticket plays and, under a
+"Your computers · runs at once" microheader, each of the viewer's computers
+with the 1–5 segmented control, every control on one right edge, the block
+absent when neither applies), Runs (a Needs answer block of the waiting runs, oldest first and
 five at most with Show all N, then Recent, newest first, ten at a time with
 Show more; each 40px row the status mark, a ticket's key in a mono column,
 the target's title in medium, the run's summary muted ("Needs Sam's
@@ -1337,7 +1345,9 @@ and ask before they act. A card that edits values saves from its footer with
 disabled (the flat disabled tint) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
 Saved with a check for 1.4s. Settings that apply the moment they are picked
-(Appearance) have no Save. Copying uses
+(Appearance, a play's Limits) have no Save and no confirmation: the control
+shows the value picked while it saves, and only a failed save says so, in an
+error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks

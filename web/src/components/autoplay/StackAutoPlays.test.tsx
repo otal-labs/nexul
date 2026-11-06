@@ -106,7 +106,7 @@ beforeEach(() => {
 });
 
 describe("a stack play's auto plays", () => {
-  it("reads a row as a sentence about a stack, naming its computers in order, whose order it follows, or that nobody picked one", async () => {
+  it("reads a row's clauses about a stack, naming its computers in order, whose order it follows, or that nobody picked one", async () => {
     autoPlays = [
       autoPlay(),
       autoPlay({ id: "ap-2", moment: "stack.service_recovered", computer_ids: ["c-2", "c-gone", "c-1"], run_as: "u-me", enabled: true }),
@@ -116,13 +116,13 @@ describe("a stack play's auto plays", () => {
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes → Normal, runs on a computer nobody has picked yet"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Priority Normal Runs on a computer nobody has picked yet"));
     await waitFor(() =>
-      expect(rows[1]).toHaveTextContent("When a stack service recovers → Normal, runs on Bob's Build box (shared), then a computer you can't see, then Alice laptop"),
+      expect(rows[1]).toHaveTextContent("When a stack service recovers Priority Normal Runs on Bob's Build box (shared), then a computer you can't see, then Alice laptop"),
     );
-    await waitFor(() => expect(rows[2]).toHaveTextContent("runs on your computers in your order"));
-    await waitFor(() => expect(rows[3]).toHaveTextContent("runs on Bob's computers in their order"));
-    expect(screen.queryByText(/auto plays a day/)).not.toBeInTheDocument();
+    await waitFor(() => expect(rows[2]).toHaveTextContent("Runs on your computers in your order"));
+    await waitFor(() => expect(rows[3]).toHaveTextContent("Runs on Bob's computers in their order"));
+    expect(screen.queryByText("Auto plays per ticket a day")).not.toBeInTheDocument();
   });
 
   it("offers the stack moments and conditions, runs on your computers by default, and saves that", async () => {

@@ -102,13 +102,13 @@ beforeEach(() => {
 });
 
 describe("a play's auto plays", () => {
-  it("lists each as a sentence, switches it at once and puts it back when the save is refused, and sets the daily cap", async () => {
+  it("lists each with its If, Priority and Runs on lines, switches it at once and puts it back when the save is refused, and sets the daily cap", async () => {
     const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
     const { user } = await openAutoPlays();
     const rows = await screen.findAllByRole("button", { name: /becomes unblocked/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked if Type is Bug → High if Type is Bug, else Normal, runs on Developer"));
-    expect(rows[1]).toHaveTextContent("→ High if Type is Bug or Label is urgent, else Low, runs on Developer");
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked If Type is Bug Priority High if Type is Bug, else Normal Runs on Developer"));
+    expect(rows[1]).toHaveTextContent("Priority High if Type is Bug or Label is urgent, else Low Runs on Developer");
 
     let refuse: (error: Error) => void = () => {};
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));
@@ -229,7 +229,8 @@ describe("a play's auto plays", () => {
     const toggle = await screen.findByRole("switch", { name: "Switch auto play ap-1 on or off" });
     expect(toggle).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Add auto play" })).not.toBeInTheDocument();
-    expect(await screen.findByText(/auto plays a day/)).toHaveTextContent("Each ticket runs at most 5 auto plays a day");
+    expect(await screen.findByText("Auto plays per ticket a day")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Auto plays per ticket a day" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));
     expect(await screen.findByRole("combobox", { name: "Moment" })).toBeDisabled();

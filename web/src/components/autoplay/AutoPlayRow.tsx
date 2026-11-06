@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 
-import { AutoPlaySentence } from "@/components/autoplay/AutoPlaySentence";
+import { AutoPlayClauses } from "@/components/autoplay/AutoPlayClauses";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -47,23 +47,23 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
   ];
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-start gap-3 bg-card px-4 py-3 hover:bg-accent")}>
-      <button
-        type="button"
-        onClick={() => onOpen(autoPlay)}
-        className={cn("min-w-0 flex-1 text-left", !autoPlay.enabled && "opacity-60")}
-      >
-        <AutoPlaySentence autoPlay={autoPlay} subject={subject} />
+    <li
+      data-leaving={leaving || undefined}
+      data-off={!autoPlay.enabled || undefined}
+      className={cn(leavingRowClass, "group/row flex items-start gap-3 bg-card px-4 py-3 hover:bg-accent")}
+    >
+      <button type="button" onClick={() => onOpen(autoPlay)} className="min-w-0 flex-1 text-left">
+        <AutoPlayClauses autoPlay={autoPlay} subject={subject} />
       </button>
-      <ActionSwitch
-        permission="autoplays:write"
-        verb="switch auto plays on or off"
-        checked={autoPlay.enabled}
-        onCheckedChange={toggle}
-        aria-label={`Switch ${name} on or off`}
-        className="mt-px"
-      />
-      <div className="-mt-1.5 -mb-1">
+      {/* One 20px box on the moment's line, so the switch and the menu centre on it however far the clauses wrap. */}
+      <div className="flex h-5 shrink-0 items-center gap-1">
+        <ActionSwitch
+          permission="autoplays:write"
+          verb="switch auto plays on or off"
+          checked={autoPlay.enabled}
+          onCheckedChange={toggle}
+          aria-label={`Switch ${name} on or off`}
+        />
         <RowActionsMenu subject={name} actions={actions} />
       </div>
     </li>

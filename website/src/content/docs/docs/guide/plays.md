@@ -81,7 +81,7 @@ A play someone can't see is gone for them: from **Plays**, the buttons and menus
 
 An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Plays**; they are listed under **Starts by itself**. Interview plays have none.
 
-Each auto play is a row headed by its moment, such as "When a ticket becomes unblocked", then every condition on its own line, such as "if **Type is Bug** and **Label is urgent**", then its priority and whom it runs on, such as "→ **High** if **Label is incident**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
+Each auto play is a row headed by its moment, such as "When a ticket becomes unblocked", then a labelled line for each part: **If** with every condition, such as "Type is Bug and Label is urgent" (left out when it has none), **Priority**, such as "High if Label is incident, else Normal", and **Runs on**, such as "Developer". A switch beside the moment turns it on or off; a switched-off row reads in grey. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
 
 An auto play has:
 
@@ -94,9 +94,9 @@ An auto play has:
 
 The play's **Show when** stage does not apply to an auto play; add a **Stage is** condition instead. A run waits until one of its person's computers can take it, and its conditions are checked again before it starts. If nothing is paired yet, a computer needs pairing again, none of their computers holds the project, or none is online, set up, and free, the run waits rather than failing and starts once that is fixed, on whichever computer can take it then. The person it runs on needs to see the play and hold `plays:run`; if they can't see it, it doesn't run, and says why only to those who can.
 
-**Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
+**Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change it under **Limits**, below any ticket play's auto plays; it applies to the whole workspace.
 
-**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order), or right under the cap line on a play's auto plays. A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
+**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order), or under **Limits** on a play's auto plays, which lists each of your computers with its own 1 to 5. A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
 
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computers busy)".
 
