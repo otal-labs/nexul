@@ -61,10 +61,11 @@ function ThemeToggle() {
 	);
 }
 
-export function SiteMenuLinks({ pathname }: { pathname: string }) {
+// The docs drawer leaves out Docs: its page tree starts with the docs home, which already marks where you are.
+export function SiteMenuLinks({ pathname, without }: { pathname: string; without?: string }) {
 	return (
 		<nav aria-label="Site" className="site-menu-links">
-			{siteLinks.map((link) => (
+			{siteLinks.filter((link) => link.href !== without).map((link) => (
 				<a key={link.href} href={link.href} aria-current={isCurrent(pathname, link.href)}>
 					{link.text}
 				</a>

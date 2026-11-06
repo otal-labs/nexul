@@ -30,11 +30,11 @@ export function DocsApp({ pathname, pages, toc, heading, editUrl, home, children
 				tree={tree}
 				searchToggle={{ enabled: false }}
 				themeSwitch={{ enabled: false }}
-				sidebar={{ collapsible: false, footer: <SiteMenuLinks pathname={pathname} /> }}
+				sidebar={{ collapsible: false, footer: <SiteMenuLinks pathname={pathname} without="/docs/" /> }}
 				slots={{ header: DocsHeader, navTitle: noTitle }}
 				containerProps={{ style: { paddingTop: 'var(--site-header-height)' } }}
 			>
-				<DocsPage toc={toc} full={home} breadcrumb={{ enabled: false }}>
+				<DocsPage toc={toc} full={home} breadcrumb={{ enabled: false }} tableOfContent={{ single: true }}>
 					<PageHeading {...heading} />
 					<DocsBody>{children}</DocsBody>
 					<EditOnGitHub href={editUrl} className="self-start">

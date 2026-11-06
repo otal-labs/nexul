@@ -7,19 +7,22 @@ export interface PageHeadingProps {
 	markdownUrl?: string;
 }
 
+// The group and Copy page share the row above the title, so the title and its lede keep the full measure.
 export function PageHeading({ eyebrow, title, description, markdownUrl }: PageHeadingProps) {
 	return (
-		<header className="flex flex-col gap-3">
-			{eyebrow && <p className="docs-eyebrow">{eyebrow}</p>}
-			<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-				<h1 className="docs-title type-display min-w-0">{title}</h1>
-				{markdownUrl && (
-					<MarkdownCopyButton markdownUrl={markdownUrl} className="docs-copy-page mt-1 shrink-0">
-						Copy page
-					</MarkdownCopyButton>
-				)}
-			</div>
-			<p className="max-w-[65ch] text-base text-pretty text-fd-muted-foreground md:text-lg">{description}</p>
+		<header className="docs-heading">
+			{(eyebrow || markdownUrl) && (
+				<div className="docs-heading-row">
+					<p className="docs-eyebrow">{eyebrow}</p>
+					{markdownUrl && (
+						<MarkdownCopyButton markdownUrl={markdownUrl} className="docs-copy-page">
+							Copy page
+						</MarkdownCopyButton>
+					)}
+				</div>
+			)}
+			<h1 className="docs-title type-display">{title}</h1>
+			<p className="docs-lede">{description}</p>
 		</header>
 	);
 }
