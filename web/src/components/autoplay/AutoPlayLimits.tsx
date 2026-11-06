@@ -24,11 +24,11 @@ export const AutoPlayLimits = ({ workspaceId, ticket, canWrite }: AutoPlayLimits
   return (
     <div className="space-y-3 pt-3">
       <Microheader className="flex h-7 items-center">Limits</Microheader>
-      <div className="rounded-lg border border-transparent bg-surface-2 px-4 py-1">
+      <div className="rounded-lg border border-transparent bg-well-shade px-4 py-1">
         {cap !== undefined && <DailyCapRow workspaceId={workspaceId} cap={cap} canWrite={canWrite} />}
         {mine.length > 0 && (
           <div className={cn("pt-3", cap !== undefined && "mt-1 border-t border-border")}>
-            <Microheader className="pb-1">Your computers · runs at once</Microheader>
+            <p className="pb-1 text-xs font-medium text-muted-foreground">Your computers · runs at once</p>
             {mine.map((computer) => (
               <ComputerRunsRow key={computer.id} computer={computer} />
             ))}

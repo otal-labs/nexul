@@ -10,7 +10,7 @@ interface LimitRowProps {
 export const LimitRow = ({ label, hint, children }: LimitRowProps) => (
   <div className="flex items-start gap-4 py-2.5">
     <div className="min-w-0 flex-1">
-      <div className="truncate text-row text-foreground">{label}</div>
+      <div className="text-row text-pretty text-foreground [overflow-wrap:anywhere]">{label}</div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
     <div className="flex h-5 shrink-0 items-center">{children}</div>

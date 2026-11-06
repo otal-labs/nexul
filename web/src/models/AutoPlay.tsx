@@ -188,6 +188,13 @@ export const opLabel = (field: AutoPlayField, op: AutoPlayOp): string => {
   return OP_LABELS[op];
 };
 
+// A yes/no rule as a phrase, "Has a linked PR", where the editor's select reads "Has linked PR yes".
+export const PRESENCE_PHRASES: Partial<Record<AutoPlayField, Record<"set" | "unset", string>>> = {
+  source_doc: { set: "Has a source doc", unset: "Has no source doc" },
+  linked_pr: { set: "Has a linked PR", unset: "Has no linked PR" },
+  blocked: { set: "Is blocked", unset: "Is not blocked" },
+};
+
 export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
@@ -199,6 +206,13 @@ export const RUN_ON_LABELS: Record<Exclude<AutoPlayRunOn, "computer">, string> =
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
+};
+
+// Where a rule runs, read as a place beside named computers rather than a role.
+export const RUN_ON_PHRASES: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
+  developer: "The developer's computers",
+  tester: "The tester's computers",
+  causer: "The computers of whoever caused it",
 };
 
 // What the Run on select offers: the computer run-on is two choices, the person's own order and a list they picked.

@@ -116,11 +116,11 @@ describe("a stack play's auto plays", () => {
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Priority Normal Runs on a computer nobody has picked yet"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Priority Normal Runs on A computer nobody has picked yet"));
     await waitFor(() =>
       expect(rows[1]).toHaveTextContent("When a stack service recovers Priority Normal Runs on Bob's Build box (shared), then a computer you can't see, then Alice laptop"),
     );
-    await waitFor(() => expect(rows[2]).toHaveTextContent("Runs on your computers in your order"));
+    await waitFor(() => expect(rows[2]).toHaveTextContent("Runs on Your computers in your order"));
     await waitFor(() => expect(rows[3]).toHaveTextContent("Runs on Bob's computers in their order"));
     expect(screen.queryByText("Auto plays per ticket a day")).not.toBeInTheDocument();
   });

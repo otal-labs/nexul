@@ -107,8 +107,8 @@ describe("a play's auto plays", () => {
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
     const { user } = await openAutoPlays();
     const rows = await screen.findAllByRole("button", { name: /becomes unblocked/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked If Type is Bug Priority High if Type is Bug, else Normal Runs on Developer"));
-    expect(rows[1]).toHaveTextContent("Priority High if Type is Bug or Label is urgent, else Low Runs on Developer");
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a ticket becomes unblocked If Type is Bug Priority High if Type is Bug, else Normal Runs on The developer's computers"));
+    expect(rows[1]).toHaveTextContent("Priority High if Type is Bug or Label is urgent, else Low Runs on The developer's computers");
 
     let refuse: (error: Error) => void = () => {};
     mocks.patch.mockImplementation(() => new Promise((_, reject) => (refuse = reject)));

@@ -81,7 +81,7 @@ A play someone can't see is gone for them: from **Plays**, the buttons and menus
 
 An auto play starts its play by itself when something happens to a ticket, a doc, or a stack, so nobody has to press the button. A play can have several. Open the play in **Plays**; they are listed under **Starts by itself**. Interview plays have none.
 
-Each auto play is a row headed by its moment, such as "When a ticket becomes unblocked", then a labelled line for each part: **If** with every condition, such as "Type is Bug and Label is urgent" (left out when it has none), **Priority**, such as "High if Label is incident, else Normal", and **Runs on**, such as "Developer". A switch beside the moment turns it on or off; a switched-off row reads in grey. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
+Each auto play is a row headed by its moment, such as "When a ticket becomes unblocked", then a labelled line for each part: **If** with every condition, such as "Type is Bug and Label is urgent" (left out when it has none), **Priority**, such as "High if Label is incident, else Normal", and **Runs on**, such as "The developer's computers". A switch beside the moment turns it on or off; a switched-off row reads in grey. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it. Switching one off, or deleting it, skips the runs it still has queued.
 
 An auto play has:
 

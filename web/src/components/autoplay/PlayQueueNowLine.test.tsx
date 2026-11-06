@@ -40,15 +40,20 @@ describe("PlayQueueNowLine", () => {
       queueItem({ id: "q-3", person_id: "u-bob", reason: "no_computer_ready" }),
       queueItem({ id: "q-4", person_id: "u-sam", reason: "paused" }),
     ]);
-    expect(await screen.findByText(/Right now:/)).toHaveTextContent(
-      "Right now: 4 queued · 2 waiting on Alice Moreau (computer offline) · 1 waiting on bob (no computer can take it) · 1 more waiting",
+    expect(await screen.findByText(/queued/, { selector: "p" })).toHaveTextContent(
+      "4 queued: 2 for Alice Moreau's computers (computer offline) · 1 for bob's computers (no computer can take it) · 1 more",
     );
     expect(api.get).toHaveBeenCalledWith("/api/plays/queued", { params: { play_id: "play-1" } });
+  });
+
+  it("says in one sentence whose computers every run waits for when they all wait on one person for one reason", async () => {
+    renderLine([queueItem({ id: "q-1", reason: "" }), queueItem({ id: "q-2", target_id: "t-2", reason: "" })]);
+    expect(await screen.findByText(/queued/, { selector: "p" })).toHaveTextContent("2 queued for Alice Moreau's computers, waiting their turn");
   });
 
   it("says nothing when nothing is queued", async () => {
     renderLine([]);
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/plays/queued", expect.anything()));
-    expect(screen.queryByText(/Right now/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/queued/)).not.toBeInTheDocument();
   });
 });

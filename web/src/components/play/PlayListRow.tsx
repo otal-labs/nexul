@@ -27,13 +27,17 @@ export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
 
   const detail = (
     <>
-      <span className="min-w-0 truncate">{whereText(play)}</span>
+      <span className="shrink-0">{whereText(play)}</span>
       {auto && (
         <>
           <Sep />
-          <span className="inline-flex shrink-0 items-center gap-1">
-            <ZapIcon aria-hidden className="size-3" />
-            {play.auto_plays_on} auto on
+          {/* The words wrap onto a clipped second line when the row is tight, leaving the bolt and the count. */}
+          <span className="flex h-4 min-w-0 flex-wrap items-center gap-x-1 overflow-hidden">
+            <span className="inline-flex shrink-0 items-center gap-1">
+              <ZapIcon aria-hidden className="size-3" />
+              {play.auto_plays_on}
+            </span>{" "}
+            <span>auto on</span>
           </span>
         </>
       )}

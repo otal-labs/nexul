@@ -64,7 +64,10 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
           onCheckedChange={toggle}
           aria-label={`Switch ${name} on or off`}
         />
-        <RowActionsMenu subject={name} actions={actions} />
+        {/* Pulled into the padding so the dots, not the button, end on the right edge the Limits controls share. */}
+        <div className="-mr-2.5">
+          <RowActionsMenu subject={name} actions={actions} />
+        </div>
       </div>
     </li>
   );

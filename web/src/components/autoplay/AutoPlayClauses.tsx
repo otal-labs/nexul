@@ -11,7 +11,8 @@ import {
   LEVEL_LABELS,
   MOMENT_PHRASES,
   opLabel,
-  RUN_ON_LABELS,
+  PRESENCE_PHRASES,
+  RUN_ON_PHRASES,
   storedComputerIds,
   type AutoPlay,
   type AutoPlayGroup,
@@ -22,9 +23,9 @@ import {
 import { PLAY_STAGE_LABELS } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
-// A value: foreground on a live rule, muted on one switched off (the row's data-off), so an off row stays legible.
+// A value: foreground on a live rule, dimmed on one switched off (the row's data-off) but still above the muted labels and glue.
 const Part = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <span className={cn("text-foreground group-data-off/row:text-muted-foreground", className)}>{children}</span>
+  <span className={cn("text-foreground group-data-off/row:text-foreground/80", className)}>{children}</span>
 );
 
 // A value list reads "frontend, backend or infrastructure", so its own "or" is never confused with the one between rules.
@@ -37,22 +38,24 @@ const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
   const person = usePersonLookup(autoPlay.workspace_id);
   const { data: me } = useFetchMe();
   const yours = me?.user.id === autoPlay.run_as;
-  const owner = yours ? "your" : `${personLabel(person(autoPlay.run_as))}'s`;
+  const owner = yours ? "Your" : `${personLabel(person(autoPlay.run_as))}'s`;
 
-  if (autoPlay.run_as === "") return "a computer nobody has picked yet";
+  if (autoPlay.run_as === "") return "A computer nobody has picked yet";
   if (ids.length === 0) return `${owner} computers in ${yours ? "your" : "their"} order`;
-  return names.map((name) => name || "a computer you can't see").join(", then ");
+  return names.map((name, i) => name || `${i === 0 ? "A" : "a"} computer you can't see`).join(", then ");
 };
 
 // One rule in words, "Type is Bug or Incident"; each reads its own field's values. A short rule never breaks across lines.
 const RuleText = ({ rule }: { rule: AutoPlayRule }) => {
   const values = useAutoPlayValues(rule.field);
-  const text = [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), listed((rule.values ?? []).map(values.label))].filter(Boolean).join(" ");
+  const presence = (rule.op === "set" || rule.op === "unset") && PRESENCE_PHRASES[rule.field]?.[rule.op];
+  const text = presence || [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), listed((rule.values ?? []).map(values.label))].filter(Boolean).join(" ");
   return <Part className={cn(text.length <= 32 && "whitespace-nowrap")}>{text}</Part>;
 };
 
+// The joiner keeps to the rule after it, so a wrapped line always starts with its "and" or "or".
 const joined = (parts: ReactNode[], match: AutoPlayMatch) =>
-  parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`j${i}`}>{match === "all" ? " and " : " or "}</span>, part]));
+  parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`j${i}`}> {match === "all" ? "and" : "or"}{"\u00a0"}</span>, part]));
 
 const GroupText = ({ group, bracket }: { group: AutoPlayGroup; bracket: boolean }) => {
   const rules = joined(group.rules.map((rule, i) => <RuleText key={i} rule={rule} />), group.match);
@@ -106,7 +109,7 @@ export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => 
         </Clause>
         <Clause label="Runs on">
           <Part>
-            {autoPlay.run_on !== "computer" && RUN_ON_LABELS[autoPlay.run_on]}
+            {autoPlay.run_on !== "computer" && RUN_ON_PHRASES[autoPlay.run_on]}
             {autoPlay.run_on === "computer" && <ComputersPhrase autoPlay={autoPlay} />}
           </Part>
         </Clause>
