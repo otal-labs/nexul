@@ -130,6 +130,22 @@ describe("useBoardFilters", () => {
     expect(result.current.filteredTickets).toHaveLength(3);
   });
 
+  it("not blocked hides the tickets still waiting on a blocker", async () => {
+    const base = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/tickets/blockers") return { data: { waiting: [{ id: "free" }], cleared: [] } };
+      return base?.(url);
+    });
+    const tickets = [ticket("waiting", "p-1"), ticket("cleared", "p-1"), ticket("free", "p-1")];
+    const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
+
+    act(() => result.current.toggleUnblocked());
+    await waitFor(() => expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["cleared", "free"]));
+
+    act(() => result.current.toggleUnblocked());
+    expect(result.current.filteredTickets).toHaveLength(3);
+  });
+
   it("search matches the title, the bare number, or the full key", () => {
     const tickets = [
       ticket("login", "p-1", { title: "Fix the Login page", number: 12 }),

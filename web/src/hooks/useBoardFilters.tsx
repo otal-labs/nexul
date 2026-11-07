@@ -5,6 +5,7 @@ import { ticketDeveloper, ticketTester, type TicketPersonRef } from "@nexul/clie
 import type { BoardFilters } from "@/components/board/BoardFilterBar";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { useFetchBlockers } from "@/hooks/TicketLinkHooks";
 import { useTicketsWithActiveRun } from "@/hooks/TrailHooks";
 import { StatusKind } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -18,6 +19,7 @@ const EMPTY_FILTERS: BoardFilters = {
   developers: [],
   waitingForMeToTest: false,
   playing: false,
+  unblocked: false,
   search: "",
 };
 
@@ -43,6 +45,7 @@ const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: Filte
   (filters.developers.length === 0 || sets.developers.has(ticketDeveloper(ticket).key)) &&
   (!filters.waitingForMeToTest || (ticketTester(ticket).key === sets.myId && sets.testingStatusIds.has(ticket.status))) &&
   (!filters.playing || sets.playingIds.has(ticket.id)) &&
+  (!filters.unblocked || !sets.blockedIds.has(ticket.id)) &&
   matchesSearch(ticket, filters.search);
 
 interface FilterSets {
@@ -52,6 +55,7 @@ interface FilterSets {
   developers: Set<string>;
   testingStatusIds: Set<string>;
   playingIds: Set<string>;
+  blockedIds: Set<string>;
   myId: string;
 }
 
@@ -84,6 +88,8 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   // Offered while a play runs here, and kept while on so it can be switched off.
   const showPlaying = filters.playing || playingIds.length > 0;
 
+  const { data: blockers } = useFetchBlockers();
+
   const filteredTickets = useMemo(() => {
     const sets: FilterSets = {
       projectIds: new Set(filters.projectIds),
@@ -92,10 +98,11 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
       developers: new Set(filters.developers),
       testingStatusIds: new Set((statuses ?? []).filter((s) => s.kind === StatusKind.Testing).map((s) => s.id)),
       playingIds: new Set(playingIds),
+      blockedIds: new Set(Object.entries(blockers ?? {}).filter(([, waitingOn]) => waitingOn.length > 0).map(([id]) => id)),
       myId,
     };
     return (tickets ?? []).filter((t) => ticketMatchesFilters(t, filters, sets));
-  }, [tickets, filters, statuses, myId, playingIds]);
+  }, [tickets, filters, statuses, myId, playingIds, blockers]);
 
   const toggleProject = (projectId: string) =>
     setFilters((current) => ({
@@ -143,6 +150,8 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
 
   const togglePlaying = () => setFilters((current) => ({ ...current, playing: !current.playing }));
 
+  const toggleUnblocked = () => setFilters((current) => ({ ...current, unblocked: !current.unblocked }));
+
   const setSearch = (search: string) => setFilters((current) => ({ ...current, search }));
 
   const clearAll = () => setFilters(EMPTY_FILTERS);
@@ -161,6 +170,7 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
     toggleDeveloper,
     toggleWaitingForMeToTest,
     togglePlaying,
+    toggleUnblocked,
     setSearch,
     clearAll,
   };
