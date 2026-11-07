@@ -27,7 +27,7 @@ func prEventPayload(action string, merged bool) []byte {
 		"pull_request": map[string]any{
 			"number": 7,
 			"title":  "REF-42 Fix login",
-			"body":   "Also covers ref-43.",
+			"body":   "Also fixes ref-43, after REF-44.",
 			"state":  "open",
 			"merged": merged,
 			"head":   map[string]any{"ref": "feature/REF-42-fix-login", "sha": "abc123"},
@@ -90,8 +90,8 @@ func TestWebhookHandler_Opened(t *testing.T) {
 	assert.Equal(t, "acme", got.Owner)
 	assert.Equal(t, "app", got.Repo)
 	assert.Equal(t, 7, got.PR.Number)
-	assert.Equal(t, "Also covers ref-43.", got.PR.Body)
-	assert.Equal(t, []string{"REF-42", "REF-43"}, resolver.keys, "the title, body and branch name the keys, each once")
+	assert.Equal(t, "Also fixes ref-43, after REF-44.", got.PR.Body)
+	assert.Equal(t, []string{"REF-42", "REF-43"}, resolver.keys, "the title, the body's closing word and the branch name the keys, each once; a mention links nothing")
 	assert.Equal(t, []string{"t-42", "t-43"}, got.PR.LinkedTicketIDs)
 	assert.Equal(t, "abc123", got.PR.HeadSHA)
 	assert.Equal(t, "main", got.PR.BaseBranch)
