@@ -5,7 +5,7 @@ import type { ActionGate } from "@nexul/client-core/actionState";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { LockedReason } from "@/components/action/LockedReason";
-import { hueDotClass, hueStyle } from "@/components/board/ticketTypeColor";
+import { hasColor, hueDotClass, hueStyle, labelPillColor } from "@/components/board/ticketTypeColor";
 import { ColorPanel } from "@/components/settings/ColorPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useActionState } from "@/hooks/useActionState";
@@ -34,19 +34,25 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
   };
   const action = useActionState({ permission, projectId, verb });
   const dot = (
+    <span className={cn("size-2 rounded-full", dotClass ?? hueDotClass(value) ?? "border border-muted-foreground")} style={hueStyle(value)} aria-hidden />
+  );
+  // A colored label draws exactly as the board card's pill; an unset one stays neutral with the hollow ring, since the board's hashed fallback isn't a choice.
+  const face = pill ? (
     <span
-      className={cn(pill ? "relative -top-px size-1.5 shrink-0 self-center" : "size-2", "rounded-full", dotClass ?? hueDotClass(value) ?? "border border-muted-foreground")}
       style={hueStyle(value)}
-      aria-hidden
-    />
+      className={cn(
+        "inline-flex h-[18px] max-w-full min-w-0 items-center gap-1.5 rounded-full px-1.5 text-micro leading-4 font-medium",
+        hasColor(value) ? labelPillColor(pill, value) : "border border-border bg-foreground/[0.04] text-muted-foreground",
+        "group-hover:ring-1 group-hover:ring-ring/40",
+      )}
+    >
+      {!hasColor(value) && <span className="size-1.5 shrink-0 rounded-full border border-muted-foreground" aria-hidden />}
+      <span className="truncate">{pill}</span>
+    </span>
+  ) : (
+    dot
   );
-  const face = (
-    <>
-      {dot}
-      {pill && <span className="truncate">{pill}</span>}
-    </>
-  );
-  const pillClass = "inline-flex h-6 max-w-full min-w-0 shrink items-baseline gap-1.5 py-0.5 leading-[1.125rem] rounded-full border border-border bg-foreground/[0.04] px-2 text-xs font-medium text-muted-foreground";
+  const pillClass = "group inline-flex h-6 max-w-full min-w-0 shrink items-center gap-1 px-0";
 
   return (
     <>
@@ -60,7 +66,7 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
             aria-description={action.reason}
             data-locked
             onClick={(event) => event.preventDefault()}
-            className={cn(pill ? pillClass : "inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-muted-foreground", "cursor-default")}
+            className={cn(pill ? cn(pillClass, "text-muted-foreground") : "inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-muted-foreground", "cursor-default")}
           >
             {face}
             <LockIcon aria-hidden className="size-3" />
@@ -86,7 +92,7 @@ export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, pe
               variant="ghost"
               size={pill ? "sm" : "icon"}
               aria-label={label}
-              className={pill ? cn(pillClass, "hover:bg-accent hover:text-foreground") : "size-6"}
+              className={pill ? cn(pillClass, "hover:bg-transparent") : "size-6"}
             >
               {face}
             </ActionButton>
