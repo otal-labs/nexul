@@ -129,6 +129,8 @@ type Repo interface {
 	ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error)
 	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once; unblocked's events go with it.
 	SetFinishedAt(ctx context.Context, id string, at time.Time, unblocked UnblockedEvents, changes []Change, evts ...eventbus.OutboxEvent) (bool, error)
+	// ClearFinishedAt returns false if the ticket was not finished; changes are written only when it was.
+	ClearFinishedAt(ctx context.Context, id string, changes []Change) (bool, error)
 	LinkBranch(ctx context.Context, id string, link BranchLink) error
 	// UnlinkBranch removes a branch's link; a link that is not there is a no-op.
 	UnlinkBranch(ctx context.Context, id string, link BranchLink) error

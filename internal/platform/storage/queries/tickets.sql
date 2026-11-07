@@ -101,6 +101,9 @@ UPDATE ticket_pr_links SET pr_state = ? WHERE pr_owner = ? AND pr_repo = ? AND p
 -- name: SetTicketFinishedAt :execrows
 UPDATE tickets SET finished_at = ? WHERE id = ? AND finished_at IS NULL;
 
+-- name: ClearTicketFinishedAt :execrows
+UPDATE tickets SET finished_at = NULL WHERE id = ? AND finished_at IS NOT NULL;
+
 -- name: LinkTicketBranch :exec
 INSERT INTO ticket_branch_links (ticket_id, branch_owner, branch_repo, branch_name, linked_at) VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(ticket_id, branch_owner, branch_repo, branch_name) DO NOTHING;

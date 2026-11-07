@@ -1022,11 +1022,31 @@ func (s *Service) UnlinkPR(ctx context.Context, id string, ref PRRef) error {
 	if ref.Owner == "" || ref.Repo == "" || ref.Number < 1 {
 		return fmt.Errorf("%w: pr ref is incomplete", apperrs.ErrInvalid)
 	}
-	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
+	t, err := s.load(ctx, id, permissions.TicketsWrite)
+	if err != nil {
 		return fmt.Errorf("unlink pr from ticket %s: %w", id, err)
 	}
 	if err := s.repo.UnlinkPR(ctx, id, ref); err != nil {
 		return fmt.Errorf("unlink pr from ticket %s: %w", id, err)
+	}
+	if t.FinishedAt == nil {
+		return nil
+	}
+	return s.unfinishWithoutMergedPR(ctx, t)
+}
+
+// unfinishWithoutMergedPR clears finished_at once no merged PR remains, so a ticket finished by a mislinked PR blocks again.
+func (s *Service) unfinishWithoutMergedPR(ctx context.Context, t *Ticket) error {
+	links, err := s.repo.ListPRLinks(ctx, t.ID)
+	if err != nil {
+		return fmt.Errorf("unfinish ticket %s: %w", t.ID, err)
+	}
+	if slices.ContainsFunc(links, func(l PRLink) bool { return l.State == PRStateMerged }) {
+		return nil
+	}
+	changes := s.changed(ActorOf(ctx), FieldFinishedAt, t.FinishedAt.UTC().Format(dayLayout), "")
+	if _, err := s.repo.ClearFinishedAt(ctx, t.ID, changes); err != nil {
+		return fmt.Errorf("unfinish ticket %s: %w", t.ID, err)
 	}
 	return nil
 }
