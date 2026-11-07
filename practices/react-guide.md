@@ -1198,12 +1198,16 @@ mounted in today.
 
 Three levels, plus one shared parser, `errorMessage(error)` in
 `api/client.tsx`, which returns the first field error, else the envelope's
-`message`, else the transport message:
+`message`, else the transport message, except a request that got no answer
+(`ERR_NETWORK`), which reads "Can't reach the server. Check your connection and try
+again.":
 
 1. **API**: the gateway returns `{ message, code, errors? }`; the parser
    reads it.
 2. **Hook**: every mutation toasts `errorMessage(error)` on error.
-3. **Component**: pages render `<ErrorDisplay error={error} />`.
+3. **Component**: pages render `<ErrorDisplay error={error} />`. For a failure a
+   second attempt could fix (no answer, or a 5xx) it adds **Try again**, which
+   refetches every failed query on screen; a 4xx is final and gets none.
 
 Auth: a 401 in the Axios interceptor clears the session store and redirects;
 the WS client closes and reconnects after re-auth.
