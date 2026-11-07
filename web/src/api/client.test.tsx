@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -26,6 +27,10 @@ describe("errorMessage", () => {
 
   it("falls back to the axios error's own message when the response has no body", () => {
     expect(errorMessage(new Error("Network Error"))).toBe("Network Error");
+  });
+
+  it("says the server can't be reached in plain words when no answer came back", () => {
+    expect(errorMessage(new AxiosError("Network Error", "ERR_NETWORK"))).toBe("Can't reach the server. Check your connection and try again.");
   });
 
   it("returns the first field error even when a message exists", () => {
