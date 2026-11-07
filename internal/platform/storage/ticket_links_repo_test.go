@@ -322,3 +322,38 @@ func TestTicketsRepo_Integration_UnblockedFiresOncePerUnblock(t *testing.T) {
 		})
 	}
 }
+
+func TestTicketLinks_Integration_UnlinkingTheMergedPRBlocksAgain(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-unlink", "Books", 0)))
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	svc.SetPRStates(mergedPRStates{})
+	frontend, err := svc.Create(ctx, "p-unlink", "frontend", "", "", "")
+	require.NoError(t, err)
+	backend, err := svc.Create(ctx, "p-unlink", "backend", "", "", "")
+	require.NoError(t, err)
+	_, err = svc.AddBlocker(ctx, frontend.ID, backend.ID)
+	require.NoError(t, err)
+
+	ref := tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}
+	require.NoError(t, svc.LinkPR(ctx, backend.ID, ref))
+	set, err := svc.Links(ctx, frontend.ID)
+	require.NoError(t, err)
+	require.False(t, set.Blocked, "a merged pr finishes the blocker")
+
+	require.NoError(t, svc.UnlinkPR(ctx, backend.ID, ref))
+	set, err = svc.Links(ctx, frontend.ID)
+	require.NoError(t, err)
+	assert.True(t, set.Blocked)
+	uncleared, err := svc.UnclearedBlockers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, uncleared[frontend.ID], 1)
+}
+
+type mergedPRStates struct{}
+
+func (mergedPRStates) PRState(context.Context, string, string, int) (tickets.PRState, error) {
+	return tickets.PRStateMerged, nil
+}

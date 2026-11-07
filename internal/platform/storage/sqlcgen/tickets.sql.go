@@ -57,6 +57,18 @@ func (q *Queries) ClaimTicketTesterLogin(ctx context.Context, arg ClaimTicketTes
 	return err
 }
 
+const clearTicketFinishedAt = `-- name: ClearTicketFinishedAt :execrows
+UPDATE tickets SET finished_at = NULL WHERE id = ? AND finished_at IS NOT NULL
+`
+
+func (q *Queries) ClearTicketFinishedAt(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearTicketFinishedAt, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const countProjectTicketsByCategory = `-- name: CountProjectTicketsByCategory :many
 SELECT CAST(category_id AS TEXT) AS name, COUNT(*) AS n FROM tickets WHERE project_id = ? AND category_id IS NOT NULL AND category_id != '' GROUP BY category_id
 `

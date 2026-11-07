@@ -468,6 +468,23 @@ func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time
 	return set, nil
 }
 
+func (r *TicketsRepo) ClearFinishedAt(ctx context.Context, id string, changes []tickets.Change) (bool, error) {
+	var cleared bool
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.ClearTicketFinishedAt(ctx, id)
+		if err != nil || n == 0 {
+			return err
+		}
+		cleared = true
+		return writeTicketChanges(ctx, q, id, changes)
+	})
+	if err != nil {
+		return false, fmt.Errorf("unfinish ticket %s: %w", id, err)
+	}
+	return cleared, nil
+}
+
 func (r *TicketsRepo) LinkBranch(ctx context.Context, id string, link tickets.BranchLink) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).LinkTicketBranch(ctx, sqlcgen.LinkTicketBranchParams{

@@ -316,6 +316,20 @@ func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, unb
 	return true, nil
 }
 
+func (f *fakeRepo) ClearFinishedAt(_ context.Context, id string, _ []Change) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	t, ok := f.tickets[id]
+	if !ok {
+		return false, apperrs.ErrNotFound
+	}
+	if t.FinishedAt == nil {
+		return false, nil
+	}
+	t.FinishedAt = nil
+	return true, nil
+}
+
 func (f *fakeRepo) UnlinkPR(_ context.Context, id string, ref PRRef) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -899,6 +913,37 @@ func TestDevStatus(t *testing.T) {
 		s := newTestService(repo)
 		_, err := s.DevStatus(context.Background(), []string{"t-1"})
 		require.Error(t, err)
+	})
+}
+
+func TestUnlinkPR_ClearsFinishedOnlyWithoutAMergedPR(t *testing.T) {
+	ctx := context.Background()
+	setup := func() (*Service, string) {
+		s := newTestService(newFakeRepo())
+		s.SetPRStates(fakePRStates{state: PRStateMerged})
+		created, err := s.Create(ctx, "p-1", "ticket", "", "", "")
+		require.NoError(t, err)
+		require.NoError(t, s.LinkPR(ctx, created.ID, validPRRef()))
+		return s, created.ID
+	}
+	finishedAt := func(s *Service, id string) *time.Time {
+		got, err := s.Get(ctx, id)
+		require.NoError(t, err)
+		return got.FinishedAt
+	}
+
+	t.Run("unlinking the only merged pr clears finished_at", func(t *testing.T) {
+		s, id := setup()
+		require.NotNil(t, finishedAt(s, id))
+		require.NoError(t, s.UnlinkPR(ctx, id, validPRRef()))
+		assert.Nil(t, finishedAt(s, id))
+	})
+
+	t.Run("another merged pr keeps finished_at", func(t *testing.T) {
+		s, id := setup()
+		require.NoError(t, s.LinkPR(ctx, id, PRRef{Owner: "acme", Repo: "app", Number: 43}))
+		require.NoError(t, s.UnlinkPR(ctx, id, validPRRef()))
+		assert.NotNil(t, finishedAt(s, id))
 	})
 }
 
