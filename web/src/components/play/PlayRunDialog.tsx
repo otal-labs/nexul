@@ -59,6 +59,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
       {(canReadMemories === false || memories.data) && choices.data && readiness && (
         <PlayRunForm
           play={play}
+          projectId={projectId}
           targetType={targetType}
           targetId={targetId}
           memories={memories.data}
