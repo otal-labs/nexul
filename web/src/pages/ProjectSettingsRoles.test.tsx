@@ -62,7 +62,7 @@ const pages = [
   { path: "services", anchor: "Attached, not deployed yet", controls: ["New service", "Deploy"], menus: [] },
   { path: "statuses", anchor: "Open", controls: ["Add backlog status"], menus: ["Actions for Open"] },
   { path: "types", anchor: "task", controls: ["New ticket type", "Color for task"], menus: ["Actions for task"] },
-  { path: "labels", anchor: "bug", controls: ["Color for label bug"], menus: [], dot: ".bg-orange-500" },
+  { path: "labels", anchor: "bug", controls: ["Color for label bug"], menus: [], dot: "[class~=\"bg-orange-500/15\"]" },
 ];
 
 const control = (name: string) => screen.queryByRole("button", { name }) ?? screen.queryByRole("link", { name });
