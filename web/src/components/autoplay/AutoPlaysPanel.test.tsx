@@ -215,7 +215,7 @@ describe("a play's auto plays", () => {
           ],
         },
         priority: { rules: [], otherwise: "normal" },
-        once_within_minutes: 1440,
+        once_within_minutes: 60,
         run_on: "developer",
         memory_ids: ["m-2", "m-1"],
       }),

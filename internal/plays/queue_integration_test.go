@@ -329,11 +329,14 @@ func TestQueue_OnceWithin_LetsOneRunPerWindow(t *testing.T) {
 
 	r.clock = r.clock.Add(30 * time.Minute)
 	r.unblock(t, "t-1")
-	assert.Len(t, r.queued(t, "t-1"), 1, "inside the hour the started run is the one")
+	items := r.queued(t, "t-1")
+	require.Len(t, items, 2, "inside the hour the match is recorded, not run")
+	skipped := items[slices.IndexFunc(items, func(it *plays.QueueItem) bool { return it.Status == plays.QueueSkipped })]
+	assert.Equal(t, "it ran on this ticket within the last hour", skipped.Reason)
 
 	r.clock = r.clock.Add(31 * time.Minute)
 	r.unblock(t, "t-1")
-	assert.Len(t, r.queued(t, "t-1"), 2)
+	assert.Len(t, slices.DeleteFunc(r.queued(t, "t-1"), func(it *plays.QueueItem) bool { return it.Status == plays.QueueSkipped }), 2, "past the hour it runs again; the skipped line does not restart the window")
 }
 
 func TestDispatch_HighestPriorityFirst_OneSlotPerPerson(t *testing.T) {

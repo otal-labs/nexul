@@ -159,7 +159,7 @@ describe("a stack play's auto plays", () => {
         moment_stage: null,
         conditions: { match: "all", groups: [{ match: "all", rules: [{ field: "service", op: "is", values: ["api"] }] }] },
         priority: { rules: [], otherwise: "normal" },
-        once_within_minutes: 1440,
+        once_within_minutes: 60,
         run_on: "computer",
         computer_ids: [],
         memory_ids: [],
