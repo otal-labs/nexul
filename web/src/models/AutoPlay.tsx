@@ -296,7 +296,7 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   match: "all",
   groups: [],
   priority: { rules: [], otherwise: "normal" },
-  once_within_minutes: 24 * 60,
+  once_within_minutes: 60,
   run_on: FIRST_RUN_ON[subject],
   computer_ids: [],
   computers_picked: true,

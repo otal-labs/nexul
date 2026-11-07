@@ -427,18 +427,23 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 		return false, nil
 	}
 	now := r.now().UTC()
-	if a.OnceWithinMinutes > 0 {
-		since := now.Add(-time.Duration(a.OnceWithinMinutes) * time.Minute)
-		ran, err := r.queue.QueuedSince(ctx, a.ID, m.targetType, m.targetID, since)
-		if err != nil || ran {
-			return false, err
-		}
-	}
 	it := &QueueItem{
 		ID: ids.From("auto-play-match:" + m.eventID + ":" + a.ID), WorkspaceID: workspaceID, ProjectID: f.ProjectID,
 		TargetType: m.targetType, TargetID: m.targetID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
 		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerIDs: slices.Clone(a.ComputerIDs), ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
+	}
+	if a.OnceWithinMinutes > 0 {
+		since := now.Add(-time.Duration(a.OnceWithinMinutes) * time.Minute)
+		ran, err := r.queue.QueuedSince(ctx, a.ID, m.targetType, m.targetID, since)
+		if err != nil {
+			return false, err
+		}
+		if ran {
+			it.Status, it.Reason, it.DecidedAt = QueueSkipped, fmt.Sprintf("it ran on this %s within the last %s", m.targetType, windowText(a.OnceWithinMinutes)), &now
+			_, err := r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
+			return false, err
+		}
 	}
 	if reason := r.whyNobody(ctx, it); reason != "" {
 		r.failedTrail(ctx, it, reason)
@@ -518,4 +523,15 @@ func (r *Runner) failedTrail(ctx context.Context, it *QueueItem, reason string) 
 	}
 	r.createFailed(ctx, trail, title, reason)
 	it.TrailID = trail.ID
+}
+
+// windowText names an auto play's once-within window: "hour", "24 hours", "90 minutes".
+func windowText(minutes int) string {
+	if minutes == 60 {
+		return "hour"
+	}
+	if minutes%60 == 0 {
+		return fmt.Sprintf("%d hours", minutes/60)
+	}
+	return fmt.Sprintf("%d minutes", minutes)
 }
