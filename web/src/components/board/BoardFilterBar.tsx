@@ -6,6 +6,7 @@ import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
 import { FilterChipRow } from "@/components/board/FilterChipRow";
 import {
+  buildBlockerChips,
   buildCategoryChips,
   buildFilterRows,
   buildLabelChips,
@@ -47,6 +48,7 @@ interface BoardFilterBarProps {
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
   onTogglePlaying: () => void;
+  onToggleUnblocked: () => void;
   onSearch: (search: string) => void;
   onClear: () => void;
   onNewTicket: () => void;
@@ -69,6 +71,7 @@ export const BoardFilterBar = ({
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
   onTogglePlaying,
+  onToggleUnblocked,
   onSearch,
   onClear,
   onNewTicket,
@@ -87,6 +90,7 @@ export const BoardFilterBar = ({
   const labelChips = buildLabelChips(labels, labelColors, filters, onToggleLabel);
   const typeChips = buildTypeChips(ticketTypes, filters, onSelectType);
   const statusChips = buildStatusChips(statuses, filters, onToggleStatus);
+  const blockerChips = buildBlockerChips(filters, onToggleUnblocked);
   const summaryLabel = buildSummaryLabel(activeCount, projects);
   const filterRows = buildFilterRows({
     hideProjectFilter,
@@ -96,6 +100,7 @@ export const BoardFilterBar = ({
     labelChips,
     typeChips,
     statusChips,
+    blockerChips,
   });
   const activeChips = filterRows.flatMap((row) => row.chips.filter((option) => option.active));
 

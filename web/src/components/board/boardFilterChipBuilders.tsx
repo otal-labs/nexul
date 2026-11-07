@@ -14,6 +14,7 @@ export interface BoardFilters {
   developers: string[];
   waitingForMeToTest: boolean;
   playing: boolean;
+  unblocked: boolean;
   search: string;
 }
 
@@ -30,7 +31,8 @@ export const countActiveFilters = (filters: BoardFilters, hideProjectFilter: boo
   filters.statusIds.length +
   filters.developers.length +
   (filters.waitingForMeToTest ? 1 : 0) +
-  (filters.playing ? 1 : 0);
+  (filters.playing ? 1 : 0) +
+  (filters.unblocked ? 1 : 0);
 
 // "No projects yet" earns its keep; the zero-filter default otherwise needs no summary line.
 export const buildSummaryLabel = (activeCount: number, projects: Project[] | undefined): string | null =>
@@ -95,6 +97,10 @@ export const buildStatusChips = (statuses: BoardStatus[] | undefined, filters: B
     onToggle: () => onToggle(status.id),
   }));
 
+export const buildBlockerChips = (filters: BoardFilters, onToggle: () => void): ChipOption[] => [
+  { key: "__unblocked__", label: "Not blocked", active: filters.unblocked, onToggle },
+];
+
 export const buildFilterRows = (params: {
   hideProjectFilter: boolean;
   projects: Project[] | undefined;
@@ -103,6 +109,7 @@ export const buildFilterRows = (params: {
   labelChips: ChipOption[];
   typeChips: ChipOption[];
   statusChips: ChipOption[];
+  blockerChips: ChipOption[];
 }): FilterRow[] => {
   const rows: FilterRow[] = [];
   const showProjects = !params.hideProjectFilter && (params.projects?.length ?? 0) > 0;
@@ -111,5 +118,6 @@ export const buildFilterRows = (params: {
   if (params.labelChips.length > 0) rows.push({ title: "Labels", chips: params.labelChips });
   if (params.typeChips.length > 0) rows.push({ title: "Type", chips: params.typeChips });
   if (params.statusChips.length > 0) rows.push({ title: "Status", chips: params.statusChips });
+  rows.push({ title: "Blockers", chips: params.blockerChips });
   return rows;
 };

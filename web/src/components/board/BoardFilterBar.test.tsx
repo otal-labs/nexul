@@ -69,6 +69,7 @@ const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
   developers: [],
   waitingForMeToTest: false,
   playing: false,
+  unblocked: false,
   search: "",
   ...overrides,
 });
@@ -87,6 +88,7 @@ const baseProps = {
   onToggleDeveloper: () => {},
   onToggleWaitingForMeToTest: () => {},
   onTogglePlaying: () => {},
+  onToggleUnblocked: () => {},
   onSearch: () => {},
   onClear: () => {},
   onNewTicket: () => {},
