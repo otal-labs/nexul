@@ -4,7 +4,7 @@ import { microheaderClass } from "@/components/Microheader";
 import { HarnessPickerPill, type HarnessPick } from "@/components/play/HarnessPickerPill";
 import { MemoryPickSection } from "@/components/play/MemoryPickSection";
 import { PlayRunError } from "@/components/play/PlayRunError";
-import { RunWhereSection, type RunWhere } from "@/components/play/RunWhereSection";
+import { RunWhereForm, RunWhereSection, type RunWhere } from "@/components/play/RunWhereSection";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ import type { LatestChoices } from "@/models/Trail";
 
 interface PlayRunFormProps {
   play: Play;
+  projectId: string;
   targetType: PlayType;
   targetId: string;
   // Undefined when the person cannot read the project's memories: the pickers are left out and none are chosen.
@@ -36,6 +37,7 @@ interface PlayRunFormProps {
 // Mounted once per open, so the seed from the caller's latest trail needs no effect.
 export const PlayRunForm = ({
   play,
+  projectId,
   targetType,
   targetId,
   memories,
@@ -138,9 +140,10 @@ export const PlayRunForm = ({
         passedOver={passedOver}
         asking={asking}
         mustPick={mustPick}
-        onChange={pickWhere}
         onChangeRequested={() => setChanging(true)}
-      />
+      >
+        <RunWhereForm value={where} projectId={projectId} onChange={pickWhere} />
+      </RunWhereSection>
 
       {runPlay.error && <PlayRunError error={runPlay.error} />}
 

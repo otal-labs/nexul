@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -26,14 +26,20 @@ interface RunWhereSectionProps {
   // Open pickers instead of the one-line summary: no computer has the project, a Change, or a refusal that asked where.
   asking: boolean;
   mustPick: boolean;
-  onChange: (next: RunWhere) => void;
   onChangeRequested: () => void;
+  // The RunWhereForm, mounted only while asking.
+  children: ReactNode;
 }
 
-type RunWhereFormProps = Pick<RunWhereSectionProps, "value" | "onChange">;
+interface RunWhereFormProps {
+  value: RunWhere;
+  // The Nexul project whose repositories a computer without a checkout is offered to clone.
+  projectId: string;
+  onChange: (next: RunWhere) => void;
+}
 
 // Subscribe so the run payload always matches the fields displayed in this form.
-const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
+export const RunWhereForm = ({ value, projectId, onChange }: RunWhereFormProps) => {
   const { data: computers, isPending, error } = useListComputers();
   const { data: presence } = useFetchPresence();
   const form = useForm<RunWhere>({ defaultValues: value });
@@ -56,12 +62,12 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
           withShared
         />
       )}
-      <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId={computerId} />
+      <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId={computerId} projectId={projectId} />
     </div>
   );
 };
 
-export const RunWhereSection = ({ value, passedOver, asking, mustPick, onChange, onChangeRequested }: RunWhereSectionProps) => {
+export const RunWhereSection = ({ value, passedOver, asking, mustPick, onChangeRequested, children }: RunWhereSectionProps) => {
   const { computer, project, isPending } = useHarnessPlaceNames(value.computer_id, value.harness_project_id);
   const note = mustPick
     ? "None of your computers has this project yet. Pick a computer and its T3 project; it's remembered there for this project."
@@ -85,7 +91,7 @@ export const RunWhereSection = ({ value, passedOver, asking, mustPick, onChange,
       {asking && (
         <div className={cn("space-y-3", !mustPick && "settle-in")}>
           <p className="text-xs text-muted-foreground">{note}</p>
-          <RunWhereForm value={value} onChange={onChange} />
+          {children}
         </div>
       )}
     </section>

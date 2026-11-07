@@ -326,6 +326,23 @@ describe("PlayRunDialog", () => {
     expect(screen.queryByText(/None of your computers has this project yet/)).not.toBeInTheDocument();
   });
 
+  it("offers to clone the project's repository onto a computer that has no checkout of it", async () => {
+    const user = userEvent.setup();
+    resolve = { ok: false, reason: "needs_location" };
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
+    const mocked = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1/repos") return { data: [{ owner: "acme", name: "game", full_name: "acme/game", connector_id: "github", role: "app" }] };
+      if (url === "/api/pairing/computers/c-1/projects") return { data: { projects: [{ id: "t3-app", title: "App", path: "/home/me/Code/app" }], can_clone: true } };
+      return mocked(url);
+    });
+    renderDialog();
+
+    await pickOption(user, "Computer", "Onik's PC");
+    expect(await screen.findByRole("button", { name: "Clone acme/game" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create empty project" })).not.toBeInTheDocument();
+  });
+
   it("keeps Run disabled while the computer's projects load", async () => {
     const user = userEvent.setup();
     resolve = { ok: false, reason: "needs_location" };
