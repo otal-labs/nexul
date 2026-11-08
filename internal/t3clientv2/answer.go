@@ -48,8 +48,13 @@ func (h *Harness) Answer(ctx context.Context, target harness.Target, requestID s
 	asMessage := req.ResponseCapability.Type == "message"
 	_, err = c.Call(ctx, dispatchCommand, requestRespond{Type: "runtime-request.respond", CommandID: ids.New(),
 		ThreadID: target.SessionID, RequestID: requestID, Answers: encodeAnswers(answer, asMessage)})
-	if t3Message(err) == "Runtime request "+requestID+" is resolved." {
+	prefix := "Runtime request " + requestID
+	switch t3Message(err) {
+	case prefix + " is resolved.":
 		return fmt.Errorf("%w: question %s was already answered", apperrs.ErrConflict, requestID)
+	case prefix + " is expired.", prefix + " is cancelled.", prefix + " was not found.":
+		// The run that asked has ended; callers resume with a fresh turn, which delivers the answer as a message.
+		return fmt.Errorf("%w: question %s is no longer open", apperrs.ErrNotFound, requestID)
 	}
 	if err != nil {
 		return refused("answer the T3 question", err)

@@ -1358,15 +1358,17 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 		return fmt.Errorf("%w: an answer is required", apperrs.ErrInvalid)
 	}
 	body := answer.Summary(nil)
+	// The answer is posted only once a turn has it, so a refused answer leaves no message behind to retry over.
+	err := s.Answer(ctx, conversationID, requestID, answer)
+	gone := errors.Is(err, apperrs.ErrNotFound)
+	if err != nil && !gone && !errors.Is(err, apperrs.ErrConflict) {
+		return err
+	}
 	if err := s.conversations.PostUserMessage(ctx, conversationID, userID, body); err != nil {
 		return fmt.Errorf("post answer: %w", err)
 	}
-	err := s.Answer(ctx, conversationID, requestID, answer)
-	if errors.Is(err, apperrs.ErrConflict) {
+	if !gone {
 		return nil
-	}
-	if !errors.Is(err, apperrs.ErrNotFound) {
-		return err
 	}
 	go s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body,
 		Answer: &harness.PendingAnswer{RequestID: requestID, Answer: answer}})
