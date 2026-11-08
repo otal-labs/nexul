@@ -35,6 +35,7 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.MeetingCancelled]: "Meeting cancelled",
   [NotificationKind.MeetingReminder]: "Meeting starting soon",
   [NotificationKind.TicketDueSoon]: "Due soon",
+  [NotificationKind.SweepFinished]: "Sweep finished",
 };
 
 interface NotificationRowProps {

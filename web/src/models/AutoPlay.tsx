@@ -1,4 +1,6 @@
+import { browserTimezone } from "@/models/Meeting";
 import type { Play, PlayStage } from "@/models/Play";
+import { DEFAULT_SWEEP_RUNS, type AutoPlaySchedule } from "@/models/Schedule";
 
 // Mirrors internal/plays/autoplay.go: what starts a play by itself, its conditions, priority, and whom it runs on.
 export type AutoPlayMoment =
@@ -12,7 +14,8 @@ export type AutoPlayMoment =
   | "doc.changed"
   | "stack.service_crashed"
   | "stack.service_recovered"
-  | "stack.error_rate_crossed";
+  | "stack.error_rate_crossed"
+  | "schedule";
 
 export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
@@ -58,6 +61,8 @@ export interface AutoPlay {
   enabled: boolean;
   moment: AutoPlayMoment;
   moment_stage: PlayStage | null;
+  // Set only for the schedule moment.
+  schedule: AutoPlaySchedule | null;
   conditions: { match: AutoPlayMatch; groups: AutoPlayGroup[] };
   priority: AutoPlayPriority;
   once_within_minutes: number;
@@ -69,6 +74,9 @@ export interface AutoPlay {
   computer_id: string;
   // Read by each run beside the always-included memories; a run reads only those in its own project.
   memory_ids: string[];
+  // One run at a time: its own, or with a resource, across every auto play naming it.
+  one_at_a_time: boolean;
+  resource: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -77,7 +85,7 @@ export interface AutoPlay {
 // The full replace the create and update routes take; no computer_ids keeps the stored list and its person.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids"
+  "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource"
 > & { computer_ids?: string[] };
 
 export const storedComputerIds = (autoPlay: Pick<AutoPlay, "computer_ids" | "computer_id">): string[] =>
@@ -102,7 +110,15 @@ export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {
 };
 
 export const SUBJECT_MOMENTS: Record<AutoPlaySubject, AutoPlayMoment[]> = {
-  ticket: ["ticket.unblocked", "ticket.entered_stage", "ticket.created", "ticket.developer_set", "ticket.tester_set", "ticket.test_failed"],
+  ticket: [
+    "ticket.unblocked",
+    "ticket.entered_stage",
+    "ticket.created",
+    "ticket.developer_set",
+    "ticket.tester_set",
+    "ticket.test_failed",
+    "schedule",
+  ],
   doc: ["doc.created", "doc.changed"],
   stack: ["stack.service_crashed", "stack.service_recovered", "stack.error_rate_crossed"],
 };
@@ -119,6 +135,7 @@ export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
   "stack.service_crashed": "Service crashes",
   "stack.service_recovered": "Service recovers",
   "stack.error_rate_crossed": "Error rate goes over its limit",
+  schedule: "On a schedule",
 };
 
 // The moment as the list row's sentence says it after "When a ticket".
@@ -134,6 +151,7 @@ export const MOMENT_PHRASES: Record<AutoPlayMoment, string> = {
   "stack.service_crashed": "service crashes",
   "stack.service_recovered": "service recovers",
   "stack.error_rate_crossed": "error rate goes over its limit",
+  schedule: "comes up on a schedule",
 };
 
 export const SUBJECT_FIELDS: Record<AutoPlaySubject, AutoPlayField[]> = {
@@ -279,6 +297,13 @@ export interface AutoPlayDraft {
   groups: DraftGroup[];
   priority: AutoPlayPriority;
   once_within_minutes: number;
+  cron: string;
+  timezone: string;
+  // "" for no stop time.
+  stop_at: string;
+  max_runs: number;
+  one_at_a_time: boolean;
+  resource: string;
   run_on: AutoPlayRunOn;
   // [] follows the person's own order; computers_picked is false until a seeded auto play has been given either.
   computer_ids: string[];
@@ -298,6 +323,12 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   priority: { rules: [], otherwise: "normal" },
   once_within_minutes: 60,
   run_on: FIRST_RUN_ON[subject],
+  cron: "0 23 * * *",
+  timezone: browserTimezone(),
+  stop_at: "07:00",
+  max_runs: DEFAULT_SWEEP_RUNS,
+  one_at_a_time: false,
+  resource: "",
   computer_ids: [],
   computers_picked: true,
   run_as: "",
@@ -313,6 +344,12 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   groups: autoPlay.conditions.groups.map((group) => ({ ...group, nested: group.rules.length !== 1 })),
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
+  cron: autoPlay.schedule?.cron ?? "0 23 * * *",
+  timezone: autoPlay.schedule?.timezone ?? browserTimezone(),
+  stop_at: autoPlay.schedule?.stop_at ?? "",
+  max_runs: autoPlay.schedule?.max_runs ?? DEFAULT_SWEEP_RUNS,
+  one_at_a_time: autoPlay.one_at_a_time,
+  resource: autoPlay.resource,
   run_on: autoPlay.run_on,
   computer_ids: storedComputerIds(autoPlay),
   computers_picked: computersPicked(autoPlay),
@@ -325,6 +362,10 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   enabled: draft.enabled,
   moment: draft.moment,
   moment_stage: draft.moment === "ticket.entered_stage" ? draft.moment_stage : null,
+  schedule:
+    draft.moment === "schedule"
+      ? { cron: draft.cron.trim(), timezone: draft.timezone.trim(), stop_at: draft.stop_at, max_runs: draft.max_runs }
+      : null,
   conditions: {
     match: draft.match,
     groups: draft.groups.filter((group) => group.rules.length > 0).map(({ match, rules }) => ({ match, rules })),
@@ -334,18 +375,23 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   run_on: draft.run_on,
   ...(draft.run_on === "computer" && draft.computers_picked && { computer_ids: draft.computer_ids }),
   memory_ids: draft.memory_ids,
+  one_at_a_time: draft.one_at_a_time,
+  resource: draft.one_at_a_time ? draft.resource.trim() : "",
 });
 
 export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
   enabled: autoPlay.enabled,
   moment: autoPlay.moment,
   moment_stage: autoPlay.moment_stage,
+  schedule: autoPlay.schedule,
   conditions: autoPlay.conditions,
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
   run_on: autoPlay.run_on,
   ...(autoPlay.run_on === "computer" && computersPicked(autoPlay) && { computer_ids: storedComputerIds(autoPlay) }),
   memory_ids: autoPlay.memory_ids,
+  one_at_a_time: autoPlay.one_at_a_time,
+  resource: autoPlay.resource,
 });
 
 export const MATCH_OPTIONS = [

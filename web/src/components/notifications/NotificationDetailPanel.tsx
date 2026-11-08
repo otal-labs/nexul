@@ -7,6 +7,7 @@ import { ComputerMoveDetail } from "@/components/notifications/ComputerMoveDetai
 import { InterviewNoticeDetail } from "@/components/notifications/InterviewNoticeDetail";
 import { MeetingNoticeDetail } from "@/components/notifications/MeetingNoticeDetail";
 import { StackNoticeDetail } from "@/components/notifications/StackNoticeDetail";
+import { SweepNoticeDetail } from "@/components/notifications/SweepNoticeDetail";
 import { SubjectType } from "@/models/Notification";
 import type { Notification } from "@/models/Notification";
 import { TicketPage } from "@/pages/TicketPage";
@@ -43,5 +44,6 @@ export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelPro
     {selected && selected.subject_type === SubjectType.Stack && <StackNoticeDetail notification={selected} />}
     {selected && selected.subject_type === SubjectType.Meeting && <MeetingNoticeDetail meetingId={selected.subject_id} />}
     {selected && selected.subject_type === SubjectType.Interview && <InterviewNoticeDetail notification={selected} />}
+    {selected && selected.subject_type === SubjectType.Sweep && <SweepNoticeDetail sweepId={selected.subject_id} />}
   </div>
 );

@@ -161,6 +161,8 @@ var liveRules = map[string]liveRule{
 	plays.TopicQueued:                    playRunFrame,
 	plays.TopicQueueUpdated:              playRunFrame,
 	plays.TopicQueueResumed:              playRunFrame,
+	plays.TopicSweepStarted:              sweepFrame,
+	plays.TopicSweepFinished:             sweepFrame,
 	botwebhook.TopicCreated:              botwebhookFrame,
 	botwebhook.TopicUpdated:              botwebhookFrame,
 	botwebhook.TopicDeleted:              botwebhookFrame,
@@ -638,4 +640,18 @@ func deployFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool 
 	}
 	_, err := a.deploy.Get(ctx, p.ID)
 	return err == nil
+}
+
+// sweepFrame reaches whoever can see the sweep's play, as its digest does.
+func sweepFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		Sweep struct {
+			PlayID      string `json:"play_id"`
+			WorkspaceID string `json:"workspace_id"`
+		} `json:"sweep"`
+	}
+	if !decode(raw, &p) || p.Sweep.WorkspaceID == "" {
+		return false
+	}
+	return a.access.HasPermission(ctx, actorID(ctx), p.Sweep.WorkspaceID, permissions.PlaysRead, "play", p.Sweep.PlayID)
 }

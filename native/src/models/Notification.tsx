@@ -19,6 +19,7 @@ export const NotificationKind = {
   MeetingCancelled: "meeting.cancelled",
   MeetingReminder: "meeting.reminder",
   TicketDueSoon: "ticket.due_soon",
+  SweepFinished: "auto_play.sweep_finished",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -33,6 +34,8 @@ export const SubjectType = {
   Meeting: "meeting",
   // The phone has no Interview screen; the notice marks read with nothing to open.
   Interview: "interview",
+  // The phone has no sweep digest; the notice marks read with nothing to open.
+  Sweep: "sweep",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];
