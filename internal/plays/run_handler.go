@@ -58,6 +58,8 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/queue", h.queuePlay)
 	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
 	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
+	mux.HandleFunc("GET /api/plays/sweeps", h.lastSweeps)
+	mux.HandleFunc("GET /api/plays/sweeps/{sweepID}", h.sweep)
 	return mux
 }
 
@@ -345,4 +347,24 @@ func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, choices)
+}
+
+// lastSweeps answers the latest sweep of each of a play's schedule auto plays, keyed by auto play id.
+func (h *RunHandler) lastSweeps(w http.ResponseWriter, r *http.Request) {
+	sweeps, err := h.runner.LastSweeps(r.Context(), r.URL.Query().Get("play_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, sweeps)
+}
+
+// sweep answers one sweep's digest: what ran, finished, asked, failed or was skipped, and the bugs it found.
+func (h *RunHandler) sweep(w http.ResponseWriter, r *http.Request) {
+	d, err := h.runner.GetSweepDigest(r.Context(), r.PathValue("sweepID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, d)
 }

@@ -184,7 +184,8 @@
               "doc.changed",
               "stack.service_crashed",
               "stack.service_recovered",
-              "stack.error_rate_crossed"
+              "stack.error_rate_crossed",
+              "schedule"
             ]
           },
           "moment_stage": {
@@ -199,6 +200,40 @@
               "testing",
               "done"
             ]
+          },
+          "schedule": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "cron": {
+                "type": "string",
+                "description": "Five fields (minute hour day month weekday), such as 0 23 * * *; at most hourly."
+              },
+              "timezone": {
+                "type": "string",
+                "description": "IANA zone, such as Europe/London; default UTC."
+              },
+              "stop_at": {
+                "type": "string",
+                "description": "HH:MM: a sweep starts no run after it; empty for none."
+              },
+              "max_runs": {
+                "type": "integer",
+                "description": "Tickets per sweep, 1 to 100; default 10."
+              }
+            },
+            "required": [
+              "cron"
+            ]
+          },
+          "one_at_a_time": {
+            "type": "boolean"
+          },
+          "resource": {
+            "type": "string",
+            "description": "With one_at_a_time: a name shared with other auto plays, such as windows-vm."
           },
           "conditions": {
             "type": "object",
@@ -446,6 +481,9 @@
           "enabled",
           "moment",
           "moment_stage",
+          "schedule",
+          "one_at_a_time",
+          "resource",
           "conditions",
           "priority",
           "once_within_minutes",
@@ -508,6 +546,220 @@
       "runs_at_once_per_person"
     ]
   },
+  "auto_play.sweep_finished": {
+    "type": "object",
+    "properties": {
+      "sweep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "auto_play_id": {
+            "type": "string"
+          },
+          "play_id": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "fired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "start_by": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "No run starts after this; null for none.",
+            "format": "date-time"
+          },
+          "matched": {
+            "type": "integer",
+            "description": "Tickets matched."
+          },
+          "over_cap": {
+            "type": "integer",
+            "description": "Matches left past max_runs."
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "finished": {
+                "type": "integer"
+              },
+              "asked": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer"
+              },
+              "didnt_run": {
+                "type": "integer"
+              }
+            },
+            "description": "How its runs ended, once finished.",
+            "required": [
+              "finished",
+              "asked",
+              "failed",
+              "skipped",
+              "didnt_run"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null while it goes.",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "auto_play_id",
+          "play_id",
+          "play_label",
+          "fired_at",
+          "start_by",
+          "matched",
+          "over_cap",
+          "counts",
+          "finished_at"
+        ]
+      },
+      "people": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "User ids of the people its runs went out as."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Nothing of a sweep waits or works any more: its counts say how its runs ended, and its people hear of it. An automation can stop what the sweep needed.",
+    "required": [
+      "sweep",
+      "people"
+    ]
+  },
+  "auto_play.sweep_started": {
+    "type": "object",
+    "properties": {
+      "sweep": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "auto_play_id": {
+            "type": "string"
+          },
+          "play_id": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "fired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "start_by": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "No run starts after this; null for none.",
+            "format": "date-time"
+          },
+          "matched": {
+            "type": "integer",
+            "description": "Tickets matched."
+          },
+          "over_cap": {
+            "type": "integer",
+            "description": "Matches left past max_runs."
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "finished": {
+                "type": "integer"
+              },
+              "asked": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer"
+              },
+              "didnt_run": {
+                "type": "integer"
+              }
+            },
+            "description": "How its runs ended, once finished.",
+            "required": [
+              "finished",
+              "asked",
+              "failed",
+              "skipped",
+              "didnt_run"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null while it goes.",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "auto_play_id",
+          "play_id",
+          "play_label",
+          "fired_at",
+          "start_by",
+          "matched",
+          "over_cap",
+          "counts",
+          "finished_at"
+        ]
+      },
+      "people": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "User ids of the people its runs went out as."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A schedule auto play fired: its sweep queued the tickets its conditions held for, up to its cap. An automation can start what the runs need, such as a virtual machine.",
+    "required": [
+      "sweep",
+      "people"
+    ]
+  },
   "auto_play.updated": {
     "type": "object",
     "properties": {
@@ -539,7 +791,8 @@
               "doc.changed",
               "stack.service_crashed",
               "stack.service_recovered",
-              "stack.error_rate_crossed"
+              "stack.error_rate_crossed",
+              "schedule"
             ]
           },
           "moment_stage": {
@@ -554,6 +807,40 @@
               "testing",
               "done"
             ]
+          },
+          "schedule": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "cron": {
+                "type": "string",
+                "description": "Five fields (minute hour day month weekday), such as 0 23 * * *; at most hourly."
+              },
+              "timezone": {
+                "type": "string",
+                "description": "IANA zone, such as Europe/London; default UTC."
+              },
+              "stop_at": {
+                "type": "string",
+                "description": "HH:MM: a sweep starts no run after it; empty for none."
+              },
+              "max_runs": {
+                "type": "integer",
+                "description": "Tickets per sweep, 1 to 100; default 10."
+              }
+            },
+            "required": [
+              "cron"
+            ]
+          },
+          "one_at_a_time": {
+            "type": "boolean"
+          },
+          "resource": {
+            "type": "string",
+            "description": "With one_at_a_time: a name shared with other auto plays, such as windows-vm."
           },
           "conditions": {
             "type": "object",
@@ -801,6 +1088,9 @@
           "enabled",
           "moment",
           "moment_stage",
+          "schedule",
+          "one_at_a_time",
+          "resource",
           "conditions",
           "priority",
           "once_within_minutes",
@@ -5757,6 +6047,7 @@
           "stack.service_crashed",
           "stack.service_recovered",
           "stack.error_rate_crossed",
+          "schedule",
           "automation"
         ]
       },
@@ -5781,7 +6072,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
+        "description": "While queued: ticket busy, paused, one at a time, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -5868,6 +6159,22 @@
           ]
         },
         "description": "While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."
+      },
+      "sweep_id": {
+        "type": "string",
+        "description": "The scheduled sweep that queued it; empty for a run a moment or an automation queued."
+      },
+      "sweep_position": {
+        "type": "integer",
+        "description": "Its place in its sweep, which orders the sweep's runs within one priority."
+      },
+      "start_by": {
+        "type": [
+          "null",
+          "string"
+        ],
+        "description": "A sweep's run starts by this time or is skipped; null for no limit.",
+        "format": "date-time"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5896,7 +6203,10 @@
       "computer_ids",
       "computer_id",
       "service",
-      "outage_id"
+      "outage_id",
+      "sweep_id",
+      "sweep_position",
+      "start_by"
     ]
   },
   "play.queued": {
@@ -5963,6 +6273,7 @@
           "stack.service_crashed",
           "stack.service_recovered",
           "stack.error_rate_crossed",
+          "schedule",
           "automation"
         ]
       },
@@ -5987,7 +6298,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
+        "description": "While queued: ticket busy, paused, one at a time, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -6074,6 +6385,22 @@
           ]
         },
         "description": "While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."
+      },
+      "sweep_id": {
+        "type": "string",
+        "description": "The scheduled sweep that queued it; empty for a run a moment or an automation queued."
+      },
+      "sweep_position": {
+        "type": "integer",
+        "description": "Its place in its sweep, which orders the sweep's runs within one priority."
+      },
+      "start_by": {
+        "type": [
+          "null",
+          "string"
+        ],
+        "description": "A sweep's run starts by this time or is skipped; null for no limit.",
+        "format": "date-time"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6102,7 +6429,10 @@
       "computer_ids",
       "computer_id",
       "service",
-      "outage_id"
+      "outage_id",
+      "sweep_id",
+      "sweep_position",
+      "start_by"
     ]
   },
   "play.run_finished": {

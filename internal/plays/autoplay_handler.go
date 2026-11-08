@@ -12,6 +12,7 @@ type autoPlayRequest struct {
 	Enabled           bool       `json:"enabled"`
 	Moment            Moment     `json:"moment"`
 	MomentStage       *Stage     `json:"moment_stage"`
+	Schedule          *Schedule  `json:"schedule"`
 	Conditions        Conditions `json:"conditions"`
 	Priority          Priority   `json:"priority"`
 	OnceWithinMinutes int        `json:"once_within_minutes"`
@@ -20,12 +21,15 @@ type autoPlayRequest struct {
 	ComputerIDs *[]string `json:"computer_ids"`
 	ComputerID  string    `json:"computer_id"`
 	MemoryIDs   []string  `json:"memory_ids"`
+	OneAtATime  bool      `json:"one_at_a_time"`
+	Resource    string    `json:"resource"`
 }
 
 func (req autoPlayRequest) input() AutoPlayInput {
 	return AutoPlayInput{
-		Moment: req.Moment, MomentStage: req.MomentStage, Conditions: req.Conditions, Priority: req.Priority,
+		Moment: req.Moment, MomentStage: req.MomentStage, Schedule: req.Schedule, Conditions: req.Conditions, Priority: req.Priority,
 		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn, ComputerIDs: pickedComputers(req.ComputerIDs, req.ComputerID), MemoryIDs: req.MemoryIDs,
+		OneAtATime: req.OneAtATime, Resource: req.Resource,
 	}
 }
 

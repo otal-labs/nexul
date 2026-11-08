@@ -378,6 +378,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "notifications", plays.TopicRunWaiting, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandlePlayRunWaiting(ctx, svc.notifSvc, ev)
 	})
+	mustSubscribe(ctx, bus, "notifications", plays.TopicSweepFinished, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleSweepFinished(ctx, svc.notifSvc, ev)
+	})
 	for _, topic := range []string{calendar.TopicMeetingCreated, calendar.TopicMeetingUpdated, calendar.TopicMeetingRestored} {
 		mustSubscribe(ctx, bus, "notifications", topic, "", func(ctx context.Context, ev eventbus.Event) error {
 			return workspace.HandleMeetingInvited(ctx, svc.notifSvc, ev)
@@ -534,6 +537,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		mustSubscribe(ctx, bus, "plays.auto_match", topic, " for auto plays", svc.playsRunner.HandleAutoPlayMoment)
 	}
 	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleSlotsFreed)
+	// A run stopping on a question lets go of its one-at-a-time lock and may close its sweep.
+	mustSubscribe(ctx, bus, "plays.queue_waiting", plays.TopicRunWaiting, " for the run queue", svc.playsRunner.HandleSlotsFreed)
 	mustSubscribe(ctx, bus, "plays.queue_limits", plays.TopicAutoPlayLimitsUpdated, " for the run queue", svc.playsRunner.HandleSlotsFreed)
 	// A paired computer or a finished setup may close the gap a person's queued runs wait on.
 	for _, topic := range plays.ComputerTopics {
@@ -547,6 +552,11 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	mustSubscribe(ctx, bus, "plays.queue_auto_play_computers", plays.TopicAutoPlayUpdated, " for the run queue", svc.playsRunner.HandleAutoPlayComputersChanged)
 	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
 	go svc.playsRunner.RunQueue(ctx)
+	// A schedule auto play sweeps its tickets when its cron comes round (ADR 0179).
+	for _, topic := range plays.ScheduleTopics {
+		mustSubscribe(ctx, bus, "plays.schedules", topic, " for the scheduler", svc.playsRunner.HandleScheduleChanged)
+	}
+	go svc.playsRunner.RunSchedules(ctx)
 
 	mustSubscribe(ctx, bus, "topology.live_canvas", topology.TopicUpdated, " for live push", topologyLiveHandler(svc.topoSvc, store.Workspaces, liveHub.Publish))
 

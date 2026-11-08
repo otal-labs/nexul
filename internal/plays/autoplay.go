@@ -25,6 +25,8 @@ const (
 	MomentStackServiceRecovered Moment = "stack.service_recovered"
 	// MomentStackErrorRateCrossed is a stack's share of 5xx answers going over its rule; it names no service.
 	MomentStackErrorRateCrossed Moment = "stack.error_rate_crossed"
+	// MomentSchedule fires on a cron schedule and sweeps every ticket its conditions hold for (ADR 0179).
+	MomentSchedule Moment = "schedule"
 	// MomentAutomation marks a queued run an automation's runPlay asked for; no auto play waits for it.
 	MomentAutomation Moment = "automation"
 )
@@ -32,7 +34,7 @@ const (
 var momentPlayType = map[Moment]Type{
 	MomentTicketUnblocked: TypeTicket, MomentTicketEnteredStage: TypeTicket, MomentTicketCreated: TypeTicket,
 	MomentTicketDeveloperSet: TypeTicket, MomentTicketTesterSet: TypeTicket, MomentTicketTestFailed: TypeTicket,
-	MomentDocCreated: TypeDoc, MomentDocChanged: TypeDoc,
+	MomentSchedule: TypeTicket, MomentDocCreated: TypeDoc, MomentDocChanged: TypeDoc,
 	MomentStackServiceCrashed: TypeStack, MomentStackServiceRecovered: TypeStack, MomentStackErrorRateCrossed: TypeStack,
 }
 
@@ -121,6 +123,9 @@ const (
 	DefaultAutoPlayDailyCap = 5
 	MaxAutoPlayMemories     = 50
 	MaxAutoPlayComputers    = 20
+	MaxSweepRuns            = 100
+	DefaultSweepRuns        = 10
+	MaxResourceLength       = 40
 )
 
 // AutoPlayLimits are a workspace's bounds on automatic runs, shared by every play's auto plays.
@@ -159,17 +164,30 @@ type PriorityRule struct {
 	When  Group `json:"when" jsonschema:"The group that must hold, with the same rules as a condition group."`
 }
 
+// Schedule is when a schedule auto play sweeps and how much one sweep may start (ADR 0179).
+type Schedule struct {
+	Cron     string `json:"cron" jsonschema:"Five fields (minute hour day month weekday), such as 0 23 * * *; at most hourly."`
+	Timezone string `json:"timezone,omitempty" jsonschema:"IANA zone, such as Europe/London; default UTC."`
+	StopAt   string `json:"stop_at,omitempty" jsonschema:"HH:MM: a sweep starts no run after it; empty for none."`
+	MaxRuns  int    `json:"max_runs,omitempty" jsonschema:"Tickets per sweep, 1 to 100; default 10."`
+}
+
 // AutoPlay starts its play when a moment matches (ADR 0132); a play may have several.
 type AutoPlay struct {
 	ID          string `json:"id"`
 	PlayID      string `json:"play_id"`
 	WorkspaceID string `json:"workspace_id"`
 	Enabled     bool   `json:"enabled"`
-	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed"`
+	Moment      Moment `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,schedule"`
 	// MomentStage is set only for ticket.entered_stage.
-	MomentStage *Stage     `json:"moment_stage" enum:"backlog,progress,review,testing,done"`
-	Conditions  Conditions `json:"conditions"`
-	Priority    Priority   `json:"priority"`
+	MomentStage *Stage `json:"moment_stage" enum:"backlog,progress,review,testing,done"`
+	// Schedule is set only for the schedule moment.
+	Schedule *Schedule `json:"schedule"`
+	// OneAtATime lets one of its runs go at a time; with a Resource, one at a time across every auto play naming it.
+	OneAtATime bool       `json:"one_at_a_time"`
+	Resource   string     `json:"resource" jsonschema:"With one_at_a_time: a name shared with other auto plays, such as windows-vm."`
+	Conditions Conditions `json:"conditions"`
+	Priority   Priority   `json:"priority"`
 	// OnceWithinMinutes allows one run per target per window after the moment; 0 is no limit.
 	OnceWithinMinutes int   `json:"once_within_minutes"`
 	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,computer"`
@@ -224,7 +242,41 @@ func (a *AutoPlay) normalize(playType Type) {
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
 	}
+	a.normalizeSchedule()
 	a.MemoryIDs = normalizeIDs(a.MemoryIDs)
+}
+
+func (a *AutoPlay) normalizeSchedule() {
+	a.Resource = strings.TrimSpace(a.Resource)
+	if !a.OneAtATime {
+		a.Resource = ""
+	}
+	if a.Moment != MomentSchedule {
+		a.Schedule = nil
+		return
+	}
+	if a.Schedule == nil {
+		a.Schedule = &Schedule{}
+	}
+	a.Schedule.Cron = strings.Join(strings.Fields(a.Schedule.Cron), " ")
+	a.Schedule.Timezone, a.Schedule.StopAt = strings.TrimSpace(a.Schedule.Timezone), strings.TrimSpace(a.Schedule.StopAt)
+	if a.Schedule.Timezone == "" {
+		a.Schedule.Timezone = "UTC"
+	}
+	if a.Schedule.MaxRuns == 0 {
+		a.Schedule.MaxRuns = DefaultSweepRuns
+	}
+}
+
+// LockKey names what a's runs hold while they go, "" when they may overlap: its shared resource, else itself.
+func (a *AutoPlay) LockKey() string {
+	if !a.OneAtATime {
+		return ""
+	}
+	if a.Resource != "" {
+		return "resource:" + a.WorkspaceID + ":" + strings.ToLower(a.Resource)
+	}
+	return "auto_play:" + a.ID
 }
 
 func normalizeGroup(g *Group) {
@@ -253,11 +305,11 @@ func (a *AutoPlay) Validate(playType Type) error {
 	if err := a.validateRunOn(playType); err != nil {
 		return err
 	}
-	if len(a.MemoryIDs) > MaxAutoPlayMemories {
-		return fmt.Errorf("%w: an auto play reads at most %d memories", apperrs.ErrInvalid, MaxAutoPlayMemories)
+	if err := a.validateSchedule(); err != nil {
+		return err
 	}
-	if a.OnceWithinMinutes < 0 || a.OnceWithinMinutes > MaxOnceWithinMinutes {
-		return fmt.Errorf("%w: once_within_minutes must be 0 (no limit) to %d (30 days)", apperrs.ErrInvalid, MaxOnceWithinMinutes)
+	if err := a.validateLimits(); err != nil {
+		return err
 	}
 	if !a.Conditions.Match.valid() {
 		return fmt.Errorf("%w: conditions match must be all or any", apperrs.ErrInvalid)
@@ -290,7 +342,7 @@ func (a *AutoPlay) Validate(playType Type) error {
 func (a *AutoPlay) validateMoment(playType Type) error {
 	want, ok := momentPlayType[a.Moment]
 	if !ok {
-		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, doc.created, doc.changed, stack.service_crashed, stack.service_recovered, stack.error_rate_crossed", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: moment must be one of ticket.unblocked, ticket.entered_stage, ticket.created, ticket.developer_set, ticket.tester_set, ticket.test_failed, schedule, doc.created, doc.changed, stack.service_crashed, stack.service_recovered, stack.error_rate_crossed", apperrs.ErrInvalid)
 	}
 	if want != playType {
 		return fmt.Errorf("%w: moment %s belongs to %s plays; this is a %s play", apperrs.ErrInvalid, a.Moment, want, playType)
@@ -302,6 +354,50 @@ func (a *AutoPlay) validateMoment(playType Type) error {
 		return fmt.Errorf("%w: ticket.entered_stage needs moment_stage: backlog, progress, review, testing, or done", apperrs.ErrInvalid)
 	}
 	return nil
+}
+
+func (a *AutoPlay) validateLimits() error {
+	if len([]rune(a.Resource)) > MaxResourceLength {
+		return fmt.Errorf("%w: a resource name is at most %d characters", apperrs.ErrInvalid, MaxResourceLength)
+	}
+	if len(a.MemoryIDs) > MaxAutoPlayMemories {
+		return fmt.Errorf("%w: an auto play reads at most %d memories", apperrs.ErrInvalid, MaxAutoPlayMemories)
+	}
+	if a.OnceWithinMinutes < 0 || a.OnceWithinMinutes > MaxOnceWithinMinutes {
+		return fmt.Errorf("%w: once_within_minutes must be 0 (no limit) to %d (30 days)", apperrs.ErrInvalid, MaxOnceWithinMinutes)
+	}
+	return nil
+}
+
+func (a *AutoPlay) validateSchedule() error {
+	if a.Schedule == nil {
+		return nil
+	}
+	if _, err := parseCron(a.Schedule.Cron); err != nil {
+		return err
+	}
+	if _, err := time.LoadLocation(a.Schedule.Timezone); err != nil {
+		return fmt.Errorf("%w: timezone %q is not an IANA zone such as Europe/London", apperrs.ErrInvalid, a.Schedule.Timezone)
+	}
+	if _, ok := parseClock(a.Schedule.StopAt); a.Schedule.StopAt != "" && !ok {
+		return fmt.Errorf("%w: stop_at %q must be HH:MM, such as 07:00", apperrs.ErrInvalid, a.Schedule.StopAt)
+	}
+	if a.Schedule.MaxRuns < 1 || a.Schedule.MaxRuns > MaxSweepRuns {
+		return fmt.Errorf("%w: max_runs must be 1 to %d", apperrs.ErrInvalid, MaxSweepRuns)
+	}
+	if a.RunOn == RunOnCauser {
+		return fmt.Errorf("%w: a schedule has no causer; run it on the developer, the tester, or chosen computers", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+// parseClock reads "HH:MM" as minutes after midnight.
+func parseClock(s string) (int, bool) {
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return 0, false
+	}
+	return t.Hour()*60 + t.Minute(), true
 }
 
 func (a *AutoPlay) validateRunOn(playType Type) error {

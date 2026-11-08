@@ -102,6 +102,26 @@ Under the list, "Right now" says how many runs of the play are queued and whom t
 
 On the ticket, the rail's **Plays** section shows what is waiting: each queued run with its person and why it waits (no computer can take it, computers busy, ticket busy, paused, or what to fix in their computer setup, with a link to where they fix it), and **Cancel** for that person or anyone with `autoplays:write`. The person it runs on also sees the reason for each of their computers, such as "laptop is offline; build-box is full (2 of 2 running)"; nobody else does. On the board, the ticket's card shows a clock beside its key while a run waits, until the run starts and the spinner takes its place. Once a ticket reaches the daily cap, it shows **Auto plays paused** with the runs today; the ticket's developer or anyone with `autoplays:write` can press **Resume**, or it resumes by itself as the day rolls on. What already happened sits in the ticket's thread at the time it happened: "Fix with AI skipped: no longer unblocked" when the ticket stopped matching before the run's turn came, or "Fix with AI didn't run" with the reason when there was nobody to run it on. **Run it** on the latest one runs the play on your own computer. A ticket with no thread yet shows these lines above **Start thread**. A doc shows the same: queued and paused beside its trail, skipped and didn't run in its thread, or beside its trail too while it has no thread.
 
+### On a schedule
+
+A ticket play's auto play can wait for a **schedule** instead of something happening to one ticket: a cron expression read in a timezone, such as `0 23 * * *` in Europe/London for every day at 23:00. It fires at most once an hour. Each firing is a **sweep**: every ticket of the workspace that the play takes and the conditions match, highest priority first and in board order within a level, waits in the queue as one batch. The everyday case is "overnight, take every ticket in Backlog of this project": add a **Project is** and a **Stage is** condition and let it run.
+
+- **At most** caps the tickets one sweep takes, 1 to 100, 10 by default. The rest wait for the next sweep, and the digest says how many.
+- **Stop at** is a time in the same timezone, such as 07:00: the sweep starts nothing after it and skips what is left, so a night can't run into the morning.
+- A ticket that already has a run going or waiting, or a run queued, is skipped with a line saying so. While a sweep's run works on a ticket, other auto plays leave it alone, so the run moving the card to In progress doesn't start the In progress auto play on it too.
+- Every matching ticket is tried. Write the play's instructions so that a run which meets a decision it can't make moves the ticket to In review with a question instead of guessing; the digest shows those runs as **asked**.
+- The daily cap per ticket still applies.
+
+When nothing of the sweep waits or works any more, everyone its runs went out as gets one notification, such as "Fix with AI swept 6 tickets: 4 finished, 1 asked, 1 skipped". It opens the sweep's digest: each ticket, whether it finished, asked, failed, was skipped and why, or didn't run, where it stands now, and the bugs found in it during the sweep.
+
+To start a machine before the sweep and stop it after, such as a virtual machine the runs need, write an [automation](/docs/guide/automations/) on `auto_play.sweep_started` and `auto_play.sweep_finished`. Runs queued while the machine boots wait for its computer to come online, as any run does.
+
+Agents set a schedule with `play_update`: `"moment": "schedule"` and a `schedule` with `cron`, `timezone`, `stop_at` and `max_runs`. `play_list` shows each schedule's last sweep and its counts.
+
+### One at a time
+
+Any auto play can let one of its runs go at a time. Give it a **resource** name, such as `windows-vm`, and its runs go one at a time with every other auto play that names the same resource, so a sweep on the Windows machine and an In progress auto play that also uses it never run side by side. A held run waits as "one at a time". A run stopped on a question lets go, since it isn't using the machine. This is on top of each computer's **Runs at once**, which counts every run on that computer.
+
 ## Run on a chosen computer
 
 Any auto play can run on computers you pick, such as a box that is on all day with a laptop behind it. Choose **Your computers** or **Picked computers** under **Run on**. **Picked computers** starts as your own computers in their order, and lists only the ones you own. A computer shared with you shows as "can't run here yet" and can't be picked yet. A stack has no developer, tester or person who caused a crash, so a stack play always runs this way.

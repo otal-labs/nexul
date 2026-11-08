@@ -214,6 +214,16 @@ func (r *Runner) dispatch(ctx context.Context) (time.Duration, error) {
 	if ok {
 		pass.wakeAt(next)
 	}
+	closes, ok, err := r.queue.NextStartBy(ctx, pass.now)
+	if err != nil {
+		return 0, fmt.Errorf("read the next sweep window to close: %w", err)
+	}
+	if ok {
+		pass.wakeAt(closes)
+	}
+	if err := r.finishSweeps(ctx); err != nil {
+		return 0, err
+	}
 	if pass.next.IsZero() {
 		return -1, nil
 	}
@@ -235,6 +245,10 @@ func (r *Runner) dispatchPerson(ctx context.Context, pass *queuePass, person str
 
 // dispatchItem starts it, holds it, or decides it.
 func (r *Runner) dispatchItem(ctx context.Context, pass *queuePass, it *QueueItem) {
+	if it.StartBy != nil && !pass.now.Before(*it.StartBy) {
+		r.logDecide(ctx, it, QueueQueued, QueueSkipped, "its sweep's window closed before it could start")
+		return
+	}
 	trails, err := r.trails.ListTrailsByTarget(ctx, it.TargetType, it.TargetID)
 	if err != nil {
 		r.log.Error("plays: read the trails of a queued run's target", "item", it.ID, "error", err)
@@ -242,6 +256,9 @@ func (r *Runner) dispatchItem(ctx context.Context, pass *queuePass, it *QueueIte
 	}
 	if slices.ContainsFunc(trails, func(t *Trail) bool { return t.State.Active() }) {
 		r.hold(ctx, it, ReasonTicketBusy)
+		return
+	}
+	if held, err := r.lockHeld(ctx, it); err != nil || held {
 		return
 	}
 	count, limit, frees, err := r.autoRunsToday(ctx, it.WorkspaceID, it.TargetType, it.TargetID)
@@ -482,4 +499,20 @@ func momentGone(a *AutoPlay, f Facts) string {
 		}
 	}
 	return ""
+}
+
+// lockHeld holds it while another run holding its lock goes; true when it waits, and an error only after logging it.
+func (r *Runner) lockHeld(ctx context.Context, it *QueueItem) (bool, error) {
+	if it.LockKey == "" {
+		return false, nil
+	}
+	held, err := r.queue.LockHeld(ctx, it.LockKey, it.ID)
+	if err != nil {
+		r.log.Error("plays: check a queued run's lock", "item", it.ID, "error", err)
+		return true, err
+	}
+	if held {
+		r.hold(ctx, it, ReasonOneAtATime)
+	}
+	return held, nil
 }

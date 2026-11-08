@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,4 +98,8 @@ func TestRenderLinkBlocks(t *testing.T) {
 	allDone := renderLinkBlocks(TicketLinks{Blockers: []LinkedTicket{{Key: "NEX-4", Title: "schema", Done: true}}})
 	require.Len(t, allDone, 1)
 	assert.True(t, strings.HasPrefix(allDone[0], "This ticket was blocked by these tickets, all now done:"))
+}
+
+func (f *fakeLinks) BugsFoundSince(context.Context, string, time.Time) ([]LinkedTicket, error) {
+	return nil, f.err
 }

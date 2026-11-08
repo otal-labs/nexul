@@ -19,11 +19,15 @@ func (r *PlaysRepo) CreateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 	if err != nil {
 		return err
 	}
+	schedule, err := encodeSchedule(a)
+	if err != nil {
+		return err
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateAutoPlay(ctx, sqlcgen.CreateAutoPlayParams{
 			ID: a.ID, PlayID: a.PlayID, WorkspaceID: a.WorkspaceID, Enabled: int64(boolInt(a.Enabled)),
-			Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage), Conditions: conditions, Priority: priority,
-			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, CreatedBy: a.CreatedBy,
+			Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage), Schedule: schedule, Conditions: conditions, Priority: priority,
+			OnceWithinMinutes: int64(a.OnceWithinMinutes), RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, OneAtATime: int64(boolInt(a.OneAtATime)), Resource: a.Resource, CreatedBy: a.CreatedBy,
 			CreatedAt: a.CreatedAt.Unix(), UpdatedAt: a.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -65,11 +69,15 @@ func (r *PlaysRepo) UpdateAutoPlay(ctx context.Context, a *plays.AutoPlay, evts 
 	if err != nil {
 		return err
 	}
+	schedule, err := encodeSchedule(a)
+	if err != nil {
+		return err
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateAutoPlay(ctx, sqlcgen.UpdateAutoPlayParams{
-			Enabled: int64(boolInt(a.Enabled)), Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage),
+			Enabled: int64(boolInt(a.Enabled)), Moment: string(a.Moment), MomentStage: nullStage(a.MomentStage), Schedule: schedule,
 			Conditions: conditions, Priority: priority, OnceWithinMinutes: int64(a.OnceWithinMinutes),
-			RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
+			RunOn: string(a.RunOn), ComputerID: firstID(a.ComputerIDs), ComputerIds: computers, RunAs: a.RunAs, MemoryIds: memories, OneAtATime: int64(boolInt(a.OneAtATime)), Resource: a.Resource, UpdatedAt: a.UpdatedAt.Unix(), ID: a.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update auto play %s: %w", a.ID, classifyWriteErr(err))
@@ -160,11 +168,18 @@ func toAutoPlay(row sqlcgen.AutoPlay) (*plays.AutoPlay, error) {
 	a := &plays.AutoPlay{
 		ID: row.ID, PlayID: row.PlayID, WorkspaceID: row.WorkspaceID, Enabled: row.Enabled != 0,
 		Moment: plays.Moment(row.Moment), OnceWithinMinutes: int(row.OnceWithinMinutes), RunOn: plays.RunOn(row.RunOn),
+		OneAtATime: row.OneAtATime != 0, Resource: row.Resource,
 		RunAs: row.RunAs, CreatedBy: row.CreatedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if row.MomentStage.Valid {
 		s := plays.Stage(row.MomentStage.String)
 		a.MomentStage = &s
+	}
+	if row.Schedule.Valid {
+		a.Schedule = &plays.Schedule{}
+		if err := json.Unmarshal([]byte(row.Schedule.String), a.Schedule); err != nil {
+			return nil, fmt.Errorf("decode schedule of auto play %s: %w", row.ID, err)
+		}
 	}
 	if err := json.Unmarshal([]byte(row.Conditions), &a.Conditions); err != nil {
 		return nil, fmt.Errorf("decode conditions of auto play %s: %w", row.ID, err)
@@ -192,4 +207,33 @@ func firstID(ids []string) string {
 		return ""
 	}
 	return ids[0]
+}
+
+// ListEnabledScheduleAutoPlays reads every switched-on schedule auto play, through idx_auto_plays_schedule.
+func (r *PlaysRepo) ListEnabledScheduleAutoPlays(ctx context.Context) ([]*plays.AutoPlay, error) {
+	rows, err := r.q.ListEnabledScheduleAutoPlays(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list the schedule auto plays: %w", err)
+	}
+	out := make([]*plays.AutoPlay, 0, len(rows))
+	for _, row := range rows {
+		a, err := toAutoPlay(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// encodeSchedule stores a schedule auto play's schedule as JSON, and NULL for any other.
+func encodeSchedule(a *plays.AutoPlay) (sql.NullString, error) {
+	if a.Schedule == nil {
+		return sql.NullString{}, nil
+	}
+	raw, err := json.Marshal(a.Schedule)
+	if err != nil {
+		return sql.NullString{}, fmt.Errorf("encode schedule of auto play %s: %w", a.ID, err)
+	}
+	return sql.NullString{String: string(raw), Valid: true}, nil
 }

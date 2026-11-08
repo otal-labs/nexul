@@ -54,6 +54,23 @@ type AutoPlay struct {
 	RunAs             string
 	MemoryIds         string
 	ComputerIds       string
+	Schedule          sql.NullString
+	OneAtATime        int64
+	Resource          string
+}
+
+type AutoPlaySweep struct {
+	ID          string
+	WorkspaceID string
+	AutoPlayID  string
+	PlayID      string
+	PlayLabel   string
+	FiredAt     int64
+	StartBy     sql.NullInt64
+	Matched     int64
+	OverCap     int64
+	Counts      string
+	FinishedAt  sql.NullInt64
 }
 
 type Automation struct {
@@ -974,6 +991,10 @@ type PlayQueue struct {
 	OutageID         string
 	WaitingOn        string
 	ComputerIds      string
+	SweepID          string
+	SweepPosition    int64
+	StartBy          sql.NullInt64
+	LockKey          string
 }
 
 type PlayQueueResume struct {

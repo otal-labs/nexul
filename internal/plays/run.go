@@ -32,6 +32,7 @@ const silenceInterruptTimeout = 30 * time.Second
 type TicketTarget struct {
 	ProjectID string
 	Key       string
+	Title     string
 	Stage     Stage
 }
 
@@ -304,6 +305,8 @@ type Runner struct {
 	silence   time.Duration
 	// kick wakes the queue's dispatcher; one buffered kick is enough, since a pass reads everything due.
 	kick chan struct{}
+	// scheduleKick wakes the scheduler to read the schedules again.
+	scheduleKick chan struct{}
 	// background is optional, see RunnerConfig.Background.
 	background BackgroundReader
 
@@ -331,7 +334,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
 		live: cfg.Live, users: cfg.Users, computers: cfg.Computers, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, background: cfg.Background, queue: cfg.Queue, facts: cfg.Facts,
-		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1),
+		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1), scheduleKick: make(chan struct{}, 1),
 		runs: map[string]*trailObserver{},
 	}
 }

@@ -15,6 +15,7 @@ import (
 type AutoPlayInput struct {
 	Moment            Moment
 	MomentStage       *Stage
+	Schedule          *Schedule
 	Conditions        Conditions
 	Priority          Priority
 	OnceWithinMinutes int
@@ -23,6 +24,8 @@ type AutoPlayInput struct {
 	// person; a list, even an empty one (the picker's own order), is a pick made as the caller.
 	ComputerIDs *[]string
 	MemoryIDs   []string
+	OneAtATime  bool
+	Resource    string
 }
 
 // ListAutoPlays returns a play's auto plays, oldest first (autoplays:read).
@@ -229,6 +232,8 @@ func (s *Service) pinComputers(ctx context.Context, a *AutoPlay, was []string, p
 func (a *AutoPlay) apply(in AutoPlayInput) {
 	a.Moment = in.Moment
 	a.MomentStage = in.MomentStage
+	a.Schedule = in.Schedule
+	a.OneAtATime, a.Resource = in.OneAtATime, in.Resource
 	a.Conditions = in.Conditions
 	a.Priority = in.Priority
 	a.OnceWithinMinutes = in.OnceWithinMinutes

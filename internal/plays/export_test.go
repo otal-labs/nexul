@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -185,6 +187,20 @@ func (f *fakeFacts) set(id string, facts Facts) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[id] = facts
+}
+
+// WorkspaceTickets is every set ticket, by id, as board order.
+func (f *fakeFacts) WorkspaceTickets(context.Context, string) ([]TicketFacts, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := []TicketFacts{}
+	for id, facts := range f.byID {
+		if facts.StackID == "" {
+			out = append(out, TicketFacts{ID: id, Facts: facts})
+		}
+	}
+	slices.SortFunc(out, func(a, b TicketFacts) int { return strings.Compare(a.ID, b.ID) })
+	return out, nil
 }
 
 func (f *fakeFacts) Facts(_ context.Context, _ TargetType, id string) (Facts, error) {
