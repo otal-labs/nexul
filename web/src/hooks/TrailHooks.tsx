@@ -288,6 +288,12 @@ export const useTicketsWithActiveRun = (projectId: string | undefined, ticketIds
   return usePlayRunStore(useShallow((s) => ticketIds.filter((id) => runStateOf(s, "ticket", id, known) !== undefined)));
 };
 
+// The board's Needs answer filter: which of these tickets have a run stopped on a question.
+export const useTicketsWaitingOnAnswer = (projectId: string | undefined, ticketIds: string[]): string[] => {
+  const known = useFetchActiveTrails(projectId).data;
+  return usePlayRunStore(useShallow((s) => ticketIds.filter((id) => runStateOf(s, "ticket", id, known) === "waiting")));
+};
+
 // The docs overview's question: each listed doc's run, in the order given.
 export const useDocRunStates = (projectId: string, docIds: string[]): (TrailState | undefined)[] => {
   const known = useFetchActiveDocTrails(projectId).data;

@@ -38,6 +38,7 @@ interface ProjectBoardSectionProps {
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
   onTogglePlaying: () => void;
+  onToggleNeedsAnswer: () => void;
   onToggleUnblocked: () => void;
   onSearch: (search: string) => void;
   onClear: () => void;
@@ -69,6 +70,7 @@ export const ProjectBoardSection = ({
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
   onTogglePlaying,
+  onToggleNeedsAnswer,
   onToggleUnblocked,
   onSearch,
   onClear,
@@ -124,6 +126,7 @@ export const ProjectBoardSection = ({
               onToggleDeveloper={onToggleDeveloper}
               onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
               onTogglePlaying={onTogglePlaying}
+              onToggleNeedsAnswer={onToggleNeedsAnswer}
               onToggleUnblocked={onToggleUnblocked}
               onSearch={onSearch}
               onClear={onClear}
