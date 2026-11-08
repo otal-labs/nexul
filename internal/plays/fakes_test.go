@@ -397,3 +397,11 @@ func allowAll(userID string) *fakePerm {
 		userID: {permissions.PlaysRead, permissions.PlaysWrite, permissions.PlaysDelete, permissions.PlaysRun},
 	})
 }
+
+func (f *fakeRepo) ListEnabledScheduleAutoPlays(context.Context) ([]*AutoPlay, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) LastSweeps(context.Context, []string) (map[string]*Sweep, error) {
+	return map[string]*Sweep{}, nil
+}

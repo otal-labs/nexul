@@ -240,6 +240,8 @@ func (s *NotificationService) canOpen(ctx context.Context, n notice, userID stri
 		return s.access.CanReadStack(ctx, userID, n.subjectID)
 	case SubjectInterview:
 		return s.access.CanInProject(ctx, userID, n.subjectID, permissions.MemoriesRead)
+	case SubjectSweep:
+		return s.access.HasPermission(ctx, userID, n.workspaceID, permissions.PlaysRead)
 	}
 	return true
 }
@@ -737,4 +739,27 @@ type eventKeyCtx struct{}
 // CtxWithEventKey carries the source event ID the fan-out uses to derive idempotent notification IDs.
 func CtxWithEventKey(ctx context.Context, key string) context.Context {
 	return context.WithValue(ctx, eventKeyCtx{}, key)
+}
+
+// onSweepFinished words a sweep's counts as "Fix with AI swept 6 tickets: 4 finished, 1 asked, 1 failed"; a sweep
+// with no runs has nobody to tell.
+func (s *NotificationService) onSweepFinished(ctx context.Context, e sweepFinishedEvent) error {
+	c := e.Sweep.Counts
+	parts := []string{}
+	for _, p := range []struct {
+		n    int
+		word string
+	}{{c.Finished, "finished"}, {c.Asked, "asked"}, {c.Failed, "failed"}, {c.Skipped, "skipped"}, {c.DidntRun, "didn't run"}} {
+		if p.n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.word))
+		}
+	}
+	total := c.Finished + c.Asked + c.Failed + c.Skipped + c.DidntRun
+	noun := "tickets"
+	if total == 1 {
+		noun = "ticket"
+	}
+	title := fmt.Sprintf("%s swept %d %s: %s", e.Sweep.PlayLabel, total, noun, strings.Join(parts, ", "))
+	n := notice{subjectType: SubjectSweep, subjectID: e.Sweep.ID, subjectTitle: title, workspaceID: e.Sweep.WorkspaceID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindSweepFinished, e.People)
 }

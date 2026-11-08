@@ -40,6 +40,7 @@ func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evt
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
 			NotBefore: it.NotBefore.Unix(), ComputerID: firstID(it.ComputerIDs), ComputerIds: computers,
 			Service: it.Service, OutageID: it.OutageID,
+			SweepID: it.SweepID, SweepPosition: int64(it.SweepPosition), StartBy: nullUnixPtr(it.StartBy), LockKey: it.LockKey,
 		})
 		if err != nil {
 			return fmt.Errorf("insert queue item %s: %w", it.ID, classifyWriteErr(err))
@@ -218,5 +219,6 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),
 		ComputerIDs: computers, ComputerID: firstID(computers), Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
+		SweepID: row.SweepID, SweepPosition: int(row.SweepPosition), StartBy: unixPtrFromNull(row.StartBy), LockKey: row.LockKey,
 	}
 }

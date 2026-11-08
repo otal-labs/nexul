@@ -1,6 +1,6 @@
 -- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, computer_ids, harness_project_id, service, outage_id)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, computer_ids, harness_project_id, service, outage_id, sweep_id, sweep_position, start_by, lock_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING;
 
 -- name: GetPlayQueueItem :one
@@ -19,13 +19,13 @@ SELECT * FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued
 
 -- name: ListQueuedPlayQueueByTargets :many
 SELECT * FROM play_queue WHERE status = 'queued' AND target_type = ? AND target_id IN (sqlc.slice('ids'))
-ORDER BY priority DESC, queued_at, id;
+ORDER BY priority DESC, queued_at, sweep_position, id;
 
 -- name: ListQueuedPlayQueueByPlay :many
 SELECT * FROM play_queue
 WHERE status = 'queued' AND play_id = sqlc.arg(play_id)
   AND (sqlc.arg(all_projects) OR project_id IN (SELECT value FROM json_each(sqlc.arg(project_ids))))
-ORDER BY priority DESC, queued_at, id;
+ORDER BY priority DESC, queued_at, sweep_position, id;
 
 -- name: ListPlayQueuePeople :many
 SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before <= ?
@@ -34,7 +34,7 @@ SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before
 -- name: ListDuePlayQueue :many
 SELECT * FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
   AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
-ORDER BY priority DESC, queued_at, id;
+ORDER BY priority DESC, queued_at, sweep_position, id;
 
 -- name: WakePlayQueuePerson :exec
 UPDATE play_queue SET not_before = sqlc.arg(now)
@@ -66,3 +66,40 @@ UPDATE play_queue SET
     trail_id = CASE WHEN EXISTS (SELECT 1 FROM play_trails t WHERE t.id = play_queue.trail_id) THEN trail_id ELSE '' END,
     decided_at = CASE WHEN EXISTS (SELECT 1 FROM play_trails t WHERE t.id = play_queue.trail_id) THEN decided_at ELSE NULL END
 WHERE status = 'dispatching';
+
+-- name: NextPlayQueueStartBy :one
+SELECT MIN(start_by) FROM play_queue WHERE status = 'queued' AND start_by IS NOT NULL AND start_by > ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL);
+
+-- name: PlayQueueLockHeld :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.lock_key = ? AND q.id != ? AND q.status IN ('dispatching', 'started')
+      AND (q.status = 'dispatching' OR EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running')))
+);
+
+-- name: PlayQueueSweepActiveOnTarget :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.target_type = ? AND q.target_id = ? AND q.sweep_id != '' AND q.status IN ('dispatching', 'started')
+      AND (q.status = 'dispatching' OR EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running')))
+);
+
+-- name: ListBusyPlayQueueTargets :many
+SELECT target_id FROM play_queue
+WHERE play_queue.target_type = sqlc.arg(target_type) AND play_queue.status IN ('queued', 'dispatching')
+  AND play_queue.target_id IN (SELECT value FROM json_each(sqlc.arg(target_ids)))
+UNION
+SELECT target_id FROM play_trails
+WHERE play_trails.target_type = sqlc.arg(target_type) AND play_trails.state IN ('starting', 'running', 'waiting')
+  AND play_trails.target_id IN (SELECT value FROM json_each(sqlc.arg(target_ids)));
+
+-- name: ListPlayQueueBySweep :many
+SELECT * FROM play_queue WHERE sweep_id = ? ORDER BY sweep_position, id;
+
+-- name: PlayQueueSweepBusy :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.sweep_id = ? AND (q.status IN ('queued', 'dispatching')
+      OR (q.status = 'started' AND EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running'))))
+);

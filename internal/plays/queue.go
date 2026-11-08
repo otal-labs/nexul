@@ -32,36 +32,43 @@ const (
 	ReasonOffline    = "offline"
 	ReasonTicketBusy = "ticket busy"
 	ReasonPaused     = "paused"
+	// ReasonOneAtATime is a run waiting while another holding its lock goes: its auto play's own, or a shared resource.
+	ReasonOneAtATime = "one at a time"
 )
 
 // QueueItem is one match of an auto play's moment on a ticket or doc, or an automation's runPlay call (ADR 0132),
 // queued on the person it runs on and kept once decided, so the target shows it and the daily cap counts it.
 type QueueItem struct {
-	ID           string       `json:"id"`
-	WorkspaceID  string       `json:"workspace_id"`
-	ProjectID    string       `json:"project_id"`
-	TargetType   TargetType   `json:"target_type" enum:"ticket,doc,stack"`
-	TargetID     string       `json:"target_id"`
-	PlayID       string       `json:"play_id"`
-	PlayLabel    string       `json:"play_label"`
-	AutoPlayID   string       `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
-	AutomationID string       `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
-	PersonID     string       `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
-	RunOn        RunOn        `json:"run_on" enum:"developer,tester,causer,computer"`
-	Moment       Moment       `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,automation"`
-	Priority     Level        `json:"priority" enum:"high,normal,low"`
-	Status       QueueStatus  `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
-	Reason       string       `json:"reason" jsonschema:"While queued: ticket busy, paused, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."`
-	TrailID      string       `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
-	Via          Via          `json:"via" enum:"web,mcp,automation"`
-	QueuedAt     time.Time    `json:"queued_at"`
-	DecidedAt    *time.Time   `json:"decided_at"`
-	NotBefore    time.Time    `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
-	ComputerIDs  []string     `json:"computer_ids" jsonschema:"The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."`
-	ComputerID   string       `json:"computer_id" jsonschema:"The first of computer_ids, for readers that predate the list; empty when it is empty."`
-	Service      string       `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
-	OutageID     string       `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
-	WaitingOn    []PassedOver `json:"waiting_on,omitempty" jsonschema:"While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."`
+	ID            string       `json:"id"`
+	WorkspaceID   string       `json:"workspace_id"`
+	ProjectID     string       `json:"project_id"`
+	TargetType    TargetType   `json:"target_type" enum:"ticket,doc,stack"`
+	TargetID      string       `json:"target_id"`
+	PlayID        string       `json:"play_id"`
+	PlayLabel     string       `json:"play_label"`
+	AutoPlayID    string       `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
+	AutomationID  string       `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
+	PersonID      string       `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
+	RunOn         RunOn        `json:"run_on" enum:"developer,tester,causer,computer"`
+	Moment        Moment       `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,stack.service_crashed,stack.service_recovered,stack.error_rate_crossed,schedule,automation"`
+	Priority      Level        `json:"priority" enum:"high,normal,low"`
+	Status        QueueStatus  `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
+	Reason        string       `json:"reason" jsonschema:"While queued: ticket busy, paused, one at a time, or why none of its person's computers can take it (unpaired, expired_token, setup_required, offline, no_computer_ready), or empty until first tried. Once skipped or didn't run: why."`
+	TrailID       string       `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
+	Via           Via          `json:"via" enum:"web,mcp,automation"`
+	QueuedAt      time.Time    `json:"queued_at"`
+	DecidedAt     *time.Time   `json:"decided_at"`
+	NotBefore     time.Time    `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
+	ComputerIDs   []string     `json:"computer_ids" jsonschema:"The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."`
+	ComputerID    string       `json:"computer_id" jsonschema:"The first of computer_ids, for readers that predate the list; empty when it is empty."`
+	Service       string       `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
+	OutageID      string       `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
+	WaitingOn     []PassedOver `json:"waiting_on,omitempty" jsonschema:"While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."`
+	SweepID       string       `json:"sweep_id" jsonschema:"The scheduled sweep that queued it; empty for a run a moment or an automation queued."`
+	SweepPosition int          `json:"sweep_position" jsonschema:"Its place in its sweep, which orders the sweep's runs within one priority."`
+	StartBy       *time.Time   `json:"start_by" jsonschema:"A sweep's run starts by this time or is skipped; null for no limit."`
+	// LockKey is what the run holds while it goes, from its auto play's one-at-a-time setting; empty when runs may overlap.
+	LockKey string `json:"-"`
 }
 
 // Queue is a target's auto runs as its page shows them: every item newest first, and whether the daily cap paused it.

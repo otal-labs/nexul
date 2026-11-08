@@ -313,9 +313,24 @@ func attachAutoPlays(ctx context.Context, s *Service, workspaceID string, page [
 	if err != nil {
 		return err
 	}
+	schedules := []string{}
+	for _, list := range byPlay {
+		for _, a := range list {
+			if a.Moment == MomentSchedule {
+				schedules = append(schedules, a.ID)
+			}
+		}
+	}
+	last, err := s.repo.LastSweeps(ctx, schedules)
+	if err != nil {
+		return fmt.Errorf("read the last sweeps: %w", err)
+	}
 	for i := range page {
 		if list, ok := byPlay[page[i].ID]; ok {
 			page[i].AutoPlays = toAutoPlayResults(list)
+		}
+		for j := range page[i].AutoPlays {
+			page[i].AutoPlays[j].LastSweep = last[page[i].AutoPlays[j].ID]
 		}
 	}
 	return nil

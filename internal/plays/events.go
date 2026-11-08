@@ -23,6 +23,9 @@ const (
 	TopicQueued                = "play.queued"
 	TopicQueueUpdated          = "play.queue_updated"
 	TopicQueueResumed          = "play.queue_resumed"
+
+	TopicSweepStarted  = "auto_play.sweep_started"
+	TopicSweepFinished = "auto_play.sweep_finished"
 )
 
 // TopicPlayRun is the live-hub topic for trail state and activity; ephemeral, never persisted or catalogued.
@@ -44,6 +47,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicQueued, Payload: QueueItem{}, Description: "An auto play's moment matched a ticket or doc: the run waits in its person's queue, or did not run when there was nobody to run it on or they may not run the play."},
 		{Name: TopicQueueUpdated, Payload: QueueItem{}, Description: "A queued auto run changed: it waits for another reason, started, was skipped because it no longer matched, did not run, or was cancelled."},
 		{Name: TopicQueueResumed, Payload: QueueResumedEvent{}, Description: "Someone resumed auto plays on a ticket or doc the daily cap had paused; its count of automatic runs starts again."},
+		{Name: TopicSweepStarted, Payload: SweepEvent{}, Description: "A schedule auto play fired: its sweep queued the tickets its conditions held for, up to its cap. An automation can start what the runs need, such as a virtual machine."},
+		{Name: TopicSweepFinished, Payload: SweepEvent{}, Description: "Nothing of a sweep waits or works any more: its counts say how its runs ended, and its people hear of it. An automation can stop what the sweep needed."},
 	}
 }
 

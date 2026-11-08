@@ -1074,3 +1074,23 @@ func TestHandleComputerMoveRequested_TellsTheOwnerOnceInTheirFirstWorkspace(t *t
 	s = newTestNotifServiceWith(newFakeNotifRepo(), newFakeNotifUsers(), nil, &failingAccess{})
 	require.Error(t, HandleComputerMoveRequested(context.Background(), s, ev), "a workspace that cannot be read is retried")
 }
+
+func TestHandleSweepFinished_TellsEachPersonItsRunsWentOutAsOnce(t *testing.T) {
+	repo := newFakeNotifRepo()
+	s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")))
+	payload := map[string]any{
+		"sweep":  map[string]any{"id": "sw-1", "workspace_id": "ws-1", "play_label": "Fix with AI", "counts": map[string]any{"finished": 4, "asked": 1, "skipped": 1}},
+		"people": []string{"u1", "u2"},
+	}
+
+	require.NoError(t, HandleSweepFinished(t.Context(), s, notifEvFor(t, "auto_play.sweep_finished", payload)))
+
+	for _, id := range []string{"u1", "u2"} {
+		require.Len(t, repo.notifsFor(id), 1)
+		n := repo.notifsFor(id)[0]
+		assert.Equal(t, KindSweepFinished, n.Kind)
+		assert.Equal(t, SubjectSweep, n.SubjectType)
+		assert.Equal(t, "sw-1", n.SubjectID)
+		assert.Equal(t, "Fix with AI swept 6 tickets: 4 finished, 1 asked, 1 skipped", n.SubjectTitle)
+	}
+}

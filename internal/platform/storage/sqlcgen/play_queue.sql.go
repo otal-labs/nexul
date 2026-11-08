@@ -37,7 +37,7 @@ func (q *Queries) CountPlayQueueStarted(ctx context.Context, arg CountPlayQueueS
 }
 
 const getPlayQueueItem = `-- name: GetPlayQueueItem :one
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids FROM play_queue WHERE id = ?
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue WHERE id = ?
 `
 
 func (q *Queries) GetPlayQueueItem(ctx context.Context, id string) (PlayQueue, error) {
@@ -70,13 +70,17 @@ func (q *Queries) GetPlayQueueItem(ctx context.Context, id string) (PlayQueue, e
 		&i.OutageID,
 		&i.WaitingOn,
 		&i.ComputerIds,
+		&i.SweepID,
+		&i.SweepPosition,
+		&i.StartBy,
+		&i.LockKey,
 	)
 	return i, err
 }
 
 const insertPlayQueueItem = `-- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, computer_ids, harness_project_id, service, outage_id)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, computer_ids, harness_project_id, service, outage_id, sweep_id, sweep_position, start_by, lock_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING
 `
 
@@ -106,6 +110,10 @@ type InsertPlayQueueItemParams struct {
 	HarnessProjectID string
 	Service          string
 	OutageID         string
+	SweepID          string
+	SweepPosition    int64
+	StartBy          sql.NullInt64
+	LockKey          string
 }
 
 func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueItemParams) (int64, error) {
@@ -135,6 +143,10 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 		arg.HarnessProjectID,
 		arg.Service,
 		arg.OutageID,
+		arg.SweepID,
+		arg.SweepPosition,
+		arg.StartBy,
+		arg.LockKey,
 	)
 	if err != nil {
 		return 0, err
@@ -142,10 +154,48 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 	return result.RowsAffected()
 }
 
+const listBusyPlayQueueTargets = `-- name: ListBusyPlayQueueTargets :many
+SELECT target_id FROM play_queue
+WHERE play_queue.target_type = ?1 AND play_queue.status IN ('queued', 'dispatching')
+  AND play_queue.target_id IN (SELECT value FROM json_each(?2))
+UNION
+SELECT target_id FROM play_trails
+WHERE play_trails.target_type = ?1 AND play_trails.state IN ('starting', 'running', 'waiting')
+  AND play_trails.target_id IN (SELECT value FROM json_each(?2))
+`
+
+type ListBusyPlayQueueTargetsParams struct {
+	TargetType string
+	TargetIds  interface{}
+}
+
+func (q *Queries) ListBusyPlayQueueTargets(ctx context.Context, arg ListBusyPlayQueueTargetsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listBusyPlayQueueTargets, arg.TargetType, arg.TargetIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var target_id string
+		if err := rows.Scan(&target_id); err != nil {
+			return nil, err
+		}
+		items = append(items, target_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDuePlayQueue = `-- name: ListDuePlayQueue :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
   AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
-ORDER BY priority DESC, queued_at, id
+ORDER BY priority DESC, queued_at, sweep_position, id
 `
 
 type ListDuePlayQueueParams struct {
@@ -189,6 +239,68 @@ func (q *Queries) ListDuePlayQueue(ctx context.Context, arg ListDuePlayQueuePara
 			&i.OutageID,
 			&i.WaitingOn,
 			&i.ComputerIds,
+			&i.SweepID,
+			&i.SweepPosition,
+			&i.StartBy,
+			&i.LockKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlayQueueBySweep = `-- name: ListPlayQueueBySweep :many
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue WHERE sweep_id = ? ORDER BY sweep_position, id
+`
+
+func (q *Queries) ListPlayQueueBySweep(ctx context.Context, sweepID string) ([]PlayQueue, error) {
+	rows, err := q.db.QueryContext(ctx, listPlayQueueBySweep, sweepID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlayQueue
+	for rows.Next() {
+		var i PlayQueue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.TargetType,
+			&i.TargetID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.AutoPlayID,
+			&i.PersonID,
+			&i.RunOn,
+			&i.Moment,
+			&i.Via,
+			&i.Priority,
+			&i.Status,
+			&i.Reason,
+			&i.TrailID,
+			&i.QueuedAt,
+			&i.DecidedAt,
+			&i.NotBefore,
+			&i.AutomationID,
+			&i.ComputerID,
+			&i.HarnessProjectID,
+			&i.Service,
+			&i.OutageID,
+			&i.WaitingOn,
+			&i.ComputerIds,
+			&i.SweepID,
+			&i.SweepPosition,
+			&i.StartBy,
+			&i.LockKey,
 		); err != nil {
 			return nil, err
 		}
@@ -204,7 +316,7 @@ func (q *Queries) ListDuePlayQueue(ctx context.Context, arg ListDuePlayQueuePara
 }
 
 const listPlayQueueByTarget = `-- name: ListPlayQueueByTarget :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC
 `
 
 type ListPlayQueueByTargetParams struct {
@@ -248,6 +360,10 @@ func (q *Queries) ListPlayQueueByTarget(ctx context.Context, arg ListPlayQueueBy
 			&i.OutageID,
 			&i.WaitingOn,
 			&i.ComputerIds,
+			&i.SweepID,
+			&i.SweepPosition,
+			&i.StartBy,
+			&i.LockKey,
 		); err != nil {
 			return nil, err
 		}
@@ -291,10 +407,10 @@ func (q *Queries) ListPlayQueuePeople(ctx context.Context, notBefore int64) ([]s
 }
 
 const listQueuedPlayQueueByPlay = `-- name: ListQueuedPlayQueueByPlay :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids FROM play_queue
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue
 WHERE status = 'queued' AND play_id = ?1
   AND (?2 OR project_id IN (SELECT value FROM json_each(?3)))
-ORDER BY priority DESC, queued_at, id
+ORDER BY priority DESC, queued_at, sweep_position, id
 `
 
 type ListQueuedPlayQueueByPlayParams struct {
@@ -339,6 +455,10 @@ func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedP
 			&i.OutageID,
 			&i.WaitingOn,
 			&i.ComputerIds,
+			&i.SweepID,
+			&i.SweepPosition,
+			&i.StartBy,
+			&i.LockKey,
 		); err != nil {
 			return nil, err
 		}
@@ -354,8 +474,8 @@ func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedP
 }
 
 const listQueuedPlayQueueByTargets = `-- name: ListQueuedPlayQueueByTargets :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids FROM play_queue WHERE status = 'queued' AND target_type = ? AND target_id IN (/*SLICE:ids*/?)
-ORDER BY priority DESC, queued_at, id
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id, service, outage_id, waiting_on, computer_ids, sweep_id, sweep_position, start_by, lock_key FROM play_queue WHERE status = 'queued' AND target_type = ? AND target_id IN (/*SLICE:ids*/?)
+ORDER BY priority DESC, queued_at, sweep_position, id
 `
 
 type ListQueuedPlayQueueByTargetsParams struct {
@@ -410,6 +530,10 @@ func (q *Queries) ListQueuedPlayQueueByTargets(ctx context.Context, arg ListQueu
 			&i.OutageID,
 			&i.WaitingOn,
 			&i.ComputerIds,
+			&i.SweepID,
+			&i.SweepPosition,
+			&i.StartBy,
+			&i.LockKey,
 		); err != nil {
 			return nil, err
 		}
@@ -436,6 +560,38 @@ func (q *Queries) NextPlayQueueNotBefore(ctx context.Context, notBefore int64) (
 	return min, err
 }
 
+const nextPlayQueueStartBy = `-- name: NextPlayQueueStartBy :one
+SELECT MIN(start_by) FROM play_queue WHERE status = 'queued' AND start_by IS NOT NULL AND start_by > ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
+`
+
+func (q *Queries) NextPlayQueueStartBy(ctx context.Context, startBy sql.NullInt64) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, nextPlayQueueStartBy, startBy)
+	var min interface{}
+	err := row.Scan(&min)
+	return min, err
+}
+
+const playQueueLockHeld = `-- name: PlayQueueLockHeld :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.lock_key = ? AND q.id != ? AND q.status IN ('dispatching', 'started')
+      AND (q.status = 'dispatching' OR EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running')))
+)
+`
+
+type PlayQueueLockHeldParams struct {
+	LockKey string
+	ID      string
+}
+
+func (q *Queries) PlayQueueLockHeld(ctx context.Context, arg PlayQueueLockHeldParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, playQueueLockHeld, arg.LockKey, arg.ID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const playQueueQueuedSince = `-- name: PlayQueueQueuedSince :one
 SELECT EXISTS (
     SELECT 1 FROM play_queue
@@ -457,6 +613,41 @@ func (q *Queries) PlayQueueQueuedSince(ctx context.Context, arg PlayQueueQueuedS
 		arg.QueuedAt,
 		arg.AutoPlayID,
 	)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const playQueueSweepActiveOnTarget = `-- name: PlayQueueSweepActiveOnTarget :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.target_type = ? AND q.target_id = ? AND q.sweep_id != '' AND q.status IN ('dispatching', 'started')
+      AND (q.status = 'dispatching' OR EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running')))
+)
+`
+
+type PlayQueueSweepActiveOnTargetParams struct {
+	TargetType string
+	TargetID   string
+}
+
+func (q *Queries) PlayQueueSweepActiveOnTarget(ctx context.Context, arg PlayQueueSweepActiveOnTargetParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, playQueueSweepActiveOnTarget, arg.TargetType, arg.TargetID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const playQueueSweepBusy = `-- name: PlayQueueSweepBusy :one
+SELECT EXISTS (
+    SELECT 1 FROM play_queue q
+    WHERE q.sweep_id = ? AND (q.status IN ('queued', 'dispatching')
+      OR (q.status = 'started' AND EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running'))))
+)
+`
+
+func (q *Queries) PlayQueueSweepBusy(ctx context.Context, sweepID string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, playQueueSweepBusy, sweepID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err

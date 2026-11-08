@@ -40,6 +40,8 @@ type Facts struct {
 // nobody; a deleted target is ErrNotFound.
 type FactReader interface {
 	Facts(ctx context.Context, targetType TargetType, id string) (Facts, error)
+	// WorkspaceTickets reads every ticket of a workspace's projects with its facts, in board order: stage, then position.
+	WorkspaceTickets(ctx context.Context, workspaceID string) ([]TicketFacts, error)
 }
 
 var factFields = map[Field]func(Facts) []string{
@@ -433,14 +435,33 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerIDs: slices.Clone(a.ComputerIDs), ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
 	}
+	if m.targetType == TargetTicket {
+		swept, err := r.queue.SweepWorkingOn(ctx, m.targetType, m.targetID)
+		if err != nil {
+			return false, err
+		}
+		if swept {
+			it.Status, it.Reason, it.DecidedAt = QueueSkipped, "a scheduled sweep was working on it", &now
+			_, err := r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
+			return false, err
+		}
+	}
+	return r.offer(ctx, a, it)
+}
+
+// offer queues it for a, or records it skipped inside a's once-within window or not run when nobody may run it; true
+// when a run now waits.
+func (r *Runner) offer(ctx context.Context, a *AutoPlay, it *QueueItem) (bool, error) {
+	now := it.QueuedAt
+	it.LockKey = a.LockKey()
 	if a.OnceWithinMinutes > 0 {
 		since := now.Add(-time.Duration(a.OnceWithinMinutes) * time.Minute)
-		ran, err := r.queue.QueuedSince(ctx, a.ID, m.targetType, m.targetID, since)
+		ran, err := r.queue.QueuedSince(ctx, a.ID, it.TargetType, it.TargetID, since)
 		if err != nil {
 			return false, err
 		}
 		if ran {
-			it.Status, it.Reason, it.DecidedAt = QueueSkipped, fmt.Sprintf("it ran on this %s within the last %s", m.targetType, windowText(a.OnceWithinMinutes)), &now
+			it.Status, it.Reason, it.DecidedAt = QueueSkipped, fmt.Sprintf("it ran on this %s within the last %s", it.TargetType, windowText(a.OnceWithinMinutes)), &now
 			_, err := r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
 			return false, err
 		}

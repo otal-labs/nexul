@@ -154,3 +154,25 @@ func TestPlayUpdate_AutoPlayComputersAreAnOrderedListTheModelCanKeepOrReplace(t 
 	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+playID+`","update_auto_plays":[{"id":"`+id+`","computer_ids":["c-own","c-see"]}]}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "one computer in the list the caller may not run agents on refuses it")
 }
+
+func TestPlayUpdate_ASchedule_KeepsItsFieldsAcrossAPartialUpdate(t *testing.T) {
+	s, _, ps := autoPlayFixture(t)
+	tools := MCPTools(s)
+	play := ps[TypeTicket]
+
+	out, err := callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","add_auto_plays":[
+		{"moment":"schedule","schedule":{"cron":"0 23 * * *","timezone":"Europe/London","stop_at":"07:00"},"one_at_a_time":true,"resource":"windows-vm"}]}`)
+	require.NoError(t, err)
+	added := out.(playResult).AutoPlays[0]
+	assert.Equal(t, &Schedule{Cron: "0 23 * * *", Timezone: "Europe/London", StopAt: "07:00", MaxRuns: DefaultSweepRuns}, added.Schedule)
+
+	out, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added.ID+`","enabled":true}]}`)
+	require.NoError(t, err)
+	got := out.(playResult).AutoPlays[0]
+	assert.Equal(t, added.Schedule, got.Schedule)
+	assert.True(t, got.OneAtATime)
+	assert.Equal(t, "windows-vm", got.Resource)
+
+	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","add_auto_plays":[{"moment":"schedule","run_on":"causer","schedule":{"cron":"0 23 * * *"}}]}`)
+	assert.True(t, errors.Is(err, apperrs.ErrInvalid), "a schedule has no causer")
+}

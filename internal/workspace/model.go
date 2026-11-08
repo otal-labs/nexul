@@ -288,6 +288,7 @@ const (
 	KindMeetingCancelled     Kind = "meeting.cancelled"
 	KindMeetingReminder      Kind = "meeting.reminder"
 	KindTicketDueSoon        Kind = "ticket.due_soon"
+	KindSweepFinished        Kind = "auto_play.sweep_finished"
 )
 
 // LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,
@@ -311,6 +312,8 @@ const (
 	SubjectMeeting SubjectType = "meeting"
 	// SubjectInterview opens a project's Interview; its id is the project's.
 	SubjectInterview SubjectType = "interview"
+	// SubjectSweep opens a schedule auto play's sweep digest; its id is the sweep's.
+	SubjectSweep SubjectType = "sweep"
 )
 
 // Notification's SubjectTitle is denormalized so the frontend renders the list without extra fetches.

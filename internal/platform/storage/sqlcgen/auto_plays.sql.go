@@ -11,8 +11,8 @@ import (
 )
 
 const createAutoPlay = `-- name: CreateAutoPlay :exec
-INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, computer_id, computer_ids, run_as, memory_ids, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, schedule, conditions, priority, once_within_minutes, run_on, computer_id, computer_ids, run_as, memory_ids, one_at_a_time, resource, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateAutoPlayParams struct {
@@ -22,6 +22,7 @@ type CreateAutoPlayParams struct {
 	Enabled           int64
 	Moment            string
 	MomentStage       sql.NullString
+	Schedule          sql.NullString
 	Conditions        string
 	Priority          string
 	OnceWithinMinutes int64
@@ -30,6 +31,8 @@ type CreateAutoPlayParams struct {
 	ComputerIds       string
 	RunAs             string
 	MemoryIds         string
+	OneAtATime        int64
+	Resource          string
 	CreatedBy         string
 	CreatedAt         int64
 	UpdatedAt         int64
@@ -43,6 +46,7 @@ func (q *Queries) CreateAutoPlay(ctx context.Context, arg CreateAutoPlayParams) 
 		arg.Enabled,
 		arg.Moment,
 		arg.MomentStage,
+		arg.Schedule,
 		arg.Conditions,
 		arg.Priority,
 		arg.OnceWithinMinutes,
@@ -51,6 +55,8 @@ func (q *Queries) CreateAutoPlay(ctx context.Context, arg CreateAutoPlayParams) 
 		arg.ComputerIds,
 		arg.RunAs,
 		arg.MemoryIds,
+		arg.OneAtATime,
+		arg.Resource,
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -70,8 +76,26 @@ func (q *Queries) DeleteAutoPlay(ctx context.Context, id string) (int64, error) 
 	return result.RowsAffected()
 }
 
+const finishAutoPlaySweep = `-- name: FinishAutoPlaySweep :execrows
+UPDATE auto_play_sweeps SET finished_at = ?, counts = ? WHERE id = ? AND finished_at IS NULL
+`
+
+type FinishAutoPlaySweepParams struct {
+	FinishedAt sql.NullInt64
+	Counts     string
+	ID         string
+}
+
+func (q *Queries) FinishAutoPlaySweep(ctx context.Context, arg FinishAutoPlaySweepParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, finishAutoPlaySweep, arg.FinishedAt, arg.Counts, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAutoPlay = `-- name: GetAutoPlay :one
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE id = ?
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids, schedule, one_at_a_time, resource FROM auto_plays WHERE id = ?
 `
 
 func (q *Queries) GetAutoPlay(ctx context.Context, id string) (AutoPlay, error) {
@@ -95,6 +119,9 @@ func (q *Queries) GetAutoPlay(ctx context.Context, id string) (AutoPlay, error) 
 		&i.RunAs,
 		&i.MemoryIds,
 		&i.ComputerIds,
+		&i.Schedule,
+		&i.OneAtATime,
+		&i.Resource,
 	)
 	return i, err
 }
@@ -110,8 +137,69 @@ func (q *Queries) GetAutoPlayLimits(ctx context.Context, id string) (int64, erro
 	return auto_play_daily_cap, err
 }
 
+const getAutoPlaySweep = `-- name: GetAutoPlaySweep :one
+SELECT id, workspace_id, auto_play_id, play_id, play_label, fired_at, start_by, matched, over_cap, counts, finished_at FROM auto_play_sweeps WHERE id = ?
+`
+
+func (q *Queries) GetAutoPlaySweep(ctx context.Context, id string) (AutoPlaySweep, error) {
+	row := q.db.QueryRowContext(ctx, getAutoPlaySweep, id)
+	var i AutoPlaySweep
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.AutoPlayID,
+		&i.PlayID,
+		&i.PlayLabel,
+		&i.FiredAt,
+		&i.StartBy,
+		&i.Matched,
+		&i.OverCap,
+		&i.Counts,
+		&i.FinishedAt,
+	)
+	return i, err
+}
+
+const insertAutoPlaySweep = `-- name: InsertAutoPlaySweep :execrows
+INSERT INTO auto_play_sweeps (id, workspace_id, auto_play_id, play_id, play_label, fired_at, start_by, matched, over_cap, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT DO NOTHING
+`
+
+type InsertAutoPlaySweepParams struct {
+	ID          string
+	WorkspaceID string
+	AutoPlayID  string
+	PlayID      string
+	PlayLabel   string
+	FiredAt     int64
+	StartBy     sql.NullInt64
+	Matched     int64
+	OverCap     int64
+	FinishedAt  sql.NullInt64
+}
+
+func (q *Queries) InsertAutoPlaySweep(ctx context.Context, arg InsertAutoPlaySweepParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAutoPlaySweep,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.AutoPlayID,
+		arg.PlayID,
+		arg.PlayLabel,
+		arg.FiredAt,
+		arg.StartBy,
+		arg.Matched,
+		arg.OverCap,
+		arg.FinishedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAutoPlaysByPlays = `-- name: ListAutoPlaysByPlays :many
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(?1)) ORDER BY play_id, created_at, id
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids, schedule, one_at_a_time, resource FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(?1)) ORDER BY play_id, created_at, id
 `
 
 func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{}) ([]AutoPlay, error) {
@@ -141,6 +229,9 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 			&i.RunAs,
 			&i.MemoryIds,
 			&i.ComputerIds,
+			&i.Schedule,
+			&i.OneAtATime,
+			&i.Resource,
 		); err != nil {
 			return nil, err
 		}
@@ -156,7 +247,7 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 }
 
 const listEnabledAutoPlaysByMoment = `-- name: ListEnabledAutoPlaysByMoment :many
-SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids, schedule, one_at_a_time, resource FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1
   AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = auto_plays.workspace_id AND w.archived_at IS NOT NULL)
 ORDER BY created_at, id
 `
@@ -193,6 +284,140 @@ func (q *Queries) ListEnabledAutoPlaysByMoment(ctx context.Context, arg ListEnab
 			&i.RunAs,
 			&i.MemoryIds,
 			&i.ComputerIds,
+			&i.Schedule,
+			&i.OneAtATime,
+			&i.Resource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEnabledScheduleAutoPlays = `-- name: ListEnabledScheduleAutoPlays :many
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at, computer_id, run_as, memory_ids, computer_ids, schedule, one_at_a_time, resource FROM auto_plays WHERE moment = 'schedule' AND enabled = 1
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = auto_plays.workspace_id AND w.archived_at IS NOT NULL)
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListEnabledScheduleAutoPlays(ctx context.Context) ([]AutoPlay, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledScheduleAutoPlays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutoPlay
+	for rows.Next() {
+		var i AutoPlay
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayID,
+			&i.WorkspaceID,
+			&i.Enabled,
+			&i.Moment,
+			&i.MomentStage,
+			&i.Conditions,
+			&i.Priority,
+			&i.OnceWithinMinutes,
+			&i.RunOn,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ComputerID,
+			&i.RunAs,
+			&i.MemoryIds,
+			&i.ComputerIds,
+			&i.Schedule,
+			&i.OneAtATime,
+			&i.Resource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLastAutoPlaySweeps = `-- name: ListLastAutoPlaySweeps :many
+SELECT id, workspace_id, auto_play_id, play_id, play_label, fired_at, start_by, matched, over_cap, counts, finished_at FROM auto_play_sweeps WHERE id IN (
+    SELECT (SELECT s.id FROM auto_play_sweeps s WHERE s.auto_play_id = j.value ORDER BY s.fired_at DESC, s.id DESC LIMIT 1)
+    FROM json_each(?1) j
+)
+`
+
+func (q *Queries) ListLastAutoPlaySweeps(ctx context.Context, autoPlayIds interface{}) ([]AutoPlaySweep, error) {
+	rows, err := q.db.QueryContext(ctx, listLastAutoPlaySweeps, autoPlayIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutoPlaySweep
+	for rows.Next() {
+		var i AutoPlaySweep
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AutoPlayID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.FiredAt,
+			&i.StartBy,
+			&i.Matched,
+			&i.OverCap,
+			&i.Counts,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenAutoPlaySweeps = `-- name: ListOpenAutoPlaySweeps :many
+SELECT id, workspace_id, auto_play_id, play_id, play_label, fired_at, start_by, matched, over_cap, counts, finished_at FROM auto_play_sweeps WHERE finished_at IS NULL ORDER BY fired_at, id
+`
+
+func (q *Queries) ListOpenAutoPlaySweeps(ctx context.Context) ([]AutoPlaySweep, error) {
+	rows, err := q.db.QueryContext(ctx, listOpenAutoPlaySweeps)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutoPlaySweep
+	for rows.Next() {
+		var i AutoPlaySweep
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AutoPlayID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.FiredAt,
+			&i.StartBy,
+			&i.Matched,
+			&i.OverCap,
+			&i.Counts,
+			&i.FinishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -225,7 +450,7 @@ func (q *Queries) SetAutoPlayLimits(ctx context.Context, arg SetAutoPlayLimitsPa
 }
 
 const updateAutoPlay = `-- name: UpdateAutoPlay :execrows
-UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, computer_ids = ?, run_as = ?, memory_ids = ?, updated_at = ?
+UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, schedule = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, computer_id = ?, computer_ids = ?, run_as = ?, memory_ids = ?, one_at_a_time = ?, resource = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -233,6 +458,7 @@ type UpdateAutoPlayParams struct {
 	Enabled           int64
 	Moment            string
 	MomentStage       sql.NullString
+	Schedule          sql.NullString
 	Conditions        string
 	Priority          string
 	OnceWithinMinutes int64
@@ -241,6 +467,8 @@ type UpdateAutoPlayParams struct {
 	ComputerIds       string
 	RunAs             string
 	MemoryIds         string
+	OneAtATime        int64
+	Resource          string
 	UpdatedAt         int64
 	ID                string
 }
@@ -250,6 +478,7 @@ func (q *Queries) UpdateAutoPlay(ctx context.Context, arg UpdateAutoPlayParams) 
 		arg.Enabled,
 		arg.Moment,
 		arg.MomentStage,
+		arg.Schedule,
 		arg.Conditions,
 		arg.Priority,
 		arg.OnceWithinMinutes,
@@ -258,6 +487,8 @@ func (q *Queries) UpdateAutoPlay(ctx context.Context, arg UpdateAutoPlayParams) 
 		arg.ComputerIds,
 		arg.RunAs,
 		arg.MemoryIds,
+		arg.OneAtATime,
+		arg.Resource,
 		arg.UpdatedAt,
 		arg.ID,
 	)

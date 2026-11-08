@@ -528,3 +528,32 @@ func HandleDueDateReminder(ctx context.Context, svc *NotificationService, ev eve
 	ctx = CtxWithEventKey(ctx, ev.ID)
 	return svc.fanOutByUserID(ctx, evtKey(ctx), n, KindTicketDueSoon, e.UserIDs)
 }
+
+// sweepFinishedEvent is the slice of auto_play.sweep_finished the notifier reads.
+type sweepFinishedEvent struct {
+	Sweep struct {
+		ID          string `json:"id"`
+		WorkspaceID string `json:"workspace_id"`
+		PlayLabel   string `json:"play_label"`
+		Counts      struct {
+			Finished int `json:"finished"`
+			Asked    int `json:"asked"`
+			Failed   int `json:"failed"`
+			Skipped  int `json:"skipped"`
+			DidntRun int `json:"didnt_run"`
+		} `json:"counts"`
+	} `json:"sweep"`
+	People []string `json:"people"`
+}
+
+// HandleSweepFinished tells the people a sweep's runs went out as how it went, linking to its digest.
+func HandleSweepFinished(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e sweepFinishedEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse auto_play.sweep_finished: %w", err))
+	}
+	if e.Sweep.ID == "" {
+		return apperrs.Fatal(fmt.Errorf("auto_play.sweep_finished missing the sweep id"))
+	}
+	return svc.onSweepFinished(CtxWithEventKey(ctx, ev.ID), e)
+}

@@ -414,8 +414,30 @@ priority then oldest first, until a ready computer of theirs has room
 each of their computers and why it could not take the run. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
-on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`.
+on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`. A ticket play's auto
+play may instead wait for a **Schedule** and work through every ticket it takes as a **Sweep**, and any auto play may run
+**One at a time**.
 _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
+
+**Schedule**:
+An auto play's moment that fires on a cron expression read in a timezone, at most once an hour, such as every day at
+23:00 in London, with an optional stop time and a cap on tickets per firing (ADR 0179). Offered on ticket plays only.
+_Avoid_: Cron job, timer, nightly automation
+
+**Sweep**:
+One firing of a schedule: every ticket the play takes and the auto play's conditions hold for, highest priority then
+board order, queued up to the cap. A ticket already running or queued is skipped, other auto plays leave a ticket alone
+while the sweep's run works on it, and nothing starts after the stop time. A run that meets a decision it cannot make
+hands the ticket back with a question. Once nothing of it waits or works, the people its runs went out as get one
+notification opening its digest: each ticket and how it went, and the bugs found in it. It publishes
+`auto_play.sweep_started` and `auto_play.sweep_finished` for automations that set up and tear down what it needs.
+_Avoid_: Batch, night run, digest (that is what it sends)
+
+**One at a time**:
+An auto play setting that lets one of its runs go at a time, or, with a named resource such as `windows-vm`, one at a
+time across every auto play that names it, for runs that share one machine. A held run waits as "one at a time"; a run
+stopped on a question lets go.
+_Avoid_: Lock, mutex, concurrency limit (that is the computer's Runs at once)
 
 **Run on a chosen computer**:
 A choice of whose computers, in order, an auto play's run lands on, offered on every play

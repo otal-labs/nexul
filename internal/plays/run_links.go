@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // originLine names a bug's origin for the agent to read itself, one hop only (ADR 0064, ADR 0111).
@@ -12,9 +13,9 @@ const originLine = "This bug was found in %s %q, a ticket whose work is recorded
 
 // LinkedTicket is a ticket at the other end of a found-in or blocked-by link, as the prompt names it.
 type LinkedTicket struct {
-	Key   string
-	Title string
-	Done  bool
+	Key   string `json:"key"`
+	Title string `json:"title"`
+	Done  bool   `json:"done"`
 }
 
 // TicketLinks is what a ticket play's prompt is told about the ticket's found-in and blocked-by links.
@@ -28,6 +29,8 @@ type TicketLinks struct {
 // LinkReader is the runner's seam onto tickets' links (ADR 0017); the origin's own origin is never read.
 type LinkReader interface {
 	TicketLinks(ctx context.Context, ticketID string) (TicketLinks, error)
+	// BugsFoundSince names the bugs recorded as found in the ticket that were created at or after since, as the caller may read them.
+	BugsFoundSince(ctx context.Context, ticketID string, since time.Time) ([]LinkedTicket, error)
 }
 
 // linkBlocks reads a ticket target's links into prompt blocks; a doc target, or no reader wired, carries none.

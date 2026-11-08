@@ -68,6 +68,7 @@ var scopeRules = map[string]scopeRule{
 	"play.created": nestedWorkspaceScope("play"), "play.updated": nestedWorkspaceScope("play"),
 	"auto_play.created": nestedWorkspaceScope("auto_play"), "auto_play.updated": nestedWorkspaceScope("auto_play"), "auto_play.deleted": workspaceScope, "auto_play.limits_updated": workspaceScope,
 	"play.queued": workspaceScope, "play.queue_updated": workspaceScope, "play.queue_resumed": workspaceScope,
+	"auto_play.sweep_started": nestedWorkspaceScope("sweep"), "auto_play.sweep_finished": nestedWorkspaceScope("sweep"),
 	"memory.created": nestedWorkspaceScope("memory"), "memory.updated": nestedWorkspaceScope("memory"),
 	"chat.conversation.created": nestedWorkspaceScope("conversation"),
 	"chat.message.created":      conversationScope, "chat.message.updated": conversationScope,

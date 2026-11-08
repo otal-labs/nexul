@@ -1,9 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
@@ -40,7 +43,7 @@ func (a playsTargetReader) GetTicket(ctx context.Context, id string) (plays.Tick
 	if p, err := a.workspace.Get(ctx, t.ProjectID); err == nil {
 		prefix = p.Prefix
 	}
-	return plays.TicketTarget{ProjectID: t.ProjectID, Key: ticketKey(prefix, t.Number, t.ID), Stage: plays.Stage(st.Kind)}, nil
+	return plays.TicketTarget{ProjectID: t.ProjectID, Key: ticketKey(prefix, t.Number, t.ID), Title: t.Title, Stage: plays.Stage(st.Kind)}, nil
 }
 
 func (a playsTargetReader) GetDoc(ctx context.Context, id string) (plays.DocTarget, error) {
@@ -376,4 +379,115 @@ func optional(v string, err error) (string, error) {
 		return "", nil
 	}
 	return v, err
+}
+
+// WorkspaceTickets reads every ticket of a workspace's projects with its facts for a sweep: a handful of reads per
+// project rather than per ticket, in board order: stage, column, then place in the column.
+func (a playsFacts) WorkspaceTickets(ctx context.Context, workspaceID string) ([]plays.TicketFacts, error) {
+	projects, err := a.store.Projects.List(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := []plays.TicketFacts{}
+	for _, p := range projects {
+		facts, err := a.projectTickets(ctx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, facts...)
+	}
+	return out, nil
+}
+
+func (a playsFacts) projectTickets(ctx context.Context, projectID string) ([]plays.TicketFacts, error) {
+	ts, err := a.store.Tickets.ListByProject(ctx, projectID)
+	if err != nil || len(ts) == 0 {
+		return nil, err
+	}
+	statuses, err := a.store.Statuses.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	types, err := a.store.TicketTypes.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := a.store.Categories.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(ts))
+	for _, t := range ts {
+		ids = append(ids, t.ID)
+	}
+	prs, err := a.store.Tickets.ListPRLinksBatch(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	blockers, err := a.store.Tickets.UnclearedBlockersOf(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	status := map[string]*workspace.Status{}
+	for _, s := range statuses {
+		status[s.ID] = s
+	}
+	typeName, categoryName := map[string]string{}, map[string]string{}
+	for _, t := range types {
+		typeName[t.ID] = t.Name
+	}
+	for _, c := range categories {
+		categoryName[c.ID] = c.Name
+	}
+	position := map[string]int{}
+	out := make([]plays.TicketFacts, 0, len(ts))
+	for _, t := range ts {
+		position[t.ID] = t.Position
+		f := plays.Facts{
+			ProjectID: t.ProjectID, Status: string(t.Status), Labels: t.Labels, SourceDoc: t.DocID != "", Developer: t.DeveloperID,
+			Tester: t.TesterID, Type: typeName[t.TypeID], Category: categoryName[t.CategoryID], LinkedPR: len(prs[t.ID]) > 0,
+			Blocked: len(blockers[t.ID]) > 0,
+		}
+		if s := status[string(t.Status)]; s != nil {
+			f.Stage = plays.Stage(s.Kind)
+		}
+		out = append(out, plays.TicketFacts{ID: t.ID, Facts: f})
+	}
+	slices.SortStableFunc(out, func(x, y plays.TicketFacts) int {
+		return cmp.Or(
+			cmp.Compare(slices.Index(workspace.StatusKinds, workspace.StatusKind(x.Stage)), slices.Index(workspace.StatusKinds, workspace.StatusKind(y.Stage))),
+			cmp.Compare(statusPosition(status, x.Status), statusPosition(status, y.Status)),
+			cmp.Compare(position[x.ID], position[y.ID]),
+		)
+	})
+	return out, nil
+}
+
+func statusPosition(status map[string]*workspace.Status, id string) int {
+	if s := status[id]; s != nil {
+		return s.Position
+	}
+	return 0
+}
+
+// BugsFoundSince names the bugs found in a ticket that were filed at or after since, as the caller may read them.
+func (a playsLinkReader) BugsFoundSince(ctx context.Context, id string, since time.Time) ([]plays.LinkedTicket, error) {
+	set, err := a.tickets.Links(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := []plays.LinkedTicket{}
+	for _, b := range set.BugsFound {
+		bug, err := a.tickets.Get(ctx, b.ID)
+		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !bug.CreatedAt.Before(since) {
+			out = append(out, playsLinkedTicket(b))
+		}
+	}
+	return out, nil
 }

@@ -41,6 +41,10 @@ type AutoPlayRepo interface {
 	SetAutoPlayLimits(ctx context.Context, workspaceID string, limits AutoPlayLimits, evts ...eventbus.OutboxEvent) error
 	// ListEnabledAutoPlays returns a workspace's switched-on auto plays waiting for moment, oldest first.
 	ListEnabledAutoPlays(ctx context.Context, workspaceID string, moment Moment) ([]*AutoPlay, error)
+	// ListEnabledScheduleAutoPlays returns every switched-on schedule auto play outside an archived workspace, oldest first.
+	ListEnabledScheduleAutoPlays(ctx context.Context) ([]*AutoPlay, error)
+	// LastSweeps returns each named auto play's latest sweep; one that never swept is absent.
+	LastSweeps(ctx context.Context, autoPlayIDs []string) (map[string]*Sweep, error)
 }
 
 // QueueRepo persists the run queue (ADR 0132): one row per match of an auto play, kept once decided.
@@ -62,6 +66,7 @@ type QueueRepo interface {
 	// Resume restarts the target's count of automatic runs from at.
 	Resume(ctx context.Context, targetType TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error
 	QueueDispatchRepo
+	SweepRepo
 }
 
 // QueueDispatchRepo is what the queue's dispatcher and its limits read.
