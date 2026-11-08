@@ -169,6 +169,22 @@ func TestAnswer_HarnessAlreadyAnswered_RunCarriesOn(t *testing.T) {
 	assert.Len(t, f.turns.reqs, 1, "the live turn already has its answer; no fresh turn is started")
 }
 
+func TestAnswer_HarnessRefuses_PostsNoAnswerAndKeepsWaiting(t *testing.T) {
+	f := heldFixture(t)
+	f.turns.answerErr = apperrs.ErrInvalid
+	trail, obs := driveTurn(t, f, ticketRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+	before := len(f.threads.snapshot())
+
+	for range 2 {
+		_, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	}
+	assert.Len(t, f.threads.snapshot(), before, "a refused answer leaves no Answered message to pile up on retry")
+	assert.Equal(t, TrailWaiting, f.trails.all()[0].State)
+}
+
 func TestAnswer_Refusals(t *testing.T) {
 	f := heldFixture(t)
 	trail, obs := driveTurn(t, f, ticketRun())

@@ -382,18 +382,22 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 		return nil, fmt.Errorf("%w: the run is not waiting for an answer", apperrs.ErrConflict)
 	}
 	body := answer.Summary(&trail.Question.Question)
-	if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actor, body); err != nil {
-		return nil, fmt.Errorf("post answer: %w", err)
-	}
+	// The answer is posted only once a turn has it, so a refused answer leaves no message behind to retry over.
 	if o := r.run(trailID); o != nil {
 		err := o.answer(ctx, answer)
 		if err == nil {
+			if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actor, body); err != nil {
+				r.log.Warn("plays: answer delivered but its message did not post", "trail", trailID, "error", err)
+			}
 			r.recordFollowUps(ctx, trail, actor, answer)
 			return r.trails.GetTrail(ctx, trailID)
 		}
 		if !errors.Is(err, errTurnGone) {
 			return nil, err
 		}
+	}
+	if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actor, body); err != nil {
+		return nil, fmt.Errorf("post answer: %w", err)
 	}
 	trail.Question.Answer = &answer
 	trail.State = TrailRunning

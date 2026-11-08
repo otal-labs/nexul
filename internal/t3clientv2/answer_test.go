@@ -60,8 +60,12 @@ func TestAnswer_Refused(t *testing.T) {
 	}{
 		{"a question answered already conflicts", "Runtime request rq-1 is resolved.", apperrs.ErrConflict,
 			"conflict: question rq-1 was already answered"},
-		{"any other refusal carries T3's message", "Runtime request rq-1 is expired.", apperrs.ErrInvalid,
-			"invalid: answer the T3 question: Runtime request rq-1 is expired."},
+		{"a question its run cancelled is gone", "Runtime request rq-1 is cancelled.", apperrs.ErrNotFound,
+			"not found: question rq-1 is no longer open"},
+		{"a question that expired is gone", "Runtime request rq-1 is expired.", apperrs.ErrNotFound,
+			"not found: question rq-1 is no longer open"},
+		{"any other refusal carries T3's message", "Runtime request rq-1 is locked.", apperrs.ErrInvalid,
+			"invalid: answer the T3 question: Runtime request rq-1 is locked."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
