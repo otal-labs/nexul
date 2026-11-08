@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 
 import { AutoPlayClauses } from "@/components/autoplay/AutoPlayClauses";
+import { LastSweepLine } from "@/components/autoplay/LastSweepLine";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -52,9 +53,12 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
       data-off={!autoPlay.enabled || undefined}
       className={cn(leavingRowClass, "group/row flex items-start gap-3 bg-card pr-4 hover:bg-accent")}
     >
-      <button type="button" onClick={() => onOpen(autoPlay)} className="inset-focus m-0.5 mr-0 min-w-0 flex-1 rounded-md py-2.5 pl-3.5 text-left">
-        <AutoPlayClauses autoPlay={autoPlay} subject={subject} />
-      </button>
+      <div className="flex min-w-0 flex-1 flex-col items-start">
+        <button type="button" onClick={() => onOpen(autoPlay)} className="inset-focus m-0.5 mr-0 min-w-0 self-stretch rounded-md py-2.5 pl-3.5 text-left">
+          <AutoPlayClauses autoPlay={autoPlay} subject={subject} />
+        </button>
+        {autoPlay.moment === "schedule" && <LastSweepLine playId={autoPlay.play_id} autoPlayId={autoPlay.id} />}
+      </div>
       {/* One 20px box on the moment's line, so the switch and the menu centre on it however far the clauses wrap. */}
       <div className="mt-3 flex h-5 shrink-0 items-center gap-1">
         <ActionSwitch

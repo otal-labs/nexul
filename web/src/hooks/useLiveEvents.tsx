@@ -34,6 +34,7 @@ import { runnerFollower } from "@/hooks/RunnerHooks";
 import { serviceFollower } from "@/hooks/ServiceHooks";
 import { stackFollower } from "@/hooks/StackHooks";
 import { statusFollower } from "@/hooks/StatusHooks";
+import { sweepFollower } from "@/hooks/SweepHooks";
 import { teamFollower } from "@/hooks/TeamHooks";
 import { templateFollower } from "@/hooks/TemplateHooks";
 import { ticketFollower } from "@/hooks/TicketHooks";
@@ -105,6 +106,7 @@ const followers: LiveFollower[] = [
   runnerFollower,
   serviceFollower,
   stackFollower,
+  sweepFollower,
   statusFollower,
   teamFollower,
   templateFollower,

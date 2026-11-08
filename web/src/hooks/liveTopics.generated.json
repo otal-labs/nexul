@@ -10,6 +10,8 @@
   "auto_play.created",
   "auto_play.deleted",
   "auto_play.limits_updated",
+  "auto_play.sweep_finished",
+  "auto_play.sweep_started",
   "auto_play.updated",
   "botwebhook.created",
   "botwebhook.deleted",

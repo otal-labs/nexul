@@ -13,6 +13,7 @@ import FilePlus from "lucide-react-native/icons/file-plus";
 import Laptop from "lucide-react-native/icons/laptop";
 import MessageCircleQuestion from "lucide-react-native/icons/message-circle-question-mark";
 import MessageSquareReply from "lucide-react-native/icons/message-square-reply";
+import MoonStar from "lucide-react-native/icons/moon-star";
 import Sparkles from "lucide-react-native/icons/sparkles";
 import UserPlus from "lucide-react-native/icons/user-plus";
 import type { LucideIcon } from "lucide-react-native";
@@ -41,4 +42,5 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.MeetingCancelled]: CalendarX,
   [NotificationKind.MeetingReminder]: BellRing,
   [NotificationKind.TicketDueSoon]: CalendarClock,
+  [NotificationKind.SweepFinished]: MoonStar,
 };

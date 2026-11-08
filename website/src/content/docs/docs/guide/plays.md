@@ -106,6 +106,8 @@ On the ticket, the rail's **Plays** section shows what is waiting: each queued r
 
 A ticket play's auto play can wait for a **schedule** instead of something happening to one ticket: a cron expression read in a timezone, such as `0 23 * * *` in Europe/London for every day at 23:00. It fires at most once an hour. Each firing is a **sweep**: every ticket of the workspace that the play takes and the conditions match, highest priority first and in board order within a level, waits in the queue as one batch. The everyday case is "overnight, take every ticket in Backlog of this project": add a **Project is** and a **Stage is** condition and let it run.
 
+To set one up, open the play, add an auto play under **Starts by itself**, and pick **On a schedule** under **When**. Type the schedule, such as `0 23 * * *`, and the timezone it reads in, which starts as your own; the line under them says it in words, such as "Every day at 23:00, London", or what is wrong with it. Under **Limits**, set **At most** tickets a sweep and **Start nothing after**, and leave the time empty to run until the tickets are done. The auto play's row is titled with the schedule in words, lists the sweep's limits, and once it has swept, shows "Last sweep Today at 23:00: 4 finished, 1 asked". Press that line to open the sweep's digest.
+
 - **At most** caps the tickets one sweep takes, 1 to 100, 10 by default. The rest wait for the next sweep, and the digest says how many.
 - **Stop at** is a time in the same timezone, such as 07:00: the sweep starts nothing after it and skips what is left, so a night can't run into the morning.
 - A ticket that already has a run going or waiting, or a run queued, is skipped with a line saying so. While a sweep's run works on a ticket, other auto plays leave it alone, so the run moving the card to In progress doesn't start the In progress auto play on it too.
@@ -120,7 +122,7 @@ Agents set a schedule with `play_update`: `"moment": "schedule"` and a `schedule
 
 ### One at a time
 
-Any auto play can let one of its runs go at a time. Give it a **resource** name, such as `windows-vm`, and its runs go one at a time with every other auto play that names the same resource, so a sweep on the Windows machine and an In progress auto play that also uses it never run side by side. A held run waits as "one at a time". A run stopped on a question lets go, since it isn't using the machine. This is on top of each computer's **Runs at once**, which counts every run on that computer.
+Any auto play can let one of its runs go at a time: turn on **One run at a time** under **Limits**. Give it a **resource** name, such as `windows-vm`, and its runs go one at a time with every other auto play that names the same resource, so a sweep on the Windows machine and an In progress auto play that also uses it never run side by side. A held run waits as "one at a time". A run stopped on a question lets go, since it isn't using the machine. This is on top of each computer's **Runs at once**, which counts every run on that computer.
 
 ## Run on a chosen computer
 

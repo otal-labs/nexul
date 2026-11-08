@@ -21,6 +21,7 @@ import {
   type AutoPlaySubject,
 } from "@/models/AutoPlay";
 import { PLAY_STAGE_LABELS } from "@/models/Play";
+import { describeSchedule, DEFAULT_SWEEP_RUNS } from "@/models/Schedule";
 import { cn } from "@/lib/utils";
 
 // A value: foreground on a live rule, dimmed on one switched off (the row's data-off) but still above the muted labels and glue.
@@ -84,6 +85,19 @@ interface AutoPlayClausesProps {
 const momentPhrase = (autoPlay: AutoPlay) =>
   `${MOMENT_PHRASES[autoPlay.moment]}${autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : ""}`;
 
+// A schedule's title is the schedule in words; every other moment's is "When a ticket becomes unblocked".
+const titleOf = (autoPlay: AutoPlay, subject: AutoPlaySubject) =>
+  autoPlay.moment === "schedule" && autoPlay.schedule
+    ? describeSchedule(autoPlay.schedule.cron, autoPlay.schedule.timezone ?? "UTC")
+    : `When a ${subject} ${momentPhrase(autoPlay)}`;
+
+// How much one sweep takes: "Up to 10 tickets, nothing starts after 07:00".
+const sweepPhrase = (autoPlay: AutoPlay) => {
+  const runs = autoPlay.schedule?.max_runs ?? DEFAULT_SWEEP_RUNS;
+  const stop = autoPlay.schedule?.stop_at;
+  return `Up to ${runs} ticket${runs === 1 ? "" : "s"}${stop ? `, nothing starts after ${stop}` : ""}`;
+};
+
 // The moment as the title, then If, Priority and Runs on as labelled lines, every condition and priority rule in full.
 export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => {
   const groups = autoPlay.conditions.groups.filter((group) => group.rules.length > 0);
@@ -92,7 +106,7 @@ export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => 
   return (
     <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
       <span className="text-sm font-medium text-foreground group-data-off/row:text-muted-foreground">
-        When a {subject} {momentPhrase(autoPlay)}
+        {titleOf(autoPlay, subject)}
       </span>{" "}
       <span className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {groups.length > 0 && (
@@ -107,6 +121,22 @@ export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => 
           {priority.length > 0 && "else "}
           <Part>{LEVEL_LABELS[autoPlay.priority.otherwise]}</Part>
         </Clause>
+        {autoPlay.moment === "schedule" && (
+          <Clause label="Sweep">
+            <Part>{sweepPhrase(autoPlay)}</Part>
+          </Clause>
+        )}
+        {autoPlay.one_at_a_time && (
+          <Clause label="Limits">
+            <Part>One run at a time</Part>
+            {autoPlay.resource && (
+              <>
+                {" with "}
+                <Part className="technical">{autoPlay.resource}</Part>
+              </>
+            )}
+          </Clause>
+        )}
         <Clause label="Runs on">
           <Part>
             {autoPlay.run_on !== "computer" && RUN_ON_PHRASES[autoPlay.run_on]}

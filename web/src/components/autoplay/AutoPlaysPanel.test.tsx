@@ -40,6 +40,9 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
   enabled: true,
   moment: "ticket.unblocked",
   moment_stage: null,
+  schedule: null,
+  one_at_a_time: false,
+  resource: "",
   conditions: { match: "all", groups: [{ match: "all", rules: [{ field: "type", op: "is", values: ["Bug"] }] }] },
   priority: { rules: [{ level: "high", when: { match: "all", rules: [{ field: "type", op: "is", values: ["Bug"] }] } }], otherwise: "normal" },
   once_within_minutes: 1440,
@@ -57,10 +60,34 @@ const autoPlay = (overrides: Partial<AutoPlay> = {}): AutoPlay => ({
 const memory = (id: string, title: string, flags: Partial<Memory> = {}) => ({ id, project_id: "p-1", title, always_included: false, footer: false, ...flags });
 const MEMORIES = [memory("m-1", "Branching"), memory("m-2", "Ship it", { footer: true }), memory("m-3", "House rules", { always_included: true })];
 
+const SWEEP = {
+  id: "sw-1",
+  workspace_id: "ws-1",
+  auto_play_id: "ap-1",
+  play_id: "pl-1",
+  play_label: "Fix with AI",
+  fired_at: "2026-11-08T23:00:00Z",
+  start_by: "2026-11-09T07:00:00Z",
+  matched: 3,
+  over_cap: 0,
+  counts: { finished: 1, asked: 1, failed: 0, skipped: 1, didnt_run: 0 },
+  finished_at: "2026-11-09T02:10:00Z",
+};
+const line = (key: string, title: string, rest: object) => ({ queue_item_id: key, ticket_id: key, key, title, reason: "", trail_id: "", question: "", stage: "", bugs: [], ...rest });
+const DIGEST = {
+  ...SWEEP,
+  lines: [
+    line("WEB-1", "Login page", { status: "started", outcome: "finished", stage: "review", bugs: [{ key: "WEB-9", title: "Logout loops", done: false }] }),
+    line("WEB-2", "Signup", { status: "started", outcome: "asked", question: "Which provider?", stage: "review" }),
+    line("WEB-3", "Footer", { status: "skipped", outcome: "", reason: "it already had a run going or waiting" }),
+  ],
+};
+
 const WRITE = ["plays:read", "plays:write", "autoplays:read", "autoplays:write", "autoplays:delete"];
 let permissions: string[] = WRITE;
 let autoPlays: AutoPlay[] = [];
 let memories = MEMORIES;
+let sweeps: Record<string, unknown> = {};
 
 const serve = () =>
   mocks.get.mockImplementation(async (url: string, config?: AxiosRequestConfig) => {
@@ -73,6 +100,8 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
     if (url === "/api/memories") return { data: memories };
+    if (url === "/api/plays/sweeps") return { data: sweeps };
+    if (url === "/api/plays/sweeps/sw-1") return { data: DIGEST };
     if (url === "/api/ticket-types" && projectId === "p-1") return { data: [{ id: "tt-1", name: "Bug" }] };
     if (url === "/api/tickets/labels") return { data: ["urgent"] };
     if (url === "/api/categories") return { data: [] };
@@ -96,6 +125,7 @@ beforeEach(() => {
   permissions = WRITE;
   autoPlays = [autoPlay()];
   memories = MEMORIES;
+  sweeps = {};
   for (const fn of Object.values(mocks)) fn.mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   serve();
@@ -207,6 +237,7 @@ describe("a play's auto plays", () => {
         enabled: false,
         moment: "ticket.unblocked",
         moment_stage: null,
+        schedule: null,
         conditions: {
           match: "all",
           groups: [
@@ -218,6 +249,8 @@ describe("a play's auto plays", () => {
         once_within_minutes: 60,
         run_on: "developer",
         memory_ids: ["m-2", "m-1"],
+        one_at_a_time: false,
+        resource: "",
       }),
     );
     expect(await screen.findByRole("button", { name: "Add auto play" })).toBeInTheDocument();
@@ -283,6 +316,45 @@ describe("a play's auto plays", () => {
         "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
         expect.objectContaining({
           conditions: { match: "all", groups: [{ match: "all", rules: [{ field: "project", op: "is", values: ["p-gone", "p-1"] }] }] },
+        }),
+      ),
+    );
+  });
+});
+
+describe("a schedule auto play", () => {
+  it("is set with a cron and a zone read back in words, and its last sweep opens the digest", async () => {
+    autoPlays = [
+      autoPlay({ moment: "schedule", schedule: { cron: "0 23 * * *", timezone: "Europe/London", stop_at: "07:00", max_runs: 10 }, one_at_a_time: true, resource: "windows-vm" }),
+    ];
+    sweeps = { "ap-1": SWEEP };
+    const { user } = await openAutoPlays();
+
+    const row = await screen.findByRole("button", { name: /Every day at 23:00, London/ });
+    expect(row).toHaveTextContent("Sweep Up to 10 tickets, nothing starts after 07:00 Limits One run at a time with windows-vm");
+    await user.click(await screen.findByRole("button", { name: /Last sweep .*: 1 finished, 1 asked, 1 skipped/ }));
+    const digest = await screen.findByRole("dialog");
+    await within(digest).findByText("Login page");
+    expect(digest).toHaveTextContent("Finished. Now in Review");
+    expect(digest).toHaveTextContent("Found WEB-9: Logout loops");
+    expect(digest).toHaveTextContent("Asked: Which provider?");
+    expect(digest).toHaveTextContent("Skipped: it already had a run going or waiting");
+    await user.keyboard("{Escape}");
+
+    await user.click(row);
+    const cron = screen.getByRole("textbox", { name: "Schedule" });
+    await user.clear(cron);
+    await user.type(cron, "30 22 * * 1-5");
+    expect(screen.getByText("Weekdays at 22:30, London")).toBeInTheDocument();
+    mocks.patch.mockResolvedValue({ data: autoPlays[0] });
+    await user.click(footer("Save"));
+    await waitFor(() =>
+      expect(mocks.patch).toHaveBeenCalledWith(
+        "/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1",
+        expect.objectContaining({
+          schedule: { cron: "30 22 * * 1-5", timezone: "Europe/London", stop_at: "07:00", max_runs: 10 },
+          one_at_a_time: true,
+          resource: "windows-vm",
         }),
       ),
     );

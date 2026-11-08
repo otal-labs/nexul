@@ -1,6 +1,7 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
+import { ScheduleFields } from "@/components/autoplay/ScheduleFields";
 import { MOMENT_LABELS, SUBJECT_MOMENTS, type AutoPlayDraft, type AutoPlayMoment } from "@/models/AutoPlay";
 import { PLAY_STAGE_LABELS, PLAY_STAGES, type PlayStage } from "@/models/Play";
 
@@ -32,6 +33,10 @@ export const MomentSection = () => {
           />
         )}
       </div>
+      {moment === "schedule" && <ScheduleFields />}
+      {moment === "schedule" && (
+        <p className="text-xs text-muted-foreground">Each sweep takes the tickets the conditions match, highest priority first.</p>
+      )}
       {moment === "doc.changed" && (
         <p className="text-xs text-muted-foreground">Fires once edits stop for 10 minutes, never for an agent's edits.</p>
       )}

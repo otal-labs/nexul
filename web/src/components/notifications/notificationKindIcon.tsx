@@ -14,6 +14,7 @@ import {
   LaptopIcon,
   MessageCircleQuestionIcon,
   MessageSquareReplyIcon,
+  MoonStarIcon,
   SparklesIcon,
   UserPlusIcon,
   type LucideIcon,
@@ -43,4 +44,5 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.MeetingCancelled]: CalendarXIcon,
   [NotificationKind.MeetingReminder]: BellRingIcon,
   [NotificationKind.TicketDueSoon]: CalendarClockIcon,
+  [NotificationKind.SweepFinished]: MoonStarIcon,
 };
