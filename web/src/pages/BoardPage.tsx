@@ -46,6 +46,7 @@ export const BoardPage = () => {
     toggleDeveloper,
     toggleWaitingForMeToTest,
     togglePlaying,
+    toggleNeedsAnswer,
     toggleUnblocked,
     setSearch,
     clearAll,
@@ -96,6 +97,7 @@ export const BoardPage = () => {
           onToggleDeveloper={toggleDeveloper}
           onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
           onTogglePlaying={togglePlaying}
+          onToggleNeedsAnswer={toggleNeedsAnswer}
           onToggleUnblocked={toggleUnblocked}
           onSearch={setSearch}
           onClear={clearAll}

@@ -130,6 +130,22 @@ describe("useBoardFilters", () => {
     expect(result.current.filteredTickets).toHaveLength(3);
   });
 
+  it("needs answer keeps only the tickets whose run is stopped on a question", async () => {
+    const base = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/plays/runs/active") return { data: { active: { running: "tr-1", asking: "tr-2" }, waiting: { asking: "tr-2" } } };
+      return base?.(url);
+    });
+    const tickets = [ticket("running", "p-1"), ticket("asking", "p-1"), ticket("idle", "p-1")];
+    const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
+
+    act(() => result.current.toggleNeedsAnswer());
+    await waitFor(() => expect(result.current.filteredTickets.map((t) => t.id)).toEqual(["asking"]));
+
+    act(() => result.current.toggleNeedsAnswer());
+    expect(result.current.filteredTickets).toHaveLength(3);
+  });
+
   it("not blocked hides the tickets still waiting on a blocker", async () => {
     const base = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation(async (url: string) => {

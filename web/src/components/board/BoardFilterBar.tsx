@@ -10,6 +10,7 @@ import {
   buildCategoryChips,
   buildFilterRows,
   buildLabelChips,
+  buildPlayChips,
   buildProjectChips,
   buildStatusChips,
   buildSummaryLabel,
@@ -48,6 +49,7 @@ interface BoardFilterBarProps {
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
   onTogglePlaying: () => void;
+  onToggleNeedsAnswer: () => void;
   onToggleUnblocked: () => void;
   onSearch: (search: string) => void;
   onClear: () => void;
@@ -71,6 +73,7 @@ export const BoardFilterBar = ({
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
   onTogglePlaying,
+  onToggleNeedsAnswer,
   onToggleUnblocked,
   onSearch,
   onClear,
@@ -91,6 +94,7 @@ export const BoardFilterBar = ({
   const typeChips = buildTypeChips(ticketTypes, filters, onSelectType);
   const statusChips = buildStatusChips(statuses, filters, onToggleStatus);
   const blockerChips = buildBlockerChips(filters, onToggleUnblocked);
+  const playChips = buildPlayChips(filters, onToggleNeedsAnswer);
   const summaryLabel = buildSummaryLabel(activeCount, projects);
   const filterRows = buildFilterRows({
     hideProjectFilter,
@@ -101,6 +105,7 @@ export const BoardFilterBar = ({
     typeChips,
     statusChips,
     blockerChips,
+    playChips,
   });
   const activeChips = filterRows.flatMap((row) => row.chips.filter((option) => option.active));
 
