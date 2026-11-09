@@ -1,4 +1,7 @@
-import { parseDiscordMarkdown, type InlinePart } from "@/lib/discordMarkdown";
+// @vitest-environment node
+import { expect, test } from "vitest";
+
+import { parseDiscordMarkdown, type InlinePart } from "@nexul/client-core/discordMarkdown";
 
 const inline = (text: string): InlinePart[] => {
   const [line] = parseDiscordMarkdown(text);
@@ -44,4 +47,16 @@ test("every timestamp style, s and S included, reads as a time carrying its code
     ]);
   }
   expect(inline("<t:1792867165:x>")).toEqual([{ kind: "text", text: "<t:1792867165:x>" }]);
+});
+
+test("a mention is an @ that starts a word, so an email address holds none", () => {
+  const [line] = parseDiscordMarkdown("ping @bob or ann@bob.example.com", ["bob"]);
+  expect(line).toEqual({
+    kind: "text",
+    parts: [
+      { kind: "text", text: "ping " },
+      { kind: "mention", text: "@bob" },
+      { kind: "text", text: " or ann@bob.example.com" },
+    ],
+  });
 });

@@ -8,7 +8,7 @@ import { openLink } from "@/components/chat/MessageMarkdown";
 import { Text } from "@/components/ui/text";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useClockStore } from "@/stores/clockStore";
-import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@/lib/discordMarkdown";
+import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@nexul/client-core/discordMarkdown";
 import { cn } from "@/lib/utils";
 
 const OpenTimeContext = createContext<(open: OpenTime) => void>(() => undefined);

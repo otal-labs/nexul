@@ -1,7 +1,7 @@
 import { DISCORD_TIME_SOURCE, readDiscordTime, type DiscordTime } from "@nexul/client-core/discordTime";
 import { httpUrl } from "@nexul/client-core/embed";
+import { tokenizeMessageText } from "@nexul/client-core/messageText";
 
-// A port of web/src/utils/DiscordMarkdownUtility.tsx, so a bot's post reads the same on the phone.
 export type InlinePart =
   | { kind: "text"; text: string }
   | { kind: "mention"; text: string }
@@ -32,56 +32,12 @@ const INLINE = new RegExp(
   "gu",
 );
 
-const URL_PATTERN = /\bhttps?:\/\/[^\s<>"]+/gi;
-const TRAILING_PUNCTUATION = ".,;:!?'\"";
-
-const count = (s: string, ch: string) => s.split(ch).length - 1;
-
-// Sentence punctuation and an unbalanced closing bracket belong to the prose around a URL, not to the URL.
-const trimUrl = (raw: string): string => {
-  let url = raw;
-  for (;;) {
-    const last = url.at(-1) ?? "";
-    if (TRAILING_PUNCTUATION.includes(last)) {
-      url = url.slice(0, -1);
-      continue;
-    }
-    if (last === ")" && count(url, "(") < count(url, ")")) {
-      url = url.slice(0, -1);
-      continue;
-    }
-    if (last === "]" && count(url, "[") < count(url, "]")) {
-      url = url.slice(0, -1);
-      continue;
-    }
-    return url;
-  }
-};
-
-const splitMentions = (text: string, mentionHandles: string[]): InlinePart[] => {
-  if (mentionHandles.length === 0) return [{ kind: "text", text }];
-  const escaped = mentionHandles.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(@(?:${escaped.join("|")})\\b)`, "gi");
-  return text.split(pattern).map((piece, i): InlinePart => ({ kind: i % 2 === 1 ? "mention" : "text", text: piece }));
-};
-
-const plainParts = (text: string, mentionHandles: string[]): InlinePart[] => {
-  const parts: InlinePart[] = [];
-  let cursor = 0;
-  for (const match of text.matchAll(URL_PATTERN)) {
-    const url = trimUrl(match[0]);
-    if (!httpUrl(url)) continue;
-    parts.push(...splitMentions(text.slice(cursor, match.index), mentionHandles));
-    parts.push({ kind: "url", url });
-    cursor = match.index + url.length;
-  }
-  parts.push(...splitMentions(text.slice(cursor), mentionHandles));
-  return parts.filter((part) => part.kind !== "text" || part.text !== "");
-};
+const plainParts = (text: string, mentionHandles: string[]): InlinePart[] =>
+  tokenizeMessageText(text, mentionHandles).map((part): InlinePart => (part.kind === "link" ? { kind: "url", url: part.url } : part));
 
 interface InlineContext {
   mentionHandles: string[];
-  // A link's label may not hold another link: two targets under one press is ambiguous.
+  // A link's label may not hold another link: nested anchors are invalid and two targets under one press are ambiguous.
   links: boolean;
 }
 

@@ -1,7 +1,7 @@
 import { DiscordTimeChip } from "@/components/chat/DiscordTimeChip";
 import { MessageLink } from "@/components/chat/MessageLink";
 import { cn } from "@/lib/utils";
-import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@/utils/DiscordMarkdownUtility";
+import { parseDiscordMarkdown, type InlinePart, type MarkdownLine } from "@nexul/client-core/discordMarkdown";
 
 const InlineParts = ({ parts }: { parts: InlinePart[] }) => parts.map((part, i) => <Inline key={i} part={part} />);
 
