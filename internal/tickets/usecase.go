@@ -497,13 +497,22 @@ func (s *Service) ListByDoc(ctx context.Context, docID string) ([]*Ticket, error
 
 // ListByProject returns the tickets in a given project.
 func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*Ticket, error) {
+	return s.listByProject(ctx, projectID, s.repo.ListByProject)
+}
+
+// ListByProjectWithoutBody returns the project's tickets with empty bodies, which storage never reads.
+func (s *Service) ListByProjectWithoutBody(ctx context.Context, projectID string) ([]*Ticket, error) {
+	return s.listByProject(ctx, projectID, s.repo.ListByProjectWithoutBody)
+}
+
+func (s *Service) listByProject(ctx context.Context, projectID string, read func(context.Context, string) ([]*Ticket, error)) ([]*Ticket, error) {
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
 	}
 	if err := s.require(ctx, projectID, permissions.TicketsRead); err != nil {
 		return nil, fmt.Errorf("list tickets for project %s: %w", projectID, err)
 	}
-	ts, err := s.repo.ListByProject(ctx, projectID)
+	ts, err := read(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list tickets for project %s: %w", projectID, err)
 	}

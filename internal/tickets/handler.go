@@ -228,6 +228,9 @@ func (h *Handler) listFiltered(r *http.Request) ([]*Ticket, error) {
 		return h.svc.ListByDoc(r.Context(), docID)
 	}
 	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
+		if r.URL.Query().Get("without") == "body" {
+			return h.svc.ListByProjectWithoutBody(r.Context(), projectID)
+		}
 		return h.svc.ListByProject(r.Context(), projectID)
 	}
 	return h.svc.List(r.Context())

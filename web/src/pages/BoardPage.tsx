@@ -11,7 +11,7 @@ import { useBoardFilters } from "@/hooks/useBoardFilters";
 import { useBoardProjectScope } from "@/hooks/useBoardProjectScope";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useFetchTickets } from "@/hooks/TicketHooks";
+import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useSwimlanes } from "@/hooks/useSwimlanes";
 
@@ -20,7 +20,6 @@ export const BoardPage = () => {
   const { projectId: routeParam } = useParams();
 
   const { data: projects = [], error, isPending } = useFetchProjects();
-  const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTickets();
 
   const { scopedProject, scopedProjectId, scopedNotFound } = useBoardProjectScope({
     routeParam,
@@ -29,6 +28,7 @@ export const BoardPage = () => {
     error,
   });
 
+  const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTicketsByProject(scopedProjectId);
   const { data: statuses = [] } = useFetchProjectStatuses(scopedProjectId);
   const { data: categories = [] } = useFetchProjectCategories(scopedProjectId);
 

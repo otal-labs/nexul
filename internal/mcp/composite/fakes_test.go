@@ -291,6 +291,10 @@ func (r ticketRepo) ListByProject(_ context.Context, projectID string) ([]*ticke
 	return r.filter(func(t *tickets.Ticket) bool { return t.ProjectID == projectID }), nil
 }
 
+func (r ticketRepo) ListByProjectWithoutBody(ctx context.Context, projectID string) ([]*tickets.Ticket, error) {
+	return r.ListByProject(ctx, projectID)
+}
+
 func (r ticketRepo) ListByDoc(_ context.Context, docID string) ([]*tickets.Ticket, error) {
 	return r.filter(func(t *tickets.Ticket) bool { return t.DocID == docID }), nil
 }

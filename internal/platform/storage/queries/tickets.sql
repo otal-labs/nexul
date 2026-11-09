@@ -51,6 +51,16 @@ SELECT sqlc.embed(tickets),
 FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
 WHERE tickets.project_id = ? ORDER BY tickets.created_at;
 
+-- name: ListTicketsByProjectWithoutBody :many
+-- Every ticket column but body, which stays unread; body comes back empty.
+SELECT tickets.id, tickets.title, CAST('' AS TEXT) AS body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at,
+       tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester,
+       tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.project_id = ? ORDER BY tickets.created_at;
+
 -- name: GetTicketStatusAndCategory :one
 SELECT status, category_id FROM tickets WHERE id = ?;
 
