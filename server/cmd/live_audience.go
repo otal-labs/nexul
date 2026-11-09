@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -47,6 +48,15 @@ const topicPresenceChanged = "account.presence_changed"
 
 // topicTopologyCanvas is the frame the canvas consumer pushes with one workspace's whole canvas.
 const topicTopologyCanvas = "topology"
+
+// directLiveTopics are pushed straight to the hub, not bridged from the bus.
+var directLiveTopics = []string{topicPresenceChanged, topicTopologyCanvas, agent.TopicAgentStream, plays.TopicPlayRun}
+
+// bridgedLiveTopics are the bus topics the browser socket bridges onto: every rule's topic that is not direct.
+var bridgedLiveTopics = func() []string {
+	topics := slices.Sorted(maps.Keys(liveRules))
+	return slices.DeleteFunc(topics, func(t string) bool { return slices.Contains(directLiveTopics, t) })
+}()
 
 // liveRules names the read each pushed topic takes; a topic without a rule reaches nobody.
 var liveRules = map[string]liveRule{

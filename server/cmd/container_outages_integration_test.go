@@ -83,7 +83,7 @@ func TestOutages_FramesReachWhoReadsTheStack(t *testing.T) {
 func TestOutages_TheOutageTopicsArePushedAndScopedLikeTheStacks(t *testing.T) {
 	t.Parallel()
 	for _, topic := range []string{deploy.TopicContainerStopped, deploy.TopicContainerRecovered} {
-		assert.Contains(t, livePushTopics, topic)
+		assert.Contains(t, bridgedLiveTopics, topic)
 		assert.Contains(t, liveRules, topic)
 		assert.Contains(t, scopeRules, topic)
 	}

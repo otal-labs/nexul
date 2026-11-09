@@ -165,7 +165,7 @@ this list and say which entries applied:
   followed by `make event-schemas`. A client that refreshes too much because
   a frame lacks an id is fixed by adding that id this way.
 - Live WebSocket push, if the UI should update without a refresh. A new
-  topic is bridged in `livePushTopics`, gets an audience rule,
+  topic gets an audience rule in `liveRules` (that bridges it),
   `make live-topics`, a follower in the web
   domain's hooks file (`practices/react-guide.md`, The live topic contract),
   and a line in the `refreshes` of each phone query that shows the entity

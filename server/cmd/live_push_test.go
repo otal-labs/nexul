@@ -10,12 +10,12 @@ import (
 
 func TestLivePushTopics_TokenLifecycle_ReachesTheBrowser(t *testing.T) {
 	t.Parallel()
-	assert.Contains(t, livePushTopics, auth.TopicTokenMinted)
-	assert.Contains(t, livePushTopics, auth.TopicTokenRevoked)
+	assert.Contains(t, bridgedLiveTopics, auth.TopicTokenMinted)
+	assert.Contains(t, bridgedLiveTopics, auth.TopicTokenRevoked)
 }
 
 func TestLivePushTopics_SessionLifecycle_ReachesTheBrowser(t *testing.T) {
 	t.Parallel()
-	assert.Contains(t, livePushTopics, auth.TopicSessionCreated)
-	assert.Contains(t, livePushTopics, auth.TopicSessionRevoked)
+	assert.Contains(t, bridgedLiveTopics, auth.TopicSessionCreated)
+	assert.Contains(t, bridgedLiveTopics, auth.TopicSessionRevoked)
 }

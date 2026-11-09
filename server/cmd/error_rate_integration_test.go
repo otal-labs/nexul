@@ -136,7 +136,7 @@ func TestErrorRate_FramesReachWhoReadsTheStack(t *testing.T) {
 func TestErrorRate_TheTopicsArePushedAndScopedLikeTheStacks(t *testing.T) {
 	t.Parallel()
 	for _, topic := range []string{deploy.TopicErrorRateCrossed, deploy.TopicErrorRateRecovered} {
-		assert.Contains(t, livePushTopics, topic)
+		assert.Contains(t, bridgedLiveTopics, topic)
 		assert.Contains(t, liveRules, topic)
 		assert.Contains(t, scopeRules, topic)
 	}

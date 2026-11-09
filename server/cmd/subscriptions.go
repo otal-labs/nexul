@@ -465,10 +465,10 @@ func memoizedAudience(svc *coreServices) live.Audience {
 }
 
 func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage.Store, svc *coreServices, logger *slog.Logger) (*live.Hub, *agent.Handler) {
-	// The hub is generic; future streams add their own topics to livePushTopics.
+	// The hub is generic; a topic reaches it by getting an audience rule.
 	liveHub := live.New(logger)
 	liveHub.SetAudience(memoizedAudience(svc))
-	for _, topic := range livePushTopics {
+	for _, topic := range bridgedLiveTopics {
 		mustSubscribe(ctx, bus, "live.push", topic, " for live push", func(ctx context.Context, ev eventbus.Event) error {
 			return liveHub.Publish(ctx, ev.Topic, ev.Payload)
 		})

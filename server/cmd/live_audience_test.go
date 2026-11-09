@@ -13,11 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/access"
-	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/eventcatalog"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
@@ -33,12 +33,11 @@ var updateLiveTopics = flag.Bool("update-live-topics", false, "rewrite the brows
 // liveTopicsFile is what the browser's contract test reads to check its topic map against the rules.
 const liveTopicsFile = "../../web/src/hooks/liveTopics.generated.json"
 
-// TestLiveRules_MatchWhatIsPushed fails when a topic is bridged to the browser without saying who may receive it,
-// since a topic with no rule silently reaches nobody, and when a rule names a topic nothing pushes.
-func TestLiveRules_MatchWhatIsPushed(t *testing.T) {
+// TestLiveRules_BridgedTopicsArePublished fails when a rule names a bus topic nothing publishes, which a removed
+// event leaves behind.
+func TestLiveRules_BridgedTopicsArePublished(t *testing.T) {
 	t.Parallel()
-	direct := []string{topicPresenceChanged, topicTopologyCanvas, agent.TopicAgentStream, plays.TopicPlayRun}
-	assert.ElementsMatch(t, append(slices.Clone(livePushTopics), direct...), slices.Collect(maps.Keys(liveRules)))
+	assert.Subset(t, eventcatalog.AllTopics(), bridgedLiveTopics)
 }
 
 // TestLiveTopicsFile_MatchesTheRules fails when the generated topic list is stale, the way sqlc diff does.
