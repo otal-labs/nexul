@@ -23,6 +23,7 @@ documentation disagree on an API, the documentation wins.
 | Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read or unread; `GestureHandlerRootView` wraps the app in the root layout |
 | App icon, splash, notification icon | PNGs in `native/assets/`, generated | The master is `native/assets/mark.svg`; after changing it run `bun scripts/generateIcons.ts` in `web/` (headless Chromium through playwright) and commit the PNGs, including the web favicons and touch icons in `web/public/` |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
+| Web content | react-native-webview | Only a doc's HTML page (ADR 0180): `HtmlPageView`, never a screen of the web app |
 | Push | expo-notifications | Registers on sign-in, clears on sign-out; `src/push/` |
 | Tests | jest-expo + React Native Testing Library | `bun run test` |
 | Lint | eslint-config-expo | `bun run lint` |

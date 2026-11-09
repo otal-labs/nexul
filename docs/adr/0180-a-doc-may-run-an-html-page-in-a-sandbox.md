@@ -17,5 +17,9 @@ body text, so markdown, MCP, history and search carry it unchanged.
   `--brand`, the status hues, `--radius`, `--font-sans`), resolved from the reader's palette and mode, and the app's own
   `@font-face` rules; the server allows fonts under `assets/` cross-origin for that. A theme change rebuilds the page
   rather than messaging it, so a page's own state resets when the reader switches theme.
+- **The phone runs it in a WebView.** The same document, from `client-core/htmlPage`, loads as an HTML source with the
+  phone's tokens; the session token stays in the secure store, out of the WebView's reach. A top-frame navigation is
+  refused, and a tapped link opens in the browser. The page draws system fonts, since the bundled ones are app assets a
+  WebView reads only with file access.
 - **Fitted to its content.** A bootstrap script in the page reports its height and the frame follows it, up to 20,000px,
   so the page never scrolls inside the doc.

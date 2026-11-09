@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Image } from "react-native";
 import { useUniwind } from "uniwind";
 
 import { mentionChipText } from "@nexul/client-core/mention";
 
 import { MessageBody } from "@/components/chat/MessageBody";
+import { HtmlPageView } from "@/components/docs/HtmlPageView";
 import { useResolveMentions } from "@/hooks/MentionHooks";
 import { useMentionName } from "@/hooks/PeopleHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
-import { linkMention, mentionRefs, richBodyToMarkdown, type MentionWriter } from "@/models/Doc";
+import { linkMention, mentionRefs, richBodyToMarkdown, splitHtmlPages, type MentionWriter } from "@/models/Doc";
 
 // The markdown renderer takes only images inline, so the lock is a bundled glyph per theme (web/scripts/generateIcons.ts).
 const lockImage = {
@@ -27,6 +28,7 @@ export const DocBody = ({ body }: DocBodyProps) => {
   const nameFor = useMentionName(workspace?.id);
   const refs = useMemo(() => mentionRefs(body), [body]);
   const { data: chips } = useResolveMentions(workspace?.id, refs);
+  const parts = useMemo(() => splitHtmlPages(body), [body]);
   const lock = useUniwind().theme === "dark" ? lockImage.dark : lockImage.light;
 
   // A mention the viewer can't open keeps its text, locked and inert, as the web's pill does (ADR 0148).
@@ -37,5 +39,10 @@ export const DocBody = ({ body }: DocBodyProps) => {
     return `${text} ![You don't have access](${lock})`;
   };
 
-  return <MessageBody body={richBodyToMarkdown(body, nameFor, write)} />;
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {part.kind === "page" && <HtmlPageView code={part.code} />}
+      {part.kind === "body" && <MessageBody body={richBodyToMarkdown(part.body, nameFor, write)} />}
+    </Fragment>
+  ));
 };

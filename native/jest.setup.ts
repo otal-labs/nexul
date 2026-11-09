@@ -25,3 +25,10 @@ setUpTests();
 
 // Screens read the status bar inset; the library's own mock gives every inset as zero.
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
+
+// The WebView is a native view; the fake is a View that keeps its props, so a test reads what the page was given.
+jest.mock("react-native-webview", () => {
+  const { createElement } = jest.requireActual("react");
+  const { View } = jest.requireActual("react-native");
+  return { WebView: (props: object) => createElement(View, { testID: "webview", ...props }) };
+});
