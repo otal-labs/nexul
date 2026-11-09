@@ -10,7 +10,8 @@ import (
 )
 
 // WAL gives concurrent readers, synchronous(NORMAL) is safe under it, and busy_timeout waits on a writer only because transactions begin immediate.
-const pragmas = "_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_txlock=immediate"
+// journal_size_limit truncates the -wal to 32 MiB after a checkpoint, so a large purge does not leave it at its peak size until restart.
+const pragmas = "_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_pragma=journal_size_limit(33554432)&_txlock=immediate"
 
 func OpenDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path+"?"+pragmas)
