@@ -5,3 +5,9 @@ ORDER BY created_at, id LIMIT sqlc.arg('limit');
 
 -- name: LatestOutboxPosition :one
 SELECT id, created_at FROM outbox ORDER BY created_at DESC, id DESC LIMIT 1;
+
+-- name: LatestSettledOutboxPosition :one
+-- Rows older than the newest row's second are final: a later commit starts after that row's insert, so it cannot land below it.
+SELECT id, created_at FROM outbox
+WHERE created_at < (SELECT MAX(created_at) FROM outbox)
+ORDER BY created_at DESC, id DESC LIMIT 1;

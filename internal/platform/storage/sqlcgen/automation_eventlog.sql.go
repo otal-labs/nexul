@@ -25,6 +25,25 @@ func (q *Queries) LatestOutboxPosition(ctx context.Context) (LatestOutboxPositio
 	return i, err
 }
 
+const latestSettledOutboxPosition = `-- name: LatestSettledOutboxPosition :one
+SELECT id, created_at FROM outbox
+WHERE created_at < (SELECT MAX(created_at) FROM outbox)
+ORDER BY created_at DESC, id DESC LIMIT 1
+`
+
+type LatestSettledOutboxPositionRow struct {
+	ID        string
+	CreatedAt int64
+}
+
+// Rows older than the newest row's second are final: a later commit starts after that row's insert, so it cannot land below it.
+func (q *Queries) LatestSettledOutboxPosition(ctx context.Context) (LatestSettledOutboxPositionRow, error) {
+	row := q.db.QueryRowContext(ctx, latestSettledOutboxPosition)
+	var i LatestSettledOutboxPositionRow
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
+
 const listOutboxAfterCursor = `-- name: ListOutboxAfterCursor :many
 SELECT id, topic, payload, created_at FROM outbox
 WHERE topic IN (SELECT value FROM json_each(?1)) AND (created_at > ?2 OR (created_at = ?2 AND id > ?3))

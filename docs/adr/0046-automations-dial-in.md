@@ -10,6 +10,8 @@ Amended: a disabled automation is delivered nothing, checked before every event,
 
 Amended: switching an automation off also refuses its credentials. Its token and its host tokens are refused on every `/api/` route, its own record included, and a host token cannot dial in. Its own token may still dial in, because a new automation is off until its code has announced itself: the announce is recorded and the hello carries its config, but no secrets, and no event is delivered. Switching it either way drops its live connection, and switching it back on lets the same token work again.
 
+Amended: a read that finds nothing for an automation moves its cursor to the newest settled position, the last row older than the newest row's second, so a rare topic does not rescan the log tail on every wake. A row in the newest second stays past the cursor, because a later commit may still land there with a lower id.
+
 An automation opens one outbound WebSocket to the instance, authenticated by
 its own scoped token, announces the subscriptions declared in its code, and
 receives events down that connection; run reports ride back up it. It is the

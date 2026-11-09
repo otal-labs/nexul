@@ -108,3 +108,25 @@ func TestAutomationEventLogRepo_After_IncludesUnpublishedRows(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, "e1", got[0].ID)
 }
+
+func TestAutomationEventLogRepo_Settled_StopsBeforeTheNewestSecond(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	base := time.Unix(1_700_000_000, 0).UTC()
+	_, ok, err := s.AutomationEventLog.Settled(context.Background())
+	require.NoError(t, err)
+	assert.False(t, ok, "an empty log has nothing settled")
+
+	insertOutboxTestRowAt(t, s, "a", "ticket.created", []byte(`{}`), base)
+	insertOutboxTestRowAt(t, s, "b", "ticket.created", []byte(`{}`), base.Add(time.Second))
+	insertOutboxTestRowAt(t, s, "c", "ticket.created", []byte(`{}`), base.Add(time.Second))
+	got, ok, err := s.AutomationEventLog.Settled(context.Background())
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, "a", got.ID, "a row in the newest second may still gain a lower-id sibling")
+
+	insertOutboxTestRowAt(t, s, "d", "ticket.created", []byte(`{}`), base.Add(2*time.Second))
+	got, _, err = s.AutomationEventLog.Settled(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "c", got.ID, "the last row of the second before the newest")
+}
