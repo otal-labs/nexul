@@ -167,6 +167,12 @@ SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (sqlc.slice('ids')
 -- name: ListAllTicketLabels :many
 SELECT ticket_id, label FROM ticket_labels ORDER BY label;
 
+-- name: ListReadableLabelNames :many
+-- The distinct labels on tickets in the readable projects, or in every project when all_projects is set.
+SELECT DISTINCT ticket_labels.label FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id
+WHERE sqlc.arg(all_projects) OR tickets.project_id IN (SELECT value FROM json_each(sqlc.arg(readable)))
+ORDER BY ticket_labels.label;
+
 -- name: ListTicketLabelsByProject :many
 SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?) ORDER BY label;
 
