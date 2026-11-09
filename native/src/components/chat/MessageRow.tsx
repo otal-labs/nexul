@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { memo } from "react";
 import { Pressable, View } from "react-native";
 
 import { dropEchoedAuthor } from "@nexul/client-core/embed";
@@ -75,7 +76,7 @@ const OtherMessage = ({ message, continuation }: { message: Message; continuatio
   );
 };
 
-export const MessageRow = ({ message, own, continuation = false }: MessageRowProps) => {
+const MessageRowView = ({ message, own, continuation = false }: MessageRowProps) => {
   const isSystem = message.author_kind === "system";
   return (
     // A bot is never resolved as a person: its id is not a member, so it shows the name it posted with.
@@ -86,3 +87,6 @@ export const MessageRow = ({ message, own, continuation = false }: MessageRowPro
     </BotMessageIdContext>
   );
 };
+
+// The list hands each row the same message object until that message changes, so an arrival renders only its own row.
+export const MessageRow = memo(MessageRowView);

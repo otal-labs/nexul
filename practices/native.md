@@ -216,6 +216,10 @@ as written. In particular:
   from the phone takes the optimistic row's id as `client_key`
   (`upsertMessage`), and the list keys a row by `client_key ?? id`, so the row
   stays mounted through the confirmation and any later edit.
+  An open thread marks itself read on each confirmed message, never a pending
+  one, and that refetches the unread counts, so a `chat.message.created` frame
+  refetches them only for a thread nobody has open; a message rendered in the
+  list is a memoised `MessageRow`, so an arrival renders its own row.
 - A record's detail query is keyed by its id, or by its key and workspace
   slug when a link opened it. A `record` refresh and mutations reach it
   through `recordQueries(key, id)` from `src/lib/queryClient.ts`, which

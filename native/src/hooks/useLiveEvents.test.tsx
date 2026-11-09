@@ -184,6 +184,7 @@ describe("dispatch", () => {
   test.each([
     ["chat.conversation.deleted", { conversation_id: "c1", workspace_id: "ws-1", kind: "channel", name: "x" }, getChatMessagesKey, "c1", "c2"],
     ["chat.conversation.members_changed", { conversation_id: "c1", workspace_id: "ws-1" }, getChatUnreadKey, "ws-1", "ws-2"],
+    ["chat.message.created", { message: { id: "m1", conversation_id: "c1" }, workspace_id: "ws-1" }, getChatUnreadKey, "ws-1", "ws-2"],
     ["role.updated", { role_id: "r1", workspace_id: "ws-1" }, getMyRoleKey, "ws-1", "ws-2"],
     ["meeting.created", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
     ["meeting.updated", { meeting: { id: "m-1", workspace_id: "ws-1" } }, getMeetingsKey, "ws-1", "ws-2"],
@@ -221,6 +222,22 @@ describe("dispatch", () => {
 
     expect(client.getQueryState([getChatConversationsKey, "ws-1"])?.isInvalidated).toBe(true);
     expect(client.getQueryState([getChatConversationsKey, "ws-2"])?.isInvalidated).toBe(everyList);
+  });
+
+  // A DM lists in every workspace its people share, so its message moves each one's unread counts.
+  test("a DM's message refetches every workspace's unread counts", () => {
+    const client = new QueryClient();
+    client.setQueryData([getChatUnreadKey, "ws-1"], {});
+    client.setQueryData([getChatUnreadKey, "ws-2"], {});
+
+    dispatch(client)({
+      topic: "chat.message.created",
+      type: "event",
+      payload: { message: { id: "m1", conversation_id: "c1" }, workspace_id: "ws-1", members_only: true },
+    });
+
+    expect(client.getQueryState([getChatUnreadKey, "ws-1"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getChatUnreadKey, "ws-2"])?.isInvalidated).toBe(true);
   });
 
   test.each(["ticket.created", "ticket.updated", "ticket.deleted"])("%s refetches the agenda's due tickets, which a ticket frame can't tie to a workspace", (topic) => {
