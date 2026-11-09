@@ -27,7 +27,7 @@ interface DocsListPaneProps {
   docs: DocListItem[];
   project: Project;
   selectedId: string | undefined;
-  /** The page's search, shared with the overview beside the list. */
+  /** The search shared with the overview beside the list. */
   search: string;
   onSearch: (value: string) => void;
 }

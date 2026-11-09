@@ -19,9 +19,15 @@ vi.mock("@/api/client", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // The editor pane is DocPage's own concern (collab session, tiptap); here it only has to be the open doc's.
+const editor = vi.hoisted(() => ({ renders: 0 }));
 vi.mock("@/pages/DocPage", async () => {
   const { useParams } = await import("react-router");
-  return { DocPage: () => <p>editing {useParams().docId}</p> };
+  return {
+    DocPage: () => {
+      editor.renders += 1;
+      return <p>editing {useParams().docId}</p>;
+    },
+  };
 });
 
 const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
@@ -132,6 +138,20 @@ describe("DocsPage", () => {
     const matching = within(overview).getByRole("region", { name: "Matching" });
     expect(within(matching).getByText("Storage Spine")).toBeInTheDocument();
     expect(within(overview).queryByText("Rollback plan")).not.toBeInTheDocument();
+  });
+
+  it("types a search without re-rendering the open doc's editor", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs/BE/doc-2", ["docs:read"]);
+    await screen.findByText("editing doc-2");
+    await inList("Storage Spine");
+    const rendersBefore = editor.renders;
+
+    await user.type(screen.getByRole("textbox", { name: "Search docs" }), "storage");
+
+    expect(within(screen.getByRole("region", { name: "Main" })).getByText("Storage Spine")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "GetSource" })).not.toBeInTheDocument();
+    expect(editor.renders).toBe(rendersBefore);
   });
 
   it("shows the archived docs in the overview while the list shows them", async () => {
