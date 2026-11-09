@@ -90,6 +90,21 @@ describe("DocToc", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true"));
   });
 
+  // The editor redraws any node whose DOM is written to, which reloads an HTML page's frame mid-scroll.
+  it("never writes to the body's headings while following the scroll", async () => {
+    bodyView("<h1>Storage</h1><h2>Backup</h2>");
+    render(<DocToc headings={headings} />);
+    placeHeadings({ Storage: -400, Backup: 100 });
+    const writes: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => writes.push(...records));
+    observer.observe(document.querySelector(".doc-body-view")!, { attributes: true, childList: true, subtree: true });
+
+    scrollPane();
+
+    await waitFor(() => expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("aria-current", "true"));
+    expect([...writes, ...observer.takeRecords()]).toEqual([]);
+  });
+
   it("ignores a scroll box that doesn't hold the body, such as the docs list", async () => {
     bodyView("<h1>Storage</h1><h2>Backup</h2>");
     render(<DocToc headings={headings} />);

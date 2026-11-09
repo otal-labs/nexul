@@ -19,10 +19,7 @@ function findHeadingElement(heading: DocHeading): HTMLElement | null {
     ".doc-body-view h1, .doc-body-view h2, .doc-body-view h3, .doc-body-view h4, .doc-body-view h5, .doc-body-view h6",
   );
   for (const el of els) {
-    if (el.textContent === heading.text && el.tagName === `H${heading.level}`) {
-      if (!el.dataset.docHeadingId) el.dataset.docHeadingId = heading.id;
-      return el;
-    }
+    if (el.textContent === heading.text && el.tagName === `H${heading.level}`) return el;
   }
   return null;
 }
