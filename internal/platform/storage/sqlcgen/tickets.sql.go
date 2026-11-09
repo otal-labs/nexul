@@ -1217,6 +1217,92 @@ func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullSt
 	return items, nil
 }
 
+const listTicketsByProjectWithoutBody = `-- name: ListTicketsByProjectWithoutBody :many
+SELECT tickets.id, tickets.title, CAST('' AS TEXT) AS body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at,
+       tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester,
+       tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
+       CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
+FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester
+WHERE tickets.project_id = ? ORDER BY tickets.created_at
+`
+
+type ListTicketsByProjectWithoutBodyRow struct {
+	ID                     string
+	Title                  string
+	Body                   string
+	Status                 string
+	DocID                  sql.NullString
+	Developer              string
+	CreatedAt              int64
+	UpdatedAt              int64
+	ProjectID              sql.NullString
+	CategoryID             sql.NullString
+	TypeID                 sql.NullString
+	FinishedAt             sql.NullInt64
+	Position               int64
+	Number                 int64
+	Tester                 string
+	ReporterKind           string
+	ReporterLogin          string
+	ReporterAutomationID   string
+	ReporterAutomationName string
+	DueOn                  string
+	DeveloperID            string
+	DeveloperLogin         string
+	TesterID               string
+	TesterLogin            string
+}
+
+// Every ticket column but body, which stays unread; body comes back empty.
+func (q *Queries) ListTicketsByProjectWithoutBody(ctx context.Context, projectID sql.NullString) ([]ListTicketsByProjectWithoutBodyRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketsByProjectWithoutBody, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTicketsByProjectWithoutBodyRow
+	for rows.Next() {
+		var i ListTicketsByProjectWithoutBodyRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.Status,
+			&i.DocID,
+			&i.Developer,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProjectID,
+			&i.CategoryID,
+			&i.TypeID,
+			&i.FinishedAt,
+			&i.Position,
+			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
+			&i.DueOn,
+			&i.DeveloperID,
+			&i.DeveloperLogin,
+			&i.TesterID,
+			&i.TesterLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTicketsDueBetween = `-- name: ListTicketsDueBetween :many
 SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
        CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,

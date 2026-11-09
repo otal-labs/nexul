@@ -222,6 +222,32 @@ func (r *TicketsRepo) ListByProject(ctx context.Context, projectID string) ([]*t
 	return withLabels(toTickets(rows), labels), nil
 }
 
+// ListByProjectWithoutBody is ListByProject with every body empty and never read from the table.
+func (r *TicketsRepo) ListByProjectWithoutBody(ctx context.Context, projectID string) ([]*tickets.Ticket, error) {
+	rows, err := r.q.ListTicketsByProjectWithoutBody(ctx, nullString(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("list tickets for project %s: %w", projectID, err)
+	}
+	labels, err := r.q.ListTicketLabelsByProject(ctx, nullString(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("load labels: %w", err)
+	}
+	out := make([]*tickets.Ticket, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toTicket(sqlcgen.GetTicketRow{
+			Ticket: sqlcgen.Ticket{
+				ID: row.ID, Title: row.Title, Body: row.Body, Status: row.Status, DocID: row.DocID, Developer: row.Developer,
+				CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, ProjectID: row.ProjectID, CategoryID: row.CategoryID, TypeID: row.TypeID,
+				FinishedAt: row.FinishedAt, Position: row.Position, Number: row.Number, Tester: row.Tester, ReporterKind: row.ReporterKind,
+				ReporterLogin: row.ReporterLogin, ReporterAutomationID: row.ReporterAutomationID, ReporterAutomationName: row.ReporterAutomationName,
+				DueOn: row.DueOn,
+			},
+			DeveloperID: row.DeveloperID, DeveloperLogin: row.DeveloperLogin, TesterID: row.TesterID, TesterLogin: row.TesterLogin,
+		}))
+	}
+	return withLabels(out, labels), nil
+}
+
 // UpdateStatus moves a ticket to a new status, appending it rather than carrying the old position over.
 func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status tickets.Status, unblocked tickets.UnblockedEvents, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

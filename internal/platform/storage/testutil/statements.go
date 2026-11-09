@@ -16,6 +16,7 @@ type Statements struct {
 	maxArgs atomic.Int64
 	mu      sync.Mutex
 	last    string
+	texts   []string
 	args    []any
 }
 
@@ -35,8 +36,18 @@ func (s *Statements) Last() (string, []any) {
 	return s.last, s.args
 }
 
+// Texts is every statement's text since the last Reset, in the order they ran.
+func (s *Statements) Texts() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.texts...)
+}
+
 // Reset starts the count over.
 func (s *Statements) Reset() {
+	s.mu.Lock()
+	s.texts = nil
+	s.mu.Unlock()
 	s.n.Store(0)
 	s.rows.Store(0)
 	s.maxArgs.Store(0)
@@ -45,6 +56,7 @@ func (s *Statements) Reset() {
 func (s *Statements) record(query string, args []driver.NamedValue) {
 	s.n.Add(1)
 	s.mu.Lock()
+	s.texts = append(s.texts, query)
 	s.last, s.args = query, make([]any, len(args))
 	for i, a := range args {
 		s.args[i] = a.Value

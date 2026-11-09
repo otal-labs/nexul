@@ -81,6 +81,8 @@ type Repo interface {
 	List(ctx context.Context) ([]*Ticket, error)
 	ListByDoc(ctx context.Context, docID string) ([]*Ticket, error)
 	ListByProject(ctx context.Context, projectID string) ([]*Ticket, error)
+	// ListByProjectWithoutBody is ListByProject with every body empty and never read from storage.
+	ListByProjectWithoutBody(ctx context.Context, projectID string) ([]*Ticket, error)
 	// Page reads one window of the tickets f and scope keep, oldest first or by relevance with a query, and how many
 	// they keep in all.
 	Page(ctx context.Context, f TicketFilter, scope TicketScope, w paging.Window) ([]*Ticket, int, error)

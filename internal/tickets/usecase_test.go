@@ -143,6 +143,17 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Ticket
 	return out, nil
 }
 
+func (f *fakeRepo) ListByProjectWithoutBody(ctx context.Context, projectID string) ([]*Ticket, error) {
+	ts, _ := f.ListByProject(ctx, projectID)
+	out := make([]*Ticket, len(ts))
+	for i, t := range ts {
+		c := *t
+		c.Body = ""
+		out[i] = &c
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) Page(_ context.Context, filter TicketFilter, _ TicketScope, w paging.Window) ([]*Ticket, int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

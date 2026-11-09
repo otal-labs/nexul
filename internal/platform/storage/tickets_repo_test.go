@@ -352,3 +352,26 @@ func TestTicketsRepo_Lists_LoadLabelsWithoutBindingEveryTicketID(t *testing.T) {
 		assert.LessOrEqual(t, st.MaxArgs(), int64(1), "%s: values bound by one statement", name)
 	}
 }
+
+func TestTicketsRepo_ListByProjectWithoutBody_ReturnsEmptyBodiesAndNeverSelectsTheColumn(t *testing.T) {
+	s, st := newCountedStore(t)
+	ctx := t.Context()
+	full := newTestTicket("t-1", "")
+	full.Body = "a long spec"
+	full.Labels = []string{"ui"}
+	require.NoError(t, s.Tickets.Create(ctx, full))
+
+	st.Reset()
+	got, err := s.Tickets.ListByProjectWithoutBody(ctx, "project-general")
+	require.NoError(t, err)
+	texts := st.Texts()
+
+	want := *full
+	want.Body = ""
+	require.Len(t, got, 1)
+	assert.Equal(t, want.Labels, got[0].Labels)
+	assert.Equal(t, "lena", got[0].Tester)
+	assert.Empty(t, got[0].Body)
+	require.NotEmpty(t, texts)
+	assert.NotContains(t, texts[0], "tickets.body", "the ticket read leaves the body column unread")
+}

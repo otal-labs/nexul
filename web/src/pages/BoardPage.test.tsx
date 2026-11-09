@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { getTicketsKey } from "@/hooks/TicketCache";
+import { getTicketsByProjectKey } from "@/hooks/TicketCache";
 import { BoardPage } from "@/pages/BoardPage";
 import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -279,6 +279,17 @@ describe("BoardPage project-scoped route", () => {
   });
 });
 
+describe("BoardPage ticket load", () => {
+  it("reads only the open project's tickets, without bodies, never the whole workspace's list", async () => {
+    mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1")]);
+    renderPage("/acme/board/p-1");
+
+    expect(await screen.findByText("Fix login")).toBeInTheDocument();
+    const lists = vi.mocked(api.get).mock.calls.filter(([url]) => url === "/api/tickets");
+    expect(lists.map(([, config]) => config?.params)).toEqual([{ project_id: "p-1", without: "body" }]);
+  });
+});
+
 // The unscoped /board route redirects to a real project's board rather than rendering a mixed board, since statuses/ticket_types are project-scoped (ticket 08).
 describe("BoardPage routing", () => {
   it("redirects to the last-viewed project from the workspace store", async () => {
@@ -404,7 +415,7 @@ describe("BoardPage live updates", () => {
 
     mockGet(structuredClone(tickets).map((t) => (t.id === "t-1" ? { ...t, title: "Fix login flow" } : t)));
     sortable.calls = 0;
-    await act(() => client.invalidateQueries({ queryKey: [getTicketsKey] }));
+    await act(() => client.invalidateQueries({ queryKey: [getTicketsByProjectKey] }));
 
     expect(await screen.findByText("Fix login flow")).toBeInTheDocument();
     expect(sortable.calls).toBe(1);
