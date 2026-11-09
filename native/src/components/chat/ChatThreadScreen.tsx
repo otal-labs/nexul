@@ -21,7 +21,8 @@ export const ChatThreadScreen = () => {
   // A refetch keeps the last messages; a thread that is gone (deleted, or a private channel the viewer left) drops them.
   const gone = isNotFound(error);
   const messages = gone ? undefined : data;
-  useMarkThreadRead(id, messages?.at(-1)?.id);
+  const latest = messages?.at(-1);
+  useMarkThreadRead(id, latest?.pending ? undefined : latest?.id);
   // Edge-to-edge Android never resizes the window for the keyboard, and this view's frame starts below the header.
   const headerHeight = useHeaderHeight();
   const editing = useMessageEditStore((s) => (s.editing?.conversationId === id ? s.editing : null));

@@ -12,6 +12,7 @@ import { VersionGate } from "@/components/connect/VersionGate";
 import { DeploysScreen } from "@/components/deploys/DeploysScreen";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
 import { useFetchMe } from "@/hooks/AuthHooks";
+import { upsertCachedMessage } from "@/hooks/ChatHooks";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { dispatch } from "@/hooks/useLiveEvents";
 import { useAreaAccess, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
@@ -57,6 +58,19 @@ jest.mock("@legendapp/list/react-native", () => ({
       .map((item) => createElement(Fragment, { key: props.keyExtractor(item) }, props.renderItem({ item }) as never));
   },
 }));
+
+// Counts how many times a message row's body renders: every render of a row reaches it once.
+const mockRenders = { messageBody: 0 };
+jest.mock("@/components/chat/MessageBody", () => {
+  const actual = jest.requireActual<typeof import("@/components/chat/MessageBody")>("@/components/chat/MessageBody");
+  const { createElement } = jest.requireActual<typeof import("react")>("react");
+  return {
+    MessageBody: (props: React.ComponentProps<typeof actual.MessageBody>) => {
+      mockRenders.messageBody += 1;
+      return createElement(actual.MessageBody, props);
+    },
+  };
+});
 
 // Query notifications otherwise land on a zero timeout after act has returned.
 notifyManager.setScheduler((callback) => callback());
@@ -278,5 +292,54 @@ describe("requests a session sends", () => {
 
     expect(new Set(gets).size).toBe(gets.length);
     expect(gets).toHaveLength(21);
+  });
+
+  const unreadPath = "/api/chat/unread?workspace_id=ws-1";
+  const readPosts = () => jest.mocked(api.post).mock.calls.filter(([path]) => path === "/api/chat/conversations/c1/read");
+  const arrival = (conversationId: string, n: number, members_only = false) => ({
+    topic: "chat.message.created",
+    type: "event",
+    payload: { message: { ...message(n), conversation_id: conversationId, author_id: "ana" }, workspace_id: "ws-1", members_only },
+  });
+
+  // The open thread marks itself read on each arrival and that refetches the counts, so the frame needs no refetch of its own.
+  test("a message in the open thread renders only its own row and sends one read and one unread fetch", async () => {
+    const client = await renderSession();
+    const readsBefore = readPosts().length;
+    const rendersBefore = mockRenders.messageBody;
+
+    const gets = await requestsDuring(client, () => dispatch(client)(arrival("c1", 41)));
+
+    expect(screen.getByText("message 41")).toBeTruthy();
+    expect({ rowRenders: mockRenders.messageBody - rendersBefore, reads: readPosts().length - readsBefore, gets }).toEqual({
+      rowRenders: 1,
+      reads: 1,
+      gets: [unreadPath],
+    });
+  });
+
+  test("a message in a thread nobody has open refetches the unread counts once and marks nothing read", async () => {
+    const client = await renderSession();
+    const readsBefore = jest.mocked(api.post).mock.calls.length;
+    const rendersBefore = mockRenders.messageBody;
+
+    const gets = await requestsDuring(client, () => dispatch(client)(arrival("c2", 41)));
+
+    expect(gets).toEqual([unreadPath]);
+    expect(jest.mocked(api.post).mock.calls.length - readsBefore).toBe(0);
+    expect(mockRenders.messageBody - rendersBefore).toBe(0);
+  });
+
+  test("a message you send marks the thread read once it is confirmed, not while it is pending", async () => {
+    const client = await renderSession();
+    const readsBefore = readPosts().length;
+    const sent = { ...message(41), author_id: "me", body: "on it" };
+
+    await act(async () => upsertCachedMessage(client, { ...sent, id: "pending-1", pending: true }));
+    expect(readPosts().length - readsBefore).toBe(0);
+
+    await act(async () => upsertCachedMessage(client, sent));
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(readPosts().length - readsBefore).toBe(1);
   });
 });

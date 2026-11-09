@@ -39,6 +39,10 @@ const conversationsQuery = defineQuery({
 export const useFetchConversations = (workspaceId: string | undefined) =>
   useQuery({ ...conversationsQuery.options(workspaceId), enabled: !!workspaceId });
 
+// The thread screen, and the sheets pushed over it, hold an observer on the thread's messages while they are open.
+const isBeingRead = (client: QueryClient, conversationId: string) =>
+  (client.getQueryCache().find({ queryKey: [getChatMessagesKey, conversationId] })?.getObserversCount() ?? 0) > 0;
+
 const unreadQuery = defineQuery({
   key: getChatUnreadKey,
   fetch: (workspaceId: string | undefined) =>
@@ -46,7 +50,14 @@ const unreadQuery = defineQuery({
   refreshes: {
     "chat.conversation.deleted": { key: (p) => p.workspace_id },
     "chat.conversation.members_changed": { key: (p) => p.workspace_id },
-    "chat.message.created": "all",
+    // A thread being read marks itself read on this arrival and refetches then, so its frame asks only once; a DM or private
+    // channel lists in every workspace its people share (ADR 0141), so it moves them all.
+    "chat.message.created": {
+      patch: (client, p) => {
+        if (isBeingRead(client, p.message.conversation_id)) return;
+        void client.invalidateQueries({ queryKey: p.members_only || !p.workspace_id ? [getChatUnreadKey] : [getChatUnreadKey, p.workspace_id] });
+      },
+    },
     "chat.message.deleted": "all",
   },
 });
@@ -165,14 +176,15 @@ export const useDeleteMessage = (conversationId: string) => {
   });
 };
 
-// Marks the thread read on open and on each new message; a plain call, since a mutation observer would only re-render the thread.
+// Marks the thread read on open and on each confirmed message, then refetches the counts even when the call failed; a
+// plain call, since a mutation observer would only re-render the thread.
 export const useMarkThreadRead = (conversationId: string, lastMessageId: string | undefined) => {
   const client = useQueryClient();
   const workspaceId = useCurrentWorkspaceId();
   useEffect(() => {
     if (!conversationId || !lastMessageId) return;
     void requires("none", api.post<null>(`/api/chat/conversations/${conversationId}/read`))
-      .then(() => client.invalidateQueries({ queryKey: [getChatUnreadKey, workspaceId] }))
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .then(() => client.invalidateQueries({ queryKey: [getChatUnreadKey, workspaceId] }));
   }, [client, conversationId, lastMessageId, workspaceId]);
 };
