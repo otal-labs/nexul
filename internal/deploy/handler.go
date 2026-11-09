@@ -28,30 +28,21 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/deploys/{id}/log", h.log)
 	mux.HandleFunc("POST /api/deploys/{id}/cancel", h.cancel)
 	mux.HandleFunc("POST /api/deploys/{id}/retry", h.retry)
-	h.mountStackRoutes(mux, "/api/stacks")
+	mux.HandleFunc("POST /api/stacks", h.createStack)
+	mux.HandleFunc("GET /api/stacks", h.listStacks)
+	mux.HandleFunc("GET /api/stacks/{id}", h.getStack)
+	mux.HandleFunc("PATCH /api/stacks/{id}", h.updateStack)
+	mux.HandleFunc("DELETE /api/stacks/{id}", h.deleteStack)
+	mux.HandleFunc("POST /api/stacks/{id}/rollback", h.rollback)
+	mux.HandleFunc("GET /api/stacks/{id}/deploys", h.listStackDeploys)
+	mux.HandleFunc("GET /api/stacks/{id}/services", h.listServices)
+	mux.HandleFunc("GET /api/stacks/{id}/services/{name}/logs", h.serviceLogs)
 	mux.HandleFunc("GET /api/stacks/{id}/requests", h.requests)
 	mux.HandleFunc("PUT /api/stacks/{id}/watchers/me", h.watch)
 	mux.HandleFunc("DELETE /api/stacks/{id}/watchers/me", h.unwatch)
-	// /api/services stays mounted through the same handlers for one release (2026-09-10): the pre-rename web
-	// build still calls it, and it is dropped once web moves to /api/stacks.
-	h.mountStackRoutes(mux, "/api/services")
 	mux.HandleFunc("POST /api/machines/{id}/import", h.importMachine)
 	mux.HandleFunc("GET /api/machines/deployable", h.deployableMachines)
 	return mux
-}
-
-// mountStackRoutes registers the stack CRUD + sub-resource endpoints under prefix, so /api/stacks and its
-// deprecated /api/services alias share one set of handler functions.
-func (h *Handler) mountStackRoutes(mux *httpx.ServeMux, prefix string) {
-	mux.HandleFunc("POST "+prefix, h.createStack)
-	mux.HandleFunc("GET "+prefix, h.listStacks)
-	mux.HandleFunc("GET "+prefix+"/{id}", h.getStack)
-	mux.HandleFunc("PATCH "+prefix+"/{id}", h.updateStack)
-	mux.HandleFunc("DELETE "+prefix+"/{id}", h.deleteStack)
-	mux.HandleFunc("POST "+prefix+"/{id}/rollback", h.rollback)
-	mux.HandleFunc("GET "+prefix+"/{id}/deploys", h.listStackDeploys)
-	mux.HandleFunc("GET "+prefix+"/{id}/services", h.listServices)
-	mux.HandleFunc("GET "+prefix+"/{id}/services/{name}/logs", h.serviceLogs)
 }
 
 func (h *Handler) serviceLogs(w http.ResponseWriter, r *http.Request) {

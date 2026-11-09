@@ -43,7 +43,7 @@ const renderServices = (list: ServiceDef[] = services, repos: unknown[] = []) =>
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.mocked(api.get).mockImplementation(
     asViewer(memberWho(viewer.permissions, viewer.showLocked), (url: string) => {
-      if (url === "/api/services") return list;
+      if (url === "/api/stacks") return list;
       if (url === "/api/runners") return runners;
       if (url === "/api/projects/p-1/repos") return repos;
       return [];

@@ -189,7 +189,7 @@ describe("WizardDoneStep", () => {
         answerServices = resolve;
       });
       mocks.get.mockImplementation(async (url: string, ...rest: unknown[]) =>
-        url === "/api/services" ? { data: await services } : built(url, ...rest),
+        url === "/api/stacks" ? { data: await services } : built(url, ...rest),
       );
       renderStep();
 

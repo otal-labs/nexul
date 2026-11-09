@@ -159,7 +159,7 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 		{"mcp is off the allowlist", http.MethodPost, "/mcp", mustSetupPass, nil, http.StatusUnauthorized},
 		{"wrong method on an allowlisted path", http.MethodPatch, "/api/machines", mustSetupPass, nil, http.StatusUnauthorized},
 		{"other connector", http.MethodPost, "/api/connectors/github/manual", mustSetupPass, nil, http.StatusUnauthorized},
-		{"stack writes", http.MethodPost, "/api/services", mustSetupPass, nil, http.StatusUnauthorized},
+		{"stack writes", http.MethodPost, "/api/stacks", mustSetupPass, nil, http.StatusUnauthorized},
 		{"setup routes", http.MethodPut, "/api/setup/instance-url", mustSetupPass, nil, http.StatusOK},
 		{"bootstrap", http.MethodPost, "/api/auth/bootstrap", mustSetupPass, nil, http.StatusOK},
 		{"bootstrap verify", http.MethodPost, "/api/auth/bootstrap/verify", mustSetupPass, nil, http.StatusOK},
@@ -170,7 +170,7 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 		{"dns instance proxy", http.MethodPost, "/api/dns/instance-proxy", mustSetupPass, nil, http.StatusOK},
 		{"machines", http.MethodGet, "/api/machines", mustSetupPass, nil, http.StatusOK},
 		{"projects are off the allowlist: first run has none", http.MethodGet, "/api/projects", mustSetupPass, nil, http.StatusUnauthorized},
-		{"service deploys", http.MethodGet, "/api/services/s1/deploys", mustSetupPass, nil, http.StatusOK},
+		{"stack deploys", http.MethodGet, "/api/stacks/s1/deploys", mustSetupPass, nil, http.StatusOK},
 		{"deploy log", http.MethodGet, "/api/deploys/d1/log", mustSetupPass, nil, http.StatusOK},
 		{"container logs are off the allowlist", http.MethodGet, "/api/stacks/s1/services/web/logs", mustSetupPass, nil, http.StatusUnauthorized},
 	}

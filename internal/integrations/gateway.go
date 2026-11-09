@@ -54,11 +54,10 @@ func (s *Service) RequireIntegration(userAuth func(http.Handler) http.Handler, n
 	})
 }
 
-// pathAliases routes a mounted path prefix to the scope domain that actually governs it: one-release
-// naming migrations (services), sibling handlers served by the same domain's settings surface, and
+// pathAliases routes a mounted path prefix to the scope domain that actually governs it:
+// sibling handlers served by the same domain's settings surface, and
 // sub-surfaces (agent, automation-secrets) whose parent domain owns the grant.
 var pathAliases = map[string]string{
-	"services":           "stacks",
 	"categories":         "projects",
 	"ticket-types":       "projects",
 	"statuses":           "projects",
@@ -80,7 +79,6 @@ var exactDenylist = map[string]bool{
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
 	"GET /api/instance/logs":                                     Scope(permissions.LogsRead),
-	"GET /api/services/{id}/services/{name}/logs":                Scope(permissions.StacksLogs),
 	"POST /api/chat/channels":                                    Scope(permissions.ChannelsWrite),
 	"POST /api/chat/voice-channels":                              Scope(permissions.ChannelsWrite),
 	"PATCH /api/chat/conversations/{id}":                         Scope(permissions.ChannelsWrite),

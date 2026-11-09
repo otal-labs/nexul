@@ -86,8 +86,6 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	deployHandler := deploy.NewHandler(svc.deploySvc).Routes()
 	mountGateway(apiMux, "/api/deploys", deployHandler)
 	mountGateway(apiMux, "/api/stacks", deployHandler)
-	// One-release alias while the web moves off the old name.
-	mountGateway(apiMux, "/api/services", deployHandler)
 	mountGateway(apiMux, "/api/reviews", codereview.NewHandler(svc.reviewSvc).Routes())
 	repoGate := projectEntityGate{access: svc.accessSvc, projects: store.Projects, tickets: store.Tickets}
 	changeContext := changeContextReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc, memories: svc.memoriesSvc}

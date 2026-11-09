@@ -224,12 +224,6 @@ func TestStackRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), `"id":"svc-1"`)
 	})
-	t.Run("the /api/services alias serves the same handlers", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		newDeployHandler(t).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/services", nil))
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), `"id":"svc-1"`)
-	})
 	t.Run("get not found is 404", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		newDeployHandler(t).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stacks/nope", nil))
