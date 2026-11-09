@@ -479,6 +479,25 @@ func (s *Service) GetConversation(ctx context.Context, id string) (*Conversation
 	return c, nil
 }
 
+// ReadCheck loads a conversation once and returns the check that each person's read takes, which answers what
+// GetConversation answers them, so one load can serve everyone a frame about the conversation reaches.
+func (s *Service) ReadCheck(ctx context.Context, id string) (func(context.Context) error, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+	}
+	c, err := s.repo.GetConversation(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation %s: %w", id, err)
+	}
+	return func(ctx context.Context) error {
+		if err := s.requireRead(ctx, c, ""); err != nil {
+			return fmt.Errorf("get conversation %s: %w", id, err)
+		}
+		return nil
+	}, nil
+}
+
 // SetAgentThread persists a conversation's durable T3 thread id.
 func (s *Service) SetAgentThread(ctx context.Context, conversationID, threadID string) error {
 	conversationID = strings.TrimSpace(conversationID)

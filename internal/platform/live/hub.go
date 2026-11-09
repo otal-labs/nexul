@@ -28,8 +28,9 @@ const WriteTimeout = 10 * time.Second
 // sendBuffer is how many frames a socket may fall behind before it is dropped; it reconnects and refetches.
 const sendBuffer = 64
 
-// Audience decides whether a frame may reach the person behind one socket; ctx carries them as the actor.
-type Audience func(ctx context.Context, topic string, payload any) bool
+// Audience prepares a frame once and returns the check that decides whether it may reach the person behind one socket;
+// the check's ctx carries them as the actor, and one frame's checks run on one goroutine.
+type Audience func(topic string, payload any) func(ctx context.Context) bool
 
 // Hub manages browser WS connections and pushes each frame to the ones its audience allows.
 type Hub struct {
@@ -98,12 +99,19 @@ func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
 		clients = append(clients, c)
 	}
 	h.mu.Unlock()
-	// A person's tabs and phone share one read check per frame; agent streams publish at token rate.
+	// A person's tabs and phone share one read check per frame, and the frame is prepared once for everyone; agent streams publish at token rate.
 	allowed := make(map[string]bool, len(clients))
+	var check func(context.Context) bool
 	for _, c := range clients {
 		ok, seen := allowed[c.userID]
 		if !seen {
-			ok = h.audience == nil || h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload)
+			ok = h.audience == nil
+			if !ok && check == nil {
+				check = h.audience(topic, payload)
+			}
+			if !ok {
+				ok = check(identity.WithActor(ctx, identity.Actor{ID: c.userID}))
+			}
 			allowed[c.userID] = ok
 		}
 		if !ok {

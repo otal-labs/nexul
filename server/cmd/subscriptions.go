@@ -308,8 +308,9 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 // at token rate, and any commit clears the memo, so no frame is checked against an answer a write has changed (ADR 0135).
 func memoizedAudience(svc *coreServices) live.Audience {
 	audience, memo := liveAudience{access: svc.accessSvc, tickets: svc.ticketsSvc, chat: svc.chatSvc, deploy: svc.deploySvc}, svc.accessSvc.NewMemo()
-	return func(ctx context.Context, topic string, payload any) bool {
-		return audience.allows(access.WithMemo(ctx, memo), topic, payload)
+	return func(topic string, payload any) func(context.Context) bool {
+		check := audience.frame(topic, payload)
+		return func(ctx context.Context) bool { return check(access.WithMemo(ctx, memo)) }
 	}
 }
 

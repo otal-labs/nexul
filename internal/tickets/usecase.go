@@ -376,6 +376,21 @@ func (s *Service) Get(ctx context.Context, id string) (*Ticket, error) {
 	return t, nil
 }
 
+// ReadCheck loads a ticket once and returns the check that each person's read takes, which answers what Get answers
+// them, so one load can serve everyone a frame about the ticket reaches.
+func (s *Service) ReadCheck(ctx context.Context, id string) (func(context.Context) error, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get ticket %s: %w", id, err)
+	}
+	return func(ctx context.Context) error {
+		return s.require(ctx, t.ProjectID, permissions.TicketsRead)
+	}, nil
+}
+
 // ticketKey matches a ticket's human key, PREFIX-NUMBER (ADR 0004); a ticket id is a UUID and never matches.
 var ticketKey = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9]{1,4})-([0-9]+)$`)
 

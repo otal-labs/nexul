@@ -604,6 +604,10 @@ layers once, so a list that checks rows by project needs no batching of its
 own. Do not add a per-caller cache of access answers: it duplicates the memo
 and, unlike it, misses the commit that revokes a grant.
 
+A live frame is prepared once for everyone connected: its payload is decoded once, and the ticket or conversation it
+names is read once and kept only for that frame. Each person's check then adds only their own access reads, so what a
+frame costs does not grow with the people connected.
+
 What the memo cannot share is a read per resource. A list of docs asks
 `access.CanDocs` once for all of them, which reads their overwrites and where
 they live in one statement each; pass the project when every doc is in it.
