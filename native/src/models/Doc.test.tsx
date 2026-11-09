@@ -1,4 +1,4 @@
-import { richBodyToMarkdown } from "@/models/Doc";
+import { richBodyToMarkdown, splitHtmlPages } from "@/models/Doc";
 
 describe("richBodyToMarkdown", () => {
   test("converts headings, lists, code blocks, links and mentions", () => {
@@ -82,5 +82,31 @@ describe("richBodyToMarkdown person mentions", () => {
 
   test("keeps the saved login until People loads", () => {
     expect(richBodyToMarkdown(body)).toBe("- ask **@norwooddev**");
+  });
+});
+
+describe("splitHtmlPages", () => {
+  const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "text", text }] });
+  const page = (code: string) => ({ type: "codeBlock", attrs: { language: "html-page" }, content: [{ type: "text", text: code }] });
+
+  test("passes a legacy plain-text body through as one body", () => {
+    expect(splitHtmlPages("just text")).toEqual([{ kind: "body", body: "just text" }]);
+  });
+
+  test("lifts each page out between the bodies around it, which still render as markdown", () => {
+    const parts = splitHtmlPages(
+      JSON.stringify({ type: "doc", content: [paragraph("Before"), page("<p>one</p>"), page("<p>two</p>"), paragraph("After")] }),
+    );
+    expect(parts.map((p) => p.kind)).toEqual(["body", "page", "page", "body"]);
+    expect(parts[1]).toEqual({ kind: "page", code: "<p>one</p>" });
+    expect(parts.filter((p) => p.kind === "body").map((p) => richBodyToMarkdown(p.body))).toEqual(["Before", "After"]);
+  });
+
+  test("keeps an empty page and any other code block in the body as code", () => {
+    const parts = splitHtmlPages(
+      JSON.stringify({ type: "doc", content: [page(" "), { type: "codeBlock", attrs: { language: "html" }, content: [{ type: "text", text: "<b>x</b>" }] }] }),
+    );
+    expect(parts).toHaveLength(1);
+    expect(parts[0]?.kind === "body" && richBodyToMarkdown(parts[0].body)).toBe("```html-page\n \n```\n\n```html\n<b>x</b>\n```");
   });
 });

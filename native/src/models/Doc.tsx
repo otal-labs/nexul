@@ -1,4 +1,5 @@
 import type { MentionRef, MentionType } from "@nexul/client-core/mention";
+import { HTML_PAGE_LANGUAGE } from "@nexul/client-core/htmlPage";
 
 export interface DocListItem {
   id: string;
@@ -173,4 +174,35 @@ export const richBodyToMarkdown = (body: string, nameFor: MentionName = () => un
   return writeMentions(blocks, nameFor, write)
     .map((node) => renderBlockMarkdown(node))
     .join("\n\n");
+};
+
+export type DocBodyPart = { kind: "body"; body: string } | { kind: "page"; code: string };
+
+const pageCode = (node: RichNode): string | null => {
+  if (node.type !== "codeBlock" || node.attrs?.language !== HTML_PAGE_LANGUAGE) return null;
+  const code = (node.content ?? []).map((c) => c.text ?? "").join("");
+  return code.trim() === "" ? null : code;
+};
+
+// Lifts each written HTML page out of the body; the blocks between pages stay bodies of their own for the markdown reader.
+export const splitHtmlPages = (body: string): DocBodyPart[] => {
+  const blocks = parseRichBody(body);
+  if (!blocks) return [{ kind: "body", body }];
+  const parts: DocBodyPart[] = [];
+  let run: RichNode[] = [];
+  const flush = () => {
+    if (run.length > 0) parts.push({ kind: "body", body: JSON.stringify({ type: "doc", content: run }) });
+    run = [];
+  };
+  for (const block of blocks) {
+    const code = pageCode(block);
+    if (code === null) {
+      run.push(block);
+      continue;
+    }
+    flush();
+    parts.push({ kind: "page", code });
+  }
+  flush();
+  return parts;
 };
