@@ -57,8 +57,8 @@ func pushesRunnersMayClone(git gitProviderRouter, next eventbus.Handler) eventbu
 }
 
 // mustSubscribe registers a fan-out handler, exiting on failure like every other startup wiring step.
-func mustSubscribe(ctx context.Context, bus *inprocess.Bus, consumer, topic, note string, h eventbus.Handler) {
-	if err := bus.SubscribeWithConsumer(ctx, consumer, topic, h); err != nil {
+func mustSubscribe(ctx context.Context, bus *inprocess.Bus, consumer, topic, note string, h eventbus.Handler, opts ...inprocess.SubscribeOption) {
+	if err := bus.SubscribeWithConsumer(ctx, consumer, topic, h, opts...); err != nil {
 		fail(fmt.Errorf("subscribe %s%s: %w", topic, note, err))
 	}
 }
@@ -441,7 +441,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *storage.Store, svc *coreServices, logger *slog.Logger) {
 	fanout := integrations.NewFanoutHandler(svc.integrationsSvc)
 	for _, topic := range eventcatalog.AllTopics() {
-		mustSubscribe(ctx, bus, "integrations.fanout", topic, "", fanout.HandleEvent)
+		// Delivery rows are unique per (install, event, topic) and a redelivery's insert is a no-op, so no dedupe record.
+		mustSubscribe(ctx, bus, "integrations.fanout", topic, "", fanout.HandleEvent, inprocess.WithoutDedupe())
 	}
 	deliveryRelay := integrations.NewRelay(store.IntegrationDeliveries, integrations.RelayConfig{Wake: store.Commits().Next, Logger: logger})
 	go func() {
@@ -471,7 +472,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	for _, topic := range bridgedLiveTopics {
 		mustSubscribe(ctx, bus, "live.push", topic, " for live push", func(ctx context.Context, ev eventbus.Event) error {
 			return liveHub.Publish(ctx, ev.Topic, ev.Payload)
-		})
+		}, inprocess.WithoutDedupe()) // in-memory frames only: a duplicate after a crash reaches no socket
 	}
 
 	// Live-only and naming nobody: open Team pages refetch, which applies the Team's own scoping to who is online.
