@@ -20,7 +20,7 @@ Open a stack from its project's services, or from its node on **Topology**. The 
 | Tab | What you do there |
 | --- | --- |
 | **Overview** | See each service's image, status and how it is reached, which services are down, and the last hour of requests |
-| **Deploys** | Every build and deploy, newest first, with its log; **Failed** narrows the list |
+| **Deploys** | Every build and deploy, newest first, with its log, which is kept for 45 days (an older deploy stays listed with an empty log); **Failed** narrows the list |
 | **Logs** | Read each container's output live |
 | **Settings** | **Environment** (the stack's variables), **Alerts** (crash tickets, crash notices in a channel, the error-rate rule), **Exposures** (route hostnames to the stack's containers, see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)), **Branch deploys** (deploy other branches as their own copies) and **Danger zone** (delete the stack) |
 

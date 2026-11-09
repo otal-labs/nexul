@@ -372,6 +372,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Deliveries: store.IntegrationDeliveries,
 		Schemas:    store.EventSchemas,
 		Audit:      store.Audit,
+		Retention:  store.EventRetention,
 		Perms:      accessSvc,
 	})
 	// ScopeAllows is injected as a function value rather than automations importing integrations (ADR 0017 seam rule).

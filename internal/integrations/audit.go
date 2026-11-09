@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
-// AuditRetention is how long an audit row is kept (ADR 0138); a constant because the install takes no settings.
+// AuditRetention is how long an audit row, a dedupe record, a published outbox row and a deploy log line are kept (ADR 0138); a constant because the install takes no settings.
 const AuditRetention = 45 * 24 * time.Hour
 
 // auditPurgeBatch bounds one retention delete, so the purge never holds the single writer for long.
@@ -100,13 +101,41 @@ func (s *Service) record(ctx context.Context, resolve ActorResolver, action stri
 // PurgeAudit deletes the rows older than AuditRetention, one bounded batch per write; unchecked, since it runs from
 // a background loop, not a request.
 func (s *Service) PurgeAudit(ctx context.Context) (int64, error) {
+	return purgeInBatches(ctx, "audit rows", s.cfg.Now().Add(-AuditRetention), s.cfg.Audit.DeleteBefore)
+}
+
+// PurgeEvents deletes the dedupe records, published outbox rows and deploy log lines older than AuditRetention, in
+// the same bounded batches; the outbox keeps what an enabled automation has not read.
+func (s *Service) PurgeEvents(ctx context.Context) (int64, error) {
+	if s.cfg.Retention == nil {
+		return 0, nil
+	}
 	before := s.cfg.Now().Add(-AuditRetention)
 	var total int64
-	for {
-		n, err := s.cfg.Audit.DeleteBefore(ctx, before, auditPurgeBatch)
+	for _, step := range []struct {
+		what string
+		del  func(context.Context, time.Time, int) (int64, error)
+	}{
+		{"processed events", s.cfg.Retention.DeleteProcessedBefore},
+		{"outbox rows", s.cfg.Retention.DeleteOutboxBefore},
+		{"deploy log lines", s.cfg.Retention.DeleteDeployLogBefore},
+	} {
+		n, err := purgeInBatches(ctx, step.what, before, step.del)
 		total += n
 		if err != nil {
-			return total, fmt.Errorf("purge audit rows before %s: %w", before, err)
+			return total, err
+		}
+	}
+	return total, nil
+}
+
+func purgeInBatches(ctx context.Context, what string, before time.Time, del func(context.Context, time.Time, int) (int64, error)) (int64, error) {
+	var total int64
+	for {
+		n, err := del(ctx, before, auditPurgeBatch)
+		total += n
+		if err != nil {
+			return total, fmt.Errorf("purge %s before %s: %w", what, before, err)
 		}
 		if n < auditPurgeBatch {
 			return total, nil
@@ -118,6 +147,8 @@ func (s *Service) PurgeAudit(ctx context.Context) (int64, error) {
 func (s *Service) RunAuditRetention(ctx context.Context, log *slog.Logger) {
 	for {
 		n, err := s.PurgeAudit(ctx)
+		events, eventsErr := s.PurgeEvents(ctx)
+		n, err = n+events, errors.Join(err, eventsErr)
 		if err != nil {
 			log.Warn("audit retention purge failed", "deleted", n, "error", err)
 		}

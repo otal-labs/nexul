@@ -53,3 +53,11 @@ type AuditStore interface {
 	// DeleteBefore deletes at most limit rows created before before, returning how many it deleted.
 	DeleteBefore(ctx context.Context, before time.Time, limit int) (int64, error)
 }
+
+// EventRetentionStore deletes what the event pipeline no longer needs; each call removes at most limit rows.
+type EventRetentionStore interface {
+	DeleteProcessedBefore(ctx context.Context, before time.Time, limit int) (int64, error)
+	// DeleteOutboxBefore leaves unpublished rows and rows an enabled automation has not yet read.
+	DeleteOutboxBefore(ctx context.Context, before time.Time, limit int) (int64, error)
+	DeleteDeployLogBefore(ctx context.Context, before time.Time, limit int) (int64, error)
+}
