@@ -12,7 +12,6 @@ jest.mock("@/hooks/PeopleHooks", () => ({
   useTicketPersonLookup: jest.fn(() => ({ login }: { login: string }) => ({ user_id: login, login, display_name: login, avatar_url: "" })),
 }));
 jest.mock("@/hooks/WorkspaceHooks", () => ({ useCurrentWorkspaceId: () => "ws-1" }));
-jest.mock("@/hooks/LabelHooks", () => ({ useBoardLabelColors: () => ({ data: undefined }) }));
 
 const statuses: BoardStatus[] = [
   { id: "st-todo", name: "Todo", position: 0, kind: "backlog" },
@@ -38,7 +37,7 @@ const Board = ({ ref }: { ref: Ref<BoardDrag> }) => {
   return (
     <BoardDragContext value={state}>
       {tickets.map((ticket) => (
-        <TicketCard key={ticket.id} ticket={ticket} stage="backlog" projectPrefix="NEX" typeName={undefined} typeColor={undefined} onPress={move} />
+        <TicketCard key={ticket.id} ticket={ticket} stage="backlog" projectPrefix="NEX" typeName={undefined} typeColor={undefined} onOpen={move} />
       ))}
     </BoardDragContext>
   );

@@ -233,6 +233,9 @@ as written. In particular:
 - Interaction state that many rows read (the board's lifted card in
   `boardDrag.tsx`) lives in a small store each row selects from, so a drag
   re-renders the cards it touches, not the whole board.
+- The board is one `LegendList` of rows (a column head, then its cards), so cards off screen are not mounted. Its
+  label colors are read once at the board and reach each card through `BoardLabelColorsContext`, and a card is a
+  `memo` fed stable props, so a ticket frame renders the changed card alone. `boardRenders.test.tsx` counts both.
 - The session token is read from the secure store once at launch into a
   module variable in `src/stores/sessionStore.tsx` and cleared on sign-out.
   Every secure-store read decrypts on the JS thread, so reading it per

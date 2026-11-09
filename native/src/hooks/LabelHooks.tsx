@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { requires } from "@nexul/client-core/requires";
 
@@ -17,9 +18,9 @@ const labelColorsQuery = defineQuery({
   refreshes: {},
 });
 
-// Every card asks with the board's own label set, so one request serves the whole board.
+// The board asks once with its own label set, and its cards read the answer from context.
 export const useBoardLabelColors = (projectId: string | undefined) => {
   const { data: tickets } = useFetchTicketsByProject(projectId);
-  const labels = [...new Set(tickets?.flatMap((ticket) => ticket.labels ?? []))].sort();
+  const labels = useMemo(() => [...new Set(tickets?.flatMap((ticket) => ticket.labels ?? []))].sort(), [tickets]);
   return useQuery({ ...labelColorsQuery.options(projectId, labels), enabled: !!projectId && labels.length > 0 });
 };

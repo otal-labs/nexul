@@ -1,14 +1,14 @@
-import { useContext } from "react";
+import { memo, useContext } from "react";
 import { Pressable, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
 import { BoardDragContext, useCardDrag, useLifted } from "@/components/board/boardDrag";
+import { BoardLabelColorsContext } from "@/components/board/boardLabelColors";
 import { labelDot, labelDotStyle } from "@/components/board/ticketTypeColor";
 import { TicketTypeBadge } from "@/components/board/TicketTypeBadge";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
-import { useBoardLabelColors } from "@/hooks/LabelHooks";
 import { useTicketPersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,7 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
   const resolvePerson = useTicketPersonLookup(useCurrentWorkspaceId());
   const person = cardPerson(ticket, stage);
   const labels = ticket.labels ?? [];
-  const { data: labelColors } = useBoardLabelColors(ticket.project_id);
+  const labelColors = useContext(BoardLabelColorsContext);
   return (
     <>
       <Text className="font-mono text-[11px] text-muted-foreground">{ticketKey(ticket, projectPrefix)}</Text>
@@ -63,11 +63,12 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
 export const ticketCardClass = "gap-2 rounded-lg border border-border bg-card px-3.5 py-3";
 
 interface TicketCardProps extends TicketCardBodyProps {
-  onPress: () => void;
+  onOpen: (id: string) => void;
 }
 
 // Tap opens the ticket; a long press picks the card up to drop on another column. The same moves are accessibility actions.
-export const TicketCard = ({ onPress, ...body }: TicketCardProps) => {
+// Memoized: a frame that changes one ticket keeps the others' references, so only that card renders again.
+const TicketCardView = ({ onOpen, ...body }: TicketCardProps) => {
   const drag = useContext(BoardDragContext);
   const { ref, gesture } = useCardDrag(body.ticket);
   const lifted = useLifted(drag, (held) => held?.ticket.id === body.ticket.id);
@@ -80,7 +81,7 @@ export const TicketCard = ({ onPress, ...body }: TicketCardProps) => {
         accessibilityHint={drag ? "Hold to move it to another column" : undefined}
         accessibilityActions={moves.map((s) => ({ name: s.id, label: `Move to ${s.name}` }))}
         onAccessibilityAction={({ nativeEvent }) => drag?.move(body.ticket.id, nativeEvent.actionName)}
-        onPress={onPress}
+        onPress={() => onOpen(body.ticket.id)}
         className={cn(ticketCardClass, "active:bg-accent")}
       >
         <TicketCardBody {...body} />
@@ -94,3 +95,5 @@ export const TicketCard = ({ onPress, ...body }: TicketCardProps) => {
     </>
   );
 };
+
+export const TicketCard = memo(TicketCardView);

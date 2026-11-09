@@ -13,6 +13,22 @@ jest.mock("@/api/client", () => ({ api: { get: jest.fn(), patch: jest.fn(), post
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
+// Jest has no layout pass, so this stand-in renders the header and every row in data order.
+jest.mock("@legendapp/list/react-native", () => ({
+  LegendList: (props: {
+    data: unknown[];
+    keyExtractor: (item: unknown) => string;
+    renderItem: (info: { item: unknown }) => unknown;
+    ListHeaderComponent?: unknown;
+  }) => {
+    const { Fragment, createElement } = jest.requireActual<typeof import("react")>("react");
+    return [
+      createElement(Fragment, { key: "header" }, props.ListHeaderComponent as never),
+      ...props.data.map((item) => createElement(Fragment, { key: props.keyExtractor(item) }, props.renderItem({ item }) as never)),
+    ];
+  },
+}));
+
 jest.mock("expo-sqlite/kv-store", () => ({
   __esModule: true,
   default: { getItemSync: () => null, setItemSync: jest.fn(), removeItemSync: jest.fn() },
