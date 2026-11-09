@@ -166,22 +166,11 @@ func TestListRooms(t *testing.T) {
 		want    []Room
 	}{
 		{
-			name: "empty room skips ListParticipants",
+			// The listed count lags or reads 0 on LiveKit Cloud; trusting it emptied everyone's presence.
+			name: "a room listed with no participant count still fetches its participants",
 			handler: map[string]func(t *testing.T, body map[string]any) any{
 				"ListRooms": func(t *testing.T, body map[string]any) any {
-					return map[string]any{"rooms": []map[string]any{{"name": "empty-room", "numParticipants": 0}}}
-				},
-			},
-			want: []Room{{Name: "empty-room"}},
-		},
-		{
-			// LiveKit Cloud emits proto field names, not protojson camelCase —
-			// the field mis-parsing as 0 silently emptied everyone's presence
-			// (found live, 2026-08-28).
-			name: "snake_case num_participants also triggers the participant fetch",
-			handler: map[string]func(t *testing.T, body map[string]any) any{
-				"ListRooms": func(t *testing.T, body map[string]any) any {
-					return map[string]any{"rooms": []map[string]any{{"name": "cloud-room", "num_participants": 1}}}
+					return map[string]any{"rooms": []map[string]any{{"name": "cloud-room"}}}
 				},
 				"ListParticipants": func(t *testing.T, body map[string]any) any {
 					return map[string]any{"participants": []map[string]any{{"identity": "u1", "name": "Ada"}}}
@@ -295,6 +284,18 @@ func TestDeleteRoom(t *testing.T) {
 			t.Fatalf("DeleteRoom (404) = %v, want nil", err)
 		}
 	})
+}
+
+func TestListParticipants_RoomGoneIsEmpty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":"not_found","msg":"requested room does not exist"}`))
+	}))
+	defer srv.Close()
+	c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+	got, err := c.ListParticipants(t.Context(), "conv-1")
+	require.NoError(t, err)
+	assert.Empty(t, got)
 }
 
 func TestRemoveParticipant(t *testing.T) {

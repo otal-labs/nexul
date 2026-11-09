@@ -101,14 +101,12 @@ type Participant struct {
 	Name     string
 }
 
-// ListRooms lists every active room, fetching participants for any room that reports at least one.
+// ListRooms lists every active room with who is in it; the listed participant count lags on LiveKit Cloud, so each
+// room's participants are always fetched.
 func (c *Client) ListRooms(ctx context.Context) ([]Room, error) {
-	// Accept both num_participants and numParticipants; mis-parsing as 0 silently empties everyone's presence.
 	var resp struct {
 		Rooms []struct {
-			Name                 string `json:"name"`
-			NumParticipants      int    `json:"num_participants"`
-			NumParticipantsCamel int    `json:"numParticipants"`
+			Name string `json:"name"`
 		} `json:"rooms"`
 	}
 	if err := c.call(ctx, "ListRooms", map[string]any{"roomList": true}, map[string]any{}, &resp); err != nil {
@@ -116,20 +114,16 @@ func (c *Client) ListRooms(ctx context.Context) ([]Room, error) {
 	}
 	rooms := make([]Room, 0, len(resp.Rooms))
 	for _, r := range resp.Rooms {
-		room := Room{Name: r.Name}
-		if r.NumParticipants > 0 || r.NumParticipantsCamel > 0 {
-			participants, err := c.ListParticipants(ctx, r.Name)
-			if err != nil {
-				return nil, err
-			}
-			room.Participants = participants
+		participants, err := c.ListParticipants(ctx, r.Name)
+		if err != nil {
+			return nil, err
 		}
-		rooms = append(rooms, room)
+		rooms = append(rooms, Room{Name: r.Name, Participants: participants})
 	}
 	return rooms, nil
 }
 
-// ListParticipants lists who's currently in room.
+// ListParticipants lists who's currently in room; a room LiveKit no longer has has nobody in it.
 func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participant, error) {
 	var resp struct {
 		Participants []struct {
@@ -137,7 +131,11 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 			Name     string `json:"name"`
 		} `json:"participants"`
 	}
-	if err := c.call(ctx, "ListParticipants", map[string]any{"roomAdmin": true, "room": room}, map[string]any{"room": room}, &resp); err != nil {
+	err := c.call(ctx, "ListParticipants", map[string]any{"roomAdmin": true, "room": room}, map[string]any{"room": room}, &resp)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return []Participant{}, nil
+	}
+	if err != nil {
 		return nil, err
 	}
 	out := make([]Participant, 0, len(resp.Participants))

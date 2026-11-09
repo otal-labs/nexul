@@ -59,6 +59,29 @@ func TestReconcileOnce_PublishesOnlyChangedRooms(t *testing.T) {
 	}
 }
 
+func TestReconcileOnce_KeepsATrackedRoomTheListingLeftOut(t *testing.T) {
+	srv := twirpStub(t, map[string]func() any{
+		"ListRooms": func() any { return map[string]any{"rooms": []map[string]any{}} },
+		"ListParticipants": func() any {
+			return map[string]any{"participants": []map[string]any{{"identity": "u-1", "name": "Ada"}}}
+		},
+	})
+	defer srv.Close()
+
+	cred := &fakeCredentials{client: livekit.Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}}
+	bus := &fakePublisher{}
+	s := NewService(Config{Conversations: &fakeConversations{}, Credentials: cred, Users: &fakeUserNames{}, Bus: bus})
+	s.occupancy.join("conv-1", Occupant{Identity: "u-1", Name: "Ada"})
+
+	s.reconcileOnce(context.Background(), nil)
+	if got := s.occupancy.room("conv-1"); len(got) != 1 {
+		t.Fatalf("conv-1 after reconcile = %+v, want Ada kept", got)
+	}
+	if evts := bus.all(); len(evts) != 0 {
+		t.Errorf("published events = %+v, want none (nothing changed)", evts)
+	}
+}
+
 func TestReconcileOnce_NoConnectorConfigured_NoOp(t *testing.T) {
 	cred := &fakeCredentials{err: errNotConfigured}
 	bus := &fakePublisher{}
