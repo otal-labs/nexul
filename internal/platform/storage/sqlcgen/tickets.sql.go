@@ -543,6 +543,41 @@ func (q *Queries) ListProjectColoredLabels(ctx context.Context, projectID string
 	return items, nil
 }
 
+const listReadableLabelNames = `-- name: ListReadableLabelNames :many
+SELECT DISTINCT ticket_labels.label FROM ticket_labels JOIN tickets ON tickets.id = ticket_labels.ticket_id
+WHERE ?1 OR tickets.project_id IN (SELECT value FROM json_each(?2))
+ORDER BY ticket_labels.label
+`
+
+type ListReadableLabelNamesParams struct {
+	AllProjects interface{}
+	Readable    interface{}
+}
+
+// The distinct labels on tickets in the readable projects, or in every project when all_projects is set.
+func (q *Queries) ListReadableLabelNames(ctx context.Context, arg ListReadableLabelNamesParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listReadableLabelNames, arg.AllProjects, arg.Readable)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, err
+		}
+		items = append(items, label)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTicketBranchLinks = `-- name: ListTicketBranchLinks :many
 SELECT branch_owner, branch_repo, branch_name FROM ticket_branch_links WHERE ticket_id = ? ORDER BY linked_at
 `

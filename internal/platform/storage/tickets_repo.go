@@ -756,6 +756,15 @@ func (r *TicketsRepo) ListLabels(ctx context.Context, id string) ([]string, erro
 	return out, nil
 }
 
+// ListLabelNames reads the distinct labels on the tickets scope keeps, sorted.
+func (r *TicketsRepo) ListLabelNames(ctx context.Context, scope tickets.TicketScope) ([]string, error) {
+	out, err := r.q.ListReadableLabelNames(ctx, sqlcgen.ListReadableLabelNamesParams{AllProjects: scope.All, Readable: idsJSON(scope.ProjectIDs)})
+	if err != nil {
+		return nil, fmt.Errorf("list label names: %w", err)
+	}
+	return out, nil
+}
+
 // SetLabelColor upserts a label's palette color within a project, so an unused label still works.
 func (r *TicketsRepo) SetLabelColor(ctx context.Context, projectID, label string, color colors.Color) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

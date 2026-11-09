@@ -107,6 +107,8 @@ type Repo interface {
 	AddLabel(ctx context.Context, id, label string, changes []Change) error
 	// RemoveLabel detaches a tag; a missing label is a no-op.
 	RemoveLabel(ctx context.Context, id, label string, changes []Change) error
+	// ListLabelNames returns the distinct labels on the tickets scope keeps, sorted.
+	ListLabelNames(ctx context.Context, scope TicketScope) ([]string, error)
 	// ListLabels returns a ticket's labels.
 	ListLabels(ctx context.Context, id string) ([]string, error)
 	// SetLabelColor works even for a label no ticket has used yet, with no separate registration step.

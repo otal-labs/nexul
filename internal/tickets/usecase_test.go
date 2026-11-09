@@ -586,6 +586,19 @@ func (f *fakeRepo) SetLabelColor(_ context.Context, projectID, label string, col
 	return nil
 }
 
+func (f *fakeRepo) ListLabelNames(_ context.Context, scope TicketScope) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for _, t := range f.tickets {
+		if scope.All || slices.Contains(scope.ProjectIDs, t.ProjectID) {
+			out = append(out, t.Labels...)
+		}
+	}
+	slices.Sort(out)
+	return slices.Compact(out), nil
+}
+
 func (f *fakeRepo) ColoredLabels(_ context.Context, projectID string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

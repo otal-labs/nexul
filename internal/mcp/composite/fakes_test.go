@@ -417,6 +417,18 @@ func (r ticketRepo) LabelColors(_ context.Context, projectID string, labels []st
 	return out, nil
 }
 
+func (r ticketRepo) ListLabelNames(_ context.Context, scope tickets.TicketScope) ([]string, error) {
+	if err := r.w.check("ListLabelNames"); err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, t := range r.filter(func(t *tickets.Ticket) bool { return scope.All || slices.Contains(scope.ProjectIDs, t.ProjectID) }) {
+		out = append(out, t.Labels...)
+	}
+	slices.Sort(out)
+	return slices.Compact(out), nil
+}
+
 func (r ticketRepo) ColoredLabels(_ context.Context, projectID string) ([]string, error) {
 	var out []string
 	for key := range r.w.labelColor {

@@ -758,27 +758,38 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 
 // ListAllLabels returns the sorted distinct labels on readable tickets in projectID (anywhere when empty), plus the project's colored ones.
 func (s *Service) ListAllLabels(ctx context.Context, projectID string) ([]string, error) {
-	list := s.List
-	if projectID != "" {
-		list = func(ctx context.Context) ([]*Ticket, error) { return s.ListByProject(ctx, projectID) }
-	}
-	ts, err := list(ctx)
+	scope, err := s.labelScope(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list all labels: %w", err)
 	}
-	var labels []string
-	if projectID != "" {
-		colored, err := s.repo.ColoredLabels(ctx, projectID)
-		if err != nil {
-			return nil, fmt.Errorf("list all labels: %w", err)
-		}
-		labels = colored
+	labels, err := s.repo.ListLabelNames(ctx, scope)
+	if err != nil {
+		return nil, fmt.Errorf("list all labels: %w", err)
 	}
-	for _, t := range ts {
-		labels = append(labels, t.Labels...)
+	if projectID == "" {
+		return labels, nil
 	}
+	colored, err := s.repo.ColoredLabels(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list all labels: %w", err)
+	}
+	labels = append(labels, colored...)
 	slices.Sort(labels)
 	return slices.Compact(labels), nil
+}
+
+// labelScope is the tickets whose labels are listed: the project's when one is named, else every one the caller may read.
+func (s *Service) labelScope(ctx context.Context, projectID string) (TicketScope, error) {
+	if projectID == "" {
+		return s.readScope(ctx)
+	}
+	if strings.TrimSpace(projectID) == "" {
+		return TicketScope{}, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, projectID, permissions.TicketsRead); err != nil {
+		return TicketScope{}, fmt.Errorf("project %s: %w", projectID, err)
+	}
+	return TicketScope{ProjectIDs: []string{projectID}}, nil
 }
 
 // SetLabelColor works even for a label no ticket has used yet, with no separate registration step.
