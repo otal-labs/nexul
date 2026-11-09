@@ -7,6 +7,8 @@ VERSION ?= dev
 GO_LDFLAGS := -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version=$(VERSION)"
 # Version is pinned in go.mod's tool directive; local and CI both resolve it from there.
 SQLC ?= go tool sqlc
+# golangci-lint type-checks the stdlib of whatever Go runs it; a newer local Go than the one it was built with panics, so lint uses go.mod's toolchain.
+LINT_TOOLCHAIN := $(shell awk '/^toolchain /{print $$2}' go.mod)
 
 .PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics event-schemas permission-catalog clean
 
@@ -39,7 +41,7 @@ vet:
 	go vet ./...
 
 lint:
-	golangci-lint run ./...
+	GOTOOLCHAIN=$(LINT_TOOLCHAIN) golangci-lint run ./...
 
 vuln:
 	go tool govulncheck ./...
