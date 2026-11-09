@@ -52,7 +52,7 @@ func newTestClient(srvURL string, exec Executor) *Client {
 		Name:              "alpha",
 		Logger:            testLogger(),
 		Executor:          exec,
-		HeartbeatInterval: 20 * time.Millisecond,
+		HeartbeatInterval: time.Second, // three beats is the ping deadline, so a loaded machine never drops a test connection
 		ConnectTimeout:    time.Second,
 		WriteTimeout:      time.Second,
 		BackoffBase:       5 * time.Millisecond,
@@ -109,6 +109,7 @@ func TestClient_SendsHeartbeat(t *testing.T) {
 	})
 
 	client := newTestClient(wsURL(srv), &fakeExecutor{})
+	client.hb = 20 * time.Millisecond // waits for a second beat; a redial beats too, so a dropped ping cannot fail it
 	cancel, done := runClient(t, client)
 
 	first := <-beats
@@ -538,6 +539,7 @@ func TestClient_ServerThatStopsAnswering_IsDroppedAndDialledAgain(t *testing.T) 
 	})
 	t.Cleanup(func() { close(stalled) })
 	client := newTestClient(wsURL(srv), &fakeExecutor{})
+	client.hb = 20 * time.Millisecond // the ping deadline is what this test exercises
 	cancel, done := runClient(t, client)
 
 	<-accepts

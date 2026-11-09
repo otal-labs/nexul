@@ -132,7 +132,7 @@ func newInstance(t *testing.T) *instance {
 	bus := &syncBus{handlers: map[string][]eventbus.Handler{}}
 	h := runner.NewHandler(runner.HandlerConfig{
 		Bus: bus, Repo: store.Runners, Machines: store.Machines,
-		HeartbeatInterval: 50 * time.Millisecond, WriteTimeout: time.Second, Logger: quiet,
+		HeartbeatInterval: time.Second, WriteTimeout: time.Second, Logger: quiet,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -181,7 +181,7 @@ func (in *instance) start(t *testing.T, name, credential string, exec runner.Exe
 	t.Helper()
 	client := runner.NewClient(runner.ClientConfig{
 		URL: "ws" + strings.TrimPrefix(in.srv.URL, "http") + "/ws/runner", Credential: credential, Name: name,
-		Executor: exec, Logger: quiet, HeartbeatInterval: 20 * time.Millisecond, ConnectTimeout: time.Second,
+		Executor: exec, Logger: quiet, HeartbeatInterval: time.Second, ConnectTimeout: time.Second,
 		BackoffBase: 5 * time.Millisecond, BackoffMax: 50 * time.Millisecond,
 	})
 	ctx, cancel := context.WithCancel(context.Background())

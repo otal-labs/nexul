@@ -439,7 +439,7 @@ func TestRunner_APanicInOneStreamLeavesTheOthersRunning(t *testing.T) {
 	alice := f.repo.personal("r-alice", "u-alice", "c-laptop")
 	c := NewClient(ClientConfig{
 		URL: wsURL(f.srv) + "/ws/runner", StreamURL: wsURL(f.srv) + "/api/runners/streams", Credential: alice, Name: "computer-r-alice",
-		Logger: testLogger(), Executor: &fakeExecutor{}, HeartbeatInterval: 50 * time.Millisecond, Personal: true,
+		Logger: testLogger(), Executor: &fakeExecutor{}, HeartbeatInterval: time.Second, Personal: true,
 		T3Home: writeRuntimeFile(t, `{"host":"127.0.0.1","port":47180}`),
 	})
 	panicky := func() (net.Conn, error) {

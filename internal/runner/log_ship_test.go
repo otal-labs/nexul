@@ -212,6 +212,7 @@ func TestClient_APersonalRunnerNeverShipsEvenWithAQueue(t *testing.T) {
 
 	c := newTestClient(wsURL(srv), &fakeExecutor{})
 	c.cfg.Personal, c.cfg.Logs = true, q
+	c.hb = 20 * time.Millisecond // waits for three beats; a redial beats too, so a dropped ping cannot fail it
 	cancel, done := runClient(t, c)
 
 	beats := 0

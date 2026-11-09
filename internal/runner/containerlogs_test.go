@@ -58,7 +58,7 @@ func connectLogsRunner(t *testing.T, exec Executor) *Handler {
 	h, srv := newIntegrationHandler(t, newFakeBus(), repo)
 	client := NewClient(ClientConfig{
 		URL: srv.URL, Credential: repo.enrolled("r-logs", "logs", "m1"), Name: "logs", Logger: testLogger(), Executor: exec,
-		HeartbeatInterval: 20 * time.Millisecond, ConnectTimeout: time.Second, BackoffBase: 5 * time.Millisecond, BackoffMax: 50 * time.Millisecond,
+		HeartbeatInterval: time.Second, ConnectTimeout: time.Second, BackoffBase: 5 * time.Millisecond, BackoffMax: 50 * time.Millisecond,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
