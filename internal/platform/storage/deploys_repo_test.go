@@ -272,3 +272,56 @@ func TestDeploysRepo_Page_FiltersAndScopesInSQL(t *testing.T) {
 		}
 	}
 }
+
+func TestDeploysRepo_ListLogTail_KeepsTheNewestLinesInListLogLinesOrder(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Deploys.Create(ctx, newTestDeploy("dep-1")))
+	require.NoError(t, s.Deploys.AppendLogLines(ctx, "dep-1", []deploy.LogLine{
+		{TS: 20, Phase: "build", Text: "Step 1/3"},
+		{TS: 20, Phase: "build", Text: "Step 2/3"},
+		{TS: 30, Phase: "deploy", Text: "up"},
+	}))
+	require.NoError(t, s.Deploys.AppendLogLines(ctx, "dep-1", []deploy.LogLine{{TS: 10, Phase: "checkout", Text: "late arrival"}}))
+	all, err := s.Deploys.ListLogLines(ctx, "dep-1")
+	require.NoError(t, err)
+
+	got, total, err := s.Deploys.ListLogTail(ctx, "dep-1", 2)
+	require.NoError(t, err)
+	assert.Equal(t, 4, total)
+	assert.Equal(t, all[2:], got)
+
+	got, total, err = s.Deploys.ListLogTail(ctx, "dep-1", 100)
+	require.NoError(t, err)
+	assert.Equal(t, 4, total)
+	assert.Equal(t, all, got)
+
+	got, total, err = s.Deploys.ListLogTail(ctx, "nope", 5)
+	require.NoError(t, err)
+	assert.Zero(t, total)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
+}
+
+func TestDeploysRepo_ListRecentByStackID_IsTheNewestPrefixOfListByStackID(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedStackForContainers(t, s, "stack-1")
+	for i, id := range []string{"dep-a", "dep-b", "dep-c", "dep-d"} {
+		d := newTestDeploy(id)
+		d.StackID, d.Status = "stack-1", deploy.StatusHealthy
+		d.CreatedAt = d.CreatedAt.Add(time.Duration(i) * time.Minute)
+		require.NoError(t, s.Deploys.Create(ctx, d))
+	}
+	all, err := s.Deploys.ListByStackID(ctx, "stack-1")
+	require.NoError(t, err)
+
+	got, err := s.Deploys.ListRecentByStackID(ctx, "stack-1", 3)
+	require.NoError(t, err)
+	require.Len(t, got, 3)
+	for i := range got {
+		assert.Equal(t, all[i].ID, got[i].ID)
+	}
+}

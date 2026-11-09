@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countDeployLogLines = `-- name: CountDeployLogLines :one
+SELECT COUNT(*) FROM deploy_log_lines WHERE deploy_id = ?
+`
+
+func (q *Queries) CountDeployLogLines(ctx context.Context, deployID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDeployLogLines, deployID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertDeployLogLine = `-- name: InsertDeployLogLine :exec
 INSERT INTO deploy_log_lines (deploy_id, ts, phase, line) VALUES (?, ?, ?, ?)
 `
@@ -50,6 +61,50 @@ func (q *Queries) ListDeployLogLines(ctx context.Context, deployID string) ([]Li
 	var items []ListDeployLogLinesRow
 	for rows.Next() {
 		var i ListDeployLogLinesRow
+		if err := rows.Scan(
+			&i.Seq,
+			&i.Ts,
+			&i.Phase,
+			&i.Line,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeployLogTail = `-- name: ListDeployLogTail :many
+SELECT seq, ts, phase, line FROM deploy_log_lines WHERE deploy_id = ? ORDER BY ts DESC, seq DESC LIMIT ?
+`
+
+type ListDeployLogTailParams struct {
+	DeployID string
+	Limit    int64
+}
+
+type ListDeployLogTailRow struct {
+	Seq   int64
+	Ts    int64
+	Phase string
+	Line  string
+}
+
+func (q *Queries) ListDeployLogTail(ctx context.Context, arg ListDeployLogTailParams) ([]ListDeployLogTailRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDeployLogTail, arg.DeployID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDeployLogTailRow
+	for rows.Next() {
+		var i ListDeployLogTailRow
 		if err := rows.Scan(
 			&i.Seq,
 			&i.Ts,

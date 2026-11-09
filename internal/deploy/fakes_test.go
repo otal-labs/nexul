@@ -128,6 +128,14 @@ func (f *fakeRepo) ListByStackID(_ context.Context, stackID string) ([]*Deploy, 
 	return out, nil
 }
 
+func (f *fakeRepo) ListRecentByStackID(ctx context.Context, stackID string, limit int) ([]*Deploy, error) {
+	all, err := f.ListByStackID(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+	return all[:min(len(all), limit)], nil
+}
+
 func (f *fakeRepo) ListByStatus(_ context.Context, status Status) ([]*Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -259,6 +267,13 @@ func (f *fakeRepo) ListLogLines(_ context.Context, id string) ([]LogLine, error)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]LogLine{}, f.logs[id]...), nil
+}
+
+func (f *fakeRepo) ListLogTail(_ context.Context, id string, limit int) ([]LogLine, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	all := f.logs[id]
+	return append([]LogLine{}, all[max(0, len(all)-limit):]...), len(all), nil
 }
 
 // fakeStackRepo is an in-memory deploy.StackRepo for use-case tests.

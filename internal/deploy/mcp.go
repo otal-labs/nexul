@@ -81,16 +81,15 @@ func deployDetailOf(ctx context.Context, s *Service, id string, logLines int) (d
 	if err != nil {
 		return deployDetail{}, withHint(err, "deploy_list without an id lists deploys")
 	}
-	lines, err := s.Log(ctx, id)
-	if err != nil {
-		return deployDetail{}, err
-	}
 	n := logLines
 	if n < 1 {
 		n = defaultLogLines
 	}
-	n = min(n, maxLogLines)
-	return deployDetail{deployResult: toDeployResult(d), Log: lines[max(0, len(lines)-n):], LogTotal: len(lines)}, nil
+	lines, total, err := s.LogTail(ctx, id, min(n, maxLogLines))
+	if err != nil {
+		return deployDetail{}, err
+	}
+	return deployDetail{deployResult: toDeployResult(d), Log: lines, LogTotal: total}, nil
 }
 
 type deployCancelIn struct {
@@ -274,7 +273,7 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 	if err != nil {
 		return stackDetail{}, err
 	}
-	deploys, err := s.ListByStackID(ctx, stack.ID)
+	deploys, err := s.RecentByStackID(ctx, stack.ID, recentDeploys)
 	if err != nil {
 		return stackDetail{}, err
 	}
@@ -282,7 +281,7 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 		stackResult:   toStackResult(stack),
 		Services:      services,
 		OpenOutages:   toOutageResults(open),
-		RecentDeploys: toDeployResults(deploys[:min(len(deploys), recentDeploys)]),
+		RecentDeploys: toDeployResults(deploys),
 	}
 	if out.Watching, err = s.Watching(ctx, stack.ID); err != nil {
 		return stackDetail{}, err

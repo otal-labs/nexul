@@ -380,6 +380,58 @@ func (q *Queries) ListDeploysByStatus(ctx context.Context, status string) ([]Dep
 	return items, nil
 }
 
+const listRecentDeploysByStackID = `-- name: ListRecentDeploysByStackID :many
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address, ref, commit_sha FROM deploys WHERE stack_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
+`
+
+type ListRecentDeploysByStackIDParams struct {
+	StackID sql.NullString
+	Limit   int64
+}
+
+func (q *Queries) ListRecentDeploysByStackID(ctx context.Context, arg ListRecentDeploysByStackIDParams) ([]Deploy, error) {
+	rows, err := q.db.QueryContext(ctx, listRecentDeploysByStackID, arg.StackID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Deploy
+	for rows.Next() {
+		var i Deploy
+		if err := rows.Scan(
+			&i.ID,
+			&i.Service,
+			&i.Target,
+			&i.Image,
+			&i.Status,
+			&i.Strategy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StackID,
+			&i.ServiceID,
+			&i.TriggeredBy,
+			&i.RuleID,
+			&i.RuleName,
+			&i.TicketID,
+			&i.PrNumber,
+			&i.Kind,
+			&i.Address,
+			&i.Ref,
+			&i.CommitSha,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setDeployAddress = `-- name: SetDeployAddress :execrows
 UPDATE deploys SET address = ?, updated_at = ? WHERE id = ?
 `

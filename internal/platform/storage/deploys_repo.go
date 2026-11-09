@@ -134,6 +134,14 @@ func (r *DeploysRepo) ListByStackID(ctx context.Context, stackID string) ([]*dep
 	return toDeploys(rows), nil
 }
 
+func (r *DeploysRepo) ListRecentByStackID(ctx context.Context, stackID string, limit int) ([]*deploy.Deploy, error) {
+	rows, err := r.q.ListRecentDeploysByStackID(ctx, sqlcgen.ListRecentDeploysByStackIDParams{StackID: nullString(stackID), Limit: int64(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list recent deploys for stack %s: %w", stackID, err)
+	}
+	return toDeploys(rows), nil
+}
+
 func (r *DeploysRepo) ListByStatus(ctx context.Context, status deploy.Status) ([]*deploy.Deploy, error) {
 	rows, err := r.q.ListDeploysByStatus(ctx, string(status))
 	if err != nil {
@@ -248,6 +256,23 @@ func (r *DeploysRepo) ListLogLines(ctx context.Context, id string) ([]deploy.Log
 		out = append(out, deploy.LogLine{Seq: row.Seq, TS: row.Ts, Phase: row.Phase, Text: row.Line})
 	}
 	return out, nil
+}
+
+// ListLogTail reads the newest limit lines of a deploy's log, returned oldest first, and the log's full length.
+func (r *DeploysRepo) ListLogTail(ctx context.Context, id string, limit int) ([]deploy.LogLine, int, error) {
+	rows, err := r.q.ListDeployLogTail(ctx, sqlcgen.ListDeployLogTailParams{DeployID: id, Limit: int64(limit)})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list deploy %s log tail: %w", id, err)
+	}
+	total, err := r.q.CountDeployLogLines(ctx, id)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count deploy %s log: %w", id, err)
+	}
+	out := make([]deploy.LogLine, len(rows))
+	for i, row := range rows {
+		out[len(rows)-1-i] = deploy.LogLine{Seq: row.Seq, TS: row.Ts, Phase: row.Phase, Text: row.Line}
+	}
+	return out, int(total), nil
 }
 
 func toDeploy(row sqlcgen.Deploy) *deploy.Deploy {
