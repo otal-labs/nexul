@@ -69,3 +69,34 @@ func TestRunAuditRetention_PurgesAtStartThenDaily_SurvivingAFailedPass(t *testin
 		<-done
 	})
 }
+
+type fakeRetention struct{ cutoffs map[string]time.Time }
+
+func (f *fakeRetention) record(name string, before time.Time) (int64, error) {
+	f.cutoffs[name] = before
+	return 0, nil
+}
+
+func (f *fakeRetention) DeleteProcessedBefore(_ context.Context, before time.Time, _ int) (int64, error) {
+	return f.record("processed", before)
+}
+
+func (f *fakeRetention) DeleteOutboxBefore(_ context.Context, before time.Time, _ int) (int64, error) {
+	return f.record("outbox", before)
+}
+
+func (f *fakeRetention) DeleteDeployLogBefore(_ context.Context, before time.Time, _ int) (int64, error) {
+	return f.record("deploylog", before)
+}
+
+func TestPurgeEvents_PurgesEveryEventTableAtTheAuditCutoff(t *testing.T) {
+	retention := &fakeRetention{cutoffs: map[string]time.Time{}}
+	svc := newTestServiceWithOwner(newFakeData(), true)
+	svc.cfg.Retention = retention
+
+	_, err := svc.PurgeEvents(t.Context())
+	require.NoError(t, err)
+
+	want := svc.cfg.Now().Add(-AuditRetention)
+	assert.Equal(t, map[string]time.Time{"processed": want, "outbox": want, "deploylog": want}, retention.cutoffs)
+}

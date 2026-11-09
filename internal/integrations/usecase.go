@@ -36,6 +36,7 @@ type Config struct {
 	Deliveries DeliveryStore
 	Schemas    SchemaStore
 	Audit      AuditStore
+	Retention  EventRetentionStore
 	Perms      PermissionGate
 	Now        func() time.Time
 }

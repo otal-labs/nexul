@@ -76,6 +76,7 @@ type Store struct {
 	IntegrationDeliveries *IntegrationDeliveriesRepo
 	EventSchemas          *EventSchemasRepo
 	Audit                 *AuditRepo
+	EventRetention        *EventRetentionRepo
 	Connectors            *ConnectorsRepo
 	ConnectorAppConfig    *ConnectorAppConfigRepo
 	GitHubInstallations   *GitHubInstallationsRepo
@@ -157,6 +158,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		IntegrationDeliveries: &IntegrationDeliveriesRepo{db: db, w: w, q: q},
 		EventSchemas:          &EventSchemasRepo{db: db, w: w, q: q},
 		Audit:                 &AuditRepo{db: db, w: w, q: q},
+		EventRetention:        &EventRetentionRepo{db: db, w: w, q: q},
 		Connectors:            &ConnectorsRepo{db: db, w: w, q: q, encKey: encKey},
 		ConnectorAppConfig:    &ConnectorAppConfigRepo{db: db, w: w, q: q, encKey: encKey},
 		GitHubInstallations:   &GitHubInstallationsRepo{db: db, w: w, q: q},
