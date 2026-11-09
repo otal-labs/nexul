@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { HistoryFieldValue } from "@/components/history/HistoryFieldValue";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchBotwebhooks } from "@/hooks/BotwebhookHooks";
 import { useFetchCategories, useFetchProjectCategories } from "@/hooks/CategoryHooks";
@@ -59,6 +60,7 @@ const server: Record<string, unknown> = {
     blocked: true,
   },
   "/api/tickets": [{ id: "t-1", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 0, title: "Login", updated_at: "" }],
+  "/api/tickets/t-2": { id: "t-2", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 1, number: 2, title: "Checkout", updated_at: "" },
   "/api/tickets/t-1": { id: "t-1", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 0, title: "Login", updated_at: "" },
   "/api/projects/p-1/access": { access: [] },
   "/api/projects/p-2/access": { access: [] },
@@ -297,6 +299,18 @@ describe("requests a live frame sends", () => {
       "/api/tickets?project_id=p-1&without=body",
       "/api/tickets?project_id=p-2&without=body",
     ]);
+  });
+
+  it("refetches only the open project's list when a ticket is created, with a history open that names another ticket", async () => {
+    const { requestsAfter } = await mountLive(
+      <>
+        {view(() => void useFetchTicketsByProject("p-1"))}
+        <HistoryFieldValue field="blocked_by" value="t-2" />
+      </>,
+      respond,
+    );
+    const created = { id: "t-9", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 2, number: 9, title: "Refunds", updated_at: "" };
+    expect(await requestsAfter("ticket.created", { ticket: created })).toEqual(["/api/tickets?project_id=p-1&without=body"]);
   });
 
   it("refetches the inbox and badge of a new notice's workspace and the count across workspaces, nothing for another workspace's", async () => {

@@ -34,6 +34,7 @@ const mockReferenceData = () =>
       };
     }
     if (url === "/api/tickets") return { data: [{ id: "t-1", project_id: "p-1", number: 1, title: "books page" }] };
+    if (url === "/api/tickets/t-1") return { data: { id: "t-1", project_id: "p-1", number: 1, title: "books page" } };
     return { data: [] };
   });
 

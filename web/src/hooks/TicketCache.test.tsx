@@ -16,7 +16,6 @@ const ticket = {
 
 const seeded = () => {
   const client = new QueryClient();
-  client.setQueryData(["getTickets"], [ticket]);
   client.setQueryData(["getTicket", ticket.id], ticket);
   client.setQueryData(["getTicketsByDoc", "doc-1"], [ticket]);
   client.setQueryData(["getTicketsByDoc", "doc-2"], []);
@@ -40,7 +39,7 @@ describe("the ticket cache", () => {
     await ticketChanged(client, { ...ticket, title: "Saved last", updated_at: "2026-10-01T10:00:09Z" });
     await ticketChanged(client, { ...ticket, title: "Saved first", updated_at: "2026-10-01T10:00:05Z" });
     expect(client.getQueryData<Ticket>(["getTicket", ticket.id])?.title).toBe("Saved last");
-    expect(client.getQueryData<Ticket[]>(["getTickets"])?.[0]?.title).toBe("Saved last");
+    expect(client.getQueryData<Ticket[]>(["getTicketsByProject", "p-1"])?.[0]?.title).toBe("Saved last");
   });
 
   it("refetches the board's blockers when a ticket finishes, since a merged blocker no longer holds anything up", async () => {
@@ -55,7 +54,6 @@ describe("the ticket cache", () => {
   it("refetches the lists a new ticket belongs to and leaves the others alone", async () => {
     const client = seeded();
     await ticketCreated(client, { ...ticket, id: "t-2", doc_id: "doc-2" });
-    expect(stale(client, ["getTickets"])).toBe(true);
     expect(stale(client, ["getTicketsByDoc", "doc-2"])).toBe(true);
     expect(stale(client, ["getTicketsByProject", "p-1"])).toBe(true);
     expect(stale(client, ["getTicketsByDoc", "doc-1"])).toBe(false);
@@ -64,7 +62,7 @@ describe("the ticket cache", () => {
   it("drops a deleted ticket from every list and sends its open page to not found", async () => {
     const client = seeded();
     await ticketRemoved(client, ticket.id);
-    for (const key of [["getTickets"], ["getTicketsByDoc", "doc-1"], ["getTicketsByProject", "p-1"]]) expect(client.getQueryData(key)).toEqual([]);
+    for (const key of [["getTicketsByDoc", "doc-1"], ["getTicketsByProject", "p-1"]]) expect(client.getQueryData(key)).toEqual([]);
     expect(stale(client, ["getTicket", ticket.id])).toBe(true);
   });
 });

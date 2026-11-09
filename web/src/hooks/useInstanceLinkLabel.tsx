@@ -7,7 +7,7 @@ import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey } from "@/hooks/ChatHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { getTicketKey, getTicketsKey } from "@/hooks/TicketCache";
+import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketCache";
 import { channelMention } from "@/models/Chat";
 import { parseTicketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
@@ -51,7 +51,7 @@ const cachedLabel = (client: QueryClient, section: string, id: string): string |
     return c && conversationName(client, c);
   }
   if (section === "docs") return findCached<{ id: string; title: string }>(client, getDocsKey, getDocKey, id)?.title;
-  if (section === "tickets") return findCached<{ id: string; title: string }>(client, getTicketsKey, getTicketKey, id)?.title;
+  if (section === "tickets") return findCached<{ id: string; title: string }>(client, getTicketsByProjectKey, getTicketKey, id)?.title;
   return undefined;
 };
 

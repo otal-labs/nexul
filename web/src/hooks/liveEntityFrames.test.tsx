@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useFetchConversations } from "@/hooks/ChatHooks";
 import { useFetchDoc, useFetchDocs, useFetchDocsByProject, useFetchDocWatchers } from "@/hooks/DocHooks";
-import { useFetchTicket, useFetchTicketLinks, useFetchTickets, useFetchTicketsByDoc, useFetchTicketsByProject } from "@/hooks/TicketHooks";
+import { useFetchTicket, useFetchTicketLinks, useFetchTicketsByDoc, useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
 import type { Conversation } from "@nexul/client-core/chat";
@@ -66,9 +66,8 @@ const respond = (url: string) => {
   throw new Error(`unexpected GET ${url}`);
 };
 
-// A board, a ticket page, and a doc's tickets section, all open at once.
+// A project's board, a ticket page, and a doc's tickets section, all open at once.
 const TicketViews = () => {
-  useFetchTickets();
   useFetchTicket(ticket.id);
   useFetchTicketsByDoc(ticket.doc_id);
   useFetchTicketsByProject(ticket.project_id);
@@ -106,17 +105,16 @@ describe("a live ticket or doc frame", () => {
     expect(await requestsAfter("ticket.updated", { ticket: server.ticket })).toEqual([]);
   });
 
-  it("shows a renamed ticket in all four ticket views: the board, its page, its doc's list, and its project's list", async () => {
+  it("shows a renamed ticket in all three ticket views: its page, its doc's list, and its project's list", async () => {
     await mount(<TicketViews />);
     server.ticket = { ...ticket, title: "Login never times out", updated_at: "2026-10-01T10:00:05Z" };
     await requestsAfter("ticket.updated", { ticket: server.ticket });
     const titles = [
-      client.getQueryData<Ticket[]>(["getTickets"])?.[0]?.title,
       client.getQueryData<Ticket>(["getTicket", ticket.id])?.title,
       client.getQueryData<Ticket[]>(["getTicketsByDoc", ticket.doc_id])?.[0]?.title,
       client.getQueryData<Ticket[]>(["getTicketsByProject", ticket.project_id])?.[0]?.title,
     ];
-    expect(titles).toEqual(Array(4).fill("Login never times out"));
+    expect(titles).toEqual(Array(3).fill("Login never times out"));
   });
 
   it("refetches only the board's blockers when a ticket changes column", async () => {
