@@ -88,6 +88,19 @@ describe("PermissionLevel", () => {
       expect(accessSummary(areas, [])).toBe("None");
     });
 
+    it("reads the top level as Full on a list chip, while the toast keeps the rung's name", () => {
+      const full = domainsIn(
+        [
+          ...areaCatalog,
+          { value: "tickets:delete", label: "Delete tickets", domain: "tickets", action: "delete", area: "project" },
+        ],
+        ["project"],
+      );
+      const all = ["tickets:read", "tickets:write", "tickets:delete", "repos:read"];
+      expect(projectLevelLabel(full, all)).toBe("Full");
+      expect(changeSummary(full, [], all)).toBe("every area → Delete");
+    });
+
     it("names what one change moved, for the toast", () => {
       expect(changeSummary(areas, [], ["tickets:read", "tickets:write"])).toBe("tickets → Write");
       expect(changeSummary(areas, [], ["tickets:read", "repos:read"])).toBe("every area → Read");
