@@ -687,3 +687,24 @@ func TestChatRepo_AgentCursorWrites_QueueBehindTheSerializer(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestChatRepo_ListConversationsForUser_TitlesADocThreadWithItsDocAndNothingElse(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedChatUser(t, s, "u-1")
+	doc := newTestDoc("doc-1")
+	doc.Title = "Launch plan"
+	require.NoError(t, s.Docs.Create(ctx, doc))
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestDocThreadConversation("doc-thread-1", "doc-1", "u-1"), []string{"u-1"}))
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation("chan-1", chat.KindChannel, "engineering", "", "u-1"), []string{"u-1"}))
+
+	got, err := s.Chat.ListConversationsForUser(ctx, "workspace-default", "u-1")
+	require.NoError(t, err)
+	titles := map[string]string{}
+	for _, c := range got {
+		titles[c.ID] = c.DocTitle
+	}
+	assert.Equal(t, "Launch plan", titles["doc-thread-1"])
+	assert.Empty(t, titles["chan-1"])
+}

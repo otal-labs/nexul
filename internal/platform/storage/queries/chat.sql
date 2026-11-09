@@ -54,7 +54,8 @@ WITH listed AS (
         WHERE o.conversation_id = c.id AND NOT EXISTS (
             SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = sqlc.arg(workspace_id)))
 )
-SELECT c.* FROM conversations c JOIN listed l ON l.id = c.id
+SELECT sqlc.embed(c), COALESCE(d.title, '') AS doc_title FROM conversations c JOIN listed l ON l.id = c.id
+LEFT JOIN docs d ON d.id = c.doc_id
 ORDER BY c.created_at;
 
 -- name: ListParticipantsByConversationIDs :many

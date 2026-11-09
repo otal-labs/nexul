@@ -6,7 +6,6 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
-import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
@@ -33,8 +32,17 @@ const conversationsQuery = defineQuery({
     "chat.conversation.deleted": { key: (p) => p.workspace_id },
     // A private channel the viewer lost drops from the list.
     "chat.conversation.members_changed": { key: (p) => p.workspace_id },
+    // The frame carries the new title, so a rename retitles its doc thread in place and the list never downloads again.
+    "doc.updated": { patch: (client, p) => retitleDocThreads(client, p.doc.id, p.doc.title) },
   },
 });
+
+const retitleDocThreads = (client: QueryClient, docId: string, title: string) =>
+  client.setQueriesData<Conversation[]>({ queryKey: [getChatConversationsKey] }, (list) =>
+    list?.some((c) => c.doc_id === docId && c.doc_title !== title)
+      ? list.map((c) => (c.doc_id === docId ? { ...c, doc_title: title } : c))
+      : list,
+  );
 
 export const useFetchConversations = (workspaceId: string | undefined) =>
   useQuery({ ...conversationsQuery.options(workspaceId), enabled: !!workspaceId });
@@ -89,9 +97,8 @@ export const useFetchMessages = (conversationId: string | undefined) =>
 export const useConversationLabel = (conversation: Conversation, dmCtx: DMLabelContext): string => {
   const { data: ticket } = useFetchTicket(conversation.kind === "ticket_thread" ? conversation.ticket_id : undefined);
   const { data: project } = useFetchProject(ticket?.project_id);
-  const { data: doc } = useFetchDoc(conversation.kind === "doc_thread" ? conversation.doc_id : undefined);
   if (ticket) return `${ticketKey(ticket, project?.prefix)} ${ticket.title}`;
-  if (doc) return doc.title;
+  if (conversation.doc_title) return conversation.doc_title;
   return conversationLabel(conversation, dmCtx);
 };
 

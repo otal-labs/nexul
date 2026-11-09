@@ -1501,6 +1501,10 @@
           "doc_id": {
             "type": "string"
           },
+          "doc_title": {
+            "type": "string",
+            "description": "A doc thread's doc title, set only on the conversation list."
+          },
           "project_id": {
             "type": "string"
           },

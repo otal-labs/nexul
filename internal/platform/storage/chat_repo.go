@@ -206,7 +206,12 @@ func (r *ChatRepo) ListConversationsForUser(ctx context.Context, workspaceID, us
 	if err != nil {
 		return nil, fmt.Errorf("list conversations for user %s: %w", userID, err)
 	}
-	out := toConversations(rows)
+	out := make([]*chat.Conversation, 0, len(rows))
+	for _, row := range rows {
+		c := toConversation(row.Conversation)
+		c.DocTitle = row.DocTitle
+		out = append(out, c)
+	}
 	if err := r.attachParticipants(ctx, out); err != nil {
 		return nil, fmt.Errorf("attach participants: %w", err)
 	}
@@ -636,14 +641,6 @@ func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), AgentSeen: row.AgentSeen, General: row.IsGeneral != 0,
 		Private: row.Private != 0,
 	}
-}
-
-func toConversations(rows []sqlcgen.Conversation) []*chat.Conversation {
-	out := make([]*chat.Conversation, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, toConversation(row))
-	}
-	return out
 }
 
 func toMessage(row sqlcgen.Message) (*chat.Message, error) {
