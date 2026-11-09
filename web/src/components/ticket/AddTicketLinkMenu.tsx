@@ -70,7 +70,7 @@ export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
             </button>
           </div>
         )}
-        {(kind === "blocked_by" || kind === "blocks" || kind === "found_in") && <TicketPickerList excludeId={ticketId} onSelect={pick} />}
+        {(kind === "blocked_by" || kind === "blocks" || kind === "found_in") && <TicketPickerList projectId={ticket.project_id} excludeId={ticketId} onSelect={pick} />}
         {kind === "source" && <DocPickerList projectId={ticket.project_id} excludeId={ticket.doc_id} onSelect={pick} />}
       </PopoverContent>
     </Popover>

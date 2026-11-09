@@ -38,7 +38,7 @@ describe("useMoveTicketToCategory", () => {
   it("posts the move, then refetches the categories and the board holding the ticket", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(["getTickets"], [{ id: "t-1" }]);
+    client.setQueryData(["getTicketsByProject", "p-1"], [{ id: "t-1" }]);
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useMoveTicketToCategory(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
@@ -46,7 +46,7 @@ describe("useMoveTicketToCategory", () => {
     await result.current.mutateAsync({ ticketId: "t-1", categoryId: "c-2" });
     expect(api.post).toHaveBeenCalledWith("/api/categories/c-2/tickets/t-1");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"], exact: true });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject", "p-1"], exact: true });
   });
 });
 
@@ -54,7 +54,7 @@ describe("useClearTicketCategory", () => {
   it("deletes the category link, then refetches the categories and the board holding the ticket", async () => {
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(["getTickets"], [{ id: "t-1" }]);
+    client.setQueryData(["getTicketsByProject", "p-1"], [{ id: "t-1" }]);
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useClearTicketCategory(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
@@ -62,7 +62,7 @@ describe("useClearTicketCategory", () => {
     await result.current.mutateAsync({ ticketId: "t-1" });
     expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"], exact: true });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject", "p-1"], exact: true });
   });
 });
 

@@ -182,7 +182,6 @@ describe("TicketLinksSection", () => {
     renderSection();
     await user.click(await screen.findByRole("button", { name: "Add a link" }));
     await user.click(screen.getByRole("button", { name: /Blocked by/ }));
-    await user.type(screen.getByRole("textbox", { name: "Search tickets" }), "books");
     const options = await screen.findAllByRole("button", { name: /BKS-/ });
     expect(options).toHaveLength(1);
     expect(within(options[0]!).getByText("BKS-2")).toBeInTheDocument();
@@ -190,18 +189,20 @@ describe("TicketLinksSection", () => {
     expect(api.post).toHaveBeenCalledWith("/api/tickets/t-1/blocked-by", { blocker_id: "t-2" });
   });
 
-  it("marks a ticket in another project of the workspace as blocked by this one, leaving out other workspaces", async () => {
+  it("marks a ticket in another project of the workspace as blocked by this one, found by a workspace search", async () => {
     mockApi(emptySet);
     const get = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(withOwner(async (url: string) => {
       if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS" }, { id: "p-2", prefix: "API" }] };
-      if (url === "/api/tickets") {
+      if (url === "/api/search") {
         return {
-          data: [
-            { id: "t-2", project_id: "p-1", number: 2, title: "backend /books" },
-            { id: "t-3", project_id: "p-2", number: 3, title: "books endpoint" },
-            { id: "t-9", project_id: "p-other", number: 9, title: "books elsewhere" },
-          ],
+          data: {
+            hits: [
+              { type: "ticket", id: "t-2", title: "backend /books", hint: "BKS-2", in_body: false, updated_at: "" },
+              { type: "ticket", id: "t-3", title: "books endpoint", hint: "API-3", in_body: false, updated_at: "" },
+            ],
+            more: [],
+          },
         };
       }
       return get(url);

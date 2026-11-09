@@ -56,16 +56,16 @@ describe("the live socket", () => {
 
   it("leaves the cache alone for a topic nobody follows", async () => {
     const client = new QueryClient();
-    client.setQueryData(["getTickets"], []);
+    client.setQueryData(["getTicketsByProject", "p-1"], []);
     const push = await connect(client);
     push("ticket.assignee_changed", { ticket: { id: "t-1" } });
-    expect(isStale(client, ["getTickets"])).toBe(false);
+    expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(false);
   });
 
   it("refetches every open read once a dropped socket reconnects, since the frames sent meanwhile are lost", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     const client = new QueryClient();
-    client.setQueryData(["getTickets"], []);
+    client.setQueryData(["getTicketsByProject", "p-1"], []);
     const sockets: FakeSocket[] = [];
     const wsFactory = () => {
       const s = new FakeSocket();
@@ -80,7 +80,7 @@ describe("the live socket", () => {
       </QueryClientProvider>,
     );
     act(() => sockets[0]!.onopen?.(null));
-    expect(isStale(client, ["getTickets"])).toBe(false);
+    expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(false);
 
     vi.spyOn(console, "warn").mockImplementation(() => {});
     act(() => sockets[0]!.onclose?.(null));
@@ -88,14 +88,14 @@ describe("the live socket", () => {
     act(() => sockets[1]!.onopen?.(null));
     vi.useRealTimers();
 
-    expect(isStale(client, ["getTickets"])).toBe(true);
+    expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(true);
   });
 
   describe("a permission change", () => {
     const signedIn = () => {
       const client = new QueryClient();
       client.setQueryData(["getMe"], { user: { id: "u-1" }, instance_permissions: [] });
-      client.setQueryData(["getTickets"], []);
+      client.setQueryData(["getTicketsByProject", "p-1"], []);
       return client;
     };
 
@@ -105,10 +105,10 @@ describe("the live socket", () => {
         const client = signedIn();
         const push = await connect(client);
         push(topic, { user_id: "u-2", workspace_id: "ws-1", resource_type: "doc", resource_id: "d-1" });
-        expect(isStale(client, ["getTickets"])).toBe(false);
+        expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(false);
 
         push(topic, { user_id: "u-1", workspace_id: "ws-1", resource_type: "doc", resource_id: "d-1" });
-        await vi.waitFor(() => expect(isStale(client, ["getTickets"])).toBe(true));
+        await vi.waitFor(() => expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(true));
       },
     );
 
@@ -119,18 +119,18 @@ describe("the live socket", () => {
       client.setQueryDefaults(["getMe"], { queryFn: () => ({ user: { id: "u-1" }, instance_permissions: [] }) });
       await client.fetchQuery({ queryKey: ["getMyRole", "ws-1"] });
       await client.fetchQuery({ queryKey: ["getMe"] });
-      client.setQueryData(["getTickets"], []);
+      client.setQueryData(["getTicketsByProject", "p-1"], []);
       const push = await connect(client);
       const roleFetches = () => client.getQueryState(["getMyRole", "ws-1"])?.dataUpdateCount;
 
       push("role.updated", { role_id: "r-9", workspace_id: "ws-2" });
       push("role.updated", { role_id: "r-other", workspace_id: "ws-1" });
       await vi.waitFor(() => expect(roleFetches()).toBe(2));
-      expect(isStale(client, ["getTickets"])).toBe(false);
+      expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(false);
 
       held = ["docs:read", "memories:read"];
       push("role.updated", { role_id: "r-mine", workspace_id: "ws-1" });
-      await vi.waitFor(() => expect(isStale(client, ["getTickets"])).toBe(true));
+      await vi.waitFor(() => expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(true));
     });
 
     it("refetches every open read after a rule for a role only when the viewer's own permissions moved", async () => {
@@ -140,18 +140,18 @@ describe("the live socket", () => {
       client.setQueryDefaults(["getMe"], { queryFn: () => ({ user: { id: "u-1" }, instance_permissions: [] }) });
       await client.fetchQuery({ queryKey: ["getMyRole", "ws-1"] });
       await client.fetchQuery({ queryKey: ["getMe"] });
-      client.setQueryData(["getTickets"], []);
+      client.setQueryData(["getTicketsByProject", "p-1"], []);
       const push = await connect(client);
       const roleFetches = () => client.getQueryState(["getMyRole", "ws-1"])?.dataUpdateCount;
       const frame = { resource_type: "project", resource_id: "p-1", target: "role", user_id: "", role_id: "r-mine" };
 
       push("access.grant.changed", frame);
       await vi.waitFor(() => expect(roleFetches()).toBe(2));
-      expect(isStale(client, ["getTickets"])).toBe(false);
+      expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(false);
 
       held = ["docs:read", "tickets:read"];
       push("access.grant.changed", frame);
-      await vi.waitFor(() => expect(isStale(client, ["getTickets"])).toBe(true));
+      await vi.waitFor(() => expect(isStale(client, ["getTicketsByProject", "p-1"])).toBe(true));
     });
   });
 });

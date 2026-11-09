@@ -10,7 +10,6 @@ import {
   useCreateTicket,
   useFetchTicket,
   useFetchTicketIdByKey,
-  useFetchTickets,
   useFetchTicketsByDoc,
   useFetchTicketsByProject,
   useRemoveLabel,
@@ -66,11 +65,11 @@ beforeEach(() => {
 });
 
 describe("ticket reads", () => {
-  it("loads the list and a single ticket", async () => {
+  it("loads a project's list without bodies and a single ticket", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [ticket] });
-    const list = renderHook(() => useFetchTickets(), { wrapper });
+    const list = renderHook(() => useFetchTicketsByProject("p-1"), { wrapper });
     await waitFor(() => expect(list.result.current.data).toEqual([ticket]));
-    expect(api.get).toHaveBeenCalledWith("/api/tickets", { params: { without: "body" } });
+    expect(api.get).toHaveBeenCalledWith("/api/tickets", { params: { project_id: "p-1", without: "body" } });
 
     vi.mocked(api.get).mockResolvedValue({ data: ticket });
     const one = renderHook(() => useFetchTicket("t-1"), { wrapper });
@@ -188,7 +187,7 @@ describe.each([
     const saved = { ...ticket, title: "New title", status: TicketStatus.Done, updated_at: "2026-08-02T12:00:05Z" };
     vi.mocked(api.patch).mockResolvedValue({ data: saved });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const views = [["getTickets"], ["getTicketsByDoc", "doc-1"], ["getTicketsByProject", "p-1"]];
+    const views = [["getTicketsByDoc", "doc-1"], ["getTicketsByProject", "p-1"]];
     for (const key of views) client.setQueryData(key, [ticket]);
     client.setQueryData(["getTicket", "t-1"], ticket);
     await save(({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>);
@@ -202,13 +201,13 @@ describe("useUpdateTicketPosition", () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, position: 3 } });
     vi.mocked(toast.success).mockClear();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(["getTickets"], [ticket]);
+    client.setQueryData(["getTicketsByProject", "p-1"], [ticket]);
     const { result } = renderHook(() => useUpdateTicketPosition(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ id: "t-1", position: 3 });
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/position", { position: 3 });
-    expect(client.getQueryData<{ position: number }[]>(["getTickets"])?.[0]?.position).toBe(3);
+    expect(client.getQueryData<{ position: number }[]>(["getTicketsByProject", "p-1"])?.[0]?.position).toBe(3);
     expect(toast.success).not.toHaveBeenCalled();
   });
 });
@@ -252,14 +251,14 @@ describe("the ticket follower", () => {
   });
 
   it("refetches the lists holding a moved ticket when its project's list is not loaded", async () => {
-    const client = seeded([[["getTickets"], [inColumn("t-1", "st-1")]]]);
+    const client = seeded([[["getTicketsByDoc", "doc-1"], [{ ...inColumn("t-1", "st-1"), doc_id: "doc-1" }]]]);
     await followFrame(ticketFollower, "ticket.category_changed", { ticket_id: "t-1", category_id: "cat-b", project_id: "p-1" }, client);
-    expect(isStale(client, ["getTickets"])).toBe(true);
+    expect(isStale(client, ["getTicketsByDoc", "doc-1"])).toBe(true);
   });
 
   it("refetches a ticket and its branches once its run ends, and nothing for a run still going or on a doc", async () => {
     const client = seeded([
-      [["getTickets"], [inColumn("t-9", "st-1")]],
+      [["getTicketsByProject", "p-1"], [inColumn("t-9", "st-1")]],
       [["getTicket", "t-9"], inColumn("t-9", "st-1")],
       [["getTicketLinks", "t-9"], { prs: [], branches: [] }],
     ]);
@@ -269,7 +268,7 @@ describe("the ticket follower", () => {
     expect(isStale(client, ["getTicket", "t-9"])).toBe(false);
 
     await followFrame(ticketFollower, "play.run", { ...run, state: "done" }, client);
-    expect([["getTickets"], ["getTicket", "t-9"], ["getTicketLinks", "t-9"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
+    expect([["getTicketsByProject", "p-1"], ["getTicket", "t-9"], ["getTicketLinks", "t-9"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
   });
 });
 

@@ -71,7 +71,7 @@ beforeEach(() => {
       };
     }
     if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BE" }] };
-    if (url === "/api/tickets") return { data: [{ id: "t-2", project_id: "p-1", number: 3 }] };
+    if (url === "/api/tickets/t-2") return { data: { id: "t-2", project_id: "p-1", number: 3 } };
     if (url === "/api/docs") return { data: [{ id: "d-1", title: "Migration plan" }] };
     return { data: versions[url] };
   });

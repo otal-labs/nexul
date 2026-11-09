@@ -4,14 +4,12 @@ import { getBlockersKey, getTicketLinkSetKey, linkedTickets } from "@/hooks/Tick
 import type { Ticket } from "@/models/Ticket";
 import type { BlockersByTicket, TicketLinkSet } from "@/models/TicketLink";
 
-export const getTicketsKey = "getTickets";
 export const getTicketKey = "getTicket";
 export const getTicketsByDocKey = "getTicketsByDoc";
 export const getTicketsByProjectKey = "getTicketsByProject";
 
-// The three list views and which tickets each holds; the key's second element is the doc or project it filters on.
+// The two list views and which tickets each holds; the key's second element is the doc or project it filters on.
 const listViews: { key: string; holds: (ticket: Ticket, param: unknown) => boolean }[] = [
-  { key: getTicketsKey, holds: () => true },
   { key: getTicketsByDocKey, holds: (ticket, docId) => ticket.doc_id === docId },
   { key: getTicketsByProjectKey, holds: (ticket, projectId) => ticket.project_id === projectId },
 ];

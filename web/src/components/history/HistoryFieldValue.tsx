@@ -4,7 +4,7 @@ import { PersonAvatar } from "@/components/PersonAvatar";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useFetchDocs } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useFetchTickets } from "@/hooks/TicketHooks";
+import { useFetchTicket } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
 import { dayLabel } from "@/utils/HistoryChangeUtility";
 
@@ -25,9 +25,8 @@ const HistoryPersonValue = ({ login, avatar }: { login: string; avatar: boolean 
 
 // The ticket an id names, by the key the board shows; one the viewer can't list, or that was deleted, reads neutrally.
 const HistoryTicketValue = ({ id }: { id: string }) => {
-  const { data: tickets } = useFetchTickets();
+  const { data: ticket } = useFetchTicket(id);
   const { data: projects } = useFetchProjects();
-  const ticket = tickets?.find((t) => t.id === id);
   const prefix = projects?.find((p) => p.id === ticket?.project_id)?.prefix;
   const key = ticket && prefix && `${prefix}-${ticket.number}`;
   return <span className={cn("min-w-0 truncate", key && "font-mono")}>{key || "Another ticket"}</span>;

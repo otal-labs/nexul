@@ -7,7 +7,7 @@ import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { TicketPickerList } from "@/components/ticket/TicketPickerList";
 import { pillTriggerClass } from "@/components/ticket/ticketFormPillStyles";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useFetchTickets } from "@/hooks/TicketHooks";
+import { useFetchTicket } from "@/hooks/TicketHooks";
 import type { SaveTicketFormData } from "@/models/Ticket";
 
 interface FoundInPillProps {
@@ -17,12 +17,11 @@ interface FoundInPillProps {
 // The bug's origin: a picked ticket, or, where allowed, "origin unknown" recorded instead of a guessed link.
 export const FoundInPill = ({ allowUnknown }: FoundInPillProps) => {
   const { watch, setValue, formState } = useFormDialogContext<SaveTicketFormData>();
-  const { data: tickets } = useFetchTickets();
   const { data: projects } = useFetchProjects();
   const [open, setOpen] = useState(false);
   const originId = watch("origin_id") ?? "";
   const unknown = watch("origin_unknown") === true;
-  const origin = (tickets ?? []).find((t) => t.id === originId);
+  const { data: origin } = useFetchTicket(originId || undefined);
   const prefix = (projects ?? []).find((p) => p.id === origin?.project_id)?.prefix;
   const label = origin ? `Found in ${prefix ? `${prefix}-${origin.number}` : origin.title}` : "Found in…";
   const error = formState.errors.origin_id?.message as string | undefined;
@@ -39,6 +38,7 @@ export const FoundInPill = ({ allowUnknown }: FoundInPillProps) => {
           </PopoverTrigger>
           <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-1.5">
             <TicketPickerList
+              projectId={watch("project_id")}
               excludeId=""
               onSelect={(id) => {
                 setValue("origin_id", id, { shouldValidate: true });

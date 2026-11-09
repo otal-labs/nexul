@@ -55,6 +55,7 @@ const mockApi = (set: TicketLinkSet) => {
       return { data: [{ id: "tt-task", name: "task", body_template: "" }, { id: "tt-bug", name: "Bug", body_template: "## Steps" }] };
     }
     if (url === "/api/tickets") return { data: [{ id: "t-1", project_id: "p-1", number: 1, title: "frontend /books" }] };
+    if (url === "/api/tickets/t-1") return { data: { id: "t-1", project_id: "p-1", number: 1, title: "frontend /books" } };
     if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS", name: "Books" }] };
     return { data: [] };
   }));

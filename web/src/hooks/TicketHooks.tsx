@@ -8,7 +8,6 @@ import {
   getTicketKey,
   getTicketsByDocKey,
   getTicketsByProjectKey,
-  getTicketsKey,
   statusRemoved,
   ticketCategoryMoved,
   ticketChanged,
@@ -36,13 +35,6 @@ import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTicketLinksKey = "getTicketLinks";
 const getTicketIdByKeyKey = "getTicketIdByKey";
-
-// The board and pickers show titles only, so the lists leave bodies out; a ticket's page reads its own.
-export const useFetchTickets = () =>
-  useQuery({
-    queryKey: [getTicketsKey],
-    queryFn: async () => (await api.get<Ticket[]>("/api/tickets", { params: { without: "body" } })).data,
-  });
 
 // Shared by the ticket page and the hover prefetch of whatever opens it.
 export const ticketQuery = (id: string | undefined) =>
@@ -75,6 +67,7 @@ export const useFetchTicketsByDoc = (docId: string | undefined) =>
     enabled: !!docId,
   });
 
+// The board and pickers show titles only, so a project's list leaves bodies out; a ticket's page reads its own.
 export const useFetchTicketsByProject = (projectId: string | undefined) =>
   useQuery({
     queryKey: [getTicketsByProjectKey, projectId],
