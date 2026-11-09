@@ -129,17 +129,26 @@ func (b *Bus) publish(ctx context.Context, ev eventbus.Event) error {
 	return nil
 }
 
+// SubscribeOption tunes one subscription.
+type SubscribeOption func(*subscribeConfig)
+
+type subscribeConfig struct{ skipDedupe bool }
+
+// WithoutDedupe drops the Seen/Record writes for a handler a redelivery cannot harm: it has no durable side effect,
+// or a unique constraint already makes its write a no-op. Never for a handler that sends, charges or appends.
+func WithoutDedupe() SubscribeOption { return func(c *subscribeConfig) { c.skipDedupe = true } }
+
 // Subscribe registers a fan-out handler for topic; use SubscribeWithConsumer for an explicit dedupe identity.
 func (b *Bus) Subscribe(ctx context.Context, topic string, h eventbus.Handler) error {
-	return b.subscribe(ctx, topic, "", h)
+	return b.subscribe(ctx, topic, "", h, nil)
 }
 
 // SubscribeWithConsumer scopes the dedupe middleware to consumer; the label must be stable across restarts.
-func (b *Bus) SubscribeWithConsumer(ctx context.Context, consumer, topic string, h eventbus.Handler) error {
-	return b.subscribe(ctx, topic, consumer, h)
+func (b *Bus) SubscribeWithConsumer(ctx context.Context, consumer, topic string, h eventbus.Handler, opts ...SubscribeOption) error {
+	return b.subscribe(ctx, topic, consumer, h, opts)
 }
 
-func (b *Bus) subscribe(ctx context.Context, topic, consumer string, h eventbus.Handler) error {
+func (b *Bus) subscribe(ctx context.Context, topic, consumer string, h eventbus.Handler, opts []SubscribeOption) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
@@ -148,7 +157,11 @@ func (b *Bus) subscribe(ctx context.Context, topic, consumer string, h eventbus.
 	if consumer == "" {
 		consumer = topic + "#" + strconv.Itoa(len(b.topics[topic]))
 	}
-	s := b.addSubscriber(topic, consumer, h)
+	var cfg subscribeConfig
+	for _, o := range opts {
+		o(&cfg)
+	}
+	s := b.addSubscriber(topic, consumer, h, cfg)
 	b.topics[topic] = append(b.topics[topic], s)
 	go s.run()
 	return nil
@@ -188,24 +201,24 @@ func (b *Bus) Close() error {
 }
 
 // addSubscriber builds the subscriber's own chain; a shared dedupe scope would make the first to run skip the rest.
-func (b *Bus) addSubscriber(topic, consumer string, h eventbus.Handler) *subscriber {
+func (b *Bus) addSubscriber(topic, consumer string, h eventbus.Handler, cfg subscribeConfig) *subscriber {
 	b.wg.Add(1)
 	return &subscriber{
 		topic: topic,
 		ch:    make(chan eventbus.Event, defaultChannelBuffer),
 		stop:  make(chan struct{}),
-		chain: b.buildChain(h, consumer),
+		chain: b.buildChain(h, consumer, cfg),
 		bus:   b,
 	}
 }
 
-func (b *Bus) buildChain(h eventbus.Handler, consumer string) eventbus.Handler {
+func (b *Bus) buildChain(h eventbus.Handler, consumer string, cfg subscribeConfig) eventbus.Handler {
 	mw := make([]eventbus.Middleware, 0, 4)
 	if b.dlStore != nil {
 		mw = append(mw, NewDeadLetter(b.dlStore, b.log))
 	}
 	mw = append(mw, NewRetry(RetryConfig{MaxAttempts: b.retryMax, Backoff: b.backoff}))
-	if b.dedupeStore != nil {
+	if b.dedupeStore != nil && !cfg.skipDedupe {
 		mw = append(mw, NewDedupe(processed.Scope(b.dedupeStore, consumer)))
 	}
 	mw = append(mw, Recover())

@@ -296,3 +296,40 @@ func TestBus_Close_TimesOutAndCancelsInFlight(t *testing.T) {
 	err := bus.Close()
 	require.ErrorIs(t, err, eventbus.ErrDrainTimeout)
 }
+
+// TestWithoutDedupe_WritesNoProcessedRow: a subscriber that opts out leaves processed_events alone, one that does not
+// still records each event after its handler returns.
+func TestWithoutDedupe_WritesNoProcessedRow(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	bus := New(Options{Logger: testutil.DiscardLogger(), DedupeStore: st.ProcessedEvents})
+	defer func() { require.NoError(t, bus.Close()) }()
+
+	handled := make(chan string, 4)
+	h := func(ctx context.Context, ev eventbus.Event) error { handled <- ev.ID; return nil }
+	require.NoError(t, bus.SubscribeWithConsumer(ctx, "skips", "opt.t", h, WithoutDedupe()))
+	require.NoError(t, bus.SubscribeWithConsumer(ctx, "keeps", "opt.t", h))
+
+	// A subscriber runs events one at a time, so once the second is handled the first's chain, Record included, is done.
+	for _, id := range []string{"e1", "e2"} {
+		require.NoError(t, bus.PublishWithID(ctx, id, "opt.t", map[string]any{}))
+	}
+	for range 4 {
+		select {
+		case <-handled:
+		case <-time.After(2 * time.Second):
+			t.Fatal("event not handled")
+		}
+	}
+	require.Eventually(t, func() bool {
+		ok, err := st.ProcessedEvents.Seen(ctx, "keeps:e2")
+		return err == nil && ok
+	}, 2*time.Second, 5*time.Millisecond)
+
+	skipped, err := st.ProcessedEvents.Seen(ctx, "skips:e1")
+	require.NoError(t, err)
+	assert.False(t, skipped, "an opted-out subscriber must not record processed events")
+	skipped, err = st.ProcessedEvents.Seen(ctx, "skips:e2")
+	require.NoError(t, err)
+	assert.False(t, skipped)
+}
