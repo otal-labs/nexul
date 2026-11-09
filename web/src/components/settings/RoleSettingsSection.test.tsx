@@ -250,6 +250,7 @@ describe("RoleSettingsSection", () => {
       "See",
     ]);
     expect(screen.getByRole("checkbox", { name: "Run plays" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Run plays" }).className).not.toMatch(/opacity/);
     expect(screen.getByTitle("Needs See first")).toHaveTextContent("Run");
     expect(screen.getByTitle("Needs Read first")).toHaveTextContent("Clone");
   });
@@ -337,6 +338,7 @@ describe("RoleSettingsSection", () => {
     expect(description).toHaveValue("x".repeat(140));
     expect(screen.getByText("140 / 140")).toBeInTheDocument();
     await user.clear(description);
+    expect(screen.queryByText("0 / 140")).not.toBeInTheDocument();
     await user.type(description, " Reviews the docs. ");
     expect(screen.getByText("1 change")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));

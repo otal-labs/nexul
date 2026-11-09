@@ -149,7 +149,12 @@ class is drift.
 
 An unchecked checkbox or radio draws its edge in `muted-foreground`, which
 holds 3:1 on every palette; `input` is a field's border and too faint for a
-control whose edge is all there is of it.
+control whose edge is all there is of it. For the same reason an off switch's
+track in light is `muted-foreground`, not a share of ink: ink at 30% sat near
+2:1 and read as disabled (`themeContrast.test.ts` holds it at 3:1). A disabled
+checkbox keeps its box at full strength on a `muted` fill, its tick on
+`muted-foreground` when checked, never a lower opacity, and its row says why
+on hover.
 
 The current row. Every list that marks the current item (the sidebar and its
 channels, the section navs, the Docs, Memories, Plays and Inbox list panes, the
