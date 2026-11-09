@@ -26,6 +26,10 @@ interface CrumbItemProps {
   last: boolean;
 }
 
+// A link stays muted and the crumb you are on is ink, so the one you can click reads apart from it.
+export const crumbLinkClass = "truncate text-muted-foreground underline-offset-2 transition-colors duration-150 ease-standard hover:text-foreground hover:underline";
+export const currentCrumbClass = "truncate text-foreground";
+
 // A middle crumb is cut to 40 characters in text, not by the browser, which drops a space before its ellipsis and leaves a gap.
 const CRUMB_CHARS = 40;
 // A crumb's label can still be loading (a workspace crumb before its name and slug arrive).
@@ -37,11 +41,11 @@ const CrumbItem = ({ crumb, first, last }: CrumbItemProps) => (
     {!first && <BreadcrumbSeparator className="[&>svg]:size-3" />}
     <BreadcrumbItem className={cn("min-w-0", !last && "max-w-[40ch] min-w-8 shrink-[100]")} title={crumb.label}>
       {crumb.to && (
-        <BreadcrumbLink asChild className="truncate transition-colors duration-150 ease-standard">
+        <BreadcrumbLink asChild className={crumbLinkClass}>
           <Link to={crumb.to}>{crumbText(crumb.label, last)}</Link>
         </BreadcrumbLink>
       )}
-      {!crumb.to && <BreadcrumbPage className="truncate text-muted-foreground">{crumbText(crumb.label, last)}</BreadcrumbPage>}
+      {!crumb.to && <BreadcrumbPage className={currentCrumbClass}>{crumbText(crumb.label, last)}</BreadcrumbPage>}
     </BreadcrumbItem>
   </>
 );

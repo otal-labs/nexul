@@ -805,7 +805,7 @@ the reference; every list page converges on this shape. A filter popover is a
 below its trigger.
 
 Page header. Every page opens with `PageHeader`: a breadcrumb of the
-ancestors (`PageBreadcrumb`, the UI sans at `text-xs`, muted, each crumb a link, since a crumb is a name, not an id; the
+ancestors (`PageBreadcrumb`, the UI sans at `text-xs`, each ancestor a muted link that turns ink and underlined under the pointer, a crumb that is not a link (a folder) in ink, since a crumb is a name, not an id; every palette keeps the two a 1.5:1 step apart; the
 middle crumbs shrink and truncate first so the last stays readable), then the title left-aligned in the display face at 28px
 (`pageTitleClassFor`, which steps a long title down to 24 or 20px; never
 centered, an editable title takes the same class, and `ClampedTitle` holds
