@@ -140,6 +140,7 @@ describe("dispatch", () => {
     ["ticket.status_changed", { ticket: { id: "rec-1" }, from: "a", to: "b" }, [getTicketKey]],
     ["ticket.updated", { ticket: { id: "rec-1" } }, [getTicketKey]],
     ["ticket.deleted", { id: "rec-1", title: "Gone" }, [getTicketKey]],
+    ["ticket.project_changed", { ticket_id: "rec-1", project_id: "p-2", previous_project_id: "p-1" }, [getTicketKey]],
     ["meeting.updated", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
     ["meeting.cancelled", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
     ["meeting.restored", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
@@ -222,6 +223,17 @@ describe("dispatch", () => {
     expect(client.getQueryState([key, other])?.isInvalidated).toBe(false);
   });
 
+  test("ticket.project_changed refetches the board the ticket left and the one it joined, and no other project's", () => {
+    const client = new QueryClient();
+    ["p-1", "p-2", "p-3"].forEach((projectId) => client.setQueryData([getTicketsByProjectKey, projectId], []));
+
+    dispatch(client)({ topic: "ticket.project_changed", type: "event", payload: { ticket_id: "t-1", project_id: "p-2", previous_project_id: "p-1" } });
+
+    expect(client.getQueryState([getTicketsByProjectKey, "p-1"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getTicketsByProjectKey, "p-2"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getTicketsByProjectKey, "p-3"])?.isInvalidated).toBe(false);
+  });
+
   test.each([
     ["a channel refetches only its workspace's list", "channel", false],
     ["a DM refetches every workspace's list, since it shows wherever all its people belong", "dm", true],
@@ -252,7 +264,7 @@ describe("dispatch", () => {
     expect(client.getQueryState([getChatUnreadKey, "ws-2"])?.isInvalidated).toBe(true);
   });
 
-  test.each(["ticket.created", "ticket.updated", "ticket.deleted"])("%s refetches the agenda's due tickets, which a ticket frame can't tie to a workspace", (topic) => {
+  test.each(["ticket.created", "ticket.updated", "ticket.deleted", "ticket.project_changed"])("%s refetches the agenda's due tickets, which a ticket frame can't tie to a workspace", (topic) => {
     const client = new QueryClient();
     client.setQueryData([getDueTicketsKey, "ws-1", "2026-10-24", "2026-11-22"], { items: [] });
 

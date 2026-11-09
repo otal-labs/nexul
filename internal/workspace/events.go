@@ -42,6 +42,9 @@ const (
 // TopicTicketCategoryChanged re-renders the board's swimlane via WS push.
 const TopicTicketCategoryChanged = "ticket.category_changed"
 
+// TopicTicketProjectChanged names a ticket that moved between projects, so the board it left and the board it joined both refresh.
+const TopicTicketProjectChanged = "ticket.project_changed"
+
 // TopicProjectSetupChanged flips the project's sidebar between Continue setup and its pages (ADR 0143).
 const TopicProjectSetupChanged = "project.setup_changed"
 
@@ -60,6 +63,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicStatusUpdated, Payload: StatusEvent{}},
 		{Name: TopicStatusDeleted, Payload: StatusEvent{}},
 		{Name: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{}},
+		{Name: TopicTicketProjectChanged, Payload: TicketProjectChangedEvent{}},
 		{Name: TopicProjectSetupChanged, Payload: ProjectSetupChangedEvent{}},
 	}
 }
@@ -95,6 +99,13 @@ type TicketCategoryChangedEvent struct {
 	TicketID   string `json:"ticket_id"`
 	CategoryID string `json:"category_id"`
 	ProjectID  string `json:"project_id,omitempty" jsonschema:"The ticket's project."`
+}
+
+// TicketProjectChangedEvent is the payload for ticket.project_changed.
+type TicketProjectChangedEvent struct {
+	TicketID          string `json:"ticket_id"`
+	ProjectID         string `json:"project_id" jsonschema:"The project the ticket moved into."`
+	PreviousProjectID string `json:"previous_project_id" jsonschema:"The project the ticket moved out of."`
 }
 
 // NotificationCreatedEvent names the new notices' recipients and place; the live socket delivers it to the recipients alone.

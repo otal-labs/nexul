@@ -84,6 +84,7 @@ type fakeRepo struct {
 	repoLookupErr error
 	moveErr       error
 	saved         []eventbus.OutboxEvent
+	movedEvents   []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -309,7 +310,7 @@ func (f *fakeRepo) ListRepos(_ context.Context, projectID string) ([]RepoRef, er
 	return append([]RepoRef(nil), f.repos[projectID]...), nil
 }
 
-func (f *fakeRepo) MoveTicket(_ context.Context, ticketID, projectID string) error {
+func (f *fakeRepo) MoveTicket(_ context.Context, ticketID, projectID string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.moveErr != nil {
@@ -319,6 +320,7 @@ func (f *fakeRepo) MoveTicket(_ context.Context, ticketID, projectID string) err
 		return apperrs.ErrNotFound
 	}
 	f.ticketPro[ticketID] = projectID
+	f.movedEvents = append(f.movedEvents, evts...)
 	return nil
 }
 
@@ -1043,6 +1045,16 @@ func TestMoveTicket(t *testing.T) {
 		repo.ticketPro["t-1"] = "old"
 		require.NoError(t, s.MoveTicket(context.Background(), "t-1", "p-1"))
 		assert.Equal(t, "p-1", repo.ticketPro["t-1"])
+	})
+	t.Run("publishes the move with the project it left and the one it joined, in the move's write", func(t *testing.T) {
+		s, repo, _ := newOwnerRepo(t, true)
+		s.SetTicketProjects(fakeTicketProjects{"t-1": "p-old"})
+		repo.projects["p-new"] = &Project{ID: "p-new", Name: "B"}
+		repo.ticketPro["t-1"] = "p-old"
+		require.NoError(t, s.MoveTicket(context.Background(), "t-1", "p-new"))
+		require.Len(t, repo.movedEvents, 1)
+		assert.Equal(t, TopicTicketProjectChanged, repo.movedEvents[0].Topic)
+		assert.Equal(t, TicketProjectChangedEvent{TicketID: "t-1", ProjectID: "p-new", PreviousProjectID: "p-old"}, repo.movedEvents[0].Payload)
 	})
 }
 

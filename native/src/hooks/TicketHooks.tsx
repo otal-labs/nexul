@@ -24,6 +24,12 @@ const ticketsByProjectQuery = defineQuery({
     "ticket.due_date_changed": { key: (p) => p.ticket.project_id },
     "ticket.finished": { key: (p) => p.ticket.project_id },
     "ticket.deleted": { key: (p) => p.project_id },
+    "ticket.project_changed": {
+      patch: (client, p) => {
+        void client.invalidateQueries({ queryKey: [getTicketsByProjectKey, p.project_id] });
+        void client.invalidateQueries({ queryKey: [getTicketsByProjectKey, p.previous_project_id] });
+      },
+    },
   },
 });
 
@@ -43,6 +49,7 @@ const ticketQuery = defineQuery({
     "ticket.due_date_changed": { record: (p) => p.ticket.id },
     "ticket.finished": { record: (p) => p.ticket.id },
     "ticket.deleted": { record: (p) => p.id },
+    "ticket.project_changed": { record: (p) => p.ticket_id },
   },
 });
 

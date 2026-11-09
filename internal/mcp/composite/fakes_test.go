@@ -734,7 +734,7 @@ func (r projectRepo) ListRepos(_ context.Context, projectID string) ([]workspace
 	return r.w.repos[projectID], nil
 }
 
-func (r projectRepo) MoveTicket(_ context.Context, ticketID, projectID string) error {
+func (r projectRepo) MoveTicket(_ context.Context, ticketID, projectID string, _ ...eventbus.OutboxEvent) error {
 	return ticketRepo{w: r.w}.edit(ticketID, func(t *tickets.Ticket) { t.ProjectID = projectID })
 }
 

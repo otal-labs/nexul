@@ -103,6 +103,15 @@ export const ticketCategoryMoved = (client: QueryClient, id: string, categoryId:
   return ticketChanged(client, { ...ticket, category_id: categoryId, position });
 };
 
+// A move changes the key the ticket shows under and the boards that hold it, so the project it left, the one it joined,
+// every other list holding it and its link views refetch for the server's copy.
+export const ticketProjectMoved = (client: QueryClient, id: string, projectId: string, previousProjectId: string): Promise<void> => {
+  const holders = cachedLists(client).filter(({ list }) => list?.some((t) => t.id === id)).map(({ key }) => key);
+  const keys = [[getTicketKey, id], [getTicketsByProjectKey, projectId], [getTicketsByProjectKey, previousProjectId], ...holders];
+  const unique = new Map(keys.map((key) => [JSON.stringify(key), key]));
+  return settle([...[...unique.values()].map((key) => refetch(client, key)), ...refetchMentions(client, id, false)]);
+};
+
 // A ticket read another way (by its key) becomes its own view, so the page that opens it by id reads nothing again.
 export const ticketFetched = (client: QueryClient, ticket: Ticket) => client.setQueryData<Ticket>([getTicketKey, ticket.id], ticket);
 

@@ -366,7 +366,7 @@ func (r *ProjectsRepo) GetRepoByFullName(ctx context.Context, owner, name string
 }
 
 // MoveTicket updates a ticket's project in place; the FK guarantees only an existing project can be referenced.
-func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID string) error {
+func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).MoveTicketProject(ctx, sqlcgen.MoveTicketProjectParams{
 			ProjectID: nullString(projectID), ID: ticketID,
@@ -377,7 +377,7 @@ func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID strin
 		if n == 0 {
 			return fmt.Errorf("move ticket %s to project %s: %w", ticketID, projectID, apperrs.ErrNotFound)
 		}
-		return nil
+		return enqueueWorkspaceOutbox(ctx, tx, evts)
 	})
 }
 

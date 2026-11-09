@@ -48,7 +48,7 @@ type Repo interface {
 	ListRepos(ctx context.Context, projectID string) ([]RepoRef, error)
 	// GetRepoByFullName looks up a RepoRef by owner/name regardless of project.
 	GetRepoByFullName(ctx context.Context, owner, name string) (RepoRef, error)
-	MoveTicket(ctx context.Context, ticketID, projectID string) error
+	MoveTicket(ctx context.Context, ticketID, projectID string, evts ...eventbus.OutboxEvent) error
 }
 
 // NotificationRepo is the consumer-side persistence contract for the workspace notifications capability.
