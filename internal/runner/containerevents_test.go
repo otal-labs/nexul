@@ -24,6 +24,8 @@ type fakeHostDocker struct {
 	streamErr error
 	// endingRuns is how many runs end with streamErr before one stays up.
 	endingRuns int
+	// up, when set, is closed as the first run that stays up starts.
+	up         chan struct{}
 	ps         string
 	inspect    func(ids []string) string
 	psErr      error
@@ -48,6 +50,9 @@ func (d *fakeHostDocker) stream(ctx context.Context, stdout, _ io.Writer, name s
 	_, _ = io.WriteString(stdout, d.streamOut)
 	if run <= d.endingRuns {
 		return d.streamErr
+	}
+	if d.up != nil && run == d.endingRuns+1 {
+		close(d.up)
 	}
 	<-ctx.Done()
 	return ctx.Err()
@@ -201,7 +206,7 @@ func filterValues(argv []string, prefix string) []string {
 
 func TestContainerWatch_RestartsTheStreamWithBackoffAndResnapshotsEachTime(t *testing.T) {
 	docker := &fakeHostDocker{
-		streamErr: errors.New("exit status 1"), endingRuns: 3,
+		streamErr: errors.New("exit status 1"), endingRuns: 3, up: make(chan struct{}),
 		ps:      "id1\n",
 		inspect: func([]string) string { return inspectLine("api", "running", 0, false, "", nil) },
 	}
@@ -210,6 +215,12 @@ func TestContainerWatch_RestartsTheStreamWithBackoffAndResnapshotsEachTime(t *te
 	for range 4 {
 		f := nextFrame(t, frames)
 		assert.Equal(t, FrameContainerStates, f.Type, "every (re)start of the stream reports what the host holds")
+	}
+	// The snapshot goes out beside the stream, so the fourth frame can land before the fourth run starts.
+	select {
+	case <-docker.up:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the fourth run never started")
 	}
 	assert.Equal(t, 4, docker.streamRuns(), "three ended runs were restarted, the fourth stays up")
 }
