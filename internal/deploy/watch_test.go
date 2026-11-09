@@ -227,9 +227,4 @@ func TestWatchRoutes(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, send(h, http.MethodGet, "/api/stacks/svc-1").Code)
 	})
-	t.Run("the deprecated services alias has no watching routes", func(t *testing.T) {
-		h, _ := routes(t)
-
-		assert.Equal(t, http.StatusNotFound, send(h, http.MethodPut, "/api/services/svc-1/watchers/me").Code)
-	})
 }

@@ -125,15 +125,13 @@ func TestIntegration_ContainerLogs(t *testing.T) {
 		for scope, want := range map[integrations.Scope]int{"stacks:read": http.StatusForbidden, "stacks:logs": http.StatusOK} {
 			token, _, _, err := f.svc.integrationsSvc.Install(as(uOwner), uOwner, "logs-"+string(scope), integrations.TrustCommunity, "https://example.com/hook", []integrations.Scope{scope})
 			require.NoError(t, err)
-			for _, path := range []string{"/api/stacks/stack-shop/services/web/logs", "/api/services/stack-shop/services/web/logs"} {
-				req := httptest.NewRequest(http.MethodGet, path, nil)
-				req.Header.Set("Authorization", "Bearer "+token)
-				rec := httptest.NewRecorder()
-				gateway.ServeHTTP(rec, req)
-				assert.Equal(t, want, rec.Code, "%s on %s", scope, path)
-				if rec.Code == http.StatusOK {
-					<-fake.requests
-				}
+			req := httptest.NewRequest(http.MethodGet, "/api/stacks/stack-shop/services/web/logs", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			rec := httptest.NewRecorder()
+			gateway.ServeHTTP(rec, req)
+			assert.Equal(t, want, rec.Code, "%s", scope)
+			if rec.Code == http.StatusOK {
+				<-fake.requests
 			}
 		}
 	})

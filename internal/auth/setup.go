@@ -56,7 +56,7 @@ var setupPassRoutes = func() *http.ServeMux {
 		"GET /api/connectors",
 		"/api/dns/",
 		"GET /api/machines",
-		"GET /api/services/{id}/deploys",
+		"GET /api/stacks/{id}/deploys",
 		"GET /api/deploys/{id}/log",
 	} {
 		mux.Handle(pattern, http.NotFoundHandler())

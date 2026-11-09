@@ -13,7 +13,7 @@ export const useFetchServices = (projectId?: string, enabled = true) =>
   useQuery({
     queryKey: [getServicesKey, projectId ?? "all"],
     queryFn: async () =>
-      (await api.get<ServiceDef[]>("/api/services", { params: projectId ? { project_id: projectId } : {} })).data,
+      (await api.get<ServiceDef[]>("/api/stacks", { params: projectId ? { project_id: projectId } : {} })).data,
     enabled,
   });
 
@@ -21,7 +21,7 @@ export const useFetchServices = (projectId?: string, enabled = true) =>
 export const useFetchServiceDeploys = (serviceId: string | undefined, pollMs?: number) =>
   useQuery({
     queryKey: [getServiceDeploysKey, serviceId],
-    queryFn: async () => (await api.get<Deploy[]>(`/api/services/${serviceId}/deploys`)).data,
+    queryFn: async () => (await api.get<Deploy[]>(`/api/stacks/${serviceId}/deploys`)).data,
     enabled: !!serviceId,
     refetchInterval: (query) => {
       if (!pollMs) return false;

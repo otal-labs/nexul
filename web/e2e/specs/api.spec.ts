@@ -69,7 +69,7 @@ describe("api (HTTP gateway)", () => {
   });
 
   it("services: create → update → deploy enqueue → cancel → delete", async () => {
-    const svc = await api<{ id: string }>("/api/services", {
+    const svc = await api<{ id: string }>("/api/stacks", {
       method: "POST",
       ...json({
         project_id: E2E_PROJECT_ID,
@@ -89,7 +89,7 @@ describe("api (HTTP gateway)", () => {
     });
     expect(dep.status).toBe(201);
     expect((await api(`/api/deploys/${dep.body!.id}/cancel`, { method: "POST" })).status).toBe(202);
-    expect((await api(`/api/services/${id}`, { method: "DELETE" })).status).toBe(200);
+    expect((await api(`/api/stacks/${id}`, { method: "DELETE" })).status).toBe(200);
   });
 
   it("automations: create → config → enable → mint/revoke token → delete", async () => {

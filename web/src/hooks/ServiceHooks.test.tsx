@@ -39,7 +39,7 @@ describe("ServiceHooks", () => {
     vi.mocked(api.get).mockResolvedValue({ data: [service] });
     const { result } = renderHook(() => useFetchServices("proj-1"), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual([service]));
-    expect(api.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "proj-1" } });
+    expect(api.get).toHaveBeenCalledWith("/api/stacks", { params: { project_id: "proj-1" } });
   });
 });
 

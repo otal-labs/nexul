@@ -566,7 +566,7 @@ describe("ProjectWizardPage", () => {
 
       expect(await screen.findByPlaceholderText("Search repositories…")).toBeInTheDocument();
       await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/projects/p-1/repos"));
-      await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "p-1" } }));
+      await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/stacks", { params: { project_id: "p-1" } }));
       expect(mocks.post).not.toHaveBeenCalled();
       expect(screen.getByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
     });
@@ -653,7 +653,7 @@ describe("ProjectWizardPage", () => {
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/projects/p-1") return { data: { ...project, setup } };
         if (url === "/api/projects/p-1/repos") return { data: [portal] };
-        if (url === "/api/services") return { data: [staging] };
+        if (url === "/api/stacks") return { data: [staging] };
         return { data: [] };
       });
     });

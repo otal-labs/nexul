@@ -207,8 +207,7 @@ export const useCreateStack = () => {
   return useMutation({
     mutationFn: requires("stacks:write", async (input: CreateStackInput) => (await api.post<CreateStackResponse>("/api/stacks", input)).data),
     onSuccess: async () => {
-      // /api/services stays the wire alias for one release (internal/deploy/handler.go); the old list key
-      // still backs ProjectServices until that page moves to stacks.
+      // The older list key still backs ProjectServices until that page moves to stacks.
       await client.invalidateQueries({ queryKey: [getStacksKey] });
       toast.success("Stack created");
     },

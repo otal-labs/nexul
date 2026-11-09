@@ -169,8 +169,6 @@ func TestScopeAllows(t *testing.T) {
 		{"write scope does not cover delete", "DELETE", "/api/docs/abc123", []Scope{Scope("docs:write")}, false},
 		{"read-only cannot write", "POST", "/api/tickets", read, false},
 
-		{"alias: services routes to stacks", "GET", "/api/services/svc-1", []Scope{Scope("stacks:read")}, true},
-		{"alias: services denied without stacks scope", "GET", "/api/services/svc-1", []Scope{ScopeDeploysRead}, false},
 		{"alias: categories routes to projects", "GET", "/api/categories", []Scope{ScopeProjectsRead}, true},
 		{"alias: ticket-types routes to projects", "GET", "/api/ticket-types", []Scope{ScopeProjectsRead}, true},
 		{"alias: statuses routes to projects", "DELETE", "/api/statuses/1", []Scope{Scope("projects:delete")}, true},

@@ -9,7 +9,7 @@ const json = <T = unknown>(body: T) => ({ body: JSON.stringify(body) });
 
 describe("api depth (HTTP gateway)", () => {
   it("service hostnames: read surface works, write path fails closed without a provider", async () => {
-    const svc = await api<{ id: string }>("/api/services", {
+    const svc = await api<{ id: string }>("/api/stacks", {
       method: "POST",
       ...json({
         project_id: E2E_PROJECT_ID,
@@ -46,7 +46,7 @@ describe("api depth (HTTP gateway)", () => {
       });
       expect(set.status).toBe(503);
     } finally {
-      await api(`/api/services/${serviceId}`, { method: "DELETE" });
+      await api(`/api/stacks/${serviceId}`, { method: "DELETE" });
     }
   });
 
@@ -114,7 +114,7 @@ describe("api depth (HTTP gateway)", () => {
   });
 
   it("rollback fails with a not-found contract until a deploy exists", async () => {
-    const svc = await api<{ id: string }>("/api/services", {
+    const svc = await api<{ id: string }>("/api/stacks", {
       method: "POST",
       ...json({
         project_id: E2E_PROJECT_ID,
@@ -128,12 +128,12 @@ describe("api depth (HTTP gateway)", () => {
     expect(svc.status).toBe(201);
 
     try {
-      const rollback = await api<{ message?: string }>(`/api/services/${svc.body!.id}/rollback`, {
+      const rollback = await api<{ message?: string }>(`/api/stacks/${svc.body!.id}/rollback`, {
         method: "POST",
       });
       expect(rollback.status).toBe(404);
     } finally {
-      await api(`/api/services/${svc.body!.id}`, { method: "DELETE" });
+      await api(`/api/stacks/${svc.body!.id}`, { method: "DELETE" });
     }
   });
 

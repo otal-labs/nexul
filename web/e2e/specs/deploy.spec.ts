@@ -26,7 +26,7 @@ describe("deploy execution (real runner)", () => {
     "runs a deploy on the runner, serves it on the host, and rolls it back",
     async () => {
       const name = `e2e-deploy-${Date.now()}`;
-      const svc = await api<{ id: string }>("/api/services", {
+      const svc = await api<{ id: string }>("/api/stacks", {
         method: "POST",
         ...json({
           project_id: E2E_PROJECT_ID,
@@ -65,7 +65,7 @@ describe("deploy execution (real runner)", () => {
         expect(served).toBe(true);
 
         // Rollback enqueues a fresh deploy of the last healthy image and the runner runs it.
-        const rollback = await api<Deploy>(`/api/services/${serviceId}/rollback`, {
+        const rollback = await api<Deploy>(`/api/stacks/${serviceId}/rollback`, {
           method: "POST",
         });
         expect(rollback.status).toBe(201);
@@ -76,7 +76,7 @@ describe("deploy execution (real runner)", () => {
         expect(runners.status).toBe(200);
         expect(runners.body?.some((r) => r.name === "instance")).toBe(true);
       } finally {
-        await api(`/api/services/${serviceId}`, { method: "DELETE" });
+        await api(`/api/stacks/${serviceId}`, { method: "DELETE" });
       }
     },
     180_000,

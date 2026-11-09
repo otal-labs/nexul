@@ -121,7 +121,7 @@ describe("SetupDomainStep", () => {
         if (url === "/api/dns/zones") return { data: [{ id: "z1", name: "example.com", status: "active" }] };
         if (url === "/api/machines/deployable") return { data: [{ id: "m1", name: "instance" }] };
         if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "healthy" } };
-        if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-27" }] };
+        if (url === "/api/stacks/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-27" }] };
         return { data: [] };
       });
       mocks.post.mockImplementation(async (url: string) => {
@@ -184,7 +184,7 @@ describe("SetupDomainStep", () => {
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/setup/public-address") return { data: { ipv4: "203.0.113.10" } };
         if (url === "/api/dns/resolve") return { data: { addresses: answers } };
-        if (url === "/api/services/svc-9/deploys") return { data: [{ id: "d9", status: "healthy", created_at: "2026-09-27" }] };
+        if (url === "/api/stacks/svc-9/deploys") return { data: [{ id: "d9", status: "healthy", created_at: "2026-09-27" }] };
         return { data: [] };
       });
       mocks.post.mockResolvedValue({ data: { service_id: "svc-9" } });
