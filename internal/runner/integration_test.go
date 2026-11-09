@@ -21,7 +21,7 @@ func newIntegrationHandler(t *testing.T, bus Bus, repo *fakeRunnerRepo) (*Handle
 		Repo:              repo,
 		Machines:          repo.machines,
 		Logger:            testLogger(),
-		HeartbeatInterval: 100 * time.Millisecond,
+		HeartbeatInterval: time.Second,
 		MissedHeartbeats:  3,
 		WriteTimeout:      time.Second,
 	})
@@ -78,7 +78,7 @@ func startTestClient(t *testing.T, srvURL string, repo *fakeRunnerRepo, exec Exe
 		Name:              "integ",
 		Logger:            testLogger(),
 		Executor:          exec,
-		HeartbeatInterval: 20 * time.Millisecond,
+		HeartbeatInterval: time.Second,
 		ConnectTimeout:    time.Second,
 		BackoffBase:       5 * time.Millisecond,
 		BackoffMax:        50 * time.Millisecond,
@@ -144,7 +144,7 @@ func TestIntegration_EnvValuesReachRunnerWithoutTouchingBus(t *testing.T) {
 	}}
 	h := NewHandler(HandlerConfig{
 		Bus: bus, Repo: repo, Logger: testLogger(),
-		HeartbeatInterval: 100 * time.Millisecond, MissedHeartbeats: 3, WriteTimeout: time.Second,
+		HeartbeatInterval: time.Second, MissedHeartbeats: 3, WriteTimeout: time.Second,
 		Envs: envs,
 	})
 	srv := httptest.NewServer(h)

@@ -169,7 +169,7 @@ func startDiscoverTestClient(t *testing.T, srvURL string, repo *fakeRunnerRepo, 
 	client := NewClient(ClientConfig{
 		URL: srvURL, Credential: repo.enrolled("r-disc-"+machine, "disc-"+machine, machine), Name: "disc-" + machine,
 		Logger: testLogger(), Executor: exec,
-		HeartbeatInterval: 20 * time.Millisecond, ConnectTimeout: time.Second,
+		HeartbeatInterval: time.Second, ConnectTimeout: time.Second,
 		BackoffBase: 5 * time.Millisecond, BackoffMax: 50 * time.Millisecond,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
