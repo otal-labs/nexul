@@ -19,30 +19,12 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
-	"github.com/otal-labs/nexul/internal/botwebhook"
-	"github.com/otal-labs/nexul/internal/calendar"
-	"github.com/otal-labs/nexul/internal/chat"
-	"github.com/otal-labs/nexul/internal/deploy"
-	"github.com/otal-labs/nexul/internal/dns"
-	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/integrations"
-	"github.com/otal-labs/nexul/internal/memories"
-	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/version"
-	"github.com/otal-labs/nexul/internal/plays"
-	"github.com/otal-labs/nexul/internal/repository"
-	"github.com/otal-labs/nexul/internal/roles"
-	"github.com/otal-labs/nexul/internal/runner"
-	"github.com/otal-labs/nexul/internal/templates"
-	"github.com/otal-labs/nexul/internal/tenancy"
-	"github.com/otal-labs/nexul/internal/tickets"
-	"github.com/otal-labs/nexul/internal/voice"
-	"github.com/otal-labs/nexul/internal/welcome"
-	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 func main() {
@@ -221,145 +203,6 @@ func withAccessMemo(a *access.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r.WithContext(access.WithMemo(r.Context(), a.NewMemo())))
 	})
-}
-
-// livePushTopics are the bus topics the browser socket bridges onto. Append-only: new streams add topics here.
-var livePushTopics = []string{
-	docs.TopicCreated,
-	docs.TopicUpdated,
-	docs.TopicMoved,
-	docs.TopicDeleted,
-	docs.TopicFolderCreated,
-	docs.TopicFolderUpdated,
-	docs.TopicFolderDeleted,
-	docs.TopicWatchersChanged,
-	docs.TopicClarificationRoundStarted,
-	docs.TopicClarificationRoundPosted,
-	docs.TopicClarificationRoundEnded,
-	docs.TopicClarificationRoundAnswered,
-	docs.TopicClarificationAnswerSaved,
-	docs.TopicClarificationAnswerCleared,
-	docs.TopicClarificationAnythingElseSaved,
-	docs.TopicClarificationClosed,
-	runner.TopicRunnerConnected,
-	runner.TopicRunnerDisconnected,
-	runner.TopicMachineDeleted,
-	runner.TopicDeployBuildStarted,
-	runner.TopicDeployBuildProgress,
-	runner.TopicDeployBuildCompleted,
-	runner.TopicDeployDeployProgress,
-	runner.TopicDeployStatusChanged,
-	deploy.TopicDeployUpdated,
-	deploy.TopicStackCreated,
-	deploy.TopicStackUpdated,
-	deploy.TopicStackDeleted,
-	deploy.TopicContainerStopped,
-	deploy.TopicContainerRecovered,
-	deploy.TopicErrorRateCrossed,
-	deploy.TopicErrorRateRecovered,
-	dns.TopicRecordChanged,
-	dns.TopicTunnelChanged,
-	dns.TopicGatewayChanged,
-	dns.TopicExposureChanged,
-	repository.TopicInstallationAssigned,
-	repository.TopicInstallationUnassigned,
-	workspace.TopicNotificationCreated,
-	workspace.TopicCategoryCreated,
-	workspace.TopicCategoryUpdated,
-	workspace.TopicCategoryDeleted,
-	workspace.TopicTicketCategoryChanged,
-	tickets.TopicCreated,
-	tickets.TopicUpdated,
-	tickets.TopicStatusChanged,
-	tickets.TopicAssigneeChanged,
-	tickets.TopicDeveloperChanged,
-	tickets.TopicTesterChanged,
-	tickets.TopicDueDateChanged,
-	tickets.TopicFinished,
-	tickets.TopicDeleted,
-	tickets.TopicLinkCreated,
-	tickets.TopicLinkDeleted,
-	workspace.TopicTicketTypeCreated,
-	workspace.TopicTicketTypeUpdated,
-	workspace.TopicTicketTypeDeleted,
-	workspace.TopicStatusCreated,
-	workspace.TopicStatusUpdated,
-	workspace.TopicStatusDeleted,
-	workspace.TopicProjectSetupChanged,
-	chat.TopicConversationCreated,
-	chat.TopicConversationUpdated,
-	chat.TopicConversationDeleted,
-	chat.TopicConversationMembersChanged,
-	chat.TopicMessageCreated,
-	chat.TopicMessageUpdated,
-	chat.TopicMessageDeleted,
-	chat.TopicMessageReactionsChanged,
-	botwebhook.TopicCreated,
-	botwebhook.TopicUpdated,
-	botwebhook.TopicDeleted,
-	botwebhook.TopicRestored,
-	calendar.TopicMeetingCreated,
-	calendar.TopicMeetingUpdated,
-	calendar.TopicMeetingCancelled,
-	calendar.TopicMeetingRestored,
-	calendar.TopicMeetingReplied,
-	voice.TopicOccupancyChanged,
-	pairing.TopicSetupConfirmed,
-	pairing.TopicSetupUnconfirmed,
-	pairing.TopicComputerPaired,
-	pairing.TopicTunnelRemoved,
-	memories.TopicCreated,
-	memories.TopicUpdated,
-	memories.TopicDeleted,
-	memories.TopicAnswerSaved,
-	memories.TopicAnswerCleared,
-	memories.TopicSourceAdded,
-	memories.TopicSourceChanged,
-	memories.TopicSourceRemoved,
-	memories.TopicDraftSaved,
-	memories.TopicDraftDismissed,
-	pairing.TopicSetupTurnChanged,
-	pairing.TopicSetupFinished,
-	pairing.TopicSetupTurnActivity,
-	pairing.TopicHarnessSwitched,
-	auth.TopicTokenMinted,
-	auth.TopicTokenRevoked,
-	auth.TopicSessionCreated,
-	auth.TopicSessionRevoked,
-	auth.TopicAccountAdmitted,
-	auth.TopicAccountDisabled,
-	auth.TopicAccountReactivated,
-	auth.TopicAccountRemoved,
-	auth.TopicAccountRestored,
-	auth.TopicProfileUpdated,
-	tenancy.TopicWorkspaceMemberAdded,
-	tenancy.TopicWorkspaceMemberRemoved,
-	tenancy.TopicWorkspaceMemberUpdated,
-	tenancy.TopicWorkspaceUpdated,
-	tenancy.TopicWorkspaceArchived,
-	tenancy.TopicWorkspaceRestored,
-	roles.TopicUpdated,
-	welcome.TopicProgressChanged,
-	access.TopicGrantChanged,
-	templates.TopicUpdated,
-	plays.TopicCreated,
-	plays.TopicUpdated,
-	plays.TopicDeleted,
-	runner.TopicInstanceUpgradeChanged,
-	runner.TopicPersonalChanged,
-	pairing.TopicFactsChanged,
-	pairing.TopicPairFailed,
-	pairing.TopicPresenceChanged,
-	access.TopicComputerGrantChanged,
-	plays.TopicAutoPlayCreated,
-	plays.TopicAutoPlayUpdated,
-	plays.TopicAutoPlayDeleted,
-	plays.TopicAutoPlayLimitsUpdated,
-	plays.TopicQueued,
-	plays.TopicQueueUpdated,
-	plays.TopicQueueResumed,
-	plays.TopicSweepStarted,
-	plays.TopicSweepFinished,
 }
 
 func fail(err error) {
