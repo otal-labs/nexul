@@ -82,10 +82,11 @@ export const levelLabel = (domain: PermissionDomain, value: string[]): string =>
 export const domainsIn = (entries: PermissionInfo[], areas: readonly PermissionArea[]): PermissionDomain[] =>
   domainsOf(entries.filter((entry) => areas.includes(entry.area)));
 
-// A project's one dropdown value: its shared level, or Custom once its areas differ.
+// A project's level as a list chip: its shared level, or Custom once its areas differ. The top rung reads Full, since a "Delete" chip on a row reads like a button.
 export const projectLevelLabel = (domains: PermissionDomain[], value: string[]): string => {
   const uniform = uniformLevelOf(domains, value);
   if (uniform === undefined) return "Custom";
+  if (uniform === LEVEL_ACTIONS.length) return "Full";
   return levelName(uniform);
 };
 
@@ -105,7 +106,9 @@ export const changeSummary = (domains: PermissionDomain[], before: string[], aft
   const changed = domains.filter((domain) => levelLabel(domain, before) !== levelLabel(domain, after));
   const first = changed[0];
   if (!first) return "access updated";
-  if (changed.length > 1) return `every area → ${projectLevelLabel(domains, after)}`;
+  const uniform = uniformLevelOf(domains, after);
+  if (changed.length > 1 && uniform !== undefined) return `every area → ${levelName(uniform)}`;
+  if (changed.length > 1) return "every area → Custom";
   return `${first.name.toLowerCase()} → ${levelLabel(first, after)}`;
 };
 

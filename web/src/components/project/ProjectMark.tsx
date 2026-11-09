@@ -7,7 +7,7 @@ interface ProjectMarkProps {
   className?: string;
 }
 
-// A project's face: its prefix on a flat fill seeded from it, kept square by shrinking a long prefix to fit.
+// A project's face: its prefix on a flat fill seeded from it; a long prefix shrinks so its glyphs span at most about 70% of the tile at any size.
 export const ProjectMark = ({ project, className }: ProjectMarkProps) => {
   const tile = projectTile(project);
   return (
@@ -19,7 +19,7 @@ export const ProjectMark = ({ project, className }: ProjectMarkProps) => {
         className,
       )}
     >
-      <span style={{ fontSize: `min(1em, ${Math.floor(150 / Math.max(tile.length, 1))}cqw)` }}>{tile}</span>
+      <span style={{ fontSize: `min(1em, ${Math.floor(115 / Math.max(tile.length, 1))}cqw)` }}>{tile}</span>
     </span>
   );
 };

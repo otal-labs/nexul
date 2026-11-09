@@ -22,7 +22,7 @@ export const WizardRoleRow = ({ role, checked, line, locked, onToggle }: WizardR
         aria-label={role.name}
         className="mt-0.5 aria-disabled:opacity-60"
       />
-      <TargetMark target={role} className="-mt-0.5" />
+      <TargetMark target={role} className="size-8" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{role.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{line}</span>
