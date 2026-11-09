@@ -34,7 +34,8 @@ export const OwnerWizardPage = () => {
   const onStep2Continue = async ({ workspaceId, workspaceName }: WorkspaceSetupData) => {
     if (!settings) return;
     try {
-      await complete.mutateAsync(settings.instance_url);
+      // Back from Tools and Continue again only renames: the owner already exists.
+      if (!complete.isSuccess) await complete.mutateAsync(settings.instance_url);
       // Nothing links to the workspace yet, so naming it here also names its URL.
       await renameWorkspace.mutateAsync({ id: workspaceId, name: workspaceName, slug: slugify(workspaceName) });
       setStep(3);

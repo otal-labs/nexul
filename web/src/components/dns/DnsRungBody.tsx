@@ -39,7 +39,7 @@ export const DnsRungBody = ({ setup }: DnsRungBodyProps) => {
           <Button onClick={() => open(null)}>Continue</Button>
         </InWizardBar>
       )}
-      {!done && view === "path" && <EntryPathChoice onContinue={choose} />}
+      {!done && view === "path" && <EntryPathChoice initial={EntryPaths.Proxy} onContinue={choose} />}
       {!done && view === "tunnel" && <TunnelDeployStep onConnected={connect} />}
       {!done && view === "hostname" && path === EntryPaths.Bare && <InstanceRecordForm onDone={finish} />}
       {!done && view === "hostname" && tunnel && <TunnelHostnameStep deployment={tunnel} onDone={finish} />}

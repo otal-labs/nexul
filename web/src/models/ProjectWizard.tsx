@@ -32,7 +32,7 @@ const labels: Record<WizardStepId, string> = {
   env: "Environment",
   reach: "Domain",
   branches: "Branches",
-  done: "Done",
+  done: "Finish",
 };
 
 export const wizardStepLabel = (id: WizardStepId, door: WizardDoor): string =>

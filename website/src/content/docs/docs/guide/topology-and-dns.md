@@ -39,7 +39,7 @@ On a reverse proxy gateway, Nexul also writes the route into the running Traefik
 
 The instance gets its domain in the [setup wizard](/docs/guide/setup-wizard/). To change how it is reached later, open **Settings → DNS** and click **Set up DNS**. Connect Cloudflare under **Settings → Connectors** first.
 
-1. **How should traffic reach this instance?** Pick one:
+1. **How should traffic reach this instance?** Pick one; **Reverse proxy** is picked when the step opens:
    - **Bare public address**: an A or AAAA record pointing straight at the server.
    - **Cloudflare tunnel**: no open ports. cloudflared runs on a machine of yours and Cloudflare issues the certificate.
    - **Reverse proxy**: Traefik on ports 80 and 443 of a machine, with Let's Encrypt certificates. Both ports must be open to the internet.

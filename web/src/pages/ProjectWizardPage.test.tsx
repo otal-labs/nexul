@@ -329,6 +329,7 @@ describe("ProjectWizardPage", () => {
 
     expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
     expect(railWord("Project setup")).toBeInTheDocument();
+    expect(rung("Finish")).toHaveTextContent(finished ? "Finish, Done" : "Finish, 0");
     expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 
@@ -476,7 +477,7 @@ describe("ProjectWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
     await screen.findByText(/api runs on/);
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
-    const target = action === "Finish" ? "Done" : "Name";
+    const target = action === "Finish" ? "Finish" : "Name";
     const heading = action === "Finish" ? "Backend is ready" : "Name your project";
     await user.click(within(rung(target)).getByRole("button"));
     await user.click(await screen.findByRole("button", { name: action }));
@@ -508,10 +509,10 @@ describe("ProjectWizardPage", () => {
     expect(screen.queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
     expect(railWord("New project")).toBeInTheDocument();
     expect(rung("Name")).toHaveAttribute("data-state", "current");
-    for (const label of ["People", "Repository", "Deploy", "Done"]) {
+    for (const label of ["People", "Repository", "Deploy", "Finish"]) {
       expect(rung(label)).toHaveAttribute("data-state", "unvisited");
     }
-    expect(rungs().map((item) => item.textContent)).toEqual(["Name, Step 1 of 5", "People, 02", "Repository, 03", "Deploy, 04", "Done, 05"]);
+    expect(rungs().map((item) => item.textContent)).toEqual(["Name, Step 1 of 5", "People, 02", "Repository, 03", "Deploy, 04", "Finish, 05"]);
   });
 
   it("door 2: preselects the project from ?project= and opens Repository, with a rail that shows only what this run passed", async () => {
@@ -525,9 +526,9 @@ describe("ProjectWizardPage", () => {
 
     expect(await within(screen.getByRole("navigation", { name: "Project wizard" })).findByText("Backend")).toBeInTheDocument();
     expect(railWord("New service")).toBeInTheDocument();
-    expect(rungs().map((item) => item.textContent)).toEqual(["Repository, Step 1 of 5", "Service, 02", "Domain, 03", "Branches, 04", "Done, 05"]);
+    expect(rungs().map((item) => item.textContent)).toEqual(["Repository, Step 1 of 5", "Service, 02", "Domain, 03", "Branches, 04", "Finish, 05"]);
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
-    for (const label of ["Service", "Domain", "Branches", "Done"]) expect(rung(label)).toHaveAttribute("data-state", "unvisited");
+    for (const label of ["Service", "Domain", "Branches", "Finish"]) expect(rung(label)).toHaveAttribute("data-state", "unvisited");
   });
 
   describe("adding a service while a repository waits to deploy", () => {
@@ -605,14 +606,14 @@ describe("ProjectWizardPage", () => {
 
       await screen.findByRole("radio", { name: /Deploy now/ });
       expect(rungs().map((item) => item.textContent)).toEqual([
-        "Name, Done", "People, Done", "Repository, Done", "Deploy, Step 4 of 5", "Service, Skipped", "Domain, Skipped", "Branches, Skipped", "Done, 05",
+        "Name, Done", "People, Done", "Repository, Done", "Deploy, Step 4 of 5", "Service, Skipped", "Domain, Skipped", "Branches, Skipped", "Finish, 05",
       ]);
     });
 
     it("shows Deploy as later on the rail, without the sub-steps, once the wizard is on Done", async () => {
       renderPage("/acme/wizard/project/done?project=p-1&revisit=1");
 
-      await vi.waitFor(() => expect(rungs().map((item) => item.textContent)).toEqual(["Name, Done", "People, Done", "Repository, Done", "Deploy, Later", "Done, Step 5 of 5"]));
+      await vi.waitFor(() => expect(rungs().map((item) => item.textContent)).toEqual(["Name, Done", "People, Done", "Repository, Done", "Deploy, Later", "Finish, Step 5 of 5"]));
     });
 
     it("says why the read failed and leaves Go to Repository and Later as the ways on", async () => {
@@ -696,7 +697,7 @@ describe("ProjectWizardPage", () => {
     renderPage("/acme/wizard/project/repository?stack=stack-1");
     expect(await screen.findByRole("heading", { name: "Where's the code?" })).toBeInTheDocument();
     expect(railWord("Attach repository")).toBeInTheDocument();
-    expect(rungs().map((item) => item.textContent)).toEqual(["Repository, Step 1 of 4", "Attach, 02", "Branches, 03", "Done, 04"]);
+    expect(rungs().map((item) => item.textContent)).toEqual(["Repository, Step 1 of 4", "Attach, 02", "Branches, 03", "Finish, 04"]);
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
   });
 });

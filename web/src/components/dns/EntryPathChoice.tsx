@@ -35,11 +35,13 @@ const EntryPathRow = ({ option }: EntryPathRowProps) => {
 
 interface EntryPathChoiceProps {
   options?: EntryPathOption[];
+  // Picked on arrival, so the step opens with its Continue live.
+  initial?: EntryPath;
   onContinue: (path: EntryPath) => void;
 }
 
-export const EntryPathChoice = ({ options = entryPathOptions, onContinue }: EntryPathChoiceProps) => {
-  const [path, setPath] = useState<EntryPath | null>(null);
+export const EntryPathChoice = ({ options = entryPathOptions, initial, onContinue }: EntryPathChoiceProps) => {
+  const [path, setPath] = useState<EntryPath | null>(initial ?? null);
   const inWizard = !!useWizardBar();
 
   return (

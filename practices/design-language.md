@@ -1143,7 +1143,7 @@ card, and only the path's Change starts over (`DnsSetupWizard`).
 Project wizard. The `/wizard/project/<step>` flow sits in the wizard frame.
 The rail's microheader names the door ("New project", "Project setup", "New service", "Attach repository") over
 the project's name once there is one, then one row per step (Name, People, Repository, Deploy,
-Service, Environment when the scan found keys, Domain, Branches, Done).
+Service, Environment when the scan found keys, Domain, Branches, Finish).
 A row shows what the project records for its step (ADR 0143), Deploy reading
 Later when setup skipped the service. In the setup door the steps after Deploy are its sub-steps, indented one step, shown only
 while Deploy or one of them is open or a service exists, the main connector running past them; the rail
@@ -1164,7 +1164,7 @@ only names the repository; Continue attaches it and goes to Deploy, and a projec
 repository yet". Deploy reads the attached repository itself, on any device, and offers two choice cards:
 "Deploy now" over a mono line of the repository, branch and what the scan found, and
 "Later". Skipping Service, or a step after it with no service, is Later: the deploy steps are marked skipped and the
-wizard goes to Done, which folds Repository and the deploy steps into one Deploy row while the project has no service
+wizard goes to Finish, which folds Repository and the deploy steps into one Deploy row while the project has no service
 and lists Docs, Board and Invite people under "Where to next" as hairline rows that finish setup on the way out. The URL
 step is the whole navigation state. The import door (`/wizard/project/import`) is three stages on the same frame:
 Source (the machine and the project the adopted stacks join, Discover off until both are chosen), Adopt (each compose

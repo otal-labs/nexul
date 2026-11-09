@@ -1,5 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { TargetMark } from "@/components/access/TargetMark";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { wizardCardClass } from "@/components/wizard/WizardCardList";
 import type { PanelTarget } from "@/hooks/usePanelTargets";
 
@@ -25,7 +26,7 @@ export const WizardRoleRow = ({ role, checked, line, locked, onToggle }: WizardR
       <TargetMark target={role} className="size-8" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{role.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">{line}</span>
+        <SettingsHint className="mt-0.5 truncate">{line}</SettingsHint>
       </span>
     </label>
   </li>

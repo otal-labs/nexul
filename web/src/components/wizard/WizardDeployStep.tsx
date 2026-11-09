@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { wizardOptionClass } from "@/components/wizard/WizardCardList";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { scanSummary } from "@/models/Repository";
@@ -22,7 +23,7 @@ const DeployChoiceRow = ({ value, label, detail, mono = false }: DeployChoiceRow
     <RadioGroupItem id={`deploy-${value}`} value={value} className="mt-0.5" />
     <span className="min-w-0">
       <span className="block text-sm font-medium">{label}</span>
-      <span className={cn("mt-0.5 block text-sm text-muted-foreground", mono && "font-mono text-xs")}>{detail}</span>
+      <SettingsHint className={cn("mt-0.5", mono && "font-mono")}>{detail}</SettingsHint>
     </span>
   </label>
 );
