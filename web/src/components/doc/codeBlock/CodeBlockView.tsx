@@ -4,14 +4,16 @@ import { lazy, Suspense, useState } from "react";
 
 import { HTML_PAGE_LANGUAGE } from "@nexul/client-core/htmlPage";
 import { codeLanguageOptions } from "@/components/doc/codeBlock/lowlight";
-import { HtmlPageFrame } from "@/components/doc/codeBlock/HtmlPageFrame";
 import { HtmlPageSourceToggle } from "@/components/doc/codeBlock/HtmlPageSourceToggle";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Lazy, with the diagram library behind it: only a body with a diagram loads either.
+// Lazy: only a body with a diagram or a page loads the diagram library or the frame.
 const MermaidDiagram = lazy(() =>
   import("@/components/doc/codeBlock/MermaidDiagram").then((m) => ({ default: m.MermaidDiagram })),
+);
+const HtmlPageFrame = lazy(() =>
+  import("@/components/doc/codeBlock/HtmlPageFrame").then((m) => ({ default: m.HtmlPageFrame })),
 );
 
 // Changing the language attribute alone re-runs CodeBlockLowlight's highlight — no separate call needed.
@@ -59,7 +61,9 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
       )}
       {page && (
         <div className={cn(editor.isEditable && "mt-2")} contentEditable={false}>
-          <HtmlPageFrame code={node.textContent} />
+          <Suspense fallback={null}>
+            <HtmlPageFrame code={node.textContent} />
+          </Suspense>
         </div>
       )}
     </NodeViewWrapper>
