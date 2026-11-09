@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -18,6 +19,9 @@ import (
 
 // patPrefix marks a personal access token so the gateway can tell it from a session token without verifying both.
 const patPrefix = "dep_"
+
+// patTouchInterval bounds the last-used writes so an agent's burst of calls does not queue in the single write path.
+const patTouchInterval = 5 * time.Minute
 
 // MintPAT creates a PAT for the calling user; the raw token is returned once and never persisted, only its hash.
 func (s *Service) MintPAT(ctx context.Context, userID, name string) (string, *PersonalAccessToken, error) {
@@ -123,8 +127,10 @@ func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error
 	if !accountIsActive(user.AccountStatus) {
 		return nil, apperrs.ErrUnauthorized
 	}
-	// Best-effort last-used stamp; a write failure must not reject an otherwise valid request.
-	_ = s.cfg.PATs.TouchLastUsed(ctx, pat.ID)
+	if pat.LastUsedAt == nil || s.cfg.Now().Sub(*pat.LastUsedAt) >= patTouchInterval {
+		// Best-effort last-used stamp; a write failure must not reject an otherwise valid request.
+		_ = s.cfg.PATs.TouchLastUsed(ctx, pat.ID)
+	}
 	return user, nil
 }
 

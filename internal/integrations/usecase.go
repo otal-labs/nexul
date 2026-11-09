@@ -19,6 +19,9 @@ import (
 // tokenPrefix marks a scoped token so the gateway tells it from a session token or PAT without verifying all three.
 const tokenPrefix = "dit_"
 
+// tokenTouchInterval bounds the last-used writes so an integration's burst of calls does not queue in the single write path.
+const tokenTouchInterval = 5 * time.Minute
+
 // PermissionGate answers whether a user holds an action in any workspace they belong to (ADR 0087); a
 // consumer-side seam so this package never imports access (ADR 0017).
 type PermissionGate interface {
@@ -167,7 +170,9 @@ func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Install, 
 	if install.RevokedAt != nil {
 		return nil, nil, apperrs.ErrUnauthorized
 	}
-	_ = s.cfg.Tokens.TouchLastUsed(ctx, token.ID)
+	if token.LastUsedAt == nil || s.cfg.Now().Sub(*token.LastUsedAt) >= tokenTouchInterval {
+		_ = s.cfg.Tokens.TouchLastUsed(ctx, token.ID)
+	}
 	return install, token, nil
 }
 
