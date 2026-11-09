@@ -14,7 +14,6 @@ import (
 	"github.com/otal-labs/nexul/internal/calendar"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
-	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/crashintake"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
@@ -41,7 +40,6 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
-	"github.com/otal-labs/nexul/internal/voice"
 	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 	"github.com/otal-labs/nexul/server/webui"
@@ -95,17 +93,19 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mentionsRoutes := mentions.NewHandler(svc.mentionsSvc).Routes()
 	mountGateway(apiMux, "/api/mentions", mentionsRoutes)
 	mountGateway(apiMux, "/api/search", mentionsRoutes)
-	mountGateway(apiMux, "/api/projects", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
-	mountGateway(apiMux, "/api/categories", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
-	mountGateway(apiMux, "/api/ticket-types", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
-	mountGateway(apiMux, "/api/statuses", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
-	mountGateway(apiMux, "/api/workspaces", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).Routes()))
-	mountGateway(apiMux, "/api/team", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).TeamRoutes()))
-	mountGateway(apiMux, "/api/people", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).PeopleRoutes()))
+	workspaceRoutes := requireUserID(workspace.NewHandler(svc.workspaceSvc).Routes())
+	mountGateway(apiMux, "/api/projects", workspaceRoutes)
+	mountGateway(apiMux, "/api/categories", workspaceRoutes)
+	mountGateway(apiMux, "/api/ticket-types", workspaceRoutes)
+	mountGateway(apiMux, "/api/statuses", workspaceRoutes)
+	tenancyHandler := tenancy.NewHandler(svc.tenancySvc)
+	mountGateway(apiMux, "/api/workspaces", requireUserID(tenancyHandler.Routes()))
+	mountGateway(apiMux, "/api/team", requireUserID(tenancyHandler.TeamRoutes()))
+	mountGateway(apiMux, "/api/people", requireUserID(tenancyHandler.PeopleRoutes()))
 	// An exact pattern, more specific than the "/api/projects/" subtree the workspace domain claimed above.
-	apiMux.Handle("GET /api/projects/{projectID}/people", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).ProjectPeopleRoutes()))
-	mountGateway(apiMux, "/api/invitations", withUserID(tenancy.WithUserID)(svc.invitationHandler.Routes()))
-	mountGateway(apiMux, "/api/workspaces/{workspaceID}/roles", withUserID(roles.WithUserID)(roles.NewHandler(svc.rolesSvc).Routes()))
+	apiMux.Handle("GET /api/projects/{projectID}/people", requireUserID(tenancyHandler.ProjectPeopleRoutes()))
+	mountGateway(apiMux, "/api/invitations", requireUserID(svc.invitationHandler.Routes()))
+	mountGateway(apiMux, "/api/workspaces/{workspaceID}/roles", requireUserID(roles.NewHandler(svc.rolesSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/access", access.NewHandler(svc.accessSvc).GridRoutes())
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/plays", plays.NewHandler(svc.playsSvc).Routes())
 	mountGateway(apiMux, "/api/plays", plays.NewRunHandler(svc.playsRunner, projectTargets{tickets: svc.ticketsSvc, docs: svc.docsSvc}).Routes())
@@ -138,10 +138,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/pairing", svc.pairingHandler.Routes())
 	mountGateway(apiMux, "/api/me", welcome.NewHandler(svc.welcomeSvc).Routes())
 	apiMux.HandleFunc("GET /api/pairing/presence", pairingPresenceHandler(svc.presenceKeeper))
-	mountGateway(apiMux, "/api/connectors", withUserID(connectors.WithUserID)(svc.connectorsHandler.Routes()))
+	mountGateway(apiMux, "/api/connectors", requireUserID(svc.connectorsHandler.Routes()))
 	mountGateway(apiMux, "/api/notifications", workspace.NewNotificationHandler(svc.notifSvc, currentUserID).Routes())
-	mountGateway(apiMux, "/api/chat", withUserID(chat.WithUserID)(chat.NewHandler(svc.chatSvc, projectTargets{tickets: svc.ticketsSvc, docs: svc.docsSvc}).Routes()))
-	mountGateway(apiMux, "/api/voice", withUserID(voice.WithUserID)(svc.voiceHandler.Routes()))
+	mountGateway(apiMux, "/api/chat", requireUserID(chat.NewHandler(svc.chatSvc, projectTargets{tickets: svc.ticketsSvc, docs: svc.docsSvc}).Routes()))
+	mountGateway(apiMux, "/api/voice", requireUserID(svc.voiceHandler.Routes()))
 	botwebhookRoutes := botwebhook.NewHandler(svc.botwebhookSvc).Routes()
 	mountGateway(apiMux, "/api/conversations", botwebhookRoutes)
 	mountGateway(apiMux, "/api/botwebhooks", botwebhookRoutes)

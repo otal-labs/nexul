@@ -209,8 +209,12 @@ func TestIntegration_NotInAProject_NoticesAndTrailsFollowAccess(t *testing.T) {
 	visible := func() (notices, unread, trails int, trailErr string) {
 		ns, _, err := s.notifSvc.Page(ctx, uClient, workspace.InboxFilter{WorkspaceID: wsDefault}, paging.Window{Limit: 50})
 		require.NoError(t, err)
-		n, err := s.notifSvc.UnreadCount(ctx, uClient, "")
+		byWorkspace, err := s.notifSvc.UnreadByWorkspace(ctx, uClient, "")
 		require.NoError(t, err)
+		n := 0
+		for _, c := range byWorkspace {
+			n += c
+		}
 		list, err := runner.ListTrails(as(uClient), plays.TargetTicket, f.ticket.ID, "")
 		require.NoError(t, err)
 		_, err = runner.GetTrail(as(uClient), "tr-1")

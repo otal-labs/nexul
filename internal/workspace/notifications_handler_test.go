@@ -137,9 +137,7 @@ func TestNotificationHandler_MarkUnread(t *testing.T) {
 		require.NoError(t, s.MarkRead(context.Background(), "u1", "n1"))
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/unread", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		n, err := s.UnreadCount(context.Background(), "u1", "")
-		require.NoError(t, err)
-		assert.Equal(t, 1, n)
+		assert.Equal(t, 1, unreadTotal(t, s, "u1"))
 	})
 	t.Run("someone else's notification is not found", func(t *testing.T) {
 		repo := newFakeNotifRepo()
@@ -205,8 +203,17 @@ func TestNotificationHandler_WorkspaceIDScopesTheInbox(t *testing.T) {
 		s := seed(t)
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/read-all?workspace_id=ws-1", "")
 		require.Equal(t, http.StatusNoContent, rec.Code)
-		n, err := s.UnreadCount(context.Background(), "u1", "")
-		require.NoError(t, err)
-		assert.Equal(t, 2, n)
+		assert.Equal(t, 2, unreadTotal(t, s, "u1"))
 	})
+}
+
+func unreadTotal(t *testing.T, s *NotificationService, userID string) int {
+	t.Helper()
+	byWorkspace, err := s.UnreadByWorkspace(context.Background(), userID, "")
+	require.NoError(t, err)
+	total := 0
+	for _, n := range byWorkspace {
+		total += n
+	}
+	return total
 }

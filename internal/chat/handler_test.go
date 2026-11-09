@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // fakeProjectTickets lists one project's tickets; any other project is refused the way an unreadable one is.
@@ -32,7 +34,7 @@ func TestHandler_HasTicketThreads_ByProject(t *testing.T) {
 	h := NewHandler(s, fakeProjectTickets{projectID: "p-1", ids: []string{"t-1", "t-2"}}).Routes()
 	get := func(query string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequestWithContext(WithUserID(t.Context(), "u-1"), http.MethodGet, "/api/chat/tickets/thread-status?"+query, nil))
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(identity.WithUserID(t.Context(), "u-1"), http.MethodGet, "/api/chat/tickets/thread-status?"+query, nil))
 		return rec
 	}
 

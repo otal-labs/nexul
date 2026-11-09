@@ -12,15 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMatches_WrongOrEmpty_IsFalse(t *testing.T) {
-	raw, hash, err := MintCredential("nxr_")
-	require.NoError(t, err)
-	assert.False(t, Matches(raw+"x", hash))
-	assert.False(t, Matches("", hash))
-	assert.False(t, Matches(raw, ""))
-	assert.True(t, Matches(raw, hash))
-}
-
 func TestMintCode_HasPrefixAndThirtyTwoRandomBytes(t *testing.T) {
 	raw, hash, err := MintCode()
 	require.NoError(t, err)

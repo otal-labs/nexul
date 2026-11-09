@@ -1,27 +1,12 @@
 package roles
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
-
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID lets roles attribute mutations without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler is mounted under the tenancy domain's /api/workspaces prefix.
 type Handler struct {
@@ -61,7 +46,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	rs, err := h.svc.ListForMember(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()))
+	rs, err := h.svc.ListForMember(r.Context(), r.PathValue("workspaceID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -75,7 +60,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	role, err := h.svc.Create(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()), req.Name, deref(req.Description, ""), setFromActions(req.Actions), req.WelcomeSteps, deref(req.ShowLockedActions, false))
+	role, err := h.svc.Create(r.Context(), r.PathValue("workspaceID"), identity.UserID(r.Context()), req.Name, deref(req.Description, ""), setFromActions(req.Actions), req.WelcomeSteps, deref(req.ShowLockedActions, false))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -84,7 +69,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	role, err := h.svc.GetForMember(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context()))
+	role, err := h.svc.GetForMember(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -98,7 +83,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	role, err := h.svc.Update(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context()), req.Name, req.Description, setFromActions(req.Actions), req.WelcomeSteps, req.ShowLockedActions)
+	role, err := h.svc.Update(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), identity.UserID(r.Context()), req.Name, req.Description, setFromActions(req.Actions), req.WelcomeSteps, req.ShowLockedActions)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -107,7 +92,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.Delete(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context())); err != nil {
+	if err := h.svc.Delete(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), identity.UserID(r.Context())); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -120,7 +105,7 @@ func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	role, err := h.svc.Clone(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), req.WorkspaceID, UserIDFromCtx(r.Context()))
+	role, err := h.svc.Clone(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), req.WorkspaceID, identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

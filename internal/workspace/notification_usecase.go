@@ -98,19 +98,6 @@ func (s *NotificationService) opensProject(ctx context.Context, userID, projectI
 	return s.access.CanInProject(ctx, userID, projectID, permissions.Member)
 }
 
-// UnreadCount returns how many of the user's notifications in one workspace (or every workspace) are unread.
-func (s *NotificationService) UnreadCount(ctx context.Context, userID, workspaceID string) (int, error) {
-	byWorkspace, err := s.UnreadByWorkspace(ctx, userID, workspaceID)
-	if err != nil {
-		return 0, err
-	}
-	n := 0
-	for _, c := range byWorkspace {
-		n += c
-	}
-	return n, nil
-}
-
 // UnreadByWorkspace returns the user's unread notification count per workspace that has any, the switcher's badges.
 func (s *NotificationService) UnreadByWorkspace(ctx context.Context, userID, workspaceID string) (map[string]int, error) {
 	if strings.TrimSpace(userID) == "" {

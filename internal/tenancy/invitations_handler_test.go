@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 func TestInvitationHandler_CreateAndList_UseInvitationService(t *testing.T) {
@@ -19,13 +21,13 @@ func TestInvitationHandler_CreateAndList_UseInvitationService(t *testing.T) {
 	h := NewInvitationHandler(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(`{"grants":[{"workspace_id":"ws-1","role_id":"role-editor"}],"expires_in_days":7}`))
-	req = req.WithContext(WithUserID(req.Context(), "actor"))
+	req = req.WithContext(identity.WithUserID(req.Context(), "actor"))
 	rec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Contains(t, rec.Body.String(), "/invite#")
 
-	req = httptest.NewRequest(http.MethodGet, "/api/invitations", nil).WithContext(WithUserID(t.Context(), "actor"))
+	req = httptest.NewRequest(http.MethodGet, "/api/invitations", nil).WithContext(identity.WithUserID(t.Context(), "actor"))
 	rec = httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -55,19 +57,19 @@ func TestInvitationHandler_DecodeAndServiceErrors_ReturnJSONErrors(t *testing.T)
 	h := NewInvitationHandler(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString("{"))
-	req = req.WithContext(WithUserID(req.Context(), "actor"))
+	req = req.WithContext(identity.WithUserID(req.Context(), "actor"))
 	rec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 	repo.listErr = errors.New("list failed")
-	req = httptest.NewRequest(http.MethodGet, "/api/invitations", nil).WithContext(WithUserID(t.Context(), "actor"))
+	req = httptest.NewRequest(http.MethodGet, "/api/invitations", nil).WithContext(identity.WithUserID(t.Context(), "actor"))
 	rec = httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 	repo.revokeErr = errors.New("revoke failed")
-	req = httptest.NewRequest(http.MethodDelete, "/api/invitations/inv-1", nil).WithContext(WithUserID(t.Context(), "actor"))
+	req = httptest.NewRequest(http.MethodDelete, "/api/invitations/inv-1", nil).WithContext(identity.WithUserID(t.Context(), "actor"))
 	rec = httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)

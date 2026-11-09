@@ -6,7 +6,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -45,11 +44,6 @@ func MintCredential(prefix string) (raw, hash string, err error) {
 func Hash(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
-}
-
-// Matches reports whether raw hashes to hash, in constant time.
-func Matches(raw, hash string) bool {
-	return subtle.ConstantTimeCompare([]byte(Hash(raw)), []byte(hash)) == 1
 }
 
 // InstallCommands renders the one-liners that install a host through script (runner or automations) on Linux or
