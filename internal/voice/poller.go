@@ -42,6 +42,22 @@ func (s *Service) reconcileOnce(ctx context.Context, logger *slog.Logger) {
 		logger.Warn("voice occupancy reconciliation poll failed", "error", err)
 		return
 	}
+	// The listing lags on LiveKit Cloud, so a tracked room it leaves out is asked directly before it is dropped.
+	listed := make(map[string]bool, len(rooms))
+	for _, r := range rooms {
+		listed[r.Name] = true
+	}
+	for room := range s.occupancy.snapshot() {
+		if listed[room] {
+			continue
+		}
+		participants, err := client.ListParticipants(ctx, room)
+		if err != nil {
+			logger.Warn("voice occupancy reconciliation poll failed", "conversation_id", room, "error", err)
+			return
+		}
+		rooms = append(rooms, livekit.Room{Name: room, Participants: participants})
+	}
 	changed := s.occupancy.reconcile(fromLiveKitRooms(rooms))
 	for _, room := range changed {
 		if err := s.publish(ctx, room, s.occupancy.room(room)); err != nil {
