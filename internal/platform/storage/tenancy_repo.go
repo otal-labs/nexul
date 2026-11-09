@@ -90,16 +90,17 @@ func (r *WorkspacesRepo) ListArchived(ctx context.Context) ([]*tenancy.Workspace
 	return out, nil
 }
 
+func setArchivedRows(ctx context.Context, q *sqlcgen.Queries, id string, at *time.Time, now time.Time) (int64, error) {
+	if at == nil {
+		return q.RestoreWorkspace(ctx, sqlcgen.RestoreWorkspaceParams{UpdatedAt: now.Unix(), ID: id})
+	}
+	return q.ArchiveWorkspace(ctx, sqlcgen.ArchiveWorkspaceParams{ArchivedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, UpdatedAt: now.Unix(), ID: id})
+}
+
 func (r *WorkspacesRepo) SetArchived(ctx context.Context, id string, at *time.Time, now time.Time, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		var n int64
-		var err error
-		if at == nil {
-			n, err = q.RestoreWorkspace(ctx, sqlcgen.RestoreWorkspaceParams{UpdatedAt: now.Unix(), ID: id})
-		} else {
-			n, err = q.ArchiveWorkspace(ctx, sqlcgen.ArchiveWorkspaceParams{ArchivedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, UpdatedAt: now.Unix(), ID: id})
-		}
+		n, err := setArchivedRows(ctx, q, id, at, now)
 		if err != nil {
 			return fmt.Errorf("set archived on workspace %s: %w", id, err)
 		}

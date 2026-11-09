@@ -62,6 +62,7 @@ export const installBrowserLogs = () => {
   window.addEventListener("unhandledrejection", (event) =>
     enqueue("error", `unhandled rejection: ${describe(event.reason)}`, { stack: stackOf(event.reason) }),
   );
+  /* eslint-disable no-console -- this hook wraps console.error/warn to relay them */
   for (const level of ["error", "warn"] as const) {
     const original = console[level];
     console[level] = (...args: unknown[]) => {
@@ -70,4 +71,5 @@ export const installBrowserLogs = () => {
       enqueue(level, args.map(describe).join(" "), stack ? { stack } : undefined);
     };
   }
+  /* eslint-enable no-console */
 };

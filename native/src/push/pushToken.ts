@@ -30,13 +30,13 @@ const putPushToken = requires("none", (host: string, token: string, pushToken: s
 export const registerPushToken = async (host: string, token: string): Promise<void> => {
   const projectId = pushProjectId();
   if (!projectId) {
-    console.log("push: no project id configured, skipping registration");
+    console.warn("push: no project id configured, skipping registration");
     return;
   }
   try {
     await ensureChannel();
     if (!(await ensurePermission())) {
-      console.log("push: permission not granted, skipping registration");
+      console.warn("push: permission not granted, skipping registration");
       return;
     }
     const expoPushToken = await Notifications.getExpoPushTokenAsync({ projectId });

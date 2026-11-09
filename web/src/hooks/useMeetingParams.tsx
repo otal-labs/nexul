@@ -10,8 +10,8 @@ export const useMeetingParams = () => {
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set(MEETING_PARAM, meetingId);
+      next.delete(SLOT_PARAM);
       if (slot) next.set(SLOT_PARAM, slot);
-      else next.delete(SLOT_PARAM);
       return next;
     });
 

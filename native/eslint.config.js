@@ -19,6 +19,17 @@ module.exports = defineConfig([
     files: ["**/*.test.ts", "**/*.test.tsx"],
     rules: { "no-restricted-imports": ["error", { paths: [lucideByPath] }] },
   },
+  // Rule 7: early return, no else. Rule 8: no console.log in production code.
+  {
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+      "no-restricted-syntax": ["error", { selector: "IfStatement[alternate]", message: "Early return, no else." }],
+    },
+  },
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx"],
+    rules: { "no-console": "off" },
+  },
   {
     ignores: ["android/*", "ios/*", ".expo/*", "coverage/*", "src/uniwind-types.d.ts"],
   },
