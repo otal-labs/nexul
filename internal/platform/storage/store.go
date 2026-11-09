@@ -172,9 +172,15 @@ func New(db *sql.DB, encKey []byte) *Store {
 	}
 }
 
-// Commits wakes every waiter after a write transaction commits; the delivery loops wait on it between their fallback polls.
+// Commits wakes every waiter after any write transaction commits; the access memo clears on it.
 func (s *Store) Commits() *wake.Broadcast {
 	return &s.w.committed
+}
+
+// CommitsTo wakes its waiters only after a commit that made one of writes, so a background loop sleeps through writes
+// to tables its pass never reads. Take it once per loop, at wiring.
+func (s *Store) CommitsTo(writes ...TableWrite) *wake.Broadcast {
+	return s.w.watch(writes)
 }
 
 func (s *Store) Close() error {

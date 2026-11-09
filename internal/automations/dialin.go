@@ -296,14 +296,18 @@ func (h *DialinHandler) recordRun(ctx context.Context, automationID string, a *a
 }
 
 // deliverLoop delivers matching events one at a time, waiting for each run's report before the next. It reads at
-// start, after every commit, and on each fallback tick.
+// start, again at once after a full batch, after every commit Wake announces, and on each fallback tick.
 func (h *DialinHandler) deliverLoop(ctx context.Context, c *automationConn) {
 	ticker := time.NewTicker(h.cfg.PollInterval)
 	defer ticker.Stop()
 	for {
 		committed := h.cfg.Wake()
-		if !h.deliverPending(ctx, c) {
+		full, open := h.deliverPending(ctx, c)
+		if !open {
 			return
+		}
+		if full {
+			continue
 		}
 		select {
 		case <-ctx.Done():
@@ -314,65 +318,68 @@ func (h *DialinHandler) deliverLoop(ctx context.Context, c *automationConn) {
 	}
 }
 
-// deliverPending delivers what the log holds past the cursor; false means the connection is closing.
-func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) bool {
+// deliverPending delivers what the log holds past the cursor. full means it went through a whole batch, so more may
+// wait; open false means the connection is closing.
+func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) (full, open bool) {
 	automation, err := h.cfg.Repo.Get(ctx, c.id)
 	if err != nil {
 		h.log.Warn("automation lookup failed during delivery", "automation_id", c.id, "error", err)
-		return true
+		return false, true
 	}
 	if !automation.Runs() || len(automation.Subscriptions) == 0 {
-		return true
+		return false, true
 	}
 	cursor, _, err := h.cfg.Cursors.Get(ctx, c.id)
 	if err != nil {
 		h.log.Warn("load automation cursor failed", "automation_id", c.id, "error", err)
-		return true
+		return false, true
 	}
 	// Read before the log: a match committed after this point is past the settled position.
 	settled, hasSettled, err := h.cfg.EventLog.Settled(ctx)
 	if err != nil {
 		h.log.Warn("read settled log position failed", "automation_id", c.id, "error", err)
-		return true
+		return false, true
 	}
 	events, err := h.cfg.EventLog.After(ctx, automation.Subscriptions, cursor, h.cfg.BatchSize)
 	if err != nil {
 		h.log.Warn("read event log failed", "automation_id", c.id, "error", err)
-		return true
+		return false, true
 	}
 	if len(events) == 0 && hasSettled && cursor.Before(settled) {
 		if err := h.cfg.Cursors.Set(ctx, c.id, settled); err != nil {
 			h.log.Warn("persist automation cursor failed", "automation_id", c.id, "error", err)
 		}
-		return true
+		return false, true
 	}
-	return h.deliverBatch(ctx, c, automation.WorkspaceID, events)
+	done, open := h.deliverBatch(ctx, c, automation.WorkspaceID, events)
+	return done && len(events) == h.cfg.BatchSize, open
 }
 
-// deliverBatch delivers events in order, skipping other workspaces' past the cursor; false means the connection is closing.
-func (h *DialinHandler) deliverBatch(ctx context.Context, c *automationConn, workspaceID string, events []LogEvent) bool {
+// deliverBatch delivers events in order, skipping other workspaces' past the cursor. done means every event was
+// delivered or skipped; open false means the connection is closing.
+func (h *DialinHandler) deliverBatch(ctx context.Context, c *automationConn, workspaceID string, events []LogEvent) (done, open bool) {
 	for _, ev := range events {
 		// Re-read per event: a disable or archive mid-batch must hold even if the host never stops its worker.
 		if !h.enabled(ctx, c.id) {
-			return true
+			return false, true
 		}
 		inScope, err := h.inScope(ctx, workspaceID, ev)
 		if err != nil {
 			h.log.Warn("resolve event workspace failed", "automation_id", c.id, "event_id", ev.ID, "error", err)
-			return true
+			return false, true
 		}
 		if !inScope {
 			if err := h.cfg.Cursors.Set(ctx, c.id, Cursor{CreatedAt: ev.CreatedAt, ID: ev.ID}); err != nil {
 				h.log.Warn("persist automation cursor failed", "automation_id", c.id, "error", err)
-				return true
+				return false, true
 			}
 			continue
 		}
 		if !h.deliverOne(ctx, c, ev) {
-			return false
+			return false, false
 		}
 	}
-	return true
+	return true, true
 }
 
 // inScope reports whether ev happened in workspaceID or is instance-level; a members-only event reaches no automation.

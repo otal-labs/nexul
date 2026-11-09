@@ -444,7 +444,7 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 		// Delivery rows are unique per (install, event, topic) and a redelivery's insert is a no-op, so no dedupe record.
 		mustSubscribe(ctx, bus, "integrations.fanout", topic, "", fanout.HandleEvent, inprocess.WithoutDedupe())
 	}
-	deliveryRelay := integrations.NewRelay(store.IntegrationDeliveries, integrations.RelayConfig{Wake: store.Commits().Next, Logger: logger})
+	deliveryRelay := integrations.NewRelay(store.IntegrationDeliveries, integrations.RelayConfig{Wake: store.CommitsTo(storage.WebhookRelayWrites...).Next, Logger: logger})
 	go func() {
 		if err := deliveryRelay.Run(ctx); err != nil {
 			logger.Error("integration delivery relay stopped", "error", err)
