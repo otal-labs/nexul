@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { ThemeId } from "@/enums/Theme";
 import { currentRowFillClass } from "@/components/CurrentRow";
+import { crumbLinkClass, currentCrumbClass } from "@/components/PageBreadcrumb";
 import { segmentedThumbClass } from "@/components/ui/toggle-group";
 import { switchOffTrackClass } from "@/components/ui/switch";
 import css from "@/index.css?raw";
@@ -16,6 +17,7 @@ const DEFAULT_MUTED_RATIO = 6;
 const MIN_EDGE_RATIO = 1.1;
 const MIN_CARD_LIFT = 0.029;
 const MIN_CONTROL_RATIO = 3;
+const MIN_CRUMB_STEP = 1.5;
 
 const block = (selector: string): string => css.match(new RegExp(`\\n${selector} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 const DEFAULTS: Record<Mode, string> = { light: block(":root"), dark: block("\\.dark") };
@@ -249,4 +251,21 @@ describe("switch off track", () => {
     applyThemePalette(id, "light");
     expect(failingOffTracks()).toEqual([]);
   });
+});
+
+// A crumb's ink as its class names it: the first bare text colour, before any hover.
+const crumbInk = (mode: Mode, className: string): Rgb => ink(mode, className.match(/(?:^|\s)text-((?:muted-)?foreground)(?=\s|$)/)?.[1] ?? "");
+
+describe("breadcrumb link and current crumb", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.flatMap((theme) => (["light", "dark"] as const).map((mode) => ({ id: theme.id, label: theme.label, mode }))))(
+    "$label $mode sets a crumb link a clear step off the crumb you are on",
+    ({ id, mode }) => {
+      applyThemePalette(id, mode);
+      expect(ratio(crumbInk(mode, crumbLinkClass), crumbInk(mode, currentCrumbClass))).toBeGreaterThanOrEqual(MIN_CRUMB_STEP);
+    },
+  );
 });

@@ -306,7 +306,7 @@ export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
         secondary: "oklch(0.9449 0.011 54.49)",
         "secondary-foreground": "oklch(0.4279 0.0265 46.62)",
         muted: "oklch(0.9687 0.0086 44.89)",
-        "muted-foreground": "oklch(0.485 0.0272 49.58)",
+        "muted-foreground": "oklch(0.54 0.0272 49.58)",
         accent: "oklch(0.9239 0.0415 1.1)",
         "accent-foreground": "oklch(0.38 0.1 7.76)",
         border: "oklch(0.9138 0.0146 50.79)",
