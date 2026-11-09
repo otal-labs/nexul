@@ -263,6 +263,12 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
   costs a read on every tick while nothing happens, and still adds its
   interval to every delivery. Take `Next()` before reading, so a commit that
   lands during the read wakes the next wait instead of being lost.
+- Each loop waits on `store.CommitsTo` with the writes that can give it work,
+  listed in `internal/platform/storage/loop_writes.go`, so a heartbeat or a
+  cursor write wakes no loop that never reads it. A loop that reads a new
+  table adds it there; `TestLoopWrites_CoverEveryTableTheLoopsPassReads`
+  fails until it does. A loop whose own writes no longer wake it reads again
+  at once after a full batch, or a backlog waits out the fallback.
 - A fan-out to many clients (the live hub, collab rooms) gives each client
   its own bounded send queue and writer goroutine. A full queue drops that
   client, which reconnects; it never blocks the publisher, because one
@@ -453,8 +459,9 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
   opening a connection re-parses the whole schema, so a lower idle cap
   makes every burst of parallel requests reopen connections. Do not raise
   the pool without a written rationale.
-- A commit notifies the serializer's broadcast, which is what wakes the
-  delivery loops (section 7) and clears every access memo (section 17). A
+- A commit notifies the serializer's broadcast, which clears every access
+  memo (section 17), and wakes each delivery loop whose tables it wrote
+  (section 7); the serializer learns them from SQLite's pre-update hook. A
   rollback wakes nobody. A write that skips the serializer is also never seen
   by a memo, which goes on answering from what it read before.
 

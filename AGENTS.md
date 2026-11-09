@@ -133,6 +133,7 @@ skipped and lint errors do not.
 | An event payload's empty list is `[]`, never `null` | the contract test above, and `TestInsertOutboxRow_WritesAnEmptyListAsAnArray` |
 | A memoised access check answers what an unmemoised one does, and a commit clears it | `TestIntegration_PermissionSuitesAnswerTheSameWithAMemo` and `TestIntegration_LiveAudienceMemo_FollowsEveryChange` in `server/cmd/access_memo_test.go` |
 | A list path's access reads stay the same at any length | the `TestStatements_*` guards in `server/cmd/access_memo_test.go` |
+| A background loop wakes on a write to every table its pass reads, and on no other | `TestLoopWrites_CoverEveryTableTheLoopsPassReads` and `TestStore_CommitsTo_AMachineTouchWakesNoLoopButTheMemo` in `internal/platform/storage` |
 | A paged list tool shows each viewer what the row-by-row check showed, and reads about one page of rows | `TestListTools_ShowWhatTheRowByRowCheckShowed` and the `TestRows_*` guards in `server/cmd/list_paging_test.go` |
 | Every non-GET route writes an audit row unless it is listed as read-only | `TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod` in `server/cmd/audit_integration_test.go` |
 | No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |

@@ -6,6 +6,8 @@ import (
 	"database/sql/driver"
 	"sync"
 	"sync/atomic"
+
+	"modernc.org/sqlite"
 )
 
 // Statements counts what reaches the driver, so a guard can pin a query count, how many values a query binds, or how
@@ -108,6 +110,11 @@ func (c countingConn) QueryContext(ctx context.Context, q string, a []driver.Nam
 func (c countingConn) ExecContext(ctx context.Context, q string, a []driver.NamedValue) (driver.Result, error) {
 	c.st.record(q, a)
 	return c.Conn.(driver.ExecerContext).ExecContext(ctx, q, a)
+}
+
+// RegisterPreUpdateHook passes the storage serializer's write tracking through to the driver connection.
+func (c countingConn) RegisterPreUpdateHook(fn sqlite.PreUpdateHookFn) {
+	c.Conn.(sqlite.HookRegisterer).RegisterPreUpdateHook(fn)
 }
 
 func (c countingConn) BeginTx(ctx context.Context, o driver.TxOptions) (driver.Tx, error) {

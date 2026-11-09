@@ -86,14 +86,14 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Runs:     store.AutomationRuns,
 		Secrets:  svc.automationSecretsSvc,
 		Scope:    automationScope{lookup: store.EventWorkspaces},
-		Wake:     store.Commits().Next,
+		Wake:     store.CommitsTo(storage.DialinWrites...).Next,
 		Logger:   logger,
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)
 	svc.automationHostsSvc.WithLogs(logRelay)
 	svc.automationHostsSvc.SetConnectionRegistry(automationsDialin)
 	// Last of the wiring a consumer reads, so no event is handled against a half-built server.
-	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits().Next, Logger: logger})
+	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.CommitsTo(storage.OutboxRelayWrites...).Next, Logger: logger})
 	go func() {
 		if err := relay.Run(ctx); err != nil {
 			logger.Error("outbox relay stopped", "error", err)
@@ -107,8 +107,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.notifSvc.RunCleanupLoop(ctx, logger)
 	go svc.deploySvc.RunRequestCounts(ctx, logger)
 	go svc.integrationsSvc.RunAuditRetention(ctx, logger)
-	go docs.RunSettleLoop(ctx, store.Docs, store.Commits().Next, logger)
-	go svc.calendarSvc.RunReminderLoop(ctx, store.Commits().Next, logger)
+	go docs.RunSettleLoop(ctx, store.Docs, store.CommitsTo(storage.SettleWrites...).Next, logger)
+	go svc.calendarSvc.RunReminderLoop(ctx, store.CommitsTo(storage.ReminderWrites...).Next, logger)
 
 	return wsHandler, runnerSvc, runnerHTTP, automationsDialin
 }

@@ -152,9 +152,9 @@ the outbox so a crash between commit and publish cannot lose them:
    because `outbox` imports `storage` and a domain importing it closes a cycle.
 2. A background relay publishes each row under the row's own ID as the bus
    event ID (ADR 0018). That is what makes a redelivered row dedupeable. The
-   storage serializer's commit broadcast wakes it after every commit
-   (`practices/go.md`, section 7), so a row goes out at once; its 5-second
-   poll is the retry path for a publish that failed.
+   storage serializer's commit broadcast wakes it after every commit that
+   writes the outbox (`practices/go.md`, section 7), so a row goes out at
+   once; its 5-second poll is the retry path for a publish that failed.
 3. After a crash between commit and publish, the relay re-emits on restart.
 4. Consumers are idempotent: they check the processed-events store before
    acting.
