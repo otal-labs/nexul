@@ -57,6 +57,11 @@ browser; `/api/headings` names the section each hit lands in. Each highlighted
 code block gets its copy button at build time, from
 `src/lib/rehype-code-copy.ts`.
 
+`/sitemap.xml` is built by `src/pages/sitemap.xml.ts`: the home, roadmap and
+changelog, then every docs page, each at its canonical URL. A new top-level
+page gets a line there. `public/robots.txt` points crawlers at it; Cloudflare
+adds its content-signals block in front of the file rather than replacing it.
+
 ## Installer downloads
 
 `public/install.sh` (Linux and macOS) and `public/install.ps1` (Windows) are
