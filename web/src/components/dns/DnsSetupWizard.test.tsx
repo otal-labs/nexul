@@ -66,13 +66,14 @@ describe("DnsSetupWizard", () => {
     mocks.toast.error.mockClear();
   });
 
-  it("starts with the entry-path choice open and the later rungs locked", async () => {
+  it("starts with the entry-path choice open on the reverse proxy, Continue live, and the later rungs locked", async () => {
     mockLists();
     renderWizard();
     expect(await screen.findByRole("radio", { name: /bare public address/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /cloudflare tunnel/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /reverse proxy/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^continue$/i })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /reverse proxy/i })).toBeChecked();
+    expect(screen.getByRole("button", { name: /^continue$/i })).toBeEnabled();
     expect(rung("Hostname")).toHaveAttribute("data-state", "locked");
     expect(rung("Go live")).toHaveAttribute("data-state", "locked");
   });

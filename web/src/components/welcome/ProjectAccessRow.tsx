@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { ProjectMark } from "@/components/project/ProjectMark";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { wizardCardClass } from "@/components/wizard/WizardCardList";
 import { accessSummary, projectLevelLabel, type PermissionDomain } from "@/models/PermissionLevel";
 import { boardPath, type Project } from "@/models/Project";
@@ -24,7 +25,7 @@ export const ProjectAccessRow = ({ project, workspaceSlug, domains, held }: Proj
         <ProjectMark project={project} className="size-8 rounded-md text-micro" />
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 text-sm font-medium break-words">{project.name}</span>
-          {level === "Custom" && <span className="block truncate text-xs text-muted-foreground">{accessSummary(domains, held)}</span>}
+          {level === "Custom" && <SettingsHint className="mt-0.5 truncate">{accessSummary(domains, held)}</SettingsHint>}
         </span>
         <span className="shrink-0 rounded border border-border px-1.5 py-px font-mono text-micro leading-4 text-muted-foreground">{level}</span>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />

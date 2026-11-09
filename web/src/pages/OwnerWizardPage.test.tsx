@@ -67,11 +67,14 @@ vi.mock("@/components/auth/SetupWorkspaceStep", async () => {
   };
 });
 
-vi.mock("@/hooks/AuthHooks", () => ({
-  useFetchSettings: mocks.useFetchSettings,
-  useFetchMe: () => ({ data: { user: {}, instance_permissions: [] } }),
-  useCompleteOwnerWizard: () => ({ mutateAsync: mocks.completeMutateAsync, isPending: false }),
-}));
+vi.mock("@/hooks/AuthHooks", async () => {
+  const { useMutation } = await import("@tanstack/react-query");
+  return {
+    useFetchSettings: mocks.useFetchSettings,
+    useFetchMe: () => ({ data: { user: {}, instance_permissions: [] } }),
+    useCompleteOwnerWizard: () => useMutation({ mutationFn: (url: string) => mocks.completeMutateAsync(url) }),
+  };
+});
 
 vi.mock("@/hooks/WorkspaceHooks", () => ({
   useRenameWorkspace: () => ({ mutateAsync: mocks.renameWorkspaceMutateAsync }),
@@ -155,6 +158,21 @@ describe("OwnerWizardPage", () => {
 
     await user.click(screen.getByRole("button", { name: /back/i }));
     expect(screen.getByText("Set up your workspace")).toBeInTheDocument();
+  });
+
+  it("makes the owner once when Workspace continues again after going back from Tools, renaming each time", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Step1 continue" }));
+    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /back/i }));
+    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
+    expect(mocks.completeMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledTimes(2);
   });
 
   it("navigates to /login on back from step 1, since there's nothing before it", async () => {
