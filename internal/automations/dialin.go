@@ -329,9 +329,21 @@ func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) b
 		h.log.Warn("load automation cursor failed", "automation_id", c.id, "error", err)
 		return true
 	}
+	// Read before the log: a match committed after this point is past the settled position.
+	settled, hasSettled, err := h.cfg.EventLog.Settled(ctx)
+	if err != nil {
+		h.log.Warn("read settled log position failed", "automation_id", c.id, "error", err)
+		return true
+	}
 	events, err := h.cfg.EventLog.After(ctx, automation.Subscriptions, cursor, h.cfg.BatchSize)
 	if err != nil {
 		h.log.Warn("read event log failed", "automation_id", c.id, "error", err)
+		return true
+	}
+	if len(events) == 0 && hasSettled && cursor.Before(settled) {
+		if err := h.cfg.Cursors.Set(ctx, c.id, settled); err != nil {
+			h.log.Warn("persist automation cursor failed", "automation_id", c.id, "error", err)
+		}
 		return true
 	}
 	return h.deliverBatch(ctx, c, automation.WorkspaceID, events)

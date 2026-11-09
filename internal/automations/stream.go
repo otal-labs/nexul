@@ -20,12 +20,19 @@ type Cursor struct {
 	ID        string
 }
 
+// Before reports whether c comes strictly before o in log order.
+func (c Cursor) Before(o Cursor) bool {
+	return c.CreatedAt.Before(o.CreatedAt) || (c.CreatedAt.Equal(o.CreatedAt) && c.ID < o.ID)
+}
+
 // EventLogReader is automations' view onto the durable outbox log, so a disconnect catches up on what it missed.
 type EventLogReader interface {
 	// After returns up to limit events on any of topics, strictly after cursor, oldest first.
 	After(ctx context.Context, topics []string, cursor Cursor, limit int) ([]LogEvent, error)
 	// Latest returns the newest event's position, or ok=false if empty; starts a new automation's cursor at "now" (ADR 0046).
 	Latest(ctx context.Context) (cursor Cursor, ok bool, err error)
+	// Settled returns the newest position no later commit can land below, or ok=false if none; a read that finds nothing may move its cursor there.
+	Settled(ctx context.Context) (cursor Cursor, ok bool, err error)
 }
 
 // CursorRepo persists the per-automation delivery cursor (ADR 0046): reconnect

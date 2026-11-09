@@ -55,3 +55,15 @@ func (r *AutomationEventLogRepo) Latest(ctx context.Context) (automations.Cursor
 	}
 	return automations.Cursor{CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ID: row.ID}, true, nil
 }
+
+// Settled returns the newest position no later commit can land below, or ok=false when there is none yet.
+func (r *AutomationEventLogRepo) Settled(ctx context.Context) (automations.Cursor, bool, error) {
+	row, err := r.q.LatestSettledOutboxPosition(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return automations.Cursor{}, false, nil
+		}
+		return automations.Cursor{}, false, fmt.Errorf("settled outbox position: %w", err)
+	}
+	return automations.Cursor{CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ID: row.ID}, true, nil
+}

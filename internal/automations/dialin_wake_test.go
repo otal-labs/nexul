@@ -29,6 +29,8 @@ func (c *countingLog) After(context.Context, []string, Cursor, int) ([]LogEvent,
 
 func (c *countingLog) Latest(context.Context) (Cursor, bool, error) { return Cursor{}, false, nil }
 
+func (c *countingLog) Settled(context.Context) (Cursor, bool, error) { return Cursor{}, false, nil }
+
 func (c *countingLog) readCount() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
