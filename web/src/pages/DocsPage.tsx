@@ -1,10 +1,8 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Navigate, useParams } from "react-router";
 
-import { DocsListPane } from "@/components/doc/DocsListPane";
-import { DocsOverview } from "@/components/doc/DocsOverview";
+import { DocsBrowser } from "@/components/doc/DocsBrowser";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
@@ -21,8 +19,6 @@ export const DocsPage = () => {
   const { projects, current } = useSidebarProject();
   const wsPath = useWorkspacePath();
   const { data: docs, error, isPending } = useFetchDocsByProject(current?.id ?? "");
-  // One search for both panes, so the overview never shows docs the list has filtered out.
-  const [search, setSearch] = useState("");
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
@@ -36,10 +32,10 @@ export const DocsPage = () => {
       {current && isPending && <LoadingDisplay label="Loading docs…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load docs." />}
       {current && docs && (
-        <ListDetailLayout
-          hasSelection={!!docId}
-          list={<DocsListPane docs={docs} project={current} selectedId={docId} search={search} onSearch={setSearch} />}
-          placeholder={<DocsOverview docs={docs} project={current} query={search.trim().toLowerCase()} />}
+        <DocsBrowser
+          docs={docs}
+          project={current}
+          selectedId={docId}
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <DocPage key={docId} />
