@@ -116,7 +116,7 @@ const responses: Record<string, unknown> = {
     { id: "c1", workspace_id: "ws-1", kind: "channel", name: "general", created_by: "me", created_at: "", updated_at: "" },
     { id: "c2", workspace_id: "ws-1", kind: "ticket_thread", ticket_id: "t-2", created_by: "me", created_at: "", updated_at: "" },
     { id: "c3", workspace_id: "ws-1", kind: "ticket_thread", ticket_id: "t-3", created_by: "me", created_at: "", updated_at: "" },
-    { id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "d1", created_by: "me", created_at: "", updated_at: "" },
+    { id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "d1", doc_title: "Spec", created_by: "me", created_at: "", updated_at: "" },
   ],
   "/api/chat/unread?workspace_id=ws-1": { c1: 0 },
   "/api/chat/conversations/c1/messages?limit=100": Array.from({ length: 40 }, (_, i) => message(i + 1)),
@@ -129,7 +129,6 @@ const responses: Record<string, unknown> = {
   "/api/tickets/t-1": ticket("t-1", 1),
   "/api/tickets/t-2": ticket("t-2", 2),
   "/api/tickets/t-3": ticket("t-3", 3),
-  "/api/docs/d1": { id: "d1", project_id: "p-1", title: "Spec", body: "", version: 1, archived: false, created_at: "", updated_at: "" },
   "/api/stacks?workspace_id=ws-1": [
     { id: "s-1", project_id: "p-1", name: "api", machine: "box-1", strategy: "run", managed: true },
     { id: "s-2", project_id: "p-1", name: "worker", machine: "box-1", strategy: "run", managed: true },
@@ -224,7 +223,7 @@ describe("requests a session sends", () => {
     });
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(21);
+    expect(gets).toHaveLength(20);
     expect(jest.mocked(fetchAbout).mock.calls.length - aboutBefore).toBe(1);
   });
 
@@ -291,7 +290,7 @@ describe("requests a session sends", () => {
     const gets = await requestsDuring(client, () => dispatch(client)(roleFrame("r-member")));
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(21);
+    expect(gets).toHaveLength(20);
   });
 
   const unreadPath = "/api/chat/unread?workspace_id=ws-1";

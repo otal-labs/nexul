@@ -123,6 +123,18 @@ describe("dispatch", () => {
     expect(invalidate.mock.calls.flatMap(([filters]) => filters?.queryKey ?? [])).not.toContain(getChatMessagesKey);
   });
 
+  test("doc.updated retitles the doc's thread in the cached conversation list instead of refetching it", () => {
+    const client = new QueryClient();
+    const thread = { id: "c9", workspace_id: "ws-1", kind: "doc_thread", doc_id: "rec-1", doc_title: "Spec", created_by: "u1", created_at: "", updated_at: "" };
+    client.setQueryData([getChatConversationsKey, "ws-1"], [thread]);
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+
+    dispatch(client)({ topic: "doc.updated", type: "event", payload: { doc: { id: "rec-1", title: "Runbook", version: 2 } } });
+
+    expect(client.getQueryData([getChatConversationsKey, "ws-1"])).toEqual([{ ...thread, doc_title: "Runbook" }]);
+    expect(invalidate.mock.calls.flatMap(([filters]) => filters?.queryKey ?? [])).not.toContain(getChatConversationsKey);
+  });
+
   // Each record opened or listed caches its own detail query, so a frame refetches only the one it names.
   test.each([
     ["ticket.status_changed", { ticket: { id: "rec-1" }, from: "a", to: "b" }, [getTicketKey]],

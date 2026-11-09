@@ -81,6 +81,7 @@ type conversationResult struct {
 	Name           string    `json:"name,omitempty"`
 	TicketID       string    `json:"ticket_id,omitempty"`
 	DocID          string    `json:"doc_id,omitempty"`
+	DocTitle       string    `json:"doc_title,omitempty"`
 	ProjectID      string    `json:"project_id,omitempty"`
 	ParticipantIDs []string  `json:"participant_ids,omitempty"`
 	Private        bool      `json:"private"`
@@ -208,7 +209,7 @@ func conversationDeleteTool(s *Service) mcptool.Tool {
 
 func toConversationResult(c *Conversation) conversationResult {
 	out := conversationResult{
-		ID: c.ID, Kind: c.Kind, Name: c.Name, TicketID: c.TicketID, DocID: c.DocID, ProjectID: c.ProjectID,
+		ID: c.ID, Kind: c.Kind, Name: c.Name, TicketID: c.TicketID, DocID: c.DocID, DocTitle: c.DocTitle, ProjectID: c.ProjectID,
 		Private: c.Private, UpdatedAt: c.UpdatedAt,
 	}
 	if c.Private {

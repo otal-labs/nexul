@@ -3,8 +3,10 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { patchAnythingElse, patchQuestion, type Clarification, type ClarificationAnswerInput, type ClarificationQuestion, type ClarificationRound } from "@nexul/client-core/clarification";
+import type { Conversation } from "@nexul/client-core/chat";
 import { requires } from "@nexul/client-core/requires";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
+import { getChatConversationsKey } from "@/hooks/ChatHooks";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getDocsKey = "getDocs";
@@ -54,6 +56,11 @@ export const docChanged = (client: QueryClient, doc: Doc) => {
       : list,
   );
   void client.invalidateQueries({ queryKey: [getDocsKey], refetchType: "none" });
+  client.setQueriesData<Conversation[]>({ queryKey: [getChatConversationsKey] }, (list) =>
+    list?.some((c) => c.doc_id === doc.id && c.doc_title !== title)
+      ? list.map((c) => (c.doc_id === doc.id ? { ...c, doc_title: title } : c))
+      : list,
+  );
 };
 
 export const useCreateDoc = () => {

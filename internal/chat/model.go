@@ -44,6 +44,8 @@ type Conversation struct {
 	TicketID string `json:"ticket_id,omitempty"`
 	// DocID is set only for KindDocThread; the unique index on it enforces one thread per doc.
 	DocID string `json:"doc_id,omitempty"`
+	// DocTitle is the doc's title, filled only on a conversation list so a doc thread is titled without fetching its doc.
+	DocTitle string `json:"doc_title,omitempty" jsonschema:"A doc thread's doc title, set only on the conversation list."`
 	// ProjectID is set for KindInterviewThread, where the unique index on it enforces one interview thread per project,
 	// and for KindStackThread, to the stack's project.
 	ProjectID string `json:"project_id,omitempty"`

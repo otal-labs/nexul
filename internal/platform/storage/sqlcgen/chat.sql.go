@@ -508,7 +508,8 @@ WITH listed AS (
         WHERE o.conversation_id = c.id AND NOT EXISTS (
             SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = ?2))
 )
-SELECT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen, c.stack_id FROM conversations c JOIN listed l ON l.id = c.id
+SELECT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen, c.stack_id, COALESCE(d.title, '') AS doc_title FROM conversations c JOIN listed l ON l.id = c.id
+LEFT JOIN docs d ON d.id = c.doc_id
 ORDER BY c.created_at
 `
 
@@ -517,33 +518,39 @@ type ListConversationsForUserParams struct {
 	WorkspaceID string
 }
 
-func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversationsForUserParams) ([]Conversation, error) {
+type ListConversationsForUserRow struct {
+	Conversation Conversation
+	DocTitle     string
+}
+
+func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversationsForUserParams) ([]ListConversationsForUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listConversationsForUser, arg.UserID, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Conversation
+	var items []ListConversationsForUserRow
 	for rows.Next() {
-		var i Conversation
+		var i ListConversationsForUserRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Kind,
-			&i.Name,
-			&i.TicketID,
-			&i.ParentMessageID,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.AgentThreadID,
-			&i.AgentSyncedAt,
-			&i.DocID,
-			&i.ProjectID,
-			&i.IsGeneral,
-			&i.Private,
-			&i.AgentSeen,
-			&i.StackID,
+			&i.Conversation.ID,
+			&i.Conversation.WorkspaceID,
+			&i.Conversation.Kind,
+			&i.Conversation.Name,
+			&i.Conversation.TicketID,
+			&i.Conversation.ParentMessageID,
+			&i.Conversation.CreatedBy,
+			&i.Conversation.CreatedAt,
+			&i.Conversation.UpdatedAt,
+			&i.Conversation.AgentThreadID,
+			&i.Conversation.AgentSyncedAt,
+			&i.Conversation.DocID,
+			&i.Conversation.ProjectID,
+			&i.Conversation.IsGeneral,
+			&i.Conversation.Private,
+			&i.Conversation.AgentSeen,
+			&i.Conversation.StackID,
+			&i.DocTitle,
 		); err != nil {
 			return nil, err
 		}

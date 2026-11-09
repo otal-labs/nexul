@@ -210,9 +210,8 @@ describe("ChatSidebarSection", () => {
   it("lists doc threads under Threads, titled with their doc", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") {
-        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", doc_title: "Runbook", created_by: "u1", created_at: "", updated_at: "" }] };
       }
-      if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
       if (url === "/api/auth/me") return { data: meResponse };
       return { data: {} };
     });
@@ -221,13 +220,26 @@ describe("ChatSidebarSection", () => {
     expect(screen.getByText("Threads")).toBeInTheDocument();
   });
 
+  it("titles twenty doc threads from the conversation list without fetching a doc", async () => {
+    const threads = Array.from({ length: 20 }, (_, i) => ({
+      id: `dt-${i}`, workspace_id: "ws-1", kind: "doc_thread", doc_id: `doc-${i}`, doc_title: `Runbook ${i}`, created_by: "u1", created_at: "", updated_at: "",
+    }));
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") return { data: threads };
+      if (url === "/api/auth/me") return { data: meResponse };
+      return { data: {} };
+    });
+    renderSection();
+    expect(await screen.findByText("Runbook 19")).toBeInTheDocument();
+    expect(vi.mocked(api.get).mock.calls.filter(([url]) => String(url).startsWith("/api/docs"))).toHaveLength(0);
+  });
+
   it("folds the Threads group down to its header and opens it again", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") {
-        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", doc_title: "Runbook", created_by: "u1", created_at: "", updated_at: "" }] };
       }
-      if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
       if (url === "/api/auth/me") return { data: meResponse };
       return { data: {} };
     });
@@ -323,11 +335,10 @@ describe("ChatSidebarSection", () => {
     const mockThread = (unread: Record<string, number>) =>
       vi.mocked(api.get).mockImplementation(async (url: string) => {
         if (url === "/api/chat/conversations") {
-          return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+          return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", doc_title: "Runbook", created_by: "u1", created_at: "", updated_at: "" }] };
         }
         if (url === "/api/chat/unread") return { data: unread };
-        if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
-        if (url === "/api/auth/me") return { data: meResponse };
+          if (url === "/api/auth/me") return { data: meResponse };
         return { data: {} };
       });
 

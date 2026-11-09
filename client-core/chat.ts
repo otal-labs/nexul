@@ -19,6 +19,8 @@ export interface Conversation {
   name?: string;
   ticket_id?: string;
   doc_id?: string;
+  // A doc thread's doc title, set on the conversation list so a doc thread is titled without fetching its doc.
+  doc_title?: string;
   // Set on an interview thread, and on a stack thread to the stack's project.
   project_id?: string;
   // Only set on a stack thread.

@@ -73,13 +73,12 @@ describe("ChatListScreen", () => {
   test("thread rows are named after their ticket and doc, not the generic kind", async () => {
     const threads = [
       { id: "t1", workspace_id: "w1", kind: "ticket_thread", ticket_id: "tk1", created_by: "me", created_at: "", updated_at: "" },
-      { id: "t2", workspace_id: "w1", kind: "doc_thread", doc_id: "d1", created_by: "me", created_at: "", updated_at: "" },
+      { id: "t2", workspace_id: "w1", kind: "doc_thread", doc_id: "d1", doc_title: "Incident review", created_by: "me", created_at: "", updated_at: "" },
     ];
     get.mockImplementation(async (path: string) => {
       if (path === "/api/chat/conversations?workspace_id=w1") return threads;
       if (path === "/api/tickets/tk1") return { id: "tk1", project_id: "p1", number: 7, title: "Fix login redirect" };
       if (path === "/api/projects/p1") return { id: "p1", name: "Checkout", prefix: "CHK" };
-      if (path === "/api/docs/d1") return { id: "d1", title: "Incident review" };
       if (path in responses) return responses[path];
       throw new Error(`unexpected GET ${path}`);
     });

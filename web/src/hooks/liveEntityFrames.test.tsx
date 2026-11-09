@@ -1,10 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useFetchConversations } from "@/hooks/ChatHooks";
 import { useFetchDoc, useFetchDocs, useFetchDocsByProject, useFetchDocWatchers } from "@/hooks/DocHooks";
 import { useFetchTicket, useFetchTicketLinks, useFetchTickets, useFetchTicketsByDoc, useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
+import type { Conversation } from "@nexul/client-core/chat";
 import type { Doc } from "@/models/Doc";
 import type { Ticket } from "@/models/Ticket";
 import { mountLive } from "@/test/liveHarness";
@@ -57,6 +59,7 @@ const respond = (url: string) => {
   if (url === `/api/tickets/${ticket.id}/ticket-links`) return { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false };
   if (url === "/api/tickets/blockers") return {};
   if (url === "/api/plays/runs") return [];
+  if (url === "/api/chat/conversations") return [{ id: "c-1", workspace_id: "ws-1", kind: "doc_thread", doc_id: doc.id, doc_title: doc.title, created_by: "alice", created_at: "", updated_at: "" }];
   if (url === "/api/docs") return [{ ...server.doc, can_open: true }];
   if (url === `/api/docs/${doc.id}`) return server.doc;
   if (url === `/api/docs/${doc.id}/watchers`) return { watchers: [{ user_id: "alice", source: "auto", created_at: "" }], watching: true };
@@ -129,5 +132,16 @@ describe("a live ticket or doc frame", () => {
     expect(await requestsAfter("doc.updated", { doc: server.doc, actor_id: "alice" })).toEqual([]);
     expect(client.getQueryData<Doc>(["getDoc", doc.id])?.version).toBe(2);
     expect(client.getQueryData<Doc[]>(["getDocs", "byProject", doc.project_id])?.[0]?.version).toBe(2);
+  });
+
+  it("retitles a renamed doc's thread in the conversation list without a request", async () => {
+    const Threads = () => {
+      useFetchConversations("ws-1");
+      return null;
+    };
+    await mount(<Threads />);
+    server.doc = { ...doc, title: "Runbook", version: 2 };
+    expect(await requestsAfter("doc.updated", { doc: server.doc, actor_id: "alice" })).toEqual([]);
+    expect(client.getQueryData<Conversation[]>(["getChatConversations", "ws-1"])?.[0]?.doc_title).toBe("Runbook");
   });
 });
