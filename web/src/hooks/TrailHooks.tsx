@@ -139,10 +139,10 @@ export const useMissedDecisionsCheck = (ticketId: string): Trail | undefined => 
   const { data: trails } = useFetchTrails("ticket", ticketId);
   const { data: ticket } = useFetchTicket(ticketId);
   const { data: plays } = useApplicableTicketPlays(ticket);
-  const frames = usePlayRunStore((s) => s.frames);
   const check = plays?.find((p) => p.builtin_key === DECISIONS_CHECK_KEY);
   const latest = check && latestRunOf(trails, check.id);
-  if (!latest || (frames[latest.id]?.state ?? latest.state) !== "failed") return undefined;
+  const liveState = usePlayRunStore((s) => (latest ? s.frames[latest.id]?.state : undefined));
+  if (!latest || (liveState ?? latest.state) !== "failed") return undefined;
   return latest;
 };
 
@@ -223,33 +223,31 @@ export const useLiveTrailSteps = (trail: Trail): ActivityEntry[] => {
   return useMemo(() => mergeLiveSteps(trail.activity, live), [trail.activity, live]);
 };
 
-// The runs a thread shows inline: each run's turns placed above the message it led to, plus the running one.
+// A thread's inline runs, each selected by trail id so a frame for another target never re-renders it.
 export const useThreadTrailBlocks = (conversation: Conversation): ThreadTrailBlocks => {
   const target = conversationPlayTarget(conversation);
-  const { data: trails } = useFetchTrailsWithSteps(target?.type ?? "ticket", target?.id ?? "");
-  const frames = usePlayRunStore((s) => s.frames);
-  const steps = usePlayRunStore((s) => s.steps);
+  const { data: fetched } = useFetchTrailsWithSteps(target?.type ?? "ticket", target?.id ?? "");
+  const trails = useMemo(() => (fetched ?? []).filter((t) => t.conversation_id === conversation.id), [fetched, conversation.id]);
+  const frames = usePlayRunStore(useShallow((s) => trails.map((t) => s.frames[t.id])));
+  const steps = usePlayRunStore(useShallow((s) => trails.map((t) => s.steps[t.id] ?? NO_STEPS)));
   return useMemo(
     () =>
       threadTrailBlocks(
-        (trails ?? [])
-          .filter((t) => t.conversation_id === conversation.id)
-          .map((t) => ({
-            trail: t,
-            steps: mergeLiveSteps(t.activity, steps[t.id] ?? NO_STEPS),
-            state: frames[t.id]?.state ?? t.state,
-            question: frames[t.id]?.question ?? t.question ?? null,
-          })),
+        trails.map((t, i) => ({
+          trail: t,
+          steps: mergeLiveSteps(t.activity, steps[i] ?? NO_STEPS),
+          state: frames[i]?.state ?? t.state,
+          question: frames[i]?.question ?? t.question ?? null,
+        })),
       ),
-    [trails, frames, steps, conversation.id],
+    [trails, frames, steps],
   );
 };
 
-// The one trail occupying the target, if any; drives the disabled and Stop states of every play button on it.
+// The one trail occupying the target; the selector returns it as fetched, so only this target's own state flips re-render.
 export const useActiveTrail = (targetType: PlayType, targetId: string): Trail | undefined => {
   const { data: trails } = useFetchTrails(targetType, targetId);
-  const frames = usePlayRunStore((s) => s.frames);
-  return trails?.find((t) => isTrailActive(frames[t.id]?.state ?? t.state));
+  return usePlayRunStore((s) => trails?.find((t) => isTrailActive(s.frames[t.id]?.state ?? t.state)));
 };
 
 // Joins the on-load batch answer with live frames so a start, a question, or an end flips it without a refetch.
