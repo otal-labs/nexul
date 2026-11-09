@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://nexul.io/sitemap.xml
