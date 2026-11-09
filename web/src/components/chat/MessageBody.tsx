@@ -6,7 +6,7 @@ import { splitDiscordTimes, type TimedTextPart } from "@nexul/client-core/discor
 import { DiscordTimeChip } from "@/components/chat/DiscordTimeChip";
 import { MessageImage } from "@/components/chat/MessageImage";
 import { MessageLink } from "@/components/chat/MessageLink";
-import { tokenizeMessageText, type MessageTextPart } from "@/utils/MessageTextUtility";
+import { tokenizeMessageText, type MessageTextPart } from "@nexul/client-core/messageText";
 
 // Plain text with line breaks kept, @mentions bolded, http(s) URLs linked and <t:…> codes as times; only a bot's is markdown.
 const MessageTextPartView = ({ part }: { part: MessageTextPart }) => (

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   answersChangedSinceWritten,
   clarificationStatus,
+  patchAnythingElse,
+  patchQuestion,
   roundNumber,
   type Clarification,
   type ClarificationQuestion,
@@ -62,5 +64,24 @@ describe("answersChangedSinceWritten", () => {
       round(2, [], { no_gaps_at: "2026-10-01T02:00:00Z" }),
     ]);
     expect(answersChangedSinceWritten(changed)).toBe(1);
+  });
+});
+
+describe("patchQuestion", () => {
+  it("replaces the saved question in its own round and leaves every other row as it was", () => {
+    const before = clarification([round(1, [question(1, "2026-10-01T01:00:00Z")]), round(2, [question(2, "2026-10-01T02:00:00Z")])]);
+    const saved = { ...before.rounds[1]!.questions[0]!, selected: ["B"] };
+    const after = patchQuestion(before, saved);
+    expect(after.rounds[1]!.questions).toEqual([saved]);
+    expect(after.rounds[0]).toBe(before.rounds[0]);
+  });
+});
+
+describe("patchAnythingElse", () => {
+  it("takes the saved round's own fields and keeps the questions already cached", () => {
+    const before = clarification([round(1, [question(1, "2026-10-01T01:00:00Z")])]);
+    const after = patchAnythingElse(before, round(1, [], { anything_else: "Also the staging box" }));
+    expect(after.rounds[0]!.anything_else).toBe("Also the staging box");
+    expect(after.rounds[0]!.questions).toBe(before.rounds[0]!.questions);
   });
 });

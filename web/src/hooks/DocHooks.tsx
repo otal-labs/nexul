@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient }
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
+import { patchAnythingElse, patchQuestion, type Clarification, type ClarificationAnswerInput, type ClarificationQuestion, type ClarificationRound } from "@nexul/client-core/clarification";
 import { requires } from "@nexul/client-core/requires";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -173,13 +173,8 @@ export const useSetDocWatching = (docId: string) => {
   });
 };
 
-const patchRound = (client: QueryClient, docId: string, round: number, patch: (r: ClarificationRound) => ClarificationRound) =>
-  client.setQueryData<Clarification>([getDocClarificationKey, docId], (c) =>
-    c && { ...c, rounds: c.rounds.map((r) => (r.round === round ? patch(r) : r)) },
-  );
-
-const patchQuestion = (client: QueryClient, saved: ClarificationQuestion) =>
-  patchRound(client, saved.doc_id, saved.round, (r) => ({ ...r, questions: r.questions.map((q) => (q.id === saved.id ? saved : q)) }));
+const patchCachedQuestion = (client: QueryClient, saved: ClarificationQuestion) =>
+  client.setQueryData<Clarification>([getDocClarificationKey, saved.doc_id], (c) => c && patchQuestion(c, saved));
 
 // An answer or a skip; the saved question patches the cache so the next row opens at once.
 export const useAnswerDocQuestion = (docId: string) => {
@@ -188,7 +183,7 @@ export const useAnswerDocQuestion = (docId: string) => {
     mutationFn: requires("docs:write", async ({ questionId, answer }: { questionId: string; answer: ClarificationAnswerInput }) =>
       (await api.put<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`, answer)).data),
     onSuccess: async (saved) => {
-      patchQuestion(client, saved);
+      patchCachedQuestion(client, saved);
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -201,7 +196,7 @@ export const useClearDocAnswer = (docId: string) => {
     mutationFn: requires("docs:write", async (questionId: string) =>
       (await api.delete<ClarificationQuestion>(`/api/docs/${docId}/clarification/questions/${questionId}`)).data),
     onSuccess: async (saved) => {
-      patchQuestion(client, saved);
+      patchCachedQuestion(client, saved);
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -214,7 +209,7 @@ export const useSaveAnythingElse = (docId: string) => {
     mutationFn: requires("docs:write", async ({ round, text }: { round: number; text: string }) =>
       (await api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text })).data),
     onSuccess: async (saved) => {
-      patchRound(client, docId, saved.round, (r) => ({ ...saved, questions: r.questions }));
+      client.setQueryData<Clarification>([getDocClarificationKey, docId], (c) => c && patchAnythingElse(c, saved));
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
       toast.success("Saved");
     },

@@ -144,3 +144,17 @@ export const takesAnythingElse = (c: Clarification, r: ClarificationRound): bool
 // holds the open row.
 export const startsFolded = (c: Clarification, r: ClarificationRound, openKey: string | null): boolean =>
   c.closed || (r !== askedRounds(c).at(-1) && !r.questions.some((q) => q.id === openKey));
+
+// The cached clarification with one round replaced by what patch returns.
+export const patchRound = (c: Clarification, round: number, patch: (r: ClarificationRound) => ClarificationRound): Clarification => ({
+  ...c,
+  rounds: c.rounds.map((r) => (r.round === round ? patch(r) : r)),
+});
+
+// A saved answer takes its question's place in its round.
+export const patchQuestion = (c: Clarification, saved: ClarificationQuestion): Clarification =>
+  patchRound(c, saved.round, (r) => ({ ...r, questions: r.questions.map((q) => (q.id === saved.id ? saved : q)) }));
+
+// A saved "Anything else?" carries the round's fields but not its questions, which stay as cached.
+export const patchAnythingElse = (c: Clarification, saved: ClarificationRound): Clarification =>
+  patchRound(c, saved.round, (r) => ({ ...saved, questions: r.questions }));

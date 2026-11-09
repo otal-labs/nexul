@@ -1,4 +1,4 @@
-import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@nexul/client-core/clarification";
+import { patchAnythingElse, patchQuestion, type Clarification, type ClarificationAnswerInput, type ClarificationQuestion, type ClarificationRound } from "@nexul/client-core/clarification";
 import { requires } from "@nexul/client-core/requires";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
@@ -55,16 +55,8 @@ const docClarificationQuery = defineQuery({
 // An older server has no such route; the 404 reads as a doc without questions.
 export const useFetchDocClarification = (id: string | undefined) => useQuery({ ...docClarificationQuery.options(id), enabled: !!id });
 
-const patchRound = (client: QueryClient, docId: string, round: number, patch: (r: ClarificationRound) => ClarificationRound) =>
-  client.setQueryData<Clarification>([getDocClarificationKey, docId], (c) =>
-    c && { ...c, rounds: c.rounds.map((r) => (r.round === round ? patch(r) : r)) },
-  );
-
-const patchQuestion = (client: QueryClient, saved: ClarificationQuestion) =>
-  patchRound(client, saved.doc_id, saved.round, (r) => ({ ...r, questions: r.questions.map((q) => (q.id === saved.id ? saved : q)) }));
-
 const savedQuestion = (client: QueryClient, docId: string) => async (saved: ClarificationQuestion) => {
-  patchQuestion(client, saved);
+  client.setQueryData<Clarification>([getDocClarificationKey, docId], (c) => c && patchQuestion(c, saved));
   await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
 };
 
@@ -92,7 +84,7 @@ export const useSaveAnythingElse = (docId: string) => {
     mutationFn: requires("docs:write", ({ round, text }: { round: number; text: string }) =>
       api.put<ClarificationRound>(`/api/docs/${docId}/clarification/rounds/${round}/anything-else`, { text })),
     onSuccess: async (saved) => {
-      patchRound(client, docId, saved.round, (r) => ({ ...saved, questions: r.questions }));
+      client.setQueryData<Clarification>([getDocClarificationKey, docId], (c) => c && patchAnythingElse(c, saved));
       await client.invalidateQueries({ queryKey: [getDocClarificationKey, docId] });
     },
   });
