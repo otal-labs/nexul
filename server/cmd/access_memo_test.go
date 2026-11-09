@@ -137,7 +137,7 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 		if string(frame) == string(docFrame) {
 			topic = docs.TopicUpdated
 		}
-		return audience(identity.WithActor(ctx, identity.Actor{ID: user}), topic, json.RawMessage(frame))
+		return audience(topic, json.RawMessage(frame))(identity.WithActor(ctx, identity.Actor{ID: user}))
 	}
 
 	assert.True(t, reaches(uReader, ticketFrame))
@@ -184,7 +184,7 @@ func TestAccessMemo_ConcurrentRequestsShareNothing(t *testing.T) {
 		client := s.accessSvc.RequireProject(ctx, pClient, permissions.TicketsRead)
 		_, doc := s.docsSvc.Get(ctx, f.doc)
 		cs, listErr := s.chatSvc.ListConversations(ctx, wsDefault, user)
-		live := audience(identity.WithActor(context.Background(), identity.Actor{ID: user}), tickets.TopicUpdated, json.RawMessage(frame))
+		live := audience(tickets.TopicUpdated, json.RawMessage(frame))(identity.WithActor(context.Background(), identity.Actor{ID: user}))
 		return fmt.Sprint(outcome(project), outcome(client), outcome(doc), len(cs), outcome(listErr), live)
 	}
 	users := []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient}
@@ -501,9 +501,9 @@ func TestStatements_TicketSearchFetchesOnlyEachResult(t *testing.T) {
 	assert.Equal(t, 10*perTicket, many-few)
 }
 
-// TestStatements_LiveFramesCostOneReadPerPersonOnceWarm: after the first frame, an agent stream's frame costs each
-// connected person the conversation's own read and no access read, until something commits.
-func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
+// TestStatements_LiveFramesCostOneConversationReadOnceWarm: after the first frame, an agent stream's frame costs the one
+// read of the conversation's own row for everyone connected and no access read, until something commits.
+func TestStatements_LiveFramesCostOneConversationReadOnceWarm(t *testing.T) {
 	t.Parallel()
 	f, st, db := newCountedFixtureDB(t)
 	withRulesOnEveryChannel(t, db)
@@ -512,8 +512,9 @@ func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
 	require.NoError(t, err)
 	members := []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uSteward, uClerk, uManager, uCloner, uEditor, uCopier}
 	publish := func() {
+		reaches := audience(agent.TopicAgentStream, json.RawMessage(frame))
 		for _, user := range members {
-			assert.True(t, audience(identity.WithActor(context.Background(), identity.Actor{ID: user}), agent.TopicAgentStream, json.RawMessage(frame)), user)
+			assert.True(t, reaches(identity.WithActor(context.Background(), identity.Actor{ID: user})), user)
 		}
 	}
 	publish()
@@ -527,7 +528,7 @@ func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
 		publish()
 	}
 
-	assert.Equal(t, 5*int64(len(members))*perConversation, st.Count())
+	assert.Equal(t, 5*perConversation, st.Count())
 }
 
 // withRulesOnEveryChannel writes Allow rules on every channel in SQL, since no writer names a channel yet.
@@ -796,7 +797,7 @@ func TestStatements_ProjectRulesCostTheSameAtAnyLength(t *testing.T) {
 		},
 		"a live frame": func(ctx context.Context, f permFixture) error {
 			frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
-			if err == nil && !memoizedAudience(f.svc)(ctx, tickets.TopicUpdated, json.RawMessage(frame)) {
+			if err == nil && !memoizedAudience(f.svc)(tickets.TopicUpdated, json.RawMessage(frame))(ctx) {
 				err = errors.New("the reader's frame was dropped")
 			}
 			return err
@@ -846,7 +847,7 @@ func TestRows_ASingleCheckReadsOnlyItsProjectsRules(t *testing.T) {
 		},
 		"a live frame": func(ctx context.Context, f permFixture) error {
 			frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
-			if err == nil && !memoizedAudience(f.svc)(ctx, tickets.TopicUpdated, json.RawMessage(frame)) {
+			if err == nil && !memoizedAudience(f.svc)(tickets.TopicUpdated, json.RawMessage(frame))(ctx) {
 				err = errors.New("the reader's frame was dropped")
 			}
 			return err

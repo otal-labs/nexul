@@ -95,9 +95,11 @@ func TestHub_PublishUnencodablePayloadErrors(t *testing.T) {
 // read the frame: only that socket receives it, and the next frame the other may read still arrives.
 func TestHub_AudienceKeepsAFrameFromSocketsItRefuses(t *testing.T) {
 	hub := New(testLogger())
-	hub.SetAudience(func(ctx context.Context, topic string, _ any) bool {
-		actor, _ := identity.ActorFromCtx(ctx)
-		return topic == "public" || actor.ID == "alice"
+	hub.SetAudience(func(topic string, _ any) func(context.Context) bool {
+		return func(ctx context.Context) bool {
+			actor, _ := identity.ActorFromCtx(ctx)
+			return topic == "public" || actor.ID == "alice"
+		}
 	})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := identity.WithActor(r.Context(), identity.Actor{ID: r.URL.Query().Get("user")})
@@ -129,10 +131,13 @@ func TestHub_AudienceKeepsAFrameFromSocketsItRefuses(t *testing.T) {
 
 func TestHub_Publish_ChecksTheAudienceOncePerPersonNotPerSocket(t *testing.T) {
 	hub := New(testLogger())
-	var checks int
-	hub.SetAudience(func(context.Context, string, any) bool {
-		checks++
-		return false
+	var prepares, checks int
+	hub.SetAudience(func(string, any) func(context.Context) bool {
+		prepares++
+		return func(context.Context) bool {
+			checks++
+			return false
+		}
 	})
 	for _, user := range []string{"alice", "alice", "alice", "bob"} {
 		hub.add(&client{userID: user})
@@ -141,6 +146,7 @@ func TestHub_Publish_ChecksTheAudienceOncePerPersonNotPerSocket(t *testing.T) {
 	require.NoError(t, hub.Publish(context.Background(), "chat.agent.stream", map[string]string{"conversation_id": "c-1"}))
 
 	assert.Equal(t, 2, checks)
+	assert.Equal(t, 1, prepares, "the frame is prepared once for everyone")
 }
 
 // TestHub_Publish_ASocketThatStopsReadingHoldsUpNobody fills a socket that never reads: publishing carries on for

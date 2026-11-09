@@ -40,8 +40,12 @@ type liveAudience struct {
 	deploy  *deploy.Service
 }
 
-// liveRule answers for one topic whether the actor on ctx may receive a frame carrying raw.
-type liveRule func(ctx context.Context, a liveAudience, raw json.RawMessage) bool
+// liveCheck answers whether the person on ctx may receive the frame it was prepared for.
+type liveCheck func(ctx context.Context) bool
+
+// liveRule names for one topic how a frame is checked: it decodes the payload raw once and returns the check each
+// person's socket then runs, so what a frame costs does not grow with the people connected.
+type liveRule func(a liveAudience, raw json.RawMessage) liveCheck
 
 // Presence and account frames name nobody but an id; the page that receives them refetches through its own checks.
 const topicPresenceChanged = "account.presence_changed"
@@ -210,21 +214,26 @@ var liveRules = map[string]liveRule{
 	repository.TopicInstallationUnassigned: installationFrame,
 }
 
-// allows is the hub's Audience.
-func (a liveAudience) allows(ctx context.Context, topic string, payload any) bool {
+// frame prepares a frame once and returns the check each person's socket runs on it.
+func (a liveAudience) frame(topic string, payload any) liveCheck {
 	rule, ok := liveRules[topic]
 	if !ok {
-		return false
+		return never
 	}
 	raw, ok := payload.(json.RawMessage)
 	if !ok {
 		b, err := json.Marshal(payload)
 		if err != nil {
-			return false
+			return never
 		}
 		raw = b
 	}
-	return rule(ctx, a, raw)
+	return rule(a, raw)
+}
+
+// allows is frame's check for one person.
+func (a liveAudience) allows(ctx context.Context, topic string, payload any) bool {
+	return a.frame(topic, payload)(ctx)
 }
 
 func decode(raw json.RawMessage, v any) bool {
@@ -236,32 +245,76 @@ func actorID(ctx context.Context) string {
 	return actor.ID
 }
 
-func everyone(context.Context, liveAudience, json.RawMessage) bool { return true }
+func never(context.Context) bool  { return false }
+func always(context.Context) bool { return true }
 
-func ownFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		UserID string `json:"user_id"`
+// prepared is a rule that decodes its payload into P once per frame and builds from it the check each person runs.
+func prepared[P any](prepare func(a liveAudience, p P) liveCheck) liveRule {
+	return func(a liveAudience, raw json.RawMessage) liveCheck {
+		var p P
+		if !decode(raw, &p) {
+			return never
+		}
+		return prepare(a, p)
 	}
-	return decode(raw, &p) && p.UserID != "" && p.UserID == actorID(ctx)
 }
+
+// perPerson is a rule that decodes its payload into P once per frame and asks check about each person.
+func perPerson[P any](check func(ctx context.Context, a liveAudience, p P) bool) liveRule {
+	return prepared(func(a liveAudience, p P) liveCheck {
+		return func(ctx context.Context) bool { return check(ctx, a, p) }
+	})
+}
+
+// readsRow reads the row a frame names for the first person whose check reaches it and answers everyone from that
+// read; a row that cannot be read reaches nobody.
+func readsRow(load func(context.Context, string) (func(context.Context) error, error), id string) liveCheck {
+	var (
+		check  func(context.Context) error
+		loaded bool
+	)
+	return func(ctx context.Context) bool {
+		if !loaded {
+			check, _ = load(ctx, id) // a failed load leaves check nil
+			loaded = true
+		}
+		return check != nil && check(ctx) == nil
+	}
+}
+
+type userPayload struct {
+	UserID string `json:"user_id"`
+}
+
+type workspacePayload struct {
+	WorkspaceID string `json:"workspace_id"`
+}
+
+type projectPayload struct {
+	ProjectID string `json:"project_id"`
+}
+
+func everyone(liveAudience, json.RawMessage) liveCheck { return always }
+
+var ownFrame = perPerson(func(ctx context.Context, _ liveAudience, p userPayload) bool {
+	return p.UserID != "" && p.UserID == actorID(ctx)
+})
 
 // computerGrantFrame reaches a computer's owner and the person its rule names, and nobody else (ADR 0148).
-func computerGrantFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		OwnerID string `json:"owner_id"`
-		UserID  string `json:"user_id"`
-	}
+var computerGrantFrame = perPerson(func(ctx context.Context, _ liveAudience, p struct {
+	OwnerID string `json:"owner_id"`
+	UserID  string `json:"user_id"`
+}) bool {
 	me := actorID(ctx)
-	return decode(raw, &p) && me != "" && (p.OwnerID == me || p.UserID == me)
-}
+	return me != "" && (p.OwnerID == me || p.UserID == me)
+})
 
 // recipientFrame reaches only the people whose inbox the frame names, or who saw the machine it says went.
-func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		UserIDs []string `json:"user_ids"`
-	}
-	return decode(raw, &p) && slices.Contains(p.UserIDs, actorID(ctx))
-}
+var recipientFrame = perPerson(func(ctx context.Context, _ liveAudience, p struct {
+	UserIDs []string `json:"user_ids"`
+}) bool {
+	return slices.Contains(p.UserIDs, actorID(ctx))
+})
 
 // manageAction is what writing the rules on each entity takes there.
 var manageAction = map[string]permissions.Action{
@@ -270,17 +323,14 @@ var manageAction = map[string]permissions.Action{
 
 // grantFrame reaches the person whose rule changed, or the holders of the role it names, and whoever manages the rules
 // it changed: a doc's or a play's, a machine's Manage holders and the instance Owner, or for Project access the project's workspace.
-func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ResourceType string `json:"resource_type"`
-		ResourceID   string `json:"resource_id"`
-		RoleID       string `json:"role_id"`
-	}
-	if ownFrame(ctx, a, raw) {
+var grantFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	UserID       string `json:"user_id"`
+	ResourceType string `json:"resource_type"`
+	ResourceID   string `json:"resource_id"`
+	RoleID       string `json:"role_id"`
+}) bool {
+	if p.UserID != "" && p.UserID == actorID(ctx) {
 		return true
-	}
-	if !decode(raw, &p) {
-		return false
 	}
 	if holds, err := a.access.HoldsRole(ctx, actorID(ctx), p.RoleID); holds && err == nil {
 		return true
@@ -302,26 +352,19 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		return a.access.RequireMachine(ctx, p.ResourceID, permissions.MachinesWrite) == nil
 	}
 	return false
-}
+})
 
-func memberFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		UserID      string `json:"user_id"`
-		WorkspaceID string `json:"workspace_id"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+var memberFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	UserID      string `json:"user_id"`
+	WorkspaceID string `json:"workspace_id"`
+}) bool {
 	return p.UserID == actorID(ctx) || a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
-}
+})
 
 // welcomeFrame reaches the person and whoever sees them on Team: accounts:read anywhere, or members:write in a
 // workspace they are in.
-func welcomeFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		UserID string `json:"user_id"`
-	}
-	if !decode(raw, &p) || p.UserID == "" {
+var welcomeFrame = perPerson(func(ctx context.Context, a liveAudience, p userPayload) bool {
+	if p.UserID == "" {
 		return false
 	}
 	if p.UserID == actorID(ctx) || a.access.RequireAnywhere(ctx, permissions.AccountsRead) == nil {
@@ -332,291 +375,242 @@ func welcomeFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool
 		return false
 	}
 	return slices.ContainsFunc(workspaceIDs, func(id string) bool { return a.access.Require(ctx, id, permissions.MembersWrite) == nil })
-}
+})
 
 // workspaceFrame carries the workspace's new name and slug, which only its members may see.
-func workspaceFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		WorkspaceID string `json:"workspace_id"`
-	}
-	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
-}
+var workspaceFrame = perPerson(func(ctx context.Context, a liveAudience, p workspacePayload) bool {
+	return a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+})
 
 // archiveFrame reaches the members it names, whom an archived workspace no longer resolves, and whoever holds the restore.
-func archiveFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	return recipientFrame(ctx, a, raw) || anywhere(permissions.InstanceWrite)(ctx, a, raw)
+func archiveFrame(a liveAudience, raw json.RawMessage) liveCheck {
+	recipient, restorer := recipientFrame(a, raw), anywhere(permissions.InstanceWrite)(a, raw)
+	return func(ctx context.Context) bool { return recipient(ctx) || restorer(ctx) }
 }
 
 // runnerFrame reaches whoever sees the machine the runner belongs to; a frame naming none reaches nobody.
-func runnerFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		MachineID string `json:"machine_id"`
-	}
-	return decode(raw, &p) && p.MachineID != "" && a.access.RequireMachine(ctx, p.MachineID, permissions.MachinesSee) == nil
-}
+var runnerFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	MachineID string `json:"machine_id"`
+}) bool {
+	return p.MachineID != "" && a.access.RequireMachine(ctx, p.MachineID, permissions.MachinesSee) == nil
+})
 
-func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		WorkspaceID string `json:"workspace_id"`
-	}
-	return decode(raw, &p) && p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
-}
+var topologyCanvasFrame = perPerson(func(ctx context.Context, a liveAudience, p workspacePayload) bool {
+	return p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
+})
 
 // installationFrame reaches who may create projects in the workspace: the installations card names those workspaces
 // as using an account.
-func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		WorkspaceID string `json:"workspace_id"`
-	}
-	if !decode(raw, &p) || p.WorkspaceID == "" {
-		return false
-	}
-	return a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsCreate) == nil
-}
+var installationFrame = perPerson(func(ctx context.Context, a liveAudience, p workspacePayload) bool {
+	return p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsCreate) == nil
+})
 
 func anywhere(action permissions.Action) liveRule {
-	return func(ctx context.Context, a liveAudience, _ json.RawMessage) bool {
-		return a.access.RequireAnywhere(ctx, action) == nil
+	return func(a liveAudience, _ json.RawMessage) liveCheck {
+		return func(ctx context.Context) bool { return a.access.RequireAnywhere(ctx, action) == nil }
 	}
 }
 
-func ticketFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Ticket struct {
-			ProjectID string `json:"project_id"`
-		} `json:"ticket"`
-	}
-	return decode(raw, &p) && a.access.RequireProject(ctx, p.Ticket.ProjectID, permissions.TicketsRead) == nil
-}
+var ticketFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Ticket projectPayload `json:"ticket"`
+}) bool {
+	return a.access.RequireProject(ctx, p.Ticket.ProjectID, permissions.TicketsRead) == nil
+})
 
-func ticketLinkFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Link struct {
-			TicketID string `json:"ticket_id"`
-		} `json:"link"`
-	}
-	return decode(raw, &p) && readsTicket(ctx, a, p.Link.TicketID)
-}
-
-func ticketIDFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
+var ticketLinkFrame = prepared(func(a liveAudience, p struct {
+	Link struct {
 		TicketID string `json:"ticket_id"`
-	}
-	return decode(raw, &p) && readsTicket(ctx, a, p.TicketID)
-}
+	} `json:"link"`
+}) liveCheck {
+	return readsTicket(a, p.Link.TicketID)
+})
+
+var ticketIDFrame = prepared(func(a liveAudience, p struct {
+	TicketID string `json:"ticket_id"`
+}) liveCheck {
+	return readsTicket(a, p.TicketID)
+})
 
 // ticketDeletedFrame carries the gone ticket's title, which a reader of its project's tickets saw on the board.
-func ticketDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ProjectID string `json:"project_id"`
-	}
-	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.TicketsRead) == nil
-}
+var ticketDeletedFrame = perPerson(func(ctx context.Context, a liveAudience, p projectPayload) bool {
+	return p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.TicketsRead) == nil
+})
 
-func readsTicket(ctx context.Context, a liveAudience, id string) bool {
-	_, err := a.tickets.Get(ctx, id)
-	return err == nil
+func readsTicket(a liveAudience, id string) liveCheck {
+	return readsRow(a.tickets.ReadCheck, id)
 }
 
 // boardFrame reads a project's columns, types, or categories, which every member of its workspace sees; a delete
 // carries only the id, so it goes to everyone.
 func boardFrame(key string) liveRule {
-	return func(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-		var p map[string]struct {
-			ProjectID string `json:"project_id"`
-		}
-		if !decode(raw, &p) {
-			return false
-		}
+	return perPerson(func(ctx context.Context, a liveAudience, p map[string]projectPayload) bool {
 		projectID := p[key].ProjectID
 		return projectID == "" || a.access.RequireProject(ctx, projectID, permissions.Member) == nil
-	}
+	})
 }
 
 // projectFrame reaches whoever may open the project, the people whose sidebar lists it.
-func projectFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ProjectID string `json:"project_id"`
-	}
-	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.Member) == nil
-}
+var projectFrame = perPerson(func(ctx context.Context, a liveAudience, p projectPayload) bool {
+	return p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.Member) == nil
+})
 
-func docFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Doc struct {
-			ID string `json:"id"`
-		} `json:"doc"`
-	}
-	return decode(raw, &p) && readsDoc(ctx, a, p.Doc.ID)
-}
+var docFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Doc struct {
+		ID string `json:"id"`
+	} `json:"doc"`
+}) bool {
+	return readsDoc(ctx, a, p.Doc.ID)
+})
 
 // docDeletedFrame carries the gone doc's title, which a reader of its project's docs saw in the Docs list.
-func docDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ProjectID string `json:"project_id"`
-	}
-	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.DocsRead) == nil
-}
+var docDeletedFrame = perPerson(func(ctx context.Context, a liveAudience, p projectPayload) bool {
+	return p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.DocsRead) == nil
+})
 
 // docFolderFrame carries a folder's name, which a reader of the project's docs sees in the Docs list.
-func docFolderFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Folder struct {
-			ProjectID string `json:"project_id"`
-		} `json:"folder"`
-	}
-	return decode(raw, &p) && a.access.RequireProject(ctx, p.Folder.ProjectID, permissions.DocsRead) == nil
-}
+var docFolderFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Folder projectPayload `json:"folder"`
+}) bool {
+	return a.access.RequireProject(ctx, p.Folder.ProjectID, permissions.DocsRead) == nil
+})
 
 func readsDoc(ctx context.Context, a liveAudience, id string) bool {
 	ok, err := a.access.Can(ctx, actorID(ctx), id, permissions.DocsRead)
 	return err == nil && ok
 }
 
-func memoryFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Memory struct {
-			ProjectID string `json:"project_id"`
-		} `json:"memory"`
-	}
-	return decode(raw, &p) && a.access.RequireProject(ctx, p.Memory.ProjectID, permissions.MemoriesRead) == nil
-}
+var memoryFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Memory projectPayload `json:"memory"`
+}) bool {
+	return a.access.RequireProject(ctx, p.Memory.ProjectID, permissions.MemoriesRead) == nil
+})
 
 // memoryProjectFrame reads a memories frame's top-level project; a frame without one reaches nobody.
-func memoryProjectFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ProjectID string `json:"project_id"`
-	}
-	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.MemoriesRead) == nil
-}
+var memoryProjectFrame = perPerson(func(ctx context.Context, a liveAudience, p projectPayload) bool {
+	return p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.MemoriesRead) == nil
+})
 
 // conversationFrame covers every chat-shaped payload: a conversation, a message, or a bare conversation id.
-func conversationFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
+var conversationFrame = prepared(func(a liveAudience, p struct {
+	ConversationID string `json:"conversation_id"`
+	Conversation   struct {
+		ID string `json:"id"`
+	} `json:"conversation"`
+	Message struct {
 		ConversationID string `json:"conversation_id"`
-		Conversation   struct {
-			ID string `json:"id"`
-		} `json:"conversation"`
-		Message struct {
-			ConversationID string `json:"conversation_id"`
-		} `json:"message"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
-	id := p.ConversationID + p.Conversation.ID + p.Message.ConversationID
-	_, err := a.chat.GetConversation(ctx, id)
-	return err == nil
-}
+	} `json:"message"`
+}) liveCheck {
+	return readsRow(a.chat.ReadCheck, p.ConversationID+p.Conversation.ID+p.Message.ConversationID)
+})
 
 // conversationDeletedFrame reaches whoever could read the channel before it went: a private one's members and the Owner.
-func conversationDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p chat.ConversationDeletedEvent
-	return decode(raw, &p) && a.chat.ReadsDeleted(ctx, p)
-}
+var conversationDeletedFrame = perPerson(func(ctx context.Context, a liveAudience, p chat.ConversationDeletedEvent) bool {
+	return a.chat.ReadsDeleted(ctx, p)
+})
 
 // membersChangedFrame reaches the channel's readers and the people it removed, who can no longer read it.
-func membersChangedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+func membersChangedFrame(a liveAudience, raw json.RawMessage) liveCheck {
 	var p chat.ConversationMembersChangedEvent
 	if !decode(raw, &p) {
-		return false
+		return never
 	}
-	return slices.Contains(p.RemovedUserIDs, actorID(ctx)) || conversationFrame(ctx, a, raw)
+	reads := conversationFrame(a, raw)
+	return func(ctx context.Context) bool { return slices.Contains(p.RemovedUserIDs, actorID(ctx)) || reads(ctx) }
 }
 
 // botwebhookFrame reaches whoever lists the bot's conversation's bots: botwebhook:read and a read of the conversation.
-func botwebhookFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		WorkspaceID string `json:"workspace_id"`
+func botwebhookFrame(a liveAudience, raw json.RawMessage) liveCheck {
+	var p workspacePayload
+	if !decode(raw, &p) {
+		return never
 	}
-	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.BotwebhookRead) == nil && conversationFrame(ctx, a, raw)
+	reads := conversationFrame(a, raw)
+	return func(ctx context.Context) bool {
+		return a.access.Require(ctx, p.WorkspaceID, permissions.BotwebhookRead) == nil && reads(ctx)
+	}
 }
 
 // playRunFrame reaches whoever reads the run's target and its trail: the run's starter, or someone who can see its play.
-func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		TargetType  plays.TargetType `json:"target_type"`
-		TargetID    string           `json:"target_id"`
-		PlayID      string           `json:"play_id"`
-		StarterID   string           `json:"starter_id"`
-		WorkspaceID string           `json:"workspace_id"`
+var playRunFrame = prepared(func(a liveAudience, p struct {
+	TargetType  plays.TargetType `json:"target_type"`
+	TargetID    string           `json:"target_id"`
+	PlayID      string           `json:"play_id"`
+	StarterID   string           `json:"starter_id"`
+	WorkspaceID string           `json:"workspace_id"`
+}) liveCheck {
+	readsTarget := playRunTarget(a, p.TargetType, p.TargetID)
+	return func(ctx context.Context) bool {
+		actor := actorID(ctx)
+		started := actor != "" && actor == p.StarterID
+		if p.PlayID != "" && !started && !a.access.HasPermission(ctx, actor, p.WorkspaceID, permissions.PlaysRead, "play", p.PlayID) {
+			return false
+		}
+		return readsTarget(ctx)
 	}
-	if !decode(raw, &p) {
-		return false
+})
+
+// playRunTarget is the check that a person reads what a run is on: a doc, an interview's project, a stack, or a ticket.
+func playRunTarget(a liveAudience, targetType plays.TargetType, id string) liveCheck {
+	if targetType == plays.TargetDoc {
+		return func(ctx context.Context) bool { return readsDoc(ctx, a, id) }
 	}
-	actor := actorID(ctx)
-	started := actor != "" && actor == p.StarterID
-	if p.PlayID != "" && !started && !a.access.HasPermission(ctx, actor, p.WorkspaceID, permissions.PlaysRead, "play", p.PlayID) {
-		return false
+	if targetType == plays.TargetInterview {
+		return func(ctx context.Context) bool {
+			return a.access.RequireProject(ctx, id, permissions.MemoriesRead) == nil
+		}
 	}
-	if p.TargetType == plays.TargetDoc {
-		return readsDoc(ctx, a, p.TargetID)
+	if targetType == plays.TargetStack {
+		return func(ctx context.Context) bool {
+			_, err := a.deploy.GetStack(ctx, id)
+			return err == nil
+		}
 	}
-	if p.TargetType == plays.TargetInterview {
-		return a.access.RequireProject(ctx, p.TargetID, permissions.MemoriesRead) == nil
-	}
-	if p.TargetType == plays.TargetStack {
-		_, err := a.deploy.GetStack(ctx, p.TargetID)
-		return err == nil
-	}
-	return readsTicket(ctx, a, p.TargetID)
+	return readsTicket(a, id)
 }
 
 // playFrame reaches whoever can see the play (plays:read on it).
-func playFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
+var playFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	Play        struct {
 		ID          string `json:"id"`
 		WorkspaceID string `json:"workspace_id"`
-		Play        struct {
-			ID          string `json:"id"`
-			WorkspaceID string `json:"workspace_id"`
-		} `json:"play"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+	} `json:"play"`
+}) bool {
 	id, workspaceID := p.ID+p.Play.ID, p.WorkspaceID+p.Play.WorkspaceID
 	if workspaceID == "" {
 		return false
 	}
 	return a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", id)
-}
+})
 
 // autoPlayFrame reaches whoever reads the workspace's auto plays and can see the auto play's play; the workspace and
 // play are top level on a delete, nested otherwise, and a limits frame names no play.
-func autoPlayFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
+var autoPlayFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	WorkspaceID string `json:"workspace_id"`
+	PlayID      string `json:"play_id"`
+	AutoPlay    struct {
 		WorkspaceID string `json:"workspace_id"`
 		PlayID      string `json:"play_id"`
-		AutoPlay    struct {
-			WorkspaceID string `json:"workspace_id"`
-			PlayID      string `json:"play_id"`
-		} `json:"auto_play"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+	} `json:"auto_play"`
+}) bool {
 	workspaceID, playID := p.WorkspaceID+p.AutoPlay.WorkspaceID, p.PlayID+p.AutoPlay.PlayID
 	if workspaceID == "" || a.access.Require(ctx, workspaceID, permissions.AutoplaysRead) != nil {
 		return false
 	}
 	return playID == "" || a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", playID)
-}
+})
 
 // stackFrame reaches who reads the stack: through its rules, a branch deployment's base stack's; an instance stack's
 // readers see its machine and read dns (ADR 0151).
-func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Stack struct {
-			ID          string `json:"id"`
-			ProjectID   string `json:"project_id"`
-			DerivedFrom string `json:"derived_from"`
-			Machine     string `json:"machine"`
-		} `json:"stack"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+var stackFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Stack struct {
+		ID          string `json:"id"`
+		ProjectID   string `json:"project_id"`
+		DerivedFrom string `json:"derived_from"`
+		Machine     string `json:"machine"`
+	} `json:"stack"`
+}) bool {
 	if p.Stack.ProjectID == "" {
 		return a.access.RequireAnywhere(ctx, permissions.StacksRead) == nil &&
 			a.access.RequireAnywhere(ctx, permissions.DNSRead) == nil &&
@@ -627,41 +621,29 @@ func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		ruled = p.Stack.DerivedFrom
 	}
 	return a.access.RequireStack(ctx, p.Stack.ProjectID, ruled, permissions.StacksRead) == nil
-}
+})
 
 // outageFrame reaches whoever reads the stack an outage or an error-rate episode is on, through the same read the stack's own fetch runs.
-func outageFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		StackID string `json:"stack_id"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+var outageFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	StackID string `json:"stack_id"`
+}) bool {
 	_, err := a.deploy.GetStack(ctx, p.StackID)
 	return err == nil
-}
+})
 
-func deployFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		ID string `json:"id"`
-	}
-	if !decode(raw, &p) {
-		return false
-	}
+var deployFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	ID string `json:"id"`
+}) bool {
 	_, err := a.deploy.Get(ctx, p.ID)
 	return err == nil
-}
+})
 
 // sweepFrame reaches whoever can see the sweep's play, as its digest does.
-func sweepFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
-	var p struct {
-		Sweep struct {
-			PlayID      string `json:"play_id"`
-			WorkspaceID string `json:"workspace_id"`
-		} `json:"sweep"`
-	}
-	if !decode(raw, &p) || p.Sweep.WorkspaceID == "" {
-		return false
-	}
-	return a.access.HasPermission(ctx, actorID(ctx), p.Sweep.WorkspaceID, permissions.PlaysRead, "play", p.Sweep.PlayID)
-}
+var sweepFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	Sweep struct {
+		PlayID      string `json:"play_id"`
+		WorkspaceID string `json:"workspace_id"`
+	} `json:"sweep"`
+}) bool {
+	return p.Sweep.WorkspaceID != "" && a.access.HasPermission(ctx, actorID(ctx), p.Sweep.WorkspaceID, permissions.PlaysRead, "play", p.Sweep.PlayID)
+})
