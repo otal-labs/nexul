@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ThemeId } from "@/enums/Theme";
 import { currentRowFillClass } from "@/components/CurrentRow";
 import { segmentedThumbClass } from "@/components/ui/toggle-group";
+import { switchOffTrackClass } from "@/components/ui/switch";
 import css from "@/index.css?raw";
 import { applyThemePalette, THEME_DEFINITIONS } from "@/lib/themePalettes";
 
@@ -14,6 +15,7 @@ const MIN_RATIO = 4.5;
 const DEFAULT_MUTED_RATIO = 6;
 const MIN_EDGE_RATIO = 1.1;
 const MIN_CARD_LIFT = 0.029;
+const MIN_CONTROL_RATIO = 3;
 
 const block = (selector: string): string => css.match(new RegExp(`\\n${selector} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 const DEFAULTS: Record<Mode, string> = { light: block(":root"), dark: block("\\.dark") };
@@ -225,4 +227,26 @@ describe("segmented control thumb", () => {
       expect(ratio(ink("dark", "foreground"), thumb)).toBeGreaterThanOrEqual(MIN_RATIO);
     },
   );
+});
+
+// The off switch's light track as its class spells it, `data-[state=unchecked]:bg-<token>[/share]`, over each surface a switch sits on.
+const failingOffTracks = (): string[] => {
+  const [, token, share] = switchOffTrackClass.match(/(?:^|\s)data-\[state=unchecked\]:bg-([\w-]+?)(?:\/(\d+))?(?:\s|$)/) ?? [];
+  if (!token) throw new Error("the switch has no light off track");
+  const alpha = share ? Number(share) / 100 : 1;
+  return Object.entries(surfaces("light"))
+    .map(([surface, rgb]) => [surface, ratio(ink("light", token).map((v, i) => v * alpha + rgb[i]! * (1 - alpha)) as Rgb, rgb)] as const)
+    .filter(([, value]) => value < MIN_CONTROL_RATIO)
+    .map(([surface, value]) => `off track on ${surface}: ${value.toFixed(2)} < ${MIN_CONTROL_RATIO}`);
+};
+
+describe("switch off track", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("style");
+  });
+
+  it.each(THEME_DEFINITIONS.map((theme) => ({ id: theme.id, label: theme.label })))("$label light holds the off track at 3:1 on every surface", ({ id }) => {
+    applyThemePalette(id, "light");
+    expect(failingOffTracks()).toEqual([]);
+  });
 });

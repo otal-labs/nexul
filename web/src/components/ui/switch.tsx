@@ -3,6 +3,9 @@ import { Switch as SwitchPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+// Light's off track holds 3:1 on every surface it sits on (`themeContrast.test.ts`), so off never reads as disabled.
+export const switchOffTrackClass = "data-[state=unchecked]:bg-muted-foreground dark:data-[state=unchecked]:bg-input/80"
+
 function Switch({
   className,
   size = "default",
@@ -15,7 +18,8 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        "peer group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-[background-color,border-color,box-shadow] duration-200 ease-standard outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-[1.15rem] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 data-[state=checked]:bg-brand data-[state=unchecked]:bg-foreground/30 dark:data-[state=unchecked]:bg-input/80",
+        "peer group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-[background-color,border-color,box-shadow] duration-200 ease-standard outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-[1.15rem] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 data-[state=checked]:bg-brand",
+        switchOffTrackClass,
         className
       )}
       {...props}

@@ -37,7 +37,7 @@ export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
               title={level === 0 ? `Needs ${firstRung} first` : extra.label}
               className={cn(
                 "flex items-center gap-2 text-xs text-muted-foreground",
-                level === 0 ? "cursor-not-allowed opacity-70" : "cursor-pointer",
+                level === 0 ? "cursor-not-allowed" : "cursor-pointer",
               )}
             >
               <Checkbox

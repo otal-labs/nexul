@@ -7,7 +7,7 @@ interface RoleDescriptionFieldProps {
   onDescription: (description: string) => void;
 }
 
-// The role's one line, counted against the cap the server holds it to; the count turns amber with 20 left.
+// The role's one line, counted against the cap the server holds it to; shown once there is text, it turns amber with 20 left.
 export const RoleDescriptionField = ({ description, onDescription }: RoleDescriptionFieldProps) => {
   const left = ROLE_DESCRIPTION_MAX - description.length;
 
@@ -17,9 +17,11 @@ export const RoleDescriptionField = ({ description, onDescription }: RoleDescrip
         <label htmlFor="role-description" className="text-sm font-medium">
           Description
         </label>
-        <span className={cn("font-mono text-micro tabular-nums text-muted-foreground", left <= 20 && "text-warning")}>
-          {description.length} / {ROLE_DESCRIPTION_MAX}
-        </span>
+        {description.length > 0 && (
+          <span className={cn("font-mono text-micro tabular-nums text-muted-foreground", left <= 20 && "text-warning")}>
+            {description.length} / {ROLE_DESCRIPTION_MAX}
+          </span>
+        )}
       </div>
       <Input
         id="role-description"
