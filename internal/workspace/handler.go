@@ -1,27 +1,11 @@
 package workspace
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
-
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID attaches the authenticated user id so the gateway can owner-gate without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler adapts the workspace use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP.
 type Handler struct {

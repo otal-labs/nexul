@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 type InvitationHandler struct {
@@ -47,7 +48,7 @@ func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	created, err := h.svc.Create(ctx, UserIDFromCtx(r.Context()), CreateInvitationInput(req))
+	created, err := h.svc.Create(ctx, identity.UserID(r.Context()), CreateInvitationInput(req))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -58,7 +59,7 @@ func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
 func (h *InvitationHandler) list(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := invitationRequestContext(r)
 	defer cancel()
-	list, err := h.svc.List(ctx, UserIDFromCtx(r.Context()))
+	list, err := h.svc.List(ctx, identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -69,7 +70,7 @@ func (h *InvitationHandler) list(w http.ResponseWriter, r *http.Request) {
 func (h *InvitationHandler) revoke(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := invitationRequestContext(r)
 	defer cancel()
-	if err := h.svc.Revoke(ctx, UserIDFromCtx(r.Context()), r.PathValue("invitationID")); err != nil {
+	if err := h.svc.Revoke(ctx, identity.UserID(r.Context()), r.PathValue("invitationID")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

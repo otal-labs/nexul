@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 func TestHandler_Join(t *testing.T) {
@@ -20,7 +22,7 @@ func TestHandler_Join(t *testing.T) {
 	h := NewHandler(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/voice/conv-1/token", nil)
-	req = req.WithContext(WithUserID(req.Context(), "u-1"))
+	req = req.WithContext(identity.WithUserID(req.Context(), "u-1"))
 	req.SetPathValue("conversationID", "conv-1")
 	rec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
@@ -47,7 +49,7 @@ func TestHandler_Join_NotAVoiceChannel_Is4xx(t *testing.T) {
 	h := NewHandler(svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/voice/conv-1/token", nil)
-	req = req.WithContext(WithUserID(req.Context(), "u-1"))
+	req = req.WithContext(identity.WithUserID(req.Context(), "u-1"))
 	req.SetPathValue("conversationID", "conv-1")
 	rec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(rec, req)
@@ -102,7 +104,7 @@ func TestHandler_Listen(t *testing.T) {
 				Bus:           &fakePublisher{},
 			})
 			req := httptest.NewRequest(http.MethodPost, "/api/voice/conv-1/listen", nil)
-			req = req.WithContext(WithUserID(req.Context(), tt.userID))
+			req = req.WithContext(identity.WithUserID(req.Context(), tt.userID))
 			rec := httptest.NewRecorder()
 			NewHandler(svc).Routes().ServeHTTP(rec, req)
 

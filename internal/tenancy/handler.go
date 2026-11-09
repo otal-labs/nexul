@@ -8,23 +8,9 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
-
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID lets tenancy attribute workspace actions without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler adapts tenancy use-cases to HTTP/JSON, since the browser never talks to MCP.
 type Handler struct {
@@ -38,7 +24,7 @@ func NewHandler(svc *Service) *Handler {
 
 // listArchived answers the instance Owner, who restores them from instance settings.
 func (h *Handler) listArchived(w http.ResponseWriter, r *http.Request) {
-	workspaces, err := h.svc.ListArchived(r.Context(), UserIDFromCtx(r.Context()))
+	workspaces, err := h.svc.ListArchived(r.Context(), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -48,7 +34,7 @@ func (h *Handler) listArchived(w http.ResponseWriter, r *http.Request) {
 
 // archive needs workspaces:delete in the workspace; the caller's own list and /me stop finding it at once.
 func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
-	ws, err := h.svc.Archive(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	ws, err := h.svc.Archive(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -58,7 +44,7 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 
 // restore needs instance:write, the instance Owner's, since the workspace's own members no longer reach it.
 func (h *Handler) restore(w http.ResponseWriter, r *http.Request) {
-	ws, err := h.svc.Restore(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	ws, err := h.svc.Restore(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -122,12 +108,12 @@ func (h *Handler) ProjectPeopleRoutes() http.Handler {
 // listProjectPeople answers anyone who may open the project: the pickers a ticket's developer and tester come from,
 // and the roles a doc's permissions panel may list.
 func (h *Handler) listProjectPeople(w http.ResponseWriter, r *http.Request) {
-	people, err := h.svc.ListProjectPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("projectID"))
+	people, err := h.svc.ListProjectPeople(r.Context(), identity.UserID(r.Context()), r.PathValue("projectID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	roleIDs, err := h.svc.ListProjectRoles(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("projectID"))
+	roleIDs, err := h.svc.ListProjectRoles(r.Context(), identity.UserID(r.Context()), r.PathValue("projectID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -137,7 +123,7 @@ func (h *Handler) listProjectPeople(w http.ResponseWriter, r *http.Request) {
 
 // listPeople answers any member of the workspace, since seeing who you work with needs no permission.
 func (h *Handler) listPeople(w http.ResponseWriter, r *http.Request) {
-	people, err := h.svc.ListPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	people, err := h.svc.ListPeople(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -147,7 +133,7 @@ func (h *Handler) listPeople(w http.ResponseWriter, r *http.Request) {
 
 // avatar sets nosniff so an uploaded picture can never be re-interpreted as HTML on this origin.
 func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
-	contentType, data, err := h.svc.Avatar(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("userID"))
+	contentType, data, err := h.svc.Avatar(r.Context(), identity.UserID(r.Context()), r.PathValue("userID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -163,7 +149,7 @@ func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
 
 // team is scoped by the use-case: everything for a holder of accounts:read, else only the workspaces the caller manages.
 func (h *Handler) team(w http.ResponseWriter, r *http.Request) {
-	team, err := h.svc.ListTeam(r.Context(), UserIDFromCtx(r.Context()))
+	team, err := h.svc.ListTeam(r.Context(), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -172,7 +158,7 @@ func (h *Handler) team(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	workspaces, err := h.svc.ListForUser(r.Context(), UserIDFromCtx(r.Context()))
+	workspaces, err := h.svc.ListForUser(r.Context(), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -186,7 +172,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	ws, err := h.svc.Create(r.Context(), UserIDFromCtx(r.Context()), req.Name)
+	ws, err := h.svc.Create(r.Context(), identity.UserID(r.Context()), req.Name)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -201,7 +187,7 @@ func (h *Handler) rename(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	ws, err := h.svc.Rename(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Name, req.Slug)
+	ws, err := h.svc.Rename(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), req.Name, req.Slug)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -220,7 +206,7 @@ func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request)
 		httpx.WriteError(w, err)
 		return
 	}
-	ws, err := h.svc.SetMentionChipTemplate(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.MentionChipTemplate)
+	ws, err := h.svc.SetMentionChipTemplate(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), req.MentionChipTemplate)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -245,7 +231,7 @@ type meResponse struct {
 
 // me is re-fetched whenever useWorkspaceStore's selectedWorkspaceId changes.
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
-	access, err := h.svc.MyAccess(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()))
+	access, err := h.svc.MyAccess(r.Context(), r.PathValue("workspaceID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -299,7 +285,7 @@ type projectAccessPatch struct {
 
 // listMembers requires members:write.
 func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.ListWorkspaceMembers(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	list, err := h.svc.ListWorkspaceMembers(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -315,7 +301,7 @@ func (h *Handler) inviteMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roleIDs, _ := req.roleIDs()
-	if err := h.svc.InviteMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Login, roleIDs...); err != nil {
+	if err := h.svc.InviteMember(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), req.Login, roleIDs...); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -323,7 +309,7 @@ func (h *Handler) inviteMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
-	err := h.svc.RemoveMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"))
+	err := h.svc.RemoveMember(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -334,7 +320,7 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 // viewAs checks the caller may view Nexul as the member and names them; the audit row of this route is the record
 // of who viewed as whom (ADR 0160).
 func (h *Handler) viewAs(w http.ResponseWriter, r *http.Request) {
-	viewed, err := h.svc.StartViewAs(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"))
+	viewed, err := h.svc.StartViewAs(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -343,7 +329,7 @@ func (h *Handler) viewAs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) cancelInvite(w http.ResponseWriter, r *http.Request) {
-	err := h.svc.CancelInvite(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("login"))
+	err := h.svc.CancelInvite(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), r.PathValue("login"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -359,7 +345,7 @@ func (h *Handler) addMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roleIDs, _ := req.roleIDs()
-	err := h.svc.AddMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), roleIDs...)
+	err := h.svc.AddMember(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), roleIDs...)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -373,7 +359,7 @@ func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.patchMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req); err != nil {
+	if err := h.patchMember(r.Context(), identity.UserID(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

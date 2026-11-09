@@ -14,6 +14,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // TestIntegration_Note walks a note through the wired services: who may leave one and where, what message_list and an
@@ -40,7 +41,7 @@ func TestIntegration_Note(t *testing.T) {
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/chat/conversations/"+thread.ID+"/messages", bytes.NewReader(body))
-		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(uOwner), uOwner)))
+		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(identity.WithUserID(as(uOwner), uOwner)))
 		require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 		var m chat.Message
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &m))
@@ -164,7 +165,7 @@ func TestIntegration_TicketNotes(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/api/chat/tickets/"+f.ticket.ID+"/notes", nil)
-		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(uReader), uReader)))
+		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(identity.WithUserID(as(uReader), uReader)))
 		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 		var got chat.TicketNotes
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))

@@ -7,23 +7,8 @@ import (
 	"strings"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
-
-// ctxKey namespaces this package's context keys (each domain defines its own consumer-side key, ADR 0017 seam rule).
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID lets chat attribute posts/edits/reads without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler adapts the chat use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP directly.
 type Handler struct {
@@ -121,7 +106,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) listConversations(w http.ResponseWriter, r *http.Request) {
-	cs, err := h.svc.ListConversations(r.Context(), r.URL.Query().Get("workspace_id"), UserIDFromCtx(r.Context()))
+	cs, err := h.svc.ListConversations(r.Context(), r.URL.Query().Get("workspace_id"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -152,7 +137,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request, kind Kind, publ
 }
 
 func (h *Handler) createAs(ctx context.Context, req createChannelRequest, kind Kind, public func(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error)) (*Conversation, error) {
-	creator := UserIDFromCtx(ctx)
+	creator := identity.UserID(ctx)
 	if req.Private {
 		return h.svc.CreatePrivateChannel(ctx, req.WorkspaceID, creator, req.Name, kind, req.MemberIDs)
 	}
@@ -182,7 +167,7 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
-	h.writeConversation(w)(h.svc.RemoveChannelMembers(r.Context(), r.PathValue("id"), []string{UserIDFromCtx(r.Context())}))
+	h.writeConversation(w)(h.svc.RemoveChannelMembers(r.Context(), r.PathValue("id"), []string{identity.UserID(r.Context())}))
 }
 
 func (h *Handler) writeConversation(w http.ResponseWriter) func(*Conversation, error) {
@@ -223,7 +208,7 @@ func (h *Handler) createDM(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.CreateDM(r.Context(), req.WorkspaceID, UserIDFromCtx(r.Context()), req.ParticipantIDs)
+	c, err := h.svc.CreateDM(r.Context(), req.WorkspaceID, identity.UserID(r.Context()), req.ParticipantIDs)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -237,7 +222,7 @@ func (h *Handler) getOrCreateTicketThread(w http.ResponseWriter, r *http.Request
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.GetOrCreateTicketThread(r.Context(), req.WorkspaceID, r.PathValue("ticketID"), UserIDFromCtx(r.Context()))
+	c, err := h.svc.GetOrCreateTicketThread(r.Context(), req.WorkspaceID, r.PathValue("ticketID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -251,7 +236,7 @@ func (h *Handler) getOrCreateDocThread(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.GetOrCreateDocThread(r.Context(), req.WorkspaceID, r.PathValue("docID"), UserIDFromCtx(r.Context()))
+	c, err := h.svc.GetOrCreateDocThread(r.Context(), req.WorkspaceID, r.PathValue("docID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -265,7 +250,7 @@ func (h *Handler) getOrCreateInterviewThread(w http.ResponseWriter, r *http.Requ
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.GetOrCreateInterviewThread(r.Context(), req.WorkspaceID, r.PathValue("projectID"), UserIDFromCtx(r.Context()))
+	c, err := h.svc.GetOrCreateInterviewThread(r.Context(), req.WorkspaceID, r.PathValue("projectID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -297,7 +282,7 @@ func (h *Handler) hasTicketThreads(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ticketNotes(w http.ResponseWriter, r *http.Request) {
-	notes, err := h.svc.TicketNotes(r.Context(), r.PathValue("ticketID"), UserIDFromCtx(r.Context()))
+	notes, err := h.svc.TicketNotes(r.Context(), r.PathValue("ticketID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -307,7 +292,7 @@ func (h *Handler) ticketNotes(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) listMessages(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	ms, err := h.svc.ListMessages(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), limit)
+	ms, err := h.svc.ListMessages(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), limit)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -331,12 +316,12 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) post(ctx context.Context, conversationID string, req postMessageRequest) (*Message, error) {
 	if req.File == nil && req.Queue {
-		return h.svc.PostQueuedMessage(ctx, conversationID, UserIDFromCtx(ctx), req.Body)
+		return h.svc.PostQueuedMessage(ctx, conversationID, identity.UserID(ctx), req.Body)
 	}
 	if req.File == nil {
-		return h.svc.PostMessage(ctx, conversationID, UserIDFromCtx(ctx), req.Body)
+		return h.svc.PostMessage(ctx, conversationID, identity.UserID(ctx), req.Body)
 	}
-	m, _, err := h.svc.PostNote(ctx, conversationID, UserIDFromCtx(ctx), req.Body, *req.File)
+	m, _, err := h.svc.PostNote(ctx, conversationID, identity.UserID(ctx), req.Body, *req.File)
 	return m, err
 }
 
@@ -346,7 +331,7 @@ func (h *Handler) editMessage(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.EditMessage(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Body)
+	m, err := h.svc.EditMessage(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), req.Body)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -360,7 +345,7 @@ func (h *Handler) react(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.React(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Emoji, req.Reacted)
+	m, err := h.svc.React(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), req.Emoji, req.Reacted)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -374,7 +359,7 @@ func (h *Handler) replaceNote(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, _, err := h.svc.ReplaceNote(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Markdown)
+	m, _, err := h.svc.ReplaceNote(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), req.Markdown)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -383,7 +368,7 @@ func (h *Handler) replaceNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteMessage(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.DeleteMessage(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context())); err != nil {
+	if err := h.svc.DeleteMessage(r.Context(), r.PathValue("id"), identity.UserID(r.Context())); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -391,7 +376,7 @@ func (h *Handler) deleteMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) markRead(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.MarkRead(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context())); err != nil {
+	if err := h.svc.MarkRead(r.Context(), r.PathValue("id"), identity.UserID(r.Context())); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -399,7 +384,7 @@ func (h *Handler) markRead(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) unreadCounts(w http.ResponseWriter, r *http.Request) {
-	counts, err := h.svc.UnreadCounts(r.Context(), r.URL.Query().Get("workspace_id"), UserIDFromCtx(r.Context()))
+	counts, err := h.svc.UnreadCounts(r.Context(), r.URL.Query().Get("workspace_id"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

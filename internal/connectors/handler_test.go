@@ -15,6 +15,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -91,11 +92,11 @@ func (m *memStore) DeleteCredentials(_ context.Context, connectorID string) erro
 }
 
 // withUserID injects a fake authenticated user id the way the composition
-// root's real middleware would (connectors.WithUserID), simulating
+// root's real middleware would (identity.WithUserID), simulating
 // RequireAuth for the authenticated routes under test.
 func withUserID(userID string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(connectors.WithUserID(r.Context(), userID)))
+		h.ServeHTTP(w, r.WithContext(identity.WithUserID(r.Context(), userID)))
 	})
 }
 
@@ -314,12 +315,12 @@ func newTestHandlerWithAppConfig(t *testing.T) (*connectors.Handler, *memAppConf
 func TestGetAppConfig_ReadsBackWithoutTheSecret(t *testing.T) {
 	h, _ := newTestHandlerWithAppConfig(t)
 	put := httptest.NewRequest("PUT", "/api/connectors/github/app-config", strings.NewReader(`{"client_id":"Iv1.abc","client_secret":"shh","app_slug":"my-app"}`))
-	put = put.WithContext(connectors.WithUserID(put.Context(), "owner-1"))
+	put = put.WithContext(identity.WithUserID(put.Context(), "owner-1"))
 	h.Routes().ServeHTTP(httptest.NewRecorder(), put)
 
 	rec := httptest.NewRecorder()
 	get := httptest.NewRequest("GET", "/api/connectors/github/app-config", nil)
-	h.Routes().ServeHTTP(rec, get.WithContext(connectors.WithUserID(get.Context(), "owner-1")))
+	h.Routes().ServeHTTP(rec, get.WithContext(identity.WithUserID(get.Context(), "owner-1")))
 
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"app_slug":"my-app"`) || strings.Contains(rec.Body.String(), "shh") {
 		t.Fatalf("GET app-config = %d %s, want the slug and never the secret", rec.Code, rec.Body.String())
@@ -335,7 +336,7 @@ func TestSetAppConfig_OwnerAllowed_NonOwnerForbidden(t *testing.T) {
 
 	body := strings.NewReader(`{"client_id":"Iv1.abc","client_secret":"shh","base_url":""}`)
 	ownerReq := httptest.NewRequest("PUT", "/api/connectors/github/app-config", body)
-	ownerReq = ownerReq.WithContext(connectors.WithUserID(ownerReq.Context(), "owner-1"))
+	ownerReq = ownerReq.WithContext(identity.WithUserID(ownerReq.Context(), "owner-1"))
 	ownerRec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(ownerRec, ownerReq)
 	if ownerRec.Code != http.StatusOK {
@@ -354,7 +355,7 @@ func TestSetAppConfig_OwnerAllowed_NonOwnerForbidden(t *testing.T) {
 
 	nonOwnerBody := strings.NewReader(`{"client_id":"Iv1.other","client_secret":"nope","base_url":""}`)
 	nonOwnerReq := httptest.NewRequest("PUT", "/api/connectors/github/app-config", nonOwnerBody)
-	nonOwnerReq = nonOwnerReq.WithContext(connectors.WithUserID(nonOwnerReq.Context(), "not-owner"))
+	nonOwnerReq = nonOwnerReq.WithContext(identity.WithUserID(nonOwnerReq.Context(), "not-owner"))
 	nonOwnerRec := httptest.NewRecorder()
 	h.Routes().ServeHTTP(nonOwnerRec, nonOwnerReq)
 	if nonOwnerRec.Code != http.StatusForbidden {
@@ -592,7 +593,7 @@ func TestPrivateKey_IsCheckedStoredAndNeverSentBack(t *testing.T) {
 	send := func(method, path, body, userID string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, strings.NewReader(body))
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req.WithContext(connectors.WithUserID(req.Context(), userID)))
+		h.ServeHTTP(rec, req.WithContext(identity.WithUserID(req.Context(), userID)))
 		return rec
 	}
 

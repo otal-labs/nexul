@@ -45,3 +45,16 @@ func Internal(ctx context.Context) bool {
 	_, ok := ActorFromCtx(ctx)
 	return !ok
 }
+
+type userIDKey struct{}
+
+// WithUserID attaches the id of the user a gateway request acts for, the one key every domain's handlers read.
+func WithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey{}, userID)
+}
+
+// UserID returns the id WithUserID attached, or "" when none is.
+func UserID(ctx context.Context) string {
+	id, _ := ctx.Value(userIDKey{}).(string)
+	return id
+}

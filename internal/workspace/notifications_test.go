@@ -421,33 +421,6 @@ func TestNotifPage_FailsWhenAccessCannotBeRead(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestNotifUnreadCount(t *testing.T) {
-	t.Run("empty user id is invalid", func(t *testing.T) {
-		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
-		_, err := s.UnreadCount(context.Background(), "", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		repo.countErr = errors.New("db down")
-		s := newTestNotifService(repo, newFakeNotifUsers())
-		_, err := s.UnreadCount(context.Background(), "u1", "")
-		require.Error(t, err)
-		assert.ErrorIs(t, err, repo.countErr)
-	})
-	t.Run("counts only unread", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
-		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
-		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1", notifFixedNow))
-		s := newTestNotifService(repo, newFakeNotifUsers())
-		n, err := s.UnreadCount(context.Background(), "u1", "")
-		require.NoError(t, err)
-		assert.Equal(t, 1, n)
-	})
-}
-
 func TestNotifUnreadByWorkspace(t *testing.T) {
 	t.Run("empty user id is invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())

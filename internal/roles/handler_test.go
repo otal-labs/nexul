@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 func newTestHandler(t *testing.T) (*Handler, *fakeRepo, *fakeMemberGate) {
@@ -28,7 +30,7 @@ func do(t *testing.T, h http.Handler, method, path, body, userID string) *httpte
 		r = httptest.NewRequest(method, path, nil)
 	}
 	if userID != "" {
-		r = r.WithContext(WithUserID(r.Context(), userID))
+		r = r.WithContext(identity.WithUserID(r.Context(), userID))
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, r)

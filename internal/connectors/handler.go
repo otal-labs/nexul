@@ -1,7 +1,6 @@
 package connectors
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -13,24 +12,10 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 const oauthStateCookie = "nexul_connector_oauth_state"
-
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID attaches the authenticated user id so this gateway can attribute connections without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler adapts the connectors use-cases to the HTTP/JSON gateway (ADR 0019).
 type Handler struct {
@@ -77,7 +62,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 // oauthStart mints a CSRF state carrying the user id, the only way the public callback below learns who connected.
 func (h *Handler) oauthStart(w http.ResponseWriter, r *http.Request) {
 	connectorID := r.PathValue("id")
-	userID := UserIDFromCtx(r.Context())
+	userID := identity.UserID(r.Context())
 	if userID == "" {
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
@@ -174,7 +159,7 @@ func (h *Handler) redirectSPAError(w http.ResponseWriter, r *http.Request, conne
 // saveManual is the non-OAuth connect path; Verify runs before anything is stored, so a bad credential never saves.
 // verifyManual runs the provider check only (204 or the provider's error), leaving storage to saveManual.
 func (h *Handler) verifyManual(w http.ResponseWriter, r *http.Request) {
-	if UserIDFromCtx(r.Context()) == "" {
+	if identity.UserID(r.Context()) == "" {
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
 	}
@@ -205,7 +190,7 @@ func (h *Handler) verifyManual(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) saveManual(w http.ResponseWriter, r *http.Request) {
 	connectorID := r.PathValue("id")
-	userID := UserIDFromCtx(r.Context())
+	userID := identity.UserID(r.Context())
 	if userID == "" {
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
@@ -244,7 +229,7 @@ func (h *Handler) appConfig(w http.ResponseWriter, r *http.Request) {
 // setAppConfig stores connectorID's app-level OAuth registration (CN3a); the use-case enforces connectors:write.
 func (h *Handler) setAppConfig(w http.ResponseWriter, r *http.Request) {
 	connectorID := r.PathValue("id")
-	userID := UserIDFromCtx(r.Context())
+	userID := identity.UserID(r.Context())
 	var body struct {
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
@@ -282,7 +267,7 @@ func (h *Handler) verifyPrivateKey(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.VerifyPrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), key); err != nil {
+	if err := h.svc.VerifyPrivateKey(r.Context(), identity.UserID(r.Context()), r.PathValue("id"), key); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -296,7 +281,7 @@ func (h *Handler) setPrivateKey(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	st, err := h.svc.SetPrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), key)
+	st, err := h.svc.SetPrivateKey(r.Context(), identity.UserID(r.Context()), r.PathValue("id"), key)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -305,7 +290,7 @@ func (h *Handler) setPrivateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removePrivateKey(w http.ResponseWriter, r *http.Request) {
-	st, err := h.svc.RemovePrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"))
+	st, err := h.svc.RemovePrivateKey(r.Context(), identity.UserID(r.Context()), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

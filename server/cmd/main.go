@@ -132,19 +132,17 @@ func requestUserID(r *http.Request) string {
 	return ""
 }
 
-// withUserID injects the user id via setCtx (each domain's own WithUserID) so writes attribute without importing auth.
-func withUserID(setCtx func(context.Context, string) context.Context) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userID := requestUserID(r)
-			if userID == "" {
-				httpx.WriteError(w, apperrs.ErrUnauthorized)
-				return
-			}
-			next.ServeHTTP(w, r.WithContext(setCtx(r.Context(), userID)))
-		})
-		return httpx.WithRoutes(wrapped, httpx.RoutesOf(next))
-	}
+// requireUserID puts the request's user id in context for the handlers that read identity.UserID, and 401s without one.
+func requireUserID(next http.Handler) http.Handler {
+	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := requestUserID(r)
+		if userID == "" {
+			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(identity.WithUserID(r.Context(), userID)))
+	})
+	return httpx.WithRoutes(wrapped, httpx.RoutesOf(next))
 }
 
 // resolveAuditActor prefers a token identity over a user id; unauthenticated requests aren't audited.

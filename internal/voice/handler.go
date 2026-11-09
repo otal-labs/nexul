@@ -1,27 +1,11 @@
 package voice
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
-
-// ctxKey namespaces this package's context keys (each domain defines its own consumer-side key, ADR 0017 seam rule).
-type ctxKey string
-
-const userIDKey ctxKey = "user_id"
-
-// WithUserID attaches the authenticated user id so the voice gateway can attribute a join without importing auth (ADR 0017).
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey, userID)
-}
-
-// UserIDFromCtx returns the user id injected by WithUserID, or "".
-func UserIDFromCtx(ctx context.Context) string {
-	id, _ := ctx.Value(userIDKey).(string)
-	return id
-}
 
 // Handler adapts voice's use-cases to the HTTP/JSON gateway (ADR 0019).
 type Handler struct {
@@ -44,7 +28,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.Leave(r.Context(), r.PathValue("conversationID"), UserIDFromCtx(r.Context())); err != nil {
+	if err := h.svc.Leave(r.Context(), r.PathValue("conversationID"), identity.UserID(r.Context())); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -52,7 +36,7 @@ func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
-	tok, err := h.svc.Join(r.Context(), r.PathValue("conversationID"), UserIDFromCtx(r.Context()))
+	tok, err := h.svc.Join(r.Context(), r.PathValue("conversationID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -61,7 +45,7 @@ func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listen(w http.ResponseWriter, r *http.Request) {
-	tok, err := h.svc.Listen(r.Context(), r.PathValue("conversationID"), UserIDFromCtx(r.Context()))
+	tok, err := h.svc.Listen(r.Context(), r.PathValue("conversationID"), identity.UserID(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
