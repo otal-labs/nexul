@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render } from "@testing-library/react";
+import { focusManager, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { api } from "@/api/client";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchBotwebhooks } from "@/hooks/BotwebhookHooks";
 import { useFetchCategories, useFetchProjectCategories } from "@/hooks/CategoryHooks";
@@ -16,6 +20,7 @@ import { useFetchProjectPeople, useFetchWorkspacePeople } from "@/hooks/PeopleHo
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
+import { useSearchRepositories } from "@/hooks/RepositoryHooks";
 import { useFetchStackDeploys } from "@/hooks/StackHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
@@ -24,6 +29,7 @@ import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks
 import { useFetchActiveTrails } from "@/hooks/TrailHooks";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { useFetchMyRole, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import { queryClient } from "@/lib/queryClient";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { mountLive } from "@/test/liveHarness";
 
@@ -437,5 +443,41 @@ describe("requests a live frame sends", () => {
   it("sends nothing when another project's interview sources change", async () => {
     const { requestsAfter } = await mountLive(view(() => useFetchInterviewSources("p-1")), respond);
     expect(await requestsAfter("interview_source.changed", { workspace_id: "ws-1", project_id: "p-2", source_id: "src-9" })).toEqual([]);
+  });
+});
+
+describe("requests a return to the tab sends", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    queryClient.clear();
+  });
+
+  it("refetches only the repository search, since the socket already pushes every other change", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    vi.mocked(api.get).mockReset();
+    vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: url === "/api/repositories" ? { repositories: [] } : respond(url) }));
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          {view(() => {
+            useFetchConversations("ws-1");
+            useFetchChatUnread("ws-1");
+            useFetchTicketsByProject("p-1");
+            useFetchDocs();
+            useFetchMe();
+            useSearchRepositories("acme");
+          })}
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await vi.waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    vi.mocked(api.get).mockClear();
+
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 60_000 });
+    act(() => focusManager.setFocused(false));
+    act(() => focusManager.setFocused(true));
+    await vi.waitFor(() => expect(vi.mocked(api.get)).toHaveBeenCalled());
+    await vi.waitFor(() => expect(queryClient.isFetching()).toBe(0));
+    expect(vi.mocked(api.get).mock.calls.map(([url]) => url)).toEqual(["/api/repositories"]);
   });
 });
