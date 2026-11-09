@@ -68,6 +68,7 @@ func TestAutomationEventLogRepo_After(t *testing.T) {
 	}{
 		{"the zero cursor reads from the beginning", []row{{"e1", "ticket.created", minute(0)}, {"e2", "ticket.created", minute(1)}}, []string{"ticket.created"}, automations.Cursor{}, 10, []string{"e1", "e2"}},
 		{"only the subscribed topics", []row{{"e1", "ticket.created", minute(0)}, {"e2", "doc.created", minute(1)}}, []string{"ticket.created"}, automations.Cursor{}, 10, []string{"e1"}},
+		{"several subscribed topics past a cursor", []row{{"e1", "ticket.created", minute(0)}, {"e2", "git.pr_opened", minute(1)}, {"e3", "doc.created", minute(2)}, {"e4", "ticket.created", minute(3)}}, []string{"ticket.created", "git.pr_opened"}, automations.Cursor{CreatedAt: minute(0), ID: "e1"}, 10, []string{"e2", "e4"}},
 		{"nothing up to and including the cursor", []row{{"e1", "ticket.created", minute(0)}, {"e2", "ticket.created", minute(1)}, {"e3", "ticket.created", minute(2)}}, []string{"ticket.created"}, automations.Cursor{CreatedAt: minute(1), ID: "e2"}, 10, []string{"e3"}},
 		// ids in reverse insertion order: the tiebreak inside one second is the id, not the insertion order
 		{"rows of the cursor's second tiebreak by id", []row{{"b", "ticket.created", minute(0)}, {"a", "ticket.created", minute(0)}}, []string{"ticket.created"}, automations.Cursor{CreatedAt: minute(0), ID: "a"}, 10, []string{"b"}},

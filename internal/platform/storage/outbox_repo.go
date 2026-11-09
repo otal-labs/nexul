@@ -7,6 +7,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -44,6 +45,22 @@ func (r *OutboxRepo) MarkPublished(ctx context.Context, id string) error {
 			return fmt.Errorf("mark outbox %s published: %w", id, apperrs.ErrNotFound)
 		}
 		return nil
+	})
+}
+
+// Record writes ev to the outbox once per receipt, kept in processed_events in the same transaction; no receipt always writes.
+func (r *OutboxRepo) Record(ctx context.Context, receipt string, ev eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if receipt != "" {
+			n, err := r.q.WithTx(tx).ClaimProcessedEvent(ctx, sqlcgen.ClaimProcessedEventParams{EventID: receipt, ProcessedAt: time.Now().UTC().Unix()})
+			if err != nil {
+				return fmt.Errorf("claim receipt %s: %w", receipt, err)
+			}
+			if n == 0 {
+				return nil
+			}
+		}
+		return insertOutboxRow(ctx, tx, ev.ID, ev.Topic, ev.Payload)
 	})
 }
 
