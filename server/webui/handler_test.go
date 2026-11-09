@@ -13,8 +13,9 @@ import (
 
 func newAssets() fs.FS {
 	return fstest.MapFS{
-		"index.html":    {Data: []byte("<html>root</html>")},
-		"assets/app.js": {Data: []byte("console.log(1)")},
+		"index.html":         {Data: []byte("<html>root</html>")},
+		"assets/app.js":      {Data: []byte("console.log(1)")},
+		"assets/inter.woff2": {Data: []byte("font")},
 	}
 }
 
@@ -104,5 +105,21 @@ func TestHandler_CacheHeaders(t *testing.T) {
 			require.Equal(t, http.StatusOK, rec.Code)
 			assert.Equal(t, tt.want, rec.Header().Get("Cache-Control"))
 		})
+	}
+}
+
+func TestHandler_Font_IsReadableFromAnOpaqueOrigin(t *testing.T) {
+	h := Handler(newAssets())
+	tests := []struct {
+		path string
+		want string
+	}{
+		{"/assets/inter.woff2", "*"},
+		{"/assets/app.js", ""},
+	}
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
+		assert.Equal(t, tt.want, rec.Header().Get("Access-Control-Allow-Origin"), tt.path)
 	}
 }

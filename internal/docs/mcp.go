@@ -55,7 +55,7 @@ type docGetIn struct {
 type docCreateIn struct {
 	ProjectID   string `json:"project_id" jsonschema:"The project's id, from project_list."`
 	Title       string `json:"title,omitempty" jsonschema:"The doc's title. Required unless clone_from_id is set."`
-	Body        string `json:"body,omitempty" jsonschema:"The doc's body, as markdown."`
+	Body        string `json:"body,omitempty" jsonschema:"The doc's body, as markdown. An html-page fence runs as a sandboxed page, styled by the app's CSS vars (--foreground, --card, --border, --brand)."`
 	FolderID    string `json:"folder_id,omitempty" jsonschema:"The folder of project_id for the new doc, from project_get's doc_folders; omit for the default folder, Main. Not allowed with clone_from_id."`
 	CloneFromID string `json:"clone_from_id,omitempty" jsonschema:"A doc to copy, from doc_list, with its attachments, into project_id; its own project_id duplicates it there."`
 }

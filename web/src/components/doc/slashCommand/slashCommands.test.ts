@@ -1,5 +1,7 @@
+import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
+import { buildEditorExtensions } from "@/components/doc/mention/editorExtensions";
 import { filterSlashCommands, slashCommandItems } from "@/components/doc/slashCommand/slashCommands";
 
 describe("filterSlashCommands", () => {
@@ -19,6 +21,16 @@ describe("filterSlashCommands", () => {
     expect(filterSlashCommands("image").map((i) => i.id)).toEqual(["image"]);
     expect(filterSlashCommands("image", false)).toEqual([]);
     expect(filterSlashCommands("", false).some((i) => i.id === "image")).toBe(false);
+  });
+
+  it("turns the line into an HTML page block", () => {
+    const editor = new Editor({ extensions: buildEditorExtensions(), content: "<p>notes</p>" });
+    const [item] = filterSlashCommands("html");
+
+    item?.run(editor);
+
+    expect(editor.getJSON().content?.[0]).toMatchObject({ type: "codeBlock", attrs: { language: "html-page" } });
+    editor.destroy();
   });
 
   it("returns nothing for an unmatched query", () => {

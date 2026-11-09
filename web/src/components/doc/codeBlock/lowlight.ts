@@ -1,7 +1,11 @@
 import { common, createLowlight } from "lowlight";
 
+import { HTML_PAGE_LANGUAGE } from "@nexul/client-core/htmlPage";
+
 // Shared lowlight instance (createLowlight is a factory, not a singleton) using the "common" grammar bundle.
 export const lowlight = createLowlight(common);
+// An HTML page's source highlights as HTML.
+lowlight.registerAlias({ xml: [HTML_PAGE_LANGUAGE] });
 
 export interface CodeLanguageOption {
   value: string;
@@ -26,10 +30,11 @@ const LABEL_OVERRIDES: Record<string, string> = {
   wasm: "WebAssembly",
   ini: "INI",
   graphql: "GraphQL",
+  [HTML_PAGE_LANGUAGE]: "HTML page",
 };
 
-// Not a grammar: a code block in this language also draws its diagram (MermaidDiagram).
-const extraLanguages = ["mermaid"];
+// Not grammars: a block in one of these also draws its diagram (MermaidDiagram) or runs as a page (HtmlPageFrame).
+const extraLanguages = ["mermaid", HTML_PAGE_LANGUAGE];
 
 function languageLabel(value: string): string {
   return LABEL_OVERRIDES[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
