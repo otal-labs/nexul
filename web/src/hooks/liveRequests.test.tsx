@@ -283,6 +283,22 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("ticket.category_changed", { ticket_id: "t-1", category_id: "cat-2", project_id: "p-1" })).toEqual([]);
   });
 
+  it("refetches the board it left, the board it joined and the ticket itself when a ticket moves to another project", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchTicketsByProject("p-1");
+        useFetchTicketsByProject("p-2");
+        useFetchTicket("t-1");
+      }),
+      respond,
+    );
+    expect((await requestsAfter("ticket.project_changed", { ticket_id: "t-1", project_id: "p-2", previous_project_id: "p-1" })).sort()).toEqual([
+      "/api/tickets/t-1",
+      "/api/tickets?project_id=p-1&without=body",
+      "/api/tickets?project_id=p-2&without=body",
+    ]);
+  });
+
   it("refetches the inbox and badge of a new notice's workspace and the count across workspaces, nothing for another workspace's", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {

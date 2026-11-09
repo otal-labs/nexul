@@ -348,13 +348,16 @@ func TestProjectsRepo_MoveTicket_PersistsAndNotFound(t *testing.T) {
 	tk.ProjectID = "project-general"
 	require.NoError(t, s.Tickets.Create(context.Background(), tk))
 
-	require.NoError(t, s.Projects.MoveTicket(context.Background(), "t-1", "p-1"))
+	evt := eventbus.OutboxEvent{ID: "evt-move", Topic: workspace.TopicTicketProjectChanged, Payload: workspace.TicketProjectChangedEvent{TicketID: "t-1", ProjectID: "p-1", PreviousProjectID: "project-general"}}
+	require.NoError(t, s.Projects.MoveTicket(context.Background(), "t-1", "p-1", evt))
 	got, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, "p-1", got.ProjectID)
+	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-move' AND topic = 'ticket.project_changed' AND CAST(payload AS TEXT) LIKE '%"previous_project_id":"project-general"%'`))
 
-	err = s.Projects.MoveTicket(context.Background(), "missing", "p-1")
+	err = s.Projects.MoveTicket(context.Background(), "missing", "p-1", eventbus.OutboxEvent{ID: "evt-lost", Topic: workspace.TopicTicketProjectChanged, Payload: workspace.TicketProjectChangedEvent{}})
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.Equal(t, 0, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-lost'`))
 }
 
 func TestTicketsRepo_ListByProject_ScopesToProject(t *testing.T) {

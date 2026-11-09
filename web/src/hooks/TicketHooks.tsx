@@ -15,6 +15,7 @@ import {
   ticketCreated,
   ticketEdited,
   ticketFetched,
+  ticketProjectMoved,
   ticketRemoved,
   type TicketEdit,
 } from "@/hooks/TicketCache";
@@ -291,6 +292,8 @@ const changedTopics = ["ticket.updated", "ticket.status_changed", "ticket.develo
 export const ticketFollower: LiveFollower = {
   "ticket.created": ({ ticket }: TicketPayload, { client }) => ticketCreated(client, ticket),
   ...followEach(changedTopics, ({ ticket }: TicketPayload, { client }) => ticketChanged(client, ticket)),
+  "ticket.project_changed": ({ ticket_id, project_id, previous_project_id }: { ticket_id: string; project_id: string; previous_project_id: string }, { client }) =>
+    ticketProjectMoved(client, ticket_id, project_id, previous_project_id),
   "ticket.category_changed": ({ ticket_id, category_id }: { ticket_id: string; category_id: string }, { client }) => ticketCategoryMoved(client, ticket_id, category_id),
   "ticket.deleted": ({ id }: { id: string }, { client }) => ticketRemoved(client, id),
   "status.deleted": ({ status }: { status: { id: string } }, { client }) => statusRemoved(client, status.id),

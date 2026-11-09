@@ -225,5 +225,5 @@ const ticketCountsChanged = (_: unknown, { client }: { client: QueryClient }) =>
 
 export const projectFollower: LiveFollower = {
   "project.setup_changed": (payload: SetupChangedPayload, { client }) => followSetup(client, payload),
-  ...followEach(["ticket.created", "ticket.updated", "ticket.status_changed", "ticket.category_changed", "ticket.deleted"], ticketCountsChanged),
+  ...followEach(["ticket.created", "ticket.updated", "ticket.status_changed", "ticket.category_changed", "ticket.project_changed", "ticket.deleted"], ticketCountsChanged),
 };

@@ -9138,6 +9138,28 @@
       "link"
     ]
   },
+  "ticket.project_changed": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The project the ticket moved into."
+      },
+      "previous_project_id": {
+        "type": "string",
+        "description": "The project the ticket moved out of."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_id",
+      "project_id",
+      "previous_project_id"
+    ]
+  },
   "ticket.status_changed": {
     "type": "object",
     "properties": {

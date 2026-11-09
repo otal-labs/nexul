@@ -93,7 +93,7 @@ var scopeRules = map[string]scopeRule{
 	"doc.clarification.answer_cleared":      nestedProjectScope("doc"),
 	"doc.clarification.anything_else_saved": nestedProjectScope("doc"),
 	"doc.clarification.closed":              nestedProjectScope("doc"),
-	"ticket.link_created":                   linkScope, "ticket.link_deleted": linkScope, "ticket.category_changed": ticketIDScope,
+	"ticket.link_created":                   linkScope, "ticket.link_deleted": linkScope, "ticket.category_changed": ticketIDScope, "ticket.project_changed": ticketIDScope,
 	"category.created": boardScope("category"), "category.updated": boardScope("category"),
 	"category.deleted": boardScope("category"), "ticket_type.created": boardScope("ticket_type"),
 	"ticket_type.updated": boardScope("ticket_type"), "ticket_type.deleted": boardScope("ticket_type"),

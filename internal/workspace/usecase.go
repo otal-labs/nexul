@@ -11,6 +11,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -547,10 +548,12 @@ func (s *Service) MoveTicket(ctx context.Context, ticketID, projectID string) er
 	if err := s.requireOn(ctx, projectID, permissions.TicketsWrite); err != nil {
 		return fmt.Errorf("move ticket to project %s: %w", projectID, err)
 	}
-	if _, err := s.requireOnTicket(ctx, ticketID); err != nil {
+	from, err := s.requireOnTicket(ctx, ticketID)
+	if err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}
-	if err := s.repo.MoveTicket(ctx, ticketID, projectID); err != nil {
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicTicketProjectChanged, Payload: TicketProjectChangedEvent{TicketID: ticketID, ProjectID: projectID, PreviousProjectID: from}}
+	if err := s.repo.MoveTicket(ctx, ticketID, projectID, evt); err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}
 	return nil

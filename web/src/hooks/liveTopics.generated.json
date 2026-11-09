@@ -123,6 +123,7 @@
   "ticket.finished",
   "ticket.link_created",
   "ticket.link_deleted",
+  "ticket.project_changed",
   "ticket.status_changed",
   "ticket.tester_changed",
   "ticket.updated",

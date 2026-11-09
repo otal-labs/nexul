@@ -114,6 +114,7 @@ var liveRules = map[string]liveRule{
 	tickets.TopicLinkCreated:             ticketLinkFrame,
 	tickets.TopicLinkDeleted:             ticketLinkFrame,
 	workspace.TopicTicketCategoryChanged: ticketIDFrame,
+	workspace.TopicTicketProjectChanged:  ticketProjectChangedFrame,
 
 	workspace.TopicCategoryCreated:     boardFrame("category"),
 	workspace.TopicCategoryUpdated:     boardFrame("category"),
@@ -429,6 +430,17 @@ var ticketIDFrame = prepared(func(a liveAudience, p struct {
 	TicketID string `json:"ticket_id"`
 }) liveCheck {
 	return readsTicket(a, p.TicketID)
+})
+
+// ticketProjectChangedFrame reaches whoever reads tickets in the project the ticket left or the one it joined, since each board changes; the frame names ids only.
+var ticketProjectChangedFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	ProjectID         string `json:"project_id"`
+	PreviousProjectID string `json:"previous_project_id"`
+}) bool {
+	readsIn := func(projectID string) bool {
+		return projectID != "" && a.access.RequireProject(ctx, projectID, permissions.TicketsRead) == nil
+	}
+	return readsIn(p.ProjectID) || readsIn(p.PreviousProjectID)
 })
 
 // ticketDeletedFrame carries the gone ticket's title, which a reader of its project's tickets saw on the board.
