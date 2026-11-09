@@ -18,6 +18,9 @@ SELECT * FROM deploys WHERE service = ? ORDER BY created_at DESC;
 -- name: ListDeploysByStackID :many
 SELECT * FROM deploys WHERE stack_id = ? ORDER BY created_at DESC;
 
+-- name: ListRecentDeploysByStackID :many
+SELECT * FROM deploys WHERE stack_id = ? ORDER BY created_at DESC, id DESC LIMIT ?;
+
 -- name: ListDeploysByStatus :many
 SELECT * FROM deploys WHERE status = ? ORDER BY created_at DESC;
 

@@ -15,6 +15,8 @@ type Repo interface {
 	List(ctx context.Context) ([]*Deploy, error)
 	ListByService(ctx context.Context, service string) ([]*Deploy, error)
 	ListByStackID(ctx context.Context, stackID string) ([]*Deploy, error)
+	// ListRecentByStackID returns the stack's newest limit deploys, newest first.
+	ListRecentByStackID(ctx context.Context, stackID string, limit int) ([]*Deploy, error)
 	ListByStatus(ctx context.Context, status Status) ([]*Deploy, error)
 	// Page reads one window of the deploys f and scope keep, newest first, and how many they keep in all.
 	Page(ctx context.Context, f DeployFilter, scope DeployScope, w paging.Window) ([]*Deploy, int, error)
@@ -30,6 +32,8 @@ type Repo interface {
 	AppendLogLines(ctx context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error
 	// ListLogLines returns a deploy's log ordered by ts then seq; a deploy with no output yields an empty slice.
 	ListLogLines(ctx context.Context, id string) ([]LogLine, error)
+	// ListLogTail returns a deploy's newest limit lines, oldest first, and how many lines the log holds in all.
+	ListLogTail(ctx context.Context, id string, limit int) ([]LogLine, int, error)
 	// CancelRequested enqueues a cancel_requested row; no local row, so this just makes the enqueue transactional.
 	CancelRequested(ctx context.Context, evt eventbus.OutboxEvent) error
 }

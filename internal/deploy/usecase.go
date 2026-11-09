@@ -901,6 +901,18 @@ func (s *Service) Log(ctx context.Context, id string) ([]LogLine, error) {
 	return lines, nil
 }
 
+// LogTail returns the newest limit lines of a deploy's output, oldest first and never nil, with the log's full length.
+func (s *Service) LogTail(ctx context.Context, id string, limit int) ([]LogLine, int, error) {
+	if _, err := s.Get(ctx, id); err != nil {
+		return nil, 0, err
+	}
+	lines, total, err := s.repo.ListLogTail(ctx, id, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list deploy %s log tail: %w", id, err)
+	}
+	return lines, total, nil
+}
+
 // reconcileServices lands the runner's observation report onto the deploying stack's containers (spec §4 step 3):
 // upsert by (stack, name) with the observed facts, and mark any existing container missing from the report as
 // stopped — never deleted, save a compose stack's never-run placeholder. Declared (the compose parse's own data) is
@@ -1071,6 +1083,21 @@ func (s *Service) ListByStackID(ctx context.Context, stackID string) ([]*Deploy,
 		return nil, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
 	}
 	ds, err := s.repo.ListByStackID(ctx, stackID)
+	if err != nil {
+		return nil, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
+	}
+	return ds, nil
+}
+
+// RecentByStackID returns the stack's newest limit deploys, newest first, reading no more than that.
+func (s *Service) RecentByStackID(ctx context.Context, stackID string, limit int) ([]*Deploy, error) {
+	if strings.TrimSpace(stackID) == "" {
+		return nil, fmt.Errorf("%w: stack is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireDeploy(ctx, stackID, permissions.DeploysRead); err != nil {
+		return nil, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
+	}
+	ds, err := s.repo.ListRecentByStackID(ctx, stackID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
 	}
