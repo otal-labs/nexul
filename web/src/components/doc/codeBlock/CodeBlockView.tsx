@@ -1,8 +1,12 @@
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 
+import { HTML_PAGE_LANGUAGE } from "@nexul/client-core/htmlPage";
 import { codeLanguageOptions } from "@/components/doc/codeBlock/lowlight";
+import { HtmlPageFrame } from "@/components/doc/codeBlock/HtmlPageFrame";
+import { HtmlPageSourceToggle } from "@/components/doc/codeBlock/HtmlPageSourceToggle";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Lazy, with the diagram library behind it: only a body with a diagram loads either.
@@ -11,14 +15,18 @@ const MermaidDiagram = lazy(() =>
 );
 
 // Changing the language attribute alone re-runs CodeBlockLowlight's highlight — no separate call needed.
-// Read-only renders show the language as a plain label instead of a control.
+// Read-only renders show the language as a plain label instead of a control, and an HTML page without its source.
+// While editing, a written page folds its source away until asked; a new, empty one opens on it.
 export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps) => {
   const language = (node.attrs.language as string | null) ?? "plaintext";
+  const page = language === HTML_PAGE_LANGUAGE && node.textContent.trim() !== "";
+  const [sourceOpen, setSourceOpen] = useState(!page);
+  const folded = page && !sourceOpen;
 
   return (
     <NodeViewWrapper className="code-block-view">
-      <div className="code-block-view__well">
-        <div className="code-block-view__lang" contentEditable={false}>
+      <div className={cn("code-block-view__well", page && !editor.isEditable && "hidden")}>
+        <div className={cn("code-block-view__lang", folded && "pb-2")} contentEditable={false}>
           {editor.isEditable ? (
             <Select value={language} onValueChange={(value) => updateAttributes({ language: value })}>
               <SelectTrigger
@@ -38,8 +46,9 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
           ) : (
             <span>{codeLanguageOptions.find((opt) => opt.value === language)?.label ?? language}</span>
           )}
+          {page && editor.isEditable && <HtmlPageSourceToggle open={sourceOpen} onOpenChange={setSourceOpen} />}
         </div>
-        <pre>
+        <pre className={cn(folded && "hidden")}>
           <NodeViewContent<"code"> as="code" />
         </pre>
       </div>
@@ -47,6 +56,11 @@ export const CodeBlockView = ({ node, updateAttributes, editor }: NodeViewProps)
         <Suspense fallback={null}>
           <MermaidDiagram code={node.textContent} />
         </Suspense>
+      )}
+      {page && (
+        <div className={cn(editor.isEditable && "mt-2")} contentEditable={false}>
+          <HtmlPageFrame code={node.textContent} />
+        </div>
       )}
     </NodeViewWrapper>
   );

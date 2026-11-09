@@ -565,6 +565,15 @@ read on its owner, uploading one takes change; people and agents (through
 `attachment_create` and `attachment_get`) share the same 10 MiB cap.
 _Avoid_: Upload, asset, blob
 
+**HTML page**:
+A code block in the `html-page` language whose source runs as a page in the
+body, under its code while the body is edited and in place of it when read:
+charts, mockups, a styled summary. It runs sandboxed on an opaque origin, so it
+never reaches the reader's session or the body around it; it may load from the
+internet. It reads the app's theme as CSS variables, draws its fonts, and
+fits its frame to its height (ADR 0180).
+_Avoid_: Embed (a bot message's card), widget, iframe
+
 **Reaction**:
 One person's emoji on a chat message, shown as a chip with the emoji and how
 many reacted with it. Anyone who reads the conversation may react; reacting

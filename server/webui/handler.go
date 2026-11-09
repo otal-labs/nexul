@@ -32,6 +32,10 @@ func Handler(assets fs.FS) http.Handler {
 				if strings.HasPrefix(p, "assets/") {
 					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 				}
+				// A doc's HTML page runs on an opaque origin and loads the app's fonts from here.
+				if strings.HasPrefix(p, "assets/") && strings.HasSuffix(p, ".woff2") {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				}
 				fileServer.ServeHTTP(w, r)
 				return
 			}

@@ -1,5 +1,6 @@
 import type { Editor, Range } from "@tiptap/core";
 import {
+  CodeXmlIcon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -14,6 +15,7 @@ import {
   TypeIcon,
 } from "lucide-react";
 
+import { HTML_PAGE_LANGUAGE } from "@nexul/client-core/htmlPage";
 import { isolateSelectedLines } from "@/components/doc/selectedLines";
 
 export interface SlashCommandItem {
@@ -97,6 +99,13 @@ export const slashCommandItems: SlashCommandItem[] = [
     icon: TerminalIcon,
     keywords: ["code"],
     run: (editor, range) => lines(editor, range).toggleCodeBlock().run(),
+  },
+  {
+    id: "htmlPage",
+    label: "HTML page",
+    icon: CodeXmlIcon,
+    keywords: ["html", "page", "embed", "render", "chart", "visual", "mockup", "iframe"],
+    run: (editor, range) => lines(editor, range).setCodeBlock({ language: HTML_PAGE_LANGUAGE }).run(),
   },
   {
     id: "table",
