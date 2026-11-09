@@ -13,7 +13,7 @@ import type { MentionChipData } from "@nexul/client-core/mention";
 import { DiscordTimeLayer } from "@/components/doc/discordTime/DiscordTimeLayer";
 import { FormatBubbleMenu } from "@/components/doc/FormatBubbleMenu";
 import { TableBubbleMenu } from "@/components/doc/TableBubbleMenu";
-import { extractHeadingsFromJSON, type DocHeading } from "@/components/doc/docHeadings";
+import { outlineOfDoc, type DocHeading, type DocOutline } from "@/components/doc/docHeadings";
 import { upgradedList } from "@/components/doc/legacyChecklist";
 import {
   buildEditorExtensions,
@@ -55,6 +55,8 @@ const setBody = (editor: Editor, value: string, emitUpdate = true) => editor.com
 // Only a lone empty paragraph takes the hint; an empty list, quote, or code block sits where the hint would draw.
 const isBlankDoc = (doc: Editor["state"]["doc"]) =>
   doc.childCount === 1 && doc.firstChild?.type.name === "paragraph" && doc.firstChild.content.size === 0;
+
+const emptyOutline: DocOutline = { headings: [], key: "[]" };
 
 // Wires y-prosemirror's cursor plugin to session awareness so remote cursors render live.
 const CollaborationCursors = Extension.create<{ awareness: Awareness }>({
@@ -189,14 +191,11 @@ export const RichTextEditor = ({
     }),
   }) ?? { isEmpty: true };
 
-  // Recomputed every transaction so the ToC tracks the live page, not the load-time snapshot.
-  const { headings, headingsKey } = useEditorState({
+  // Follows the live page, not the load-time snapshot; only a transaction that changed the doc walks it.
+  const { headings, key: headingsKey } = useEditorState({
     editor,
-    selector: (ctx) => {
-      const headings = ctx.editor ? extractHeadingsFromJSON(ctx.editor.getJSON()) : [];
-      return { headings, headingsKey: JSON.stringify(headings) };
-    },
-  }) ?? { headings: [], headingsKey: "[]" };
+    selector: (ctx) => (ctx.editor ? outlineOfDoc(ctx.editor.state.doc) : emptyOutline),
+  }) ?? emptyOutline;
 
   const lastReportedHeadingsKey = useRef<string | null>(null);
   useEffect(() => {

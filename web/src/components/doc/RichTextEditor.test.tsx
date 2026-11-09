@@ -264,6 +264,22 @@ describe("RichTextEditor", () => {
     });
   });
 
+  it("serializes the doc once per edit and not at all when only the selection moves", async () => {
+    const user = userEvent.setup();
+    renderEditor(structured);
+    const body = screen.getByLabelText(/doc body/i);
+    await user.click(body);
+    const getJSON = vi.spyOn(Editor.prototype, "getJSON");
+
+    await user.keyboard("!");
+    expect(getJSON).toHaveBeenCalledTimes(1);
+
+    getJSON.mockClear();
+    await user.keyboard("{Control>}a{/Control}");
+    expect(getJSON).not.toHaveBeenCalled();
+    getJSON.mockRestore();
+  });
+
   it("never reports an empty outline while a collab body with headings loads", async () => {
     const onHeadingsChange = vi.fn();
     const body = `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"One"}]},{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Two"}]}]}`;
