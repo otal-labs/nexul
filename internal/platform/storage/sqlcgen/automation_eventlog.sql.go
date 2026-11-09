@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"strings"
 )
 
 const latestOutboxPosition = `-- name: LatestOutboxPosition :one
@@ -28,12 +27,12 @@ func (q *Queries) LatestOutboxPosition(ctx context.Context) (LatestOutboxPositio
 
 const listOutboxAfterCursor = `-- name: ListOutboxAfterCursor :many
 SELECT id, topic, payload, created_at FROM outbox
-WHERE topic IN (/*SLICE:topics*/?) AND (created_at > ?2 OR (created_at = ?2 AND id > ?3))
+WHERE topic IN (SELECT value FROM json_each(?1)) AND (created_at > ?2 OR (created_at = ?2 AND id > ?3))
 ORDER BY created_at, id LIMIT ?4
 `
 
 type ListOutboxAfterCursorParams struct {
-	Topics          []string
+	Topics          interface{}
 	CursorCreatedAt int64
 	CursorID        string
 	Limit           int64
@@ -47,20 +46,12 @@ type ListOutboxAfterCursorRow struct {
 }
 
 func (q *Queries) ListOutboxAfterCursor(ctx context.Context, arg ListOutboxAfterCursorParams) ([]ListOutboxAfterCursorRow, error) {
-	query := listOutboxAfterCursor
-	var queryParams []interface{}
-	if len(arg.Topics) > 0 {
-		for _, v := range arg.Topics {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:topics*/?", strings.Repeat(",?", len(arg.Topics))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:topics*/?", "NULL", 1)
-	}
-	queryParams = append(queryParams, arg.CursorCreatedAt)
-	queryParams = append(queryParams, arg.CursorID)
-	queryParams = append(queryParams, arg.Limit)
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	rows, err := q.db.QueryContext(ctx, listOutboxAfterCursor,
+		arg.Topics,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -25,7 +25,7 @@ func (r *AutomationEventLogRepo) After(ctx context.Context, topics []string, cur
 		return nil, nil
 	}
 	rows, err := r.q.ListOutboxAfterCursor(ctx, sqlcgen.ListOutboxAfterCursorParams{
-		Topics:          topics,
+		Topics:          idsJSON(topics),
 		CursorCreatedAt: cursor.CreatedAt.Unix(),
 		CursorID:        cursor.ID,
 		Limit:           int64(limit),

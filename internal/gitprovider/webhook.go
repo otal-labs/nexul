@@ -10,27 +10,34 @@ import (
 
 	githubapi "github.com/google/go-github/v71/github"
 
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // providerGitHub identifies the GitHub adapter in published envelopes.
 const providerGitHub = "github"
 
-// Publisher is the slice of the event bus the receiver needs (ADR 0019); every accepted delivery is published fan-out.
+// Publisher is the fan-out slice of the event bus (ADR 0019), for git events that skip the outbox.
 type Publisher interface {
 	Publish(ctx context.Context, topic string, payload any) error
 }
 
-// WebhookHandler validates GitHub signatures and publishes a normalized envelope, plus typed git.pr_* topics.
+// Recorder writes an event to the outbox, which the relay fans out and automations read; a receipt it holds writes nothing.
+type Recorder interface {
+	Record(ctx context.Context, receipt string, ev eventbus.OutboxEvent) error
+}
+
+// WebhookHandler validates GitHub signatures and records a normalized envelope, plus typed git.* topics, in the outbox.
 type WebhookHandler struct {
 	secret  []byte
-	bus     Publisher
+	events  Recorder
 	tickets TicketResolver
 }
 
 // NewWebhookHandler wires a webhook receiver; an empty secret skips signature checks (dev only) and logs a warning.
-func NewWebhookHandler(secret string, bus Publisher) *WebhookHandler {
-	return &WebhookHandler{secret: []byte(secret), bus: bus}
+func NewWebhookHandler(secret string, events Recorder) *WebhookHandler {
+	return &WebhookHandler{secret: []byte(secret), events: events}
 }
 
 // WithTicketResolver links each PR event to the tickets its keys name; without one, a PR event links none.
@@ -58,22 +65,23 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Normalize into the envelope before dispatch, so unknown types reach the bus too; failure returns non-2xx.
-	if err := h.publish(r.Context(), TopicProviderEvent, h.normalizeProviderEvent(eventType, githubapi.DeliveryID(r), payload)); err != nil {
+	delivery := githubapi.DeliveryID(r)
+	if err := h.publish(r.Context(), delivery, TopicProviderEvent, h.normalizeProviderEvent(eventType, delivery, payload)); err != nil {
 		h.failDispatch(r.Context(), w, err)
 		return
 	}
 
 	switch eventType {
 	case "pull_request":
-		h.dispatchPullRequest(r.Context(), w, payload)
+		h.dispatchPullRequest(r.Context(), w, delivery, payload)
 	case "pull_request_review":
-		h.dispatchReview(r.Context(), w, payload)
+		h.dispatchReview(r.Context(), w, delivery, payload)
 	case "issue_comment":
-		h.dispatchIssueComment(r.Context(), w, payload)
+		h.dispatchIssueComment(r.Context(), w, delivery, payload)
 	case "pull_request_review_comment":
-		h.dispatchReviewComment(r.Context(), w, payload)
+		h.dispatchReviewComment(r.Context(), w, delivery, payload)
 	case "push":
-		h.dispatchPush(r.Context(), w, payload)
+		h.dispatchPush(r.Context(), w, delivery, payload)
 	default:
 		w.WriteHeader(http.StatusOK)
 	}
@@ -125,7 +133,7 @@ type repositoryBodyOwner struct {
 }
 
 // dispatchPullRequest maps opened, merged close, and unmerged close to a git.pr_* event.
-func (h *WebhookHandler) dispatchPullRequest(ctx context.Context, w http.ResponseWriter, payload []byte) {
+func (h *WebhookHandler) dispatchPullRequest(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("pull_request", payload)
 	if err != nil {
@@ -153,17 +161,17 @@ func (h *WebhookHandler) dispatchPullRequest(ctx context.Context, w http.Respons
 	ev.PR.LinkedTicketIDs = ids
 	switch {
 	case prEvent.GetAction() == "opened":
-		if err := h.publish(ctx, TopicPROpened, ev); err != nil {
+		if err := h.publish(ctx, delivery, TopicPROpened, ev); err != nil {
 			h.failDispatch(ctx, w, err)
 			return
 		}
 	case prEvent.GetAction() == "closed" && prEvent.GetPullRequest().GetMerged():
-		if err := h.publish(ctx, TopicPRMerged, ev); err != nil {
+		if err := h.publish(ctx, delivery, TopicPRMerged, ev); err != nil {
 			h.failDispatch(ctx, w, err)
 			return
 		}
 	case prEvent.GetAction() == "closed":
-		if err := h.publish(ctx, TopicPRClosed, ev); err != nil {
+		if err := h.publish(ctx, delivery, TopicPRClosed, ev); err != nil {
 			h.failDispatch(ctx, w, err)
 			return
 		}
@@ -172,7 +180,7 @@ func (h *WebhookHandler) dispatchPullRequest(ctx context.Context, w http.Respons
 }
 
 // dispatchReview handles a pull_request_review delivery: a submitted review becomes git.pr_review_submitted.
-func (h *WebhookHandler) dispatchReview(ctx context.Context, w http.ResponseWriter, payload []byte) {
+func (h *WebhookHandler) dispatchReview(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("pull_request_review", payload)
 	if err != nil {
@@ -191,7 +199,7 @@ func (h *WebhookHandler) dispatchReview(ctx context.Context, w http.ResponseWrit
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err := h.publish(ctx, TopicPRReviewSubmitted, ev); err != nil {
+	if err := h.publish(ctx, delivery, TopicPRReviewSubmitted, ev); err != nil {
 		h.failDispatch(ctx, w, err)
 		return
 	}
@@ -199,7 +207,7 @@ func (h *WebhookHandler) dispatchReview(ctx context.Context, w http.ResponseWrit
 }
 
 // dispatchIssueComment maps only a PR comment, not a plain issue, to git.pr_comment (Issue.IsPullRequest).
-func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.ResponseWriter, payload []byte) {
+func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("issue_comment", payload)
 	if err != nil {
@@ -218,7 +226,7 @@ func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.Respon
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err := h.publish(ctx, TopicPRCommentCreated, ev); err != nil {
+	if err := h.publish(ctx, delivery, TopicPRCommentCreated, ev); err != nil {
 		h.failDispatch(ctx, w, err)
 		return
 	}
@@ -226,7 +234,7 @@ func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.Respon
 }
 
 // dispatchReviewComment maps an inline diff comment to git.pr_comment too, same topic as a conversation comment.
-func (h *WebhookHandler) dispatchReviewComment(ctx context.Context, w http.ResponseWriter, payload []byte) {
+func (h *WebhookHandler) dispatchReviewComment(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("pull_request_review_comment", payload)
 	if err != nil {
@@ -245,7 +253,7 @@ func (h *WebhookHandler) dispatchReviewComment(ctx context.Context, w http.Respo
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err := h.publish(ctx, TopicPRCommentCreated, ev); err != nil {
+	if err := h.publish(ctx, delivery, TopicPRCommentCreated, ev); err != nil {
 		h.failDispatch(ctx, w, err)
 		return
 	}
@@ -256,7 +264,7 @@ func (h *WebhookHandler) dispatchReviewComment(ctx context.Context, w http.Respo
 const branchRefPrefix = "refs/heads/"
 
 // dispatchPush maps a push to an existing branch to git.push, a deleted branch to git.branch_deleted.
-func (h *WebhookHandler) dispatchPush(ctx context.Context, w http.ResponseWriter, payload []byte) {
+func (h *WebhookHandler) dispatchPush(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("push", payload)
 	if err != nil {
@@ -278,7 +286,7 @@ func (h *WebhookHandler) dispatchPush(ctx context.Context, w http.ResponseWriter
 	owner := pushEvent.Repo.GetOwner().GetLogin()
 	repo := pushEvent.Repo.GetName()
 	if pushEvent.GetDeleted() {
-		if err := h.publish(ctx, TopicBranchDeleted, BranchDeletedEvent{Owner: owner, Repo: repo, Branch: branch}); err != nil {
+		if err := h.publish(ctx, delivery, TopicBranchDeleted, BranchDeletedEvent{Owner: owner, Repo: repo, Branch: branch}); err != nil {
 			h.failDispatch(ctx, w, err)
 			return
 		}
@@ -286,7 +294,7 @@ func (h *WebhookHandler) dispatchPush(ctx context.Context, w http.ResponseWriter
 		return
 	}
 	ev := PushEvent{Owner: owner, Repo: repo, Branch: branch, SHA: pushEvent.GetAfter(), Pusher: pushEvent.GetPusher().GetName()}
-	if err := h.publish(ctx, TopicPush, ev); err != nil {
+	if err := h.publish(ctx, delivery, TopicPush, ev); err != nil {
 		h.failDispatch(ctx, w, err)
 		return
 	}
@@ -305,12 +313,16 @@ func (h *WebhookHandler) linkedTicketIDs(ctx context.Context, owner, repo string
 	return append([]string{}, ids...), nil
 }
 
-// publish wraps a bus publish so transient failures bubble up.
-func (h *WebhookHandler) publish(ctx context.Context, topic string, payload any) error {
-	return h.bus.Publish(ctx, topic, payload)
+// publish records the event under a receipt per delivery and topic, so a redelivered webhook writes nothing new.
+func (h *WebhookHandler) publish(ctx context.Context, delivery, topic string, payload any) error {
+	receipt := ""
+	if delivery != "" {
+		receipt = "github-webhook:" + delivery + ":" + topic
+	}
+	return h.events.Record(ctx, receipt, eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: payload})
 }
 
-// failDispatch reports a failed dispatch; 500 makes GitHub redeliver so a transient bus failure doesn't drop it.
+// failDispatch reports a failed dispatch; 500 makes GitHub redeliver so a failed outbox write doesn't drop it.
 func (h *WebhookHandler) failDispatch(ctx context.Context, w http.ResponseWriter, err error) {
 	logging.FromCtx(ctx).Error("webhook event dispatch failed", "error", err)
 	http.Error(w, "event dispatch failed", http.StatusInternalServerError)

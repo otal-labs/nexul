@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const claimProcessedEvent = `-- name: ClaimProcessedEvent :execrows
+INSERT OR IGNORE INTO processed_events (event_id, processed_at) VALUES (?, ?)
+`
+
+type ClaimProcessedEventParams struct {
+	EventID     string
+	ProcessedAt int64
+}
+
+func (q *Queries) ClaimProcessedEvent(ctx context.Context, arg ClaimProcessedEventParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, claimProcessedEvent, arg.EventID, arg.ProcessedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const countProcessedEvent = `-- name: CountProcessedEvent :one
 SELECT COUNT(*) FROM processed_events WHERE event_id = ?
 `

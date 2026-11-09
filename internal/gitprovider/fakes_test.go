@@ -14,10 +14,11 @@ type fakeBus struct {
 	published  []eventbus.Event
 	publishErr error
 	handlers   map[string][]eventbus.Handler
+	receipts   map[string]bool
 }
 
 func newFakeBus() *fakeBus {
-	return &fakeBus{handlers: map[string][]eventbus.Handler{}}
+	return &fakeBus{handlers: map[string][]eventbus.Handler{}, receipts: map[string]bool{}}
 }
 
 func (f *fakeBus) Publish(ctx context.Context, topic string, payload any) error {
@@ -37,6 +38,20 @@ func (f *fakeBus) Publish(ctx context.Context, topic string, payload any) error 
 		}
 	}
 	return nil
+}
+
+// Record stands in for the outbox: a receipt it already holds writes nothing, anything else publishes.
+func (f *fakeBus) Record(ctx context.Context, receipt string, ev eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	if receipt != "" && f.receipts[receipt] {
+		f.mu.Unlock()
+		return nil
+	}
+	if f.publishErr == nil && receipt != "" {
+		f.receipts[receipt] = true
+	}
+	f.mu.Unlock()
+	return f.Publish(ctx, ev.Topic, ev.Payload)
 }
 
 func (f *fakeBus) Subscribe(_ context.Context, topic string, h eventbus.Handler) error {
