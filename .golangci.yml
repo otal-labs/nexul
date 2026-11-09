@@ -9,13 +9,34 @@ linters:
     - ineffassign
     - unused
     - gocyclo
+    - revive
+    - gocritic
+    - forbidigo
   settings:
     gocyclo:
       min-complexity: 15
+    revive:
+      rules:
+        - name: indent-error-flow
+        - name: superfluous-else
+        - name: early-return
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - ifElseChain
+        - elseif
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.(Print|Println|Printf)$
+          msg: log through slog
   exclusions:
     paths:
       - internal/platform/storage/sqlcgen
       - node_modules
+    rules:
+      - path: (^|/)cmd/|_test\.go$
+        linters:
+          - forbidigo
 
 formatters:
   enable:

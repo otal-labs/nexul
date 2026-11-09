@@ -19,6 +19,8 @@ const classRules = [
   },
 ];
 
+const noElse = { selector: "IfStatement[alternate]", message: "Early return, no else." };
+
 export default tseslint.config(
   { ignores: ["dist", "coverage"] },
   js.configs.recommended,
@@ -38,11 +40,23 @@ export default tseslint.config(
       ],
     },
   },
+  // Rule 7: early return, no else. Rule 8: no console in production code.
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
+      "no-restricted-syntax": ["error", noElse],
+    },
+  },
+  {
+    files: ["**/*.test.{ts,tsx}", "**/test/**", "**/testutil/**"],
+    rules: { "no-console": "off" },
+  },
   // Sizes come from the type scale in index.css, and the global :focus-visible outline is the one indicator.
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", ...classRules.flatMap(({ pattern, message }) => [
+      "no-restricted-syntax": ["error", noElse, ...classRules.flatMap(({ pattern, message }) => [
         { selector: `Literal[value=${pattern}]`, message },
         { selector: `TemplateElement[value.raw=${pattern}]`, message },
       ])],

@@ -115,6 +115,8 @@ skipped and lint errors do not.
 
 | Rule | Gate |
 |---|---|
+| Early return after a return, no `else if` chains, no `fmt.Print` outside `cmd/` (Go) | `revive` (`indent-error-flow`, `superfluous-else`, `early-return`), `gocritic` (`ifElseChain`, `elseif`) and `forbidigo` in `.golangci.yml`; an `else` after a branch that does not return is not caught, so review it |
+| No `else` and no `console.log` in TypeScript | `no-restricted-syntax` (`IfStatement[alternate]`) and `no-console` (`warn` and `error` allowed; tests exempt) in `web/eslint.config.js` (covers `client-core/`) and `native/eslint.config.js` |
 | Go static analysis, formatting, imports, complexity | `golangci-lint` with `.golangci.yml`, in CI and `make lint` |
 | Known-vulnerable Go dependencies | `govulncheck`, in CI and `make vuln` |
 | Go coverage floor | `make coverage`, in CI and locally |

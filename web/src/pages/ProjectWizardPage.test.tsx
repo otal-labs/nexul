@@ -485,11 +485,8 @@ describe("ProjectWizardPage", () => {
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     expect(useProjectWizardStore.getState().stackId).toBe("stack-1");
     await user.click(screen.getByRole("button", { name: action }));
-    if (action === "Finish") {
-      await screen.findByText("project board");
-    } else {
-      await screen.findByRole("heading", { name: "Where should it run?" });
-    }
+    if (action === "Finish") await screen.findByText("project board");
+    if (action !== "Finish") await screen.findByRole("heading", { name: "Where should it run?" });
     expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", expect.objectContaining({
       stack_id: "stack-1", env_keys: ["PORT"], steps: { service: "done" },
       ...(action === "Finish" && { finished: true }),
