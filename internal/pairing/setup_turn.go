@@ -71,6 +71,10 @@ func (s *Service) UpdateSkills(ctx context.Context, userID, computerID string) (
 		return nil, fmt.Errorf("%w: setup is already running for %s on %s", apperrs.ErrConflict, p.Name, session.Name)
 	}
 	pick := SetupProvider{Provider: driver, Name: p.Name, Model: setupPick(choices.Models, p)}
+	// A saved model the provider stopped listing would fail the turn, so it runs on the provider's default.
+	if !slices.ContainsFunc(p.Models, func(m harness.ProviderModel) bool { return m.Slug == pick.Model }) {
+		pick.Model = ""
+	}
 	if pick.Model != "" {
 		pick.ModelOptions = setupPick(choices.ModelOptions, p)
 	}

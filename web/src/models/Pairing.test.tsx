@@ -173,6 +173,12 @@ describe("setupModelChoices", () => {
     expect(setupModelChoices(providers, { provider: "claude", model: "gone", placement: "in_order", clone_automatically: false })[0]?.preselected).toBe("claude-small");
     expect(setupModelChoices(providers, undefined)[0]?.preselected).toBe("claude-small");
   });
+
+  it("drops a saved model the provider no longer lists, with its options, for the provider's own default", () => {
+    const saved = { skipped_providers: [], models: { opencode: "removed" }, model_options: { opencode: [{ id: "variant", value: "max" }] }, folder: "" };
+    const opencode = setupModelChoices(providers, undefined, saved).find((c) => c.provider === "opencode");
+    expect([opencode?.preselected, opencode?.preselectedOptions]).toEqual(["pickle", []]);
+  });
 });
 
 describe("setupSummary", () => {

@@ -203,11 +203,11 @@ export interface SetupModelChoice {
 
 type Preselection = Pick<SetupModelChoice, "preselected" | "preselectedOptions">;
 
-// The saved pick wins, then the defaults' model on the default provider, then the provider's own default.
+// The saved pick wins while the provider still lists it, then the defaults' model on the default provider, then the provider's own default.
 const preselect = (p: HarnessProvider, defaults: PairingDefaults | undefined, saved: SetupChoices | undefined): Preselection => {
   const driver = p.driver.toLowerCase();
   const savedModel = saved?.models[driver];
-  if (savedModel !== undefined) return { preselected: savedModel, preselectedOptions: saved?.model_options[driver] ?? [] };
+  if (savedModel !== undefined && (savedModel === "" || p.models.some((m) => m.slug === savedModel))) return { preselected: savedModel, preselectedOptions: saved?.model_options[driver] ?? [] };
   const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
   if (fromDefaults) return { preselected: fromDefaults, preselectedOptions: defaults?.model_options ?? [] };
   return { preselected: p.models.find((m) => m.is_default)?.slug ?? "", preselectedOptions: [] };
