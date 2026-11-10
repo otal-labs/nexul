@@ -96,6 +96,21 @@ func TestUpdateSkills_FirstProviderUnconfirmed_RunsOnTheNextConfirmedOne(t *test
 	}
 }
 
+func TestUpdateSkills_SavedModelNoLongerListed_RunsOnTheProviderDefault(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	f.outdate(t)
+	_, err := f.svc.SaveSetupChoices(t.Context(), "u1", f.computer.ID, SetupChoices{
+		Models:       map[string]string{"codex": "removed"},
+		ModelOptions: map[string][]harness.OptionSetting{"codex": {{ID: "effort", Value: "max"}}},
+	})
+	require.NoError(t, err)
+
+	run := f.updateSkills(t)
+
+	assert.Equal(t, []SetupProvider{{Provider: "codex", Name: "Codex"}}, run.Providers, "a model the provider stopped listing would fail the turn")
+}
+
 func TestUpdateSkills_TurnFails_LeavesThemOutdated(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
