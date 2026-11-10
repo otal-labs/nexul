@@ -181,4 +181,12 @@ describe("setupSummary", () => {
   it("names no providers when a confirmed setup lists none", () => {
     expect(setupSummary(setup({})).providers).toBeUndefined();
   });
+
+  it("leaves a switched-off provider's failed turn out of the status", () => {
+    const failed = turn({ provider: "opencode", provider_name: "OpenCode", state: "failed", status: "Failed" });
+    const confirmed = { provider: "claudeagent", confirmed_at: "2026-09-24T00:00:00Z", skills: [], skills_version: "", skills_outdated: false };
+    const summary = setupSummary(setup({ providers: [confirmed], turns: [failed], skipped_providers: ["opencode"] }));
+    expect(summary.text).toBe("Setup confirmed");
+    expect(summary.providers?.map((p) => p.provider)).toEqual(["claudeagent"]);
+  });
 });

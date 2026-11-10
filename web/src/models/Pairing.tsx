@@ -285,18 +285,19 @@ export interface ProviderSetupLine {
   skillsOutdated: boolean;
 }
 
-// One line per provider the computer has a confirmation row or a setup turn for; a running turn wins over the stored state.
+// One line per switched-on provider the computer has a confirmation row or a setup turn for; a running turn wins over the stored state.
 export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] => {
   const providers = [...new Set([...setup.providers.map((p) => p.provider), ...setup.turns.map((t) => t.provider)])];
-  return providers.map((provider) => {
+  return providers.flatMap((provider): ProviderSetupLine[] => {
     const turn = setup.turns.find((t) => t.provider === provider);
+    if (setup.skipped_providers.includes(provider) && turn?.state !== "running") return [];
     const row = setup.providers.find((p) => p.provider === provider);
     const confirmedAt = row?.confirmed_at ?? null;
     const base = { provider, name: turn?.provider_name || provider, kind: turn?.kind ?? "setup", confirmedAt, skillsOutdated: row?.skills_outdated ?? false };
-    if (turn?.state === "running") return { ...base, state: "running" };
-    if (confirmedAt) return { ...base, state: "confirmed" };
-    if (turn?.state === "failed") return { ...base, state: "failed" };
-    return { ...base, state: "unconfirmed" };
+    if (turn?.state === "running") return [{ ...base, state: "running" }];
+    if (confirmedAt) return [{ ...base, state: "confirmed" }];
+    if (turn?.state === "failed") return [{ ...base, state: "failed" }];
+    return [{ ...base, state: "unconfirmed" }];
   });
 };
 
