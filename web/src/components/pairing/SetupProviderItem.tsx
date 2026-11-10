@@ -38,9 +38,9 @@ export const SetupProviderItem = ({ row, model, options, open, busy, stopping, f
   // Off or gone, a row has no picker, and its name takes the picker's column; off, the action's too.
   const picking = row.on && listed;
   const nameSpan = !picking && (row.gone ? "col-span-2" : "col-span-3");
-  // Steps live only in this tab and arrive a while after a turn starts; until there are some, the state line says it all.
+  // Steps live only in this tab and arrive a while after a turn starts; until then the state line says it all, but an open well stays put.
   const kept = useSetupActivityStore((s) => !!row.run?.turnId && (s.steps[row.run.turnId]?.length ?? 0) > 0);
-  const transcript = kept ? row.run : undefined;
+  const transcript = kept || (open && running) ? row.run : undefined;
   const name = (
     <span title={row.name} className={cn("truncate text-sm font-medium", (!row.on || !listed) && "text-muted-foreground")}>
       {row.name}

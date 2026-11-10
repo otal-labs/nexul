@@ -75,13 +75,14 @@ describe("setupRunRows", () => {
 });
 
 describe("openSetupRow", () => {
-  it("opens the one running turn, a failure when several run, and nothing for a settled run", () => {
+  it("opens the one running or queued turn, a failure when several run, and nothing for a settled run", () => {
     const running = (provider: string) => turn({ provider, turn_id: provider, state: "running" });
     const failed = turn({ provider: "opencode", turn_id: "f", state: "failed" });
     expect(openSetupRow(setupRunRows([running("codex"), failed], undefined))?.provider).toBe("codex");
     expect(openSetupRow(setupRunRows([running("codex"), running("claudeagent"), failed], undefined))?.provider).toBe("opencode");
     expect(openSetupRow(setupRunRows([running("codex"), running("claudeagent")], undefined))).toBeUndefined();
     expect(openSetupRow(setupRunRows([turn({})], undefined))).toBeUndefined();
+    expect(openSetupRow(setupRunRows([failed], { run_id: "r1", computer_id: "c1", providers: [{ provider: "opencode", name: "OpenCode" }] }))?.state).toBe("queued");
   });
 });
 

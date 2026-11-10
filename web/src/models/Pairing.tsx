@@ -226,9 +226,9 @@ export const setupModelChoices = (
     return [{ provider: p.driver.toLowerCase(), name: p.name, instance, ...preselect(p, defaults, saved) }];
   });
 
-// The row that opens by itself: the one running row, else the first failure; several running open none, and a settled run stays folded.
+// The row that opens by itself: the one running or queued row, else the first failure; several running open none, and a settled run stays folded.
 export const openSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined => {
-  const running = rows.filter((r) => r.state === "running");
+  const running = rows.filter((r) => r.state === "running" || r.state === "queued");
   return (running.length === 1 ? running[0] : undefined) ?? rows.find((r) => r.state === "failed");
 };
 

@@ -133,6 +133,27 @@ describe("SetupComputerDialog", () => {
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a failed provider's open transcript in place through its retry, on the new turn's live line until its first step", async () => {
+    setup = { ...emptySetup, turns: [turn("opencode", "OpenCode", "failed", "Model not found", "r0", "t-old")] };
+    useSetupActivityStore.setState({ steps: { "t-old": [{ kind: "tool_call", call_id: "c1", tool: "Shell", summary: "ls ~/.config/opencode", detail: "", at: "" }] } });
+    mocks.post.mockImplementation(async () => {
+      setup = { ...emptySetup, turns: [turn("opencode", "OpenCode", "running", "Connecting Nexul and installing skills", "r1", "t-new")] };
+      return run(["opencode", "OpenCode"]);
+    });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    const well = await screen.findByRole("region", { name: "OpenCode transcript" });
+    await user.click(screen.getByRole("button", { name: /^retry opencode$/i }));
+
+    expect(await within(well).findByText("Working")).toBeInTheDocument();
+    expect(well).toBeInTheDocument();
+    expect(within(well).queryByText("Model not found")).not.toBeInTheDocument();
+    act(() => useSetupActivityStore.getState().push("t-new", { kind: "tool_call", call_id: "c2", tool: "Shell", summary: "opencode mcp add nexul", detail: "", at: "" }));
+    expect(screen.getByRole("region", { name: "OpenCode transcript" })).toBe(well);
+  });
+
   it("says when T3 Code can't be reached, and asks it again from the same place", async () => {
     let reachable = false;
     const base = mocks.get.getMockImplementation();
