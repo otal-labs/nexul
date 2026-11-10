@@ -362,6 +362,7 @@ describe("ComputersSection", () => {
     const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     setup = {
       computer_id: "c1",
+      skipped_providers: [],
       confirmed_at: at,
       providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "v1", skills_outdated: false }],
       turns: [{ run_id: "r0", turn_id: "t0", provider: "codex", provider_name: "Codex", state: "confirmed", status: "Confirmed", updated_at: at }],
@@ -422,6 +423,7 @@ describe("ComputersSection", () => {
     const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     setup = {
       computer_id: "c1",
+      skipped_providers: [],
       confirmed_at: at,
       providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "old", skills_outdated: true }],
       turns: [{ run_id: "r0", turn_id: "t0", provider: "opencode", provider_name: "OpenCode", kind: "setup", state: "failed", status: "npx missing", updated_at: at }],
