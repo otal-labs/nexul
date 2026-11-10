@@ -1,4 +1,4 @@
-import { segmentSteps } from "@nexul/client-core/agentSteps";
+import { segmentSteps, type StepSegment } from "@nexul/client-core/agentSteps";
 import { useEffect, useRef } from "react";
 
 import {
@@ -42,7 +42,10 @@ interface SetupTranscriptProps {
 // One provider's kept steps read like a play run's, newest at the bottom, in a well under its row; a long turn scrolls past 280px.
 export const SetupTranscript = ({ row }: SetupTranscriptProps) => {
   const steps = useSetupActivityStore((s) => (row.turnId && s.steps[row.turnId]) || EMPTY);
-  const segments = segmentSteps(steps, row.state === "running");
+  const running = row.state === "running" || row.state === "queued";
+  // A turn with no steps yet shows its live line, so a well kept open through a retry isn't empty.
+  const segments: StepSegment<ActivityEntry>[] =
+    running && steps.length === 0 ? [{ kind: "turn", entries: [], running, from: null, until: null }] : segmentSteps(steps, running);
   const section = useRef<HTMLElement>(null);
   // An opening well that would end below a scrolling list's fade lifts its row to the top, so the name and the live step show
   // together; one that fits, or a list that doesn't scroll (the welcome page), stays where it is.
