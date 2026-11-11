@@ -728,6 +728,12 @@ whoever holds `stacks:write` on the stack is sent them, and anyone else gets the
 `env_masked` set. An event and an MCP result never carry a value.
 _Avoid_: Secrets (no value is marked, all are held back), config, settings
 
+**Secret reference**:
+A value that names where a secret lives in an external secrets manager, such as 1Password, instead of
+holding the secret. Nexul stores the reference; the side that uses the secret (a runner, an automations
+host, or the server) fetches the secret with its own credential at the moment it needs it.
+_Avoid_: Secret link, vault path, external secret (that is the feature, not the value)
+
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with
