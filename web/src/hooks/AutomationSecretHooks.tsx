@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import { isReferenceRefusal } from "@nexul/client-core/secretReference";
 
 import { api, errorMessage } from "@/api/client";
 import type { AutomationSecretMeta } from "@/models/AutomationSecret";
@@ -31,7 +32,11 @@ export const useSetAutomationSecret = () => {
       await client.invalidateQueries({ queryKey: [getAutomationSecretsKey] });
       toast.success("Secret saved");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    // A refused secret reference shows under the value field, so it isn't toasted too.
+    onError: (error) => {
+      if (isReferenceRefusal(errorMessage(error))) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 

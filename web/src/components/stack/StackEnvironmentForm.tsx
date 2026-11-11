@@ -1,7 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, EyeOffIcon, PlusIcon } from "lucide-react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
+import { holderNamedBy, isReferenceRefusal } from "@nexul/client-core/secretReference";
+
+import { errorMessage } from "@/api/client";
 import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
@@ -24,7 +28,7 @@ interface StackEnvironmentFormProps {
 }
 
 export const StackEnvironmentForm = ({ stack, image, revealed, onReveal, saved, onSaved }: StackEnvironmentFormProps) => {
-  const updateEnv = useUpdateStackEnv({ quiet: true });
+  const updateEnv = useUpdateStackEnv({ quiet: true, inline: true });
   const form = useForm<StackEnvFormData>({
     defaultValues: { rows: envToRows(stack.env) },
     resolver: zodResolver(StackEnvFormSchema),
@@ -35,8 +39,13 @@ export const StackEnvironmentForm = ({ stack, image, revealed, onReveal, saved, 
     try {
       await updateEnv.mutateAsync({ ...stack, env: rowsToEnv(data.rows) });
       onSaved();
-    } catch {
-      // Error is surfaced by the hook's toast; the edits stay in the form to retry.
+    } catch (err) {
+      // The hook toasts any other error; a refused reference shows under its row, and the edits stay in the form to retry.
+      const message = errorMessage(err);
+      const holder = holderNamedBy(message, data.rows.map((row) => row.key));
+      const index = data.rows.findIndex((row) => row.key === holder);
+      if (index >= 0) form.setError(`rows.${index}.value`, { message });
+      if (index < 0 && isReferenceRefusal(message)) toast.error(message);
     }
   };
 

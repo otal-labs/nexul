@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import { isReferenceRefusal } from "@nexul/client-core/secretReference";
 
 import { api, errorMessage } from "@/api/client";
 import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
@@ -69,7 +70,8 @@ export const useFetchStackDeploys = (stackId: string | undefined, pollMs?: numbe
 
 // Every field on Stack is required by the backend's full-replace PATCH (spec: no partial merge), so callers pass
 // the whole record with their change applied, not a partial payload.
-export const useUpdateStack = () => {
+// inline: the caller shows a refused secret reference under its field, so the toast would say it twice.
+export const useUpdateStack = ({ inline = false }: { inline?: boolean } = {}) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires("stacks:write", async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data),
@@ -78,7 +80,10 @@ export const useUpdateStack = () => {
       await client.invalidateQueries({ queryKey: [getStacksKey] });
       toast.success("Stack updated");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => {
+      if (inline && isReferenceRefusal(errorMessage(error))) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 
@@ -187,7 +192,7 @@ export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => 
 };
 
 // quiet leaves the confirmation to a Save button that answers Saved itself.
-export const useUpdateStackEnv = ({ quiet = false }: { quiet?: boolean } = {}) => {
+export const useUpdateStackEnv = ({ quiet = false, inline = false }: { quiet?: boolean; inline?: boolean } = {}) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires("stacks:write", async (stack: Stack) => (await api.patch<Stack>(`/api/stacks/${stack.id}`, stack)).data),
@@ -195,7 +200,10 @@ export const useUpdateStackEnv = ({ quiet = false }: { quiet?: boolean } = {}) =
       await client.invalidateQueries({ queryKey: [getStackKey] });
       if (!quiet) toast.success("Environment saved");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => {
+      if (inline && isReferenceRefusal(errorMessage(error))) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 

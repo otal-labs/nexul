@@ -10,7 +10,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), held: ["stacks:write", "deploys:write"] as string[] }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: mocks.post, patch: mocks.patch }, errorMessage: () => "boom" }));
+vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: mocks.post, patch: mocks.patch }, errorMessage: (e: Error) => e.message }));
 
 const stack: Stack = {
   id: "stack-1",
@@ -84,6 +84,21 @@ describe("StackEnvironmentSection", () => {
       ...stack,
       env: { DATABASE_URL: "postgres://acme:hunter2@db.example.com/app", LOG_LEVEL: "" },
     });
+  });
+
+  it("tags a value that is a secret reference, not a URL, and shows a refused one under its row", async () => {
+    const user = userEvent.setup();
+    await renderSection({ ...stack, env: { DATABASE_URL: "postgres://db.example.com/app", API_KEY: "op://acme/api/key", BAD: "op://acme" } });
+
+    expect(screen.getAllByText("1Password")).toHaveLength(1);
+    expect(screen.getByLabelText("Value of API_KEY").nextElementSibling).toHaveTextContent("1Password");
+
+    mocks.patch.mockRejectedValue(new Error("BAD is not a valid secret reference; it must read op://vault/item/field"));
+    await user.type(screen.getByLabelText("Value of DATABASE_URL"), "x");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("BAD is not a valid secret reference");
+    expect(screen.getByLabelText("Value of BAD")).toBeInvalid();
   });
 
   it("adds a variable and refuses a name that is already set", async () => {

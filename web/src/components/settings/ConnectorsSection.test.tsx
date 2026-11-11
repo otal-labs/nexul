@@ -274,6 +274,50 @@ describe("ConnectorsSection", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
+  it("tags a secret field that holds a secret reference, never a plain field, and shows a refused one under that field", async () => {
+    serve({
+      data: [
+        connectorEntry({
+          connector: {
+            id: "livekit",
+            name: "LiveKit",
+            description: "Powers voice channels with screen share and camera",
+            category: "communication",
+            icon: "livekit",
+            manual: [
+              { key: "ws_url", label: "WebSocket URL", secret: false },
+              { key: "api_secret", label: "API secret", secret: true },
+            ],
+          },
+        }),
+      ],
+    });
+    mocks.post.mockImplementation(async (url: string) => {
+      if (url.endsWith("/manual")) throw new Error("boom");
+      return { data: undefined };
+    });
+    mocks.errorMessage.mockReturnValue("API secret is not a valid secret reference; it must read op://vault/item/field");
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /^connect$/i }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/websocket url/i), "op://acme/lk/url");
+    await user.type(within(dialog).getByLabelText(/api secret/i), "https://example.com/a/b/c");
+    expect(within(dialog).queryByText("1Password")).not.toBeInTheDocument();
+
+    await user.clear(within(dialog).getByLabelText(/api secret/i));
+    await user.type(within(dialog).getByLabelText(/api secret/i), "op://acme");
+    await user.click(within(dialog).getByRole("button", { name: /^verify$/i }));
+    await user.click(await within(dialog).findByRole("button", { name: /^confirm$/i }));
+    expect(await within(dialog).findByText(/API secret is not a valid secret reference/)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/api secret/i)).toBeInvalid();
+
+    await user.clear(within(dialog).getByLabelText(/api secret/i));
+    await user.type(within(dialog).getByLabelText(/api secret/i), "op://acme/lk/secret");
+    expect(within(dialog).getByText("1Password")).toBeInTheDocument();
+  });
+
   it("verifies each named permission in parallel and ticks rows as they land; a failed row blocks Confirm", async () => {
     serve({
       data: [
