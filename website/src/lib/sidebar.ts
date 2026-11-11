@@ -3,7 +3,7 @@ export const guide = (slug: string) => (slug === 'index' ? 'docs/guide' : `docs/
 
 export const guideGroups = [
 	{ label: 'Get started', items: [guide('index'), guide('install'), guide('setup-wizard'), guide('github-app'), guide('upgrade')] },
-	{ label: 'Deploy', items: [guide('runners'), guide('stacks-and-deploys'), guide('topology-and-dns'), guide('logs')] },
+	{ label: 'Deploy', items: [guide('runners'), guide('stacks-and-deploys'), guide('external-secrets'), guide('topology-and-dns'), guide('logs')] },
 	{
 		label: 'Work together',
 		items: [

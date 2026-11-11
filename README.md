@@ -102,7 +102,7 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Instance upgrade | ✅ | Settings shows the running and newest versions. One click (or the `instance_upgrade` tool) upgrades every Nexul service on the server. |
 | Call notes | ⬜ | A speech-to-text model takes notes on a voice call and writes the summary into the doc. |
 | SSO | ⬜ | OIDC and SAML sign-in (Google, Microsoft Entra, Okta) with just-in-time user provisioning. |
-| External secrets | ⬜ | Read secrets from Vault, 1Password, or a cloud secrets manager instead of storing them in Nexul. |
+| External secrets | ✅ | Read secrets from 1Password instead of storing them in Nexul: a value `op://vault/item/field` is read by the runner, automations host or server that uses it, with a token that stays on its machine. A changed value shows on the stack with Redeploy beside it. Vault and the cloud managers are not built yet. |
 
 ## Contributing
 

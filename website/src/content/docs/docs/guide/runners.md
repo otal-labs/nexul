@@ -106,6 +106,8 @@ When 1Password refuses the token, the runner's row shows **token rejected** and 
 
 When a secret a stack references changes in 1Password after its last deploy, the stack's page, on the web and on the phone, shows **DB_PASSWORD changed since the last deploy** (with every changed variable named, never its value). Anyone who can see the stack sees it; **Redeploy** beside it needs **Deploy** on the stack. Nothing redeploys by itself, and the next deploy clears the notice.
 
+The whole picture, including the other tokens and the limits, is in [External secrets](/docs/guide/external-secrets/).
+
 ## Removing a runner
 
 Open the **⋯** on the runner's row, pick **Remove runner** and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`. A machine with a connected runner can't be deleted until that runner is removed.
