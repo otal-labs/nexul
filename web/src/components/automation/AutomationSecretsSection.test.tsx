@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), del: vi.fn() }));
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { get: mocks.get, put: mocks.put, delete: mocks.del },
-  errorMessage: () => "error",
+  errorMessage: (e: Error) => e.message,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -55,6 +56,28 @@ describe("AutomationSecretsSection", () => {
     await user.click(screen.getByRole("button", { name: "Save secret" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { value: "shh" }, { params: { workspace_id: "ws-1" } });
+  });
+
+  it("tags a value that is a secret reference, not a URL, and shows a refused one under the field", async () => {
+    mocks.get.mockResolvedValue({ data: [] });
+    mocks.put.mockRejectedValue(new Error("API_KEY is not a valid secret reference; it must read op://vault/item/field"));
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Add secret" }));
+    await user.type(screen.getByLabelText("Name"), "API_KEY");
+    await user.type(screen.getByLabelText("Value"), "https://example.com/a/b/c");
+    expect(screen.queryByText("1Password")).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Value"));
+    await user.type(screen.getByLabelText("Value"), "op://acme");
+    await user.click(screen.getByRole("button", { name: "Save secret" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("API_KEY is not a valid secret reference");
+    expect(toast.error).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Value"));
+    await user.type(screen.getByLabelText("Value"), "op://acme/api/key");
+    expect(screen.getByText("1Password")).toBeInTheDocument();
   });
 
   it("replaces a saved secret's value under its own name", async () => {

@@ -1,6 +1,6 @@
 # 12 — Tag a secret reference in the web editors and show its save error inline
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 11
 
@@ -23,3 +23,7 @@ Read first: `practices/react-guide.md` (F1–F7), `practices/design-language.md`
 - [ ] Screenshots at 768, 1024 and 1440px in the PR.
 
 Verify: `bun run lint`, `bun run typecheck`, `bun run test` in `web/`.
+
+## Comments
+
+Built: `client-core/secretReference.ts` (parser matching the Go table, manager names, refusal matching), `SecretReferenceTag`, `TaggedInput` (the tag sits inside the field so every row keeps its widths), wired into the stack env editor, branch rule overrides, the automation secret form, manual connector secret fields, the app config client secret and the GitHub App key dialog. A refusal that maps to a field shows inline only, with no toast. Screenshots at 768, 1024 and 1440px checked.

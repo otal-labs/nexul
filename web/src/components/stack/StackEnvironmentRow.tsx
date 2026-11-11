@@ -1,6 +1,8 @@
 import { XIcon } from "lucide-react";
 import { useFormContext, useWatch } from "react-hook-form";
 
+import { SecretReferenceFieldTag } from "@/components/SecretReferenceFieldTag";
+import { TaggedInput } from "@/components/TaggedInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StackEnvFormData } from "@/models/StackEnv";
@@ -14,7 +16,8 @@ interface StackEnvironmentRowProps {
 export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironmentRowProps) => {
   const { register, control, formState } = useFormContext<StackEnvFormData>();
   const key = useWatch({ control, name: `rows.${index}.key` });
-  const message = formState.errors.rows?.[index]?.key?.message;
+  const rowErrors = formState.errors.rows?.[index];
+  const message = rowErrors?.key?.message ?? rowErrors?.value?.message;
   const name = key || "new variable";
 
   return (
@@ -22,23 +25,26 @@ export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironm
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
         <Input
           aria-label={`Name of ${name}`}
-          aria-invalid={message != null}
+          aria-invalid={rowErrors?.key != null}
           className="font-mono"
           placeholder="NAME"
           spellCheck={false}
           autoCapitalize="off"
           {...register(`rows.${index}.key`)}
         />
-        <Input
-          aria-label={`Value of ${name}`}
-          type={revealed ? "text" : "password"}
-          autoComplete="off"
-          data-1p-ignore
-          className="font-mono"
-          placeholder="empty"
-          spellCheck={false}
-          {...register(`rows.${index}.value`)}
-        />
+        <TaggedInput tag={<SecretReferenceFieldTag control={control} name={`rows.${index}.value`} />}>
+          <Input
+            aria-label={`Value of ${name}`}
+            aria-invalid={rowErrors?.value != null}
+            type={revealed ? "text" : "password"}
+            autoComplete="off"
+            data-1p-ignore
+            className="font-mono"
+            placeholder="empty"
+            spellCheck={false}
+            {...register(`rows.${index}.value`)}
+          />
+        </TaggedInput>
         <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${name}`} onClick={onRemove}>
           <XIcon aria-hidden />
         </Button>

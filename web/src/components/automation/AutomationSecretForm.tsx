@@ -1,7 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+import { SecretReferenceFieldTag } from "@/components/SecretReferenceFieldTag";
 import { Button } from "@/components/ui/button";
 import { useSetAutomationSecret } from "@/hooks/AutomationSecretHooks";
 import { SaveAutomationSecretFormSchema, type SaveAutomationSecretFormData } from "@/models/AutomationSecret";
@@ -21,7 +23,12 @@ export const AutomationSecretForm = ({ name, onDone }: AutomationSecretFormProps
   });
 
   const onSubmit = async (data: SaveAutomationSecretFormData) => {
-    await setSecret.mutateAsync(data);
+    try {
+      await setSecret.mutateAsync(data);
+    } catch (err) {
+      form.setError("value", { message: errorMessage(err) });
+      return;
+    }
     form.reset();
     onDone();
   };
@@ -46,6 +53,7 @@ export const AutomationSecretForm = ({ name, onDone }: AutomationSecretFormProps
         id="secret-value"
         label={name ? "New value" : "Value"}
         type="password"
+        trailing={<SecretReferenceFieldTag control={form.control} name="value" />}
         className="w-full sm:w-64"
         autoFocus={!!name}
         autoComplete="off"

@@ -14,21 +14,20 @@ interface BranchDeployRuleRowProps {
 }
 
 export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowProps) => {
-  const updateStack = useUpdateStack();
+  const updateStack = useUpdateStack({ inline: true });
   const answer = useStackActions(stack);
   const [editing, setEditing] = useState(false);
   const { open: confirm } = useConfirmationDialog();
   const rules = stack.branch_deploy_rules ?? [];
   const overrideKeys = Object.keys(rule.overrides ?? {}).sort();
 
-  const saveOverrides = (overrides: Record<string, string>) => {
+  // Rejects with the server's refusal, which the form shows under the field.
+  const saveOverrides = async (overrides: Record<string, string>) => {
     const next: BranchDeployRule = { ...rule };
     delete next.overrides;
     if (Object.keys(overrides).length > 0) next.overrides = overrides;
-    updateStack.mutate(
-      { ...stack, branch_deploy_rules: rules.map((r, i) => (i === index ? next : r)) },
-      { onSuccess: () => setEditing(false) },
-    );
+    await updateStack.mutateAsync({ ...stack, branch_deploy_rules: rules.map((r, i) => (i === index ? next : r)) });
+    setEditing(false);
   };
 
   // Live branch deployments stay up; only new pushes stop matching.

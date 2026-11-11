@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import { isReferenceRefusal } from "@nexul/client-core/secretReference";
 
 import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import { api, errorMessage } from "@/api/client";
@@ -60,7 +61,11 @@ export const useSetConnectorAppConfig = () => {
       void queryClient.invalidateQueries({ queryKey: [getConnectorsKey] });
       void queryClient.invalidateQueries({ queryKey: [getConnectorAppConfigKey, payload.id] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    // A refused secret reference shows under the client secret field, so it isn't toasted too.
+    onError: (error) => {
+      if (isReferenceRefusal(errorMessage(error))) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 

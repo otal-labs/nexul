@@ -1,6 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { errorMessage } from "@/api/client";
+import { BranchDeployRuleReferenceTags } from "@/components/stack/BranchDeployRuleReferenceTags";
 import { SettingsHint } from "@/components/settings/SettingsHint";
 import { Button } from "@/components/ui/button";
 import { FormTextarea } from "@/components/ticket/FormTextarea";
@@ -10,7 +12,7 @@ import { formatEnv, parseEnv } from "@/lib/env";
 interface BranchDeployRuleOverridesFormProps {
   overrides: Record<string, string> | undefined;
   saving: boolean;
-  onSave: (overrides: Record<string, string>) => void;
+  onSave: (overrides: Record<string, string>) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -20,9 +22,17 @@ export const BranchDeployRuleOverridesForm = ({ overrides, saving, onSave, onCan
     resolver: zodResolver(RuleOverridesFormSchema),
   });
 
+  const onSubmit = async (data: RuleOverridesFormData) => {
+    try {
+      await onSave(parseEnv(data.overrides));
+    } catch (err) {
+      form.setError("overrides", { message: errorMessage(err) });
+    }
+  };
+
   return (
     <form
-      onSubmit={form.handleSubmit((data) => onSave(parseEnv(data.overrides)))}
+      onSubmit={form.handleSubmit(onSubmit)}
       className="animate-in fade-in-0 slide-in-from-top-1 space-y-3 duration-150 ease-out"
     >
       <FormTextarea
@@ -33,6 +43,7 @@ export const BranchDeployRuleOverridesForm = ({ overrides, saving, onSave, onCan
         rows={3}
         className="bg-background font-mono text-xs"
       />
+      <BranchDeployRuleReferenceTags control={form.control} />
       <SettingsHint>
         One KEY=value per line, replacing the base stack&apos;s value for this branch only. Remove a line and the next
         deploy uses the base value again.

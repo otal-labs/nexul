@@ -1,8 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 
+import { holderNamedBy } from "@nexul/client-core/secretReference";
+
 import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+import { SecretReferenceFieldTag } from "@/components/SecretReferenceFieldTag";
 import { Button } from "@/components/ui/button";
 import { useSetConnectorAppConfig } from "@/hooks/ConnectorsHooks";
 import {
@@ -43,7 +46,8 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: Connec
       form.reset(data);
       onSaved?.();
     } catch (err) {
-      form.setError("root", { message: errorMessage(err) });
+      const message = errorMessage(err);
+      form.setError(holderNamedBy(message, ["client_secret"]) ? "client_secret" : "root", { message });
     }
   };
 
@@ -68,6 +72,7 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: Connec
         id={`${connectorId}-app-client-secret`}
         label="Client secret"
         type="password"
+        trailing={<SecretReferenceFieldTag control={form.control} name="client_secret" />}
         placeholder={editing ? "Leave blank to keep the current secret" : "••••••••••••••••"}
       />
       {githubApp && (

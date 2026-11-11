@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { requires } from "@nexul/client-core/requires";
+import { holderNamedBy } from "@nexul/client-core/secretReference";
 
 import { api, errorMessage } from "@/api/client";
+import { SecretReferenceTag } from "@/components/SecretReferenceTag";
 import { TickerRow } from "@/components/TickerRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
@@ -55,7 +57,8 @@ export const GitHubAppKeyDialog = ({ replacing }: GitHubAppKeyDialogProps) => {
       await setPrivateKey.mutateAsync({ id: "github", private_key });
       close(false);
     } catch (err) {
-      form.setError("root", { message: errorMessage(err) });
+      const message = errorMessage(err);
+      form.setError(holderNamedBy(message, ["private_key"]) ? "private_key" : "root", { message });
     }
   };
 
@@ -80,17 +83,20 @@ export const GitHubAppKeyDialog = ({ replacing }: GitHubAppKeyDialogProps) => {
             name="private_key"
             render={({ field, fieldState }) => (
               <div className="space-y-1.5">
-                <Textarea
-                  {...field}
-                  aria-label="Private key"
-                  aria-invalid={!!fieldState.error}
-                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                  autoComplete="off"
-                  spellCheck={false}
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  className="h-40 font-mono text-xs"
-                />
+                <div className="flex items-start gap-2">
+                  <Textarea
+                    {...field}
+                    aria-label="Private key"
+                    aria-invalid={!!fieldState.error}
+                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                    autoComplete="off"
+                    spellCheck={false}
+                    data-1p-ignore="true"
+                    data-lpignore="true"
+                    className="h-40 font-mono text-xs"
+                  />
+                  <SecretReferenceTag value={field.value.trim()} />
+                </div>
                 {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
               </div>
             )}

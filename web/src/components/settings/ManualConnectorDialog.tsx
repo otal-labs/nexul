@@ -4,9 +4,11 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { requires } from "@nexul/client-core/requires";
+import { holderNamedBy } from "@nexul/client-core/secretReference";
 
 import { api, errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+import { SecretReferenceFieldTag } from "@/components/SecretReferenceFieldTag";
 import { TickerRow } from "@/components/TickerRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { SettingsHint } from "@/components/settings/SettingsHint";
@@ -71,7 +73,10 @@ export const ManualConnectorDialog = ({ connector, wide = false }: ManualConnect
       form.reset();
       reset();
     } catch (err) {
-      form.setError("root", { message: errorMessage(err) });
+      const message = errorMessage(err);
+      const holder = holderNamedBy(message, fields.map((f) => f.label));
+      const field = fields.find((f) => f.label === holder);
+      form.setError(field?.key ?? "root", { message });
     }
   };
 
@@ -115,6 +120,7 @@ export const ManualConnectorDialog = ({ connector, wide = false }: ManualConnect
                 id={`${connector.id}-${f.key}`}
                 label={f.label}
                 type={f.secret ? "password" : "text"}
+                trailing={f.secret && <SecretReferenceFieldTag control={form.control} name={f.key} />}
                 autoComplete="off"
                 data-bwignore={f.secret ? "true" : undefined}
                 data-1p-ignore={f.secret ? "true" : undefined}

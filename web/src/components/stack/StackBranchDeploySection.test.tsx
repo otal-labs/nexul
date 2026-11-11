@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), _delete: vi.fn()
 
 vi.mock("@/api/client", () => ({
   api: { get: mocks.get, patch: mocks.patch, delete: mocks._delete },
-  errorMessage: () => "boom",
+  errorMessage: (e: Error) => e.message,
 }));
 
 const stack: StackWithBranches = {
@@ -90,6 +90,23 @@ describe("StackBranchDeploySection overrides", () => {
 
     expect(mocks.patch).toHaveBeenCalled();
     expect(screen.getByRole("textbox", { name: "Overrides" })).toBeInTheDocument();
+  });
+
+  it("tags an override that is a secret reference, not a URL, and shows a refused one under the field", async () => {
+    const user = userEvent.setup();
+    await renderSection();
+    await user.click(screen.getByRole("button", { name: "Overrides" }));
+    const field = screen.getByRole("textbox", { name: "Overrides" });
+    await user.clear(field);
+    await user.type(field, "DATABASE_URL=postgres://qa{Enter}API_KEY=op://acme/api/key");
+
+    expect(screen.getAllByText("1Password")).toHaveLength(1);
+    expect(screen.getByText("API_KEY")).toBeInTheDocument();
+
+    mocks.patch.mockRejectedValue(new Error("API_KEY is not a valid secret reference; it must read op://vault/item/field"));
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("API_KEY is not a valid secret reference");
   });
 
   it("clearing every override drops the overrides from the rule", async () => {

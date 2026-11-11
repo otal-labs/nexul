@@ -123,6 +123,28 @@ describe("ConnectorAppConfigSection", () => {
     expect(await screen.findByText("Owner permission required")).toBeInTheDocument();
   });
 
+  it("tags a client secret that is a secret reference, not a URL, and shows a refused one under the field", async () => {
+    mocks.put.mockRejectedValue(new Error("boom"));
+    mocks.errorMessage.mockReturnValue("client_secret is not a valid secret reference; it must read op://vault/item/field");
+    const user = userEvent.setup();
+    await renderUnregistered();
+
+    await user.type(screen.getByLabelText(/client id/i), "Iv1.abc123");
+    await user.type(screen.getByLabelText(/app slug/i), "nexul-test-app");
+    await user.type(screen.getByLabelText(/client secret/i), "https://example.com/a/b/c");
+    expect(screen.queryByText("1Password")).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(/client secret/i));
+    await user.type(screen.getByLabelText(/client secret/i), "op://acme");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(await screen.findByText(/client_secret is not a valid secret reference/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/client secret/i)).toBeInvalid();
+
+    await user.clear(screen.getByLabelText(/client secret/i));
+    await user.type(screen.getByLabelText(/client secret/i), "op://acme/gh/secret");
+    expect(screen.getByText("1Password")).toBeInTheDocument();
+  });
+
   describe("once the App is registered", () => {
     beforeEach(() => {
       mocks.get.mockResolvedValue({ data: registered });

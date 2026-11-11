@@ -9,6 +9,7 @@ import {
   type Path,
 } from "react-hook-form";
 
+import { TaggedInput } from "@/components/TaggedInput";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,8 @@ interface FormInputProps<T extends FieldValues>
   onValueChange?: (value: string) => void;
   // Fixed text joined to the front of the input, such as the address a slug follows.
   leading?: ReactNode;
+  // Drawn inside the input's right edge, such as a tag for what the value turned out to be.
+  trailing?: ReactNode;
   // Marks the field wrong for a reason outside the form's own rules, such as a check the server failed.
   invalid?: boolean;
 }
@@ -39,6 +42,7 @@ export const FormInput = <T extends FieldValues>({
   transform,
   onValueChange,
   leading,
+  trailing,
   invalid = false,
   className,
   ...props
@@ -81,7 +85,8 @@ export const FormInput = <T extends FieldValues>({
           {input}
         </div>
       )}
-      {!leading && input}
+      {!leading && !trailing && input}
+      {!leading && trailing && <TaggedInput tag={trailing}>{input}</TaggedInput>}
       {message && (
         <p
           role="alert"
