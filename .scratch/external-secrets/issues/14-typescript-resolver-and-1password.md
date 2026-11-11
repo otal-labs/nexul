@@ -1,6 +1,6 @@
 # 14 — The TypeScript resolver interface, its 1Password implementation and a fake
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 11
 
@@ -19,3 +19,7 @@ Read first: `practices/typescript.md`, ADR 0182, the spec (The seam for a second
 - [ ] The package pins `@1password/sdk` exactly, and `bun install` adds no native step.
 
 Verify: `bun run typecheck`, `bun run test` in `automations/`.
+
+## Comments
+
+Built in `automations/src`: `secret-reference.ts` (its test runs the Go parser's table), `resolver.ts` (`Resolver`, `ResolverRegistry`, typed errors), `onepassword-resolver.ts` on `@1password/sdk` 0.5.0, and `fake-resolver.ts`. `resolveAll` never throws; an outage is `unreachable` and drops the cached client. Checked against real 1Password under Bun 1.3.11: a value, each typed error, and `unreachable` with the network cut.
