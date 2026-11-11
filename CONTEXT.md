@@ -725,7 +725,8 @@ the container by this name.
 The variables a stack's next deploy starts its containers with, a name and a value each, and the overrides on
 its branch deploy rules. Saving one redeploys nothing; Deploy now ships it. Every value is treated as secret:
 whoever holds `stacks:write` on the stack is sent them, and anyone else gets the names with empty values and
-`env_masked` set. An event and an MCP result never carry a value.
+`env_masked` set. An event and an MCP result never carry a value. The database holds them sealed, so a copied
+file or a backup carries none.
 _Avoid_: Secrets (no value is marked, all are held back), config, settings
 
 **Secret reference**:

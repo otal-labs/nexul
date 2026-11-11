@@ -34,7 +34,11 @@ func bootstrapStore(cfg *config.Config) (*storage.Store, []byte) {
 		fail(fmt.Errorf("migrate db: %w", err))
 	}
 	encKey := crypto.DeriveKey(cfg.AuthSecret)
-	return storage.New(db, encKey), encKey
+	store := storage.New(db, encKey)
+	if err := store.Stacks.SealStackSecrets(context.Background()); err != nil {
+		fail(fmt.Errorf("seal stack secrets: %w", err))
+	}
+	return store, encKey
 }
 
 // bootstrapBus constructs the in-process event bus wired to the store's dedupe and dead-letter tables.

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -18,16 +20,17 @@ var _ deploy.StackRepo = (*StacksRepo)(nil)
 
 // StacksRepo persists stacks.
 type StacksRepo struct {
-	db *sql.DB
-	w  *Serializer
-	q  *sqlcgen.Queries
+	db     *sql.DB
+	w      *Serializer
+	q      *sqlcgen.Queries
+	encKey []byte
 	// hot runs the stack list every stack page, topology view and stack_list reads as a prepared statement.
 	hot *sqlcgen.Queries
 }
 
 func (r *StacksRepo) Create(ctx context.Context, stack *deploy.Stack, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := insertStack(ctx, r.q.WithTx(tx), stack); err != nil {
+		if err := insertStack(ctx, r.q.WithTx(tx), r.encKey, stack); err != nil {
 			return err
 		}
 		return enqueueServicesOutbox(ctx, tx, evts)
@@ -39,7 +42,7 @@ func (r *StacksRepo) GetByID(ctx context.Context, id string) (*deploy.Stack, err
 	if err != nil {
 		return nil, fmt.Errorf("get stack %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toStack(row)
+	return toStack(r.encKey, row)
 }
 
 func (r *StacksRepo) GetBySlugAndMachine(ctx context.Context, slug, machine string) (*deploy.Stack, error) {
@@ -47,7 +50,7 @@ func (r *StacksRepo) GetBySlugAndMachine(ctx context.Context, slug, machine stri
 	if err != nil {
 		return nil, fmt.Errorf("get stack %s on %s: %w", slug, machine, notFoundIfNoRows(err))
 	}
-	return toStack(row)
+	return toStack(r.encKey, row)
 }
 
 // GetByName returns the first stack with this name (names are unique only per machine+slug).
@@ -57,7 +60,7 @@ func (r *StacksRepo) GetByName(ctx context.Context, name string) (*deploy.Stack,
 	if err != nil {
 		return nil, fmt.Errorf("get stack %s: %w", name, notFoundIfNoRows(err))
 	}
-	return toStack(row)
+	return toStack(r.encKey, row)
 }
 
 func (r *StacksRepo) ListByProject(ctx context.Context, projectID string) ([]*deploy.Stack, error) {
@@ -65,7 +68,7 @@ func (r *StacksRepo) ListByProject(ctx context.Context, projectID string) ([]*de
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for project %s: %w", projectID, err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 // ListByWorkspace lists the stacks of a workspace's projects; the instance's own stacks belong to none.
@@ -74,7 +77,7 @@ func (r *StacksRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for workspace %s: %w", workspaceID, err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 // ListReached lists the base stacks of a project, a workspace, or every one, that scope keeps, filtered in SQL.
@@ -86,7 +89,7 @@ func (r *StacksRepo) ListReached(ctx context.Context, projectID, workspaceID str
 	if err != nil {
 		return nil, fmt.Errorf("list stacks: %w", err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 // RuleScope returns where a stack's rules are read, for access: its project and workspace, empty for an instance stack,
@@ -105,7 +108,7 @@ func (r *StacksRepo) ListByBuildRepo(ctx context.Context, owner, name string) ([
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for repo %s/%s: %w", owner, name, err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 // ListWithErrorRate lists the stacks whose error-rate rule is switched on.
@@ -114,7 +117,7 @@ func (r *StacksRepo) ListWithErrorRate(ctx context.Context) ([]*deploy.Stack, er
 	if err != nil {
 		return nil, fmt.Errorf("list stacks with an error-rate rule: %w", err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 // ListByDerivedFrom returns a base stack's branch deployments, oldest first.
@@ -123,17 +126,21 @@ func (r *StacksRepo) ListByDerivedFrom(ctx context.Context, baseStackID string) 
 	if err != nil {
 		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
 	}
-	return toStacks(rows)
+	return toStacks(r.encKey, rows)
 }
 
 func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...eventbus.OutboxEvent) error {
+	env, rules, err := sealStackSecrets(r.encKey, stack)
+	if err != nil {
+		return err
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateStack(ctx, sqlcgen.UpdateStackParams{
 			ProjectID: nullStringOrNil(stack.ProjectID), Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
 			Strategy: string(stack.Strategy), ComposePath: stack.ComposePath,
-			Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
+			Env: env, DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 			BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
-			BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
+			BranchDeployRules: rules, DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
 			Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
 			ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
 			ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
@@ -167,13 +174,17 @@ func (r *StacksRepo) Delete(ctx context.Context, id string, evts ...eventbus.Out
 	})
 }
 
-func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) error {
-	err := q.CreateStack(ctx, sqlcgen.CreateStackParams{
+func insertStack(ctx context.Context, q *sqlcgen.Queries, encKey []byte, stack *deploy.Stack) error {
+	env, rules, err := sealStackSecrets(encKey, stack)
+	if err != nil {
+		return err
+	}
+	err = q.CreateStack(ctx, sqlcgen.CreateStackParams{
 		ID: stack.ID, ProjectID: nullStringOrNil(stack.ProjectID), Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
 		Strategy: string(stack.Strategy), ComposePath: stack.ComposePath,
-		Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
+		Env: env, DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 		BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
-		BranchDeployRules: branchDeployRulesJSON(stack.BranchDeployRules), DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
+		BranchDeployRules: rules, DerivedFrom: stack.DerivedFrom, Branch: stack.Branch,
 		Managed: boolToInt(stack.Managed), CrashTickets: boolToInt(stack.CrashTickets),
 		ErrorRateEnabled: boolToInt(stack.ErrorRate.Enabled), ErrorRatePercent: stack.ErrorRate.Percent,
 		ErrorRateMinutes: int64(stack.ErrorRate.Minutes), ErrorRateMinRequests: int64(stack.ErrorRate.MinRequests),
@@ -186,7 +197,7 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 	return nil
 }
 
-func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
+func toStack(encKey []byte, row sqlcgen.Stack) (*deploy.Stack, error) {
 	stack := &deploy.Stack{
 		ID:                        row.ID,
 		ProjectID:                 row.ProjectID.String,
@@ -208,7 +219,11 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
-	if err := json.Unmarshal([]byte(row.Env), &stack.Env); err != nil {
+	env, err := openSealed(encKey, row.Env)
+	if err != nil {
+		return nil, fmt.Errorf("open env for stack %s: %w", stack.ID, err)
+	}
+	if err := json.Unmarshal([]byte(env), &stack.Env); err != nil {
 		return nil, fmt.Errorf("unmarshal env for stack %s: %w", stack.ID, err)
 	}
 	if err := json.Unmarshal([]byte(row.Ports), &stack.Ports); err != nil {
@@ -220,7 +235,11 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 	if err := json.Unmarshal([]byte(row.Command), &stack.Command); err != nil {
 		return nil, fmt.Errorf("unmarshal command for stack %s: %w", stack.ID, err)
 	}
-	if err := json.Unmarshal([]byte(row.BranchDeployRules), &stack.BranchDeployRules); err != nil {
+	rules, err := openSealed(encKey, row.BranchDeployRules)
+	if err != nil {
+		return nil, fmt.Errorf("open branch deploy rules for stack %s: %w", stack.ID, err)
+	}
+	if err := json.Unmarshal([]byte(rules), &stack.BranchDeployRules); err != nil {
 		return nil, fmt.Errorf("unmarshal branch deploy rules for stack %s: %w", stack.ID, err)
 	}
 	if row.BuildRepoOwner != "" || row.BuildRepoName != "" {
@@ -232,16 +251,81 @@ func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 	return stack, nil
 }
 
-func toStacks(rows []sqlcgen.Stack) ([]*deploy.Stack, error) {
+func toStacks(encKey []byte, rows []sqlcgen.Stack) ([]*deploy.Stack, error) {
 	var out []*deploy.Stack
 	for _, row := range rows {
-		stack, err := toStack(row)
+		stack, err := toStack(encKey, row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, stack)
 	}
 	return out, nil
+}
+
+// sealedPrefix marks a sealed column; plain JSON starts with { or [, so a stored value is never ambiguous.
+const sealedPrefix = "enc1:"
+
+// sealStackSecrets returns the env and branch deploy rules columns as stored: sealed unless empty, so a stack
+// without secrets stays readable as "{}" and "[]".
+func sealStackSecrets(encKey []byte, stack *deploy.Stack) (env, rules string, err error) {
+	if env, err = sealJSON(encKey, envJSON(stack.Env)); err != nil {
+		return "", "", fmt.Errorf("seal env for stack %s: %w", stack.ID, err)
+	}
+	if rules, err = sealJSON(encKey, branchDeployRulesJSON(stack.BranchDeployRules)); err != nil {
+		return "", "", fmt.Errorf("seal branch deploy rules for stack %s: %w", stack.ID, err)
+	}
+	return env, rules, nil
+}
+
+func sealJSON(encKey []byte, plain string) (string, error) {
+	if plain == "{}" || plain == "[]" || strings.HasPrefix(plain, sealedPrefix) {
+		return plain, nil
+	}
+	sealed, err := crypto.Encrypt(encKey, []byte(plain))
+	if err != nil {
+		return "", err
+	}
+	return sealedPrefix + sealed, nil
+}
+
+// openSealed reads a column sealed or not: a row written before sealing existed is plain until SealStackSecrets runs.
+func openSealed(encKey []byte, stored string) (string, error) {
+	body, ok := strings.CutPrefix(stored, sealedPrefix)
+	if !ok {
+		return stored, nil
+	}
+	plain, err := crypto.Decrypt(encKey, body)
+	if err != nil {
+		return "", err
+	}
+	return string(plain), nil
+}
+
+// SealStackSecrets seals every stack row whose env or branch deploy rules are still plain JSON, in one transaction.
+// It runs at every boot after the migrations and does nothing once every row is sealed.
+func (r *StacksRepo) SealStackSecrets(ctx context.Context) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		rows, err := q.ListUnsealedStackSecrets(ctx)
+		if err != nil {
+			return fmt.Errorf("find unsealed stacks: %w", err)
+		}
+		for _, row := range rows {
+			env, err := sealJSON(r.encKey, row.Env)
+			if err != nil {
+				return fmt.Errorf("seal env of stack %s: %w", row.ID, err)
+			}
+			rules, err := sealJSON(r.encKey, row.BranchDeployRules)
+			if err != nil {
+				return fmt.Errorf("seal rules of stack %s: %w", row.ID, err)
+			}
+			if err := q.SetStackSecrets(ctx, sqlcgen.SetStackSecretsParams{Env: env, BranchDeployRules: rules, ID: row.ID}); err != nil {
+				return fmt.Errorf("store sealed stack %s: %w", row.ID, err)
+			}
+		}
+		return nil
+	})
 }
 
 func envJSON(env map[string]string) string {

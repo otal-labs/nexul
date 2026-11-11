@@ -594,6 +594,56 @@ func (q *Queries) ListStacksByWorkspace(ctx context.Context, workspaceID string)
 	return items, nil
 }
 
+const listUnsealedStackSecrets = `-- name: ListUnsealedStackSecrets :many
+SELECT id, env, branch_deploy_rules FROM stacks
+WHERE (env NOT IN ('{}', '') AND env NOT LIKE 'enc1:%')
+   OR (branch_deploy_rules NOT IN ('[]', '') AND branch_deploy_rules NOT LIKE 'enc1:%')
+`
+
+type ListUnsealedStackSecretsRow struct {
+	ID                string
+	Env               string
+	BranchDeployRules string
+}
+
+func (q *Queries) ListUnsealedStackSecrets(ctx context.Context) ([]ListUnsealedStackSecretsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUnsealedStackSecrets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUnsealedStackSecretsRow
+	for rows.Next() {
+		var i ListUnsealedStackSecretsRow
+		if err := rows.Scan(&i.ID, &i.Env, &i.BranchDeployRules); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setStackSecrets = `-- name: SetStackSecrets :exec
+UPDATE stacks SET env = ?, branch_deploy_rules = ? WHERE id = ?
+`
+
+type SetStackSecretsParams struct {
+	Env               string
+	BranchDeployRules string
+	ID                string
+}
+
+func (q *Queries) SetStackSecrets(ctx context.Context, arg SetStackSecretsParams) error {
+	_, err := q.db.ExecContext(ctx, setStackSecrets, arg.Env, arg.BranchDeployRules, arg.ID)
+	return err
+}
+
 const updateStack = `-- name: UpdateStack :execrows
 UPDATE stacks SET project_id = ?, name = ?, slug = ?, machine = ?, strategy = ?, compose_path = ?,
     env = ?, docker_network = ?, ports = ?, mounts = ?, command = ?,

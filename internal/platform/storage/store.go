@@ -103,7 +103,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Tickets:               &TicketsRepo{db: db, w: w, q: q},
 		CodeReviews:           &CodeReviewsRepo{db: db, w: w, q: q},
 		Deploys:               &DeploysRepo{db: db, w: w, q: q},
-		Stacks:                &StacksRepo{db: db, w: w, q: q, hot: hot},
+		Stacks:                &StacksRepo{db: db, w: w, q: q, encKey: encKey, hot: hot},
 		Services:              &ServicesRepo{db: db, w: w, q: q},
 		Outages:               &OutagesRepo{db: db, w: w, q: q},
 		ErrorRate:             &ErrorRateRepo{db: db, w: w, q: q},
