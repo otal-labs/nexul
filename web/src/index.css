@@ -222,6 +222,9 @@ html {
   font-family: var(--font-sans-stack);
   font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  /* The shell scrolls inside its panels, so the page itself never bounces or pulls to refresh. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -308,6 +311,69 @@ body {
     ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
     cursor: pointer;
   }
+}
+
+/* A tap never waits on a double-tap zoom. */
+@layer base {
+  :is(a, button, summary, label, input, select, textarea, [role="button"], [role="tab"], [role="option"], [role="menuitem"]) {
+    touch-action: manipulation;
+  }
+}
+
+/* On a touch screen a control keeps its drawn size but takes a 44px hit area; layered, so its own position utility still wins. */
+@layer base {
+  @media (pointer: coarse) {
+    :is(
+        [data-slot="button"],
+        [data-slot="select-trigger"],
+        [data-slot="checkbox"],
+        [data-slot="switch"],
+        [data-slot="radio-group-item"],
+        [data-slot="tabs-trigger"],
+        [data-slot="toggle"],
+        [data-slot="toggle-group-item"],
+        .hit-area
+      ) {
+      position: relative;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    :is(
+        [data-slot="button"],
+        [data-slot="select-trigger"],
+        [data-slot="checkbox"],
+        [data-slot="switch"],
+        [data-slot="radio-group-item"],
+        [data-slot="tabs-trigger"],
+        [data-slot="toggle"],
+        [data-slot="toggle-group-item"],
+        .hit-area
+      )::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+    /* A field that inherits its size reads at 16px at least, or iOS zooms the page on focus. */
+    :is(input, textarea, select, [contenteditable="true"]) {
+      font-size: max(1rem, 1em);
+    }
+  }
+}
+
+/* A field set in a small step reads at 16px on a touch screen too; unlayered, so it beats the step. Larger type keeps its size. */
+@media (pointer: coarse) {
+  :is(input, textarea, select, [contenteditable="true"]):is(.text-initial, .text-micro, .text-xs, .text-row, .text-sm) {
+    font-size: 1rem;
+  }
+}
+
+/* Standalone on a notched phone, the shell keeps clear of the notch and the home indicator. */
+@utility safe-area {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* Tailwind v4 defaults a bare `border` to currentColor; the hairline is --border. */

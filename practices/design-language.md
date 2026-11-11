@@ -455,6 +455,16 @@ lift, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
 holds 6:1.
 
+Touch. A tablet or a phone browser gets the same layout, with what a finger
+needs, and it is all keyed to `pointer: coarse`, never to width. Every control
+keeps its drawn size but takes a 44px hit area through an invisible `::before`
+(the `ui/` controls by their `data-slot`, a hand-built one by `hit-area`).
+A field set under 16px reads at 16px, or iOS zooms the page on focus. There
+is no grey tap flash and no double-tap zoom, the page never bounces, and the
+shell keeps clear of the notch (`safe-area`). The status bar takes the
+canvas colour of the mode and palette (`theme-color`, kept in step by
+`applyThemePalette`).
+
 Prose links. The web app's prose links are `brand` text: on the page
 panel they hold contrast. The site, whose text sits on the canvas, uses
 ink with a `brand` underline instead.

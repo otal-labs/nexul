@@ -64,6 +64,15 @@ describe("applyThemePalette", () => {
     expect(root.style.getPropertyValue("--brand")).toBe("");
   });
 
+  it("the status bar colour follows the palette and the mode", () => {
+    const meta = document.head.appendChild(Object.assign(document.createElement("meta"), { name: "theme-color", content: "#060709" }));
+    applyThemePalette(ThemeId.Ember, "light");
+    expect(meta.content).toBe(getThemeDefinition(ThemeId.Ember).colors?.light.background);
+    applyThemePalette(ThemeId.Ember, "dark");
+    expect(meta.content).toBe(getThemeDefinition(ThemeId.Ember).colors?.dark.background);
+    meta.remove();
+  });
+
   it("Console leaves no overridden vars on the root", () => {
     applyThemePalette(ThemeId.Console, "light");
     const root = document.documentElement;

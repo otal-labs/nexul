@@ -24,7 +24,7 @@ export const UpdateButton = ({ className }: UpdateButtonProps) => {
           to={INSTANCE_VERSION_SECTION_URL}
           aria-label={`Update available: ${data.latest.version}`}
           className={cn(
-            "relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground",
+            "hit-area relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground",
             className,
           )}
         >

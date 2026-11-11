@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0a0f1c" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#060709" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
@@ -31,6 +31,8 @@
         // No stored preference → boot dark (the console is the brand).
         else isDark = theme ? theme === "dark" : true;
         document.documentElement.classList.toggle("dark", isDark);
+        // The status bar takes the canvas colour of the mode; themePalettes keeps it in step after mount.
+        if (!isDark) document.querySelector('meta[name="theme-color"]').setAttribute("content", "#edeef1");
       } catch (e) {
         document.documentElement.classList.add("dark");
       }
