@@ -29,14 +29,16 @@ tickets have merged and nothing is left to decide for them.
   - Branding: product name and logo everywhere the instance shows or sends them, the accent colour (the
     `brand` token's value only), and an instance-wide imported VS Code theme kept readable. The about
     page keeps "Runs on Nexul".
-  - Priority support runs on Nexul itself: a support workspace on the owner's instance, a conversation
-    per client (ticket 02).
+  - Priority support runs on Nexul itself: a workspace per client on the owner's instance, its `#general` as
+    the support chat (ticket 02).
 
 ## Decisions so far
 
 - NEXUL-120 (license key): `license.Service.Enabled(ctx, feature)` in `ee/license` is the one check 121 and 122
   call. Instance settings they add are fields on the `instance_update` MCP tool and read back on `instance_get`
   (ADR 0185); the web settings page lives in `web/src/ee/`.
+- [Can a support workspace give each client only their own conversation](issues/02-a-support-space-on-the-instance.md):
+  yes with no code, as one workspace per client (a shared one shows every client's people); setup is NEXUL-123.
 
 ## Not yet specified
 
