@@ -39,14 +39,16 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [Measure a real resolve with a test service account](issues/07-measure-a-real-resolve.md): one
   batch resolve is one read whatever its size; the account's daily limit is 1,000 across all tokens;
   client start-up (about 2.6 s in Go) is the real cost; errors name the missing part, never the vault.
+- [When a runner resolves references, and what a failed resolution does to a deploy](issues/04-deploy-resolution.md):
+  every deploy in one batch with no cache, before pull or build; any failure fails the deploy, naming
+  variables only; values go into `.env` as today; a rollback uses each reference's value now.
 
 ## Not yet specified
 
-- Rotation: what happens when a vault value changes. Nothing redeploys today; whether Nexul ever
-  notices depends on the failure and resolution answers.
+- Rotation: a rotated value takes effect on the next deploy (ticket 04). Whether Nexul should ever
+  notice a change and offer a redeploy is still open.
 - What a second manager (Vault or OpenBao, a cloud manager) needs from the provider seam, beyond what
   1Password shapes. Sharpens once the reference syntax and the 1Password research land.
-- Rollback: whether a rollback uses the reference's value now or the one it deployed with.
 - Docs and the user guide page for external secrets, and the README row.
 
 ## Out of scope
