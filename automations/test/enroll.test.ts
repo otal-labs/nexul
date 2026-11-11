@@ -17,6 +17,7 @@ function config(overrides: Partial<HostConfig> = {}): HostConfig {
     memoryMb: 128,
     heartbeatTimeoutMs: 90_000,
     runTimeoutMs: 30_000,
+    secretCheckIntervalMs: 0,
     ...overrides,
   };
 }

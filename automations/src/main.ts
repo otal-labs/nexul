@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import { httpAutomationsApi } from "./automations-api.ts";
 import { loadConfig } from "./config.ts";
 import { loadCredential } from "./enroll.ts";
@@ -7,6 +8,8 @@ import { httpPostLogs, LogShipper } from "./log-shipper.ts";
 import { WorkspaceManagers } from "./managers.ts";
 import { PoolResolution } from "./pool-resolution.ts";
 import { OnePasswordResolver } from "./onepassword-resolver.ts";
+import { SecretCheck, realClock } from "./secret-check.ts";
+import { loadFingerprinter } from "./secret-fingerprints.ts";
 import { Supervisor } from "./supervisor.ts";
 import { takeWorkspaceTokens } from "./workspace-tokens.ts";
 import { threadWorkerFactory } from "./worker.ts";
@@ -21,6 +24,9 @@ async function main(): Promise<void> {
   shipper.start();
   log("info", "automations host starting", { serverUrl: cfg.serverUrl, name: cfg.hostName });
 
+  const { fingerprinter, persisted } = loadFingerprinter(join(dirname(cfg.credentialFile), "secret-check.key"));
+  log("info", persisted ? "secret check key is kept in the host's directory" : "secret check key is in memory only: the host's directory could not hold it");
+
   const supervisor = new Supervisor(
     httpAutomationsApi,
     threadWorkerFactory,
@@ -31,8 +37,12 @@ async function main(): Promise<void> {
       memoryMb: cfg.memoryMb,
     },
     new PoolResolution(managers),
+    { fingerprinter, clock: realClock },
   );
   managers.start();
+  const secretCheck = new SecretCheck(supervisor, managers, cfg.secretCheckIntervalMs);
+  secretCheck.start();
+  if (cfg.secretCheckIntervalMs === 0) log("info", "secret check is off");
   const deps = { api: httpAutomationsApi, supervisor, managers, serverUrl: cfg.serverUrl, credential };
 
   let interval: ReturnType<typeof setInterval> | undefined;
@@ -48,6 +58,7 @@ async function main(): Promise<void> {
     removing = true;
     shipper.stop();
     clearInterval(interval);
+    secretCheck.stop();
     await supervisor.stopAll();
     uninstallSelf(cfg.ctl, cfg.hostName);
     process.exit(0);
@@ -59,6 +70,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     log("info", "automations host shutting down", { signal });
     clearInterval(interval);
+    secretCheck.stop();
     await supervisor.stopAll();
     shipper.stop();
     await shipper.flush();

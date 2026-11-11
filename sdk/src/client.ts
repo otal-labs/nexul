@@ -18,6 +18,8 @@ export interface DialinOptions {
   // Turns the hello's pool into what ctx.secrets holds, once per connection and before the first event; a host uses it
   // to swap references for values. Without it the pool is handed in as it came.
   resolveSecrets?: (pool: Record<string, string>) => Promise<Record<string, string>>;
+  // Called with true when a run starts and false when it ends, so a host knows when the automation is idle.
+  onRunState?: (running: boolean) => void;
 }
 
 class TimeoutError extends Error {}
@@ -173,6 +175,15 @@ export class DialinClient<S extends ConfigSchema> {
     const topic = frame.topic;
     if (!runId || !topic) return;
     await this.secretsReady;
+    this.opts.onRunState?.(true);
+    try {
+      await this.deliver(runId, topic, frame, ws);
+    } finally {
+      this.opts.onRunState?.(false);
+    }
+  }
+
+  private async deliver(runId: string, topic: string, frame: Frame, ws: WebSocket): Promise<void> {
     ws.send(JSON.stringify(runStartedFrame(runId)));
 
     const handler = this.automation.getHandler(topic);

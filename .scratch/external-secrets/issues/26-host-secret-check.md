@@ -1,6 +1,6 @@
 # 26 — The host's secret check restarts an automation once it is idle
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 20
 
@@ -20,3 +20,7 @@ Read first: `practices/typescript.md`, ADR 0046, the spec (Automations hosts), t
 - [ ] One read per workspace token per interval; `off` makes none.
 
 Verify: `bun run typecheck` and `bun run test` in `automations/`.
+
+## Comments
+
+Built: `automations/src/secret-check.ts` and `secret-fingerprints.ts`. The supervisor keeps an HMAC-SHA256 per reference handed in at connection, never the value, keyed by `secret-check.key` beside the credential file (0600, or in memory when that directory can't hold it). It re-reads each workspace's references on `NEXUL_SECRET_CHECK_INTERVAL` in one batch per workspace token (default 1h, refused under 5m, `off`), and restarts a changed automation at once when idle, when its run ends, or after 5 minutes. The SDK's dial-in client gains an optional `onRunState` callback so the host knows when a run is in flight. A reference that fails to resolve counts as unchanged.

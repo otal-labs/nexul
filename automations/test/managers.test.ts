@@ -62,6 +62,7 @@ describe("takeWorkspaceTokens", () => {
           heartbeatTimeoutMs: 60_000,
           memoryMb: 64,
           resolvePool: async () => ({}),
+          onRunState: () => {},
         },
         () => {},
       );
