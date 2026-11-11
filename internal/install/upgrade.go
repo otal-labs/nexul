@@ -337,9 +337,9 @@ func (h *Host) Status(ctx context.Context) error {
 	}
 	h.printf("\n")
 	tw := tabwriter.NewWriter(h.Out, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(tw, "  KIND\tNAME\tSTATE\tVERSION") // terminal writes have nowhere to report failure
+	_, _ = fmt.Fprintln(tw, "  KIND\tNAME\tSTATE\tVERSION\t") // terminal writes have nowhere to report failure
 	for _, u := range units {
-		_, _ = fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", u.Kind, u.Name, h.services().state(ctx, u), u.Version)
+		_, _ = fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\n", u.Kind, u.Name, h.services().state(ctx, u), u.Version, u.tokenNote())
 	}
 	_ = tw.Flush() // likewise
 	return nil

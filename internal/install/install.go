@@ -48,6 +48,8 @@ func Run(ctx context.Context, cmd string, args []string) error {
 		return h.Status(ctx)
 	case "uninstall":
 		return h.runUninstall(ctx, args)
+	case "runner":
+		return h.runRunner(ctx, args)
 	case "run":
 		if len(args) == 0 || args[0] != kindComputer {
 			return errors.New("usage: nexul run computer")

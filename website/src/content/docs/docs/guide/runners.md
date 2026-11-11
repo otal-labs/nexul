@@ -85,6 +85,23 @@ A runner that makes a new machine puts you on it with **See**, **Deploy to**, **
 
 For more runners on one machine, run a new command per runner, each with its own name. Each one is a separate service, and the machine runs one job per runner at a time.
 
+## A 1Password token
+
+A runner can hold a 1Password service account token on its own machine; Nexul never sees it. Set it when you add the runner, with the token in a file (a token is never accepted as a command-line value):
+
+```sh
+sudo nexul install runner --server https://nexul.example.com --name build-box-1 --code nxe_… --1password-token-file ./token
+```
+
+or later, from standard input, which also rotates it:
+
+```sh
+printf '%s' "$OP_TOKEN" | sudo nexul runner 1password build-box-1
+sudo nexul runner 1password build-box-1 --remove
+```
+
+The command writes the token into the runner's service settings (readable by root only) and restarts the runner. `nexul upgrade` keeps it, and `nexul status` says whether a runner has one, never what it is.
+
 ## Removing a runner
 
 Open the **⋯** on the runner's row, pick **Remove runner** and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`. A machine with a connected runner can't be deleted until that runner is removed.

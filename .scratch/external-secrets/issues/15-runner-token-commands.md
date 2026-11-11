@@ -1,6 +1,6 @@
 # 15 — Set, rotate and remove a runner's 1Password token from the command line
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** None — can start immediately
 
@@ -23,3 +23,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
 - [ ] `nexul help` lists the command.
 
 Verify: `make lint`, `go test ./internal/install/...`.
+
+## Comments
+
+Built: `internal/install/runnertoken.go`. The token is the first line of stdin and is refused if it holds whitespace or a control character, so it can never add a line to the env file. An unknown runner is refused before any token is read. Checked on a systemd Ubuntu 24.04 machine: install with a token file, rotate, remove, and an upgrade to a new version that kept it.
