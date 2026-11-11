@@ -19,4 +19,4 @@ automations' pool, and the server resolves its own connector and sign-in provide
   failed resolution fails the deploy before anything changes. References are resolved on every
   deploy in one batch, with no cache.
 
-Decided: 2026-11-12. Spec: `.scratch/external-secrets/spec.md`.
+Decided: 2026-11-12. User guide: `website/src/content/docs/docs/guide/external-secrets.md`.

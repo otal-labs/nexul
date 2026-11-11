@@ -9,4 +9,4 @@ token would sit on the same machine, so a reference would protect almost nothing
 make a secrets-manager outage stop the server from starting, since everything sealed depends on this
 key. Connector and sign-in secrets resolve after start, and an outage degrades only them.
 
-Decided: 2026-11-12. Spec: `.scratch/external-secrets/spec.md`.
+Decided: 2026-11-12. User guide: `website/src/content/docs/docs/guide/external-secrets.md`.
