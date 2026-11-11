@@ -1,6 +1,6 @@
 # 11 — Recognise a secret reference and reject a malformed one on every save
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** NEXUL-94 (Encrypt stack env values at rest), in the Nexul tracker
 
@@ -28,3 +28,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
       tests extended with a reference).
 
 Verify: `make lint`, `go test ./internal/...`, `make coverage`.
+
+## Comments
+
+Built: `internal/platform/secretref` (`Parse`, `Check`, the closed scheme list) and the save check in stack env and rule overrides, the automation pool, and connector secret fields and app config secrets. Segments may hold spaces, since 1Password names can, but not leading or trailing whitespace. Checked against the real API: a malformed reference is refused naming the variable, a reference and a URL save.

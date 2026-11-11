@@ -599,6 +599,9 @@ func TestPrivateKey_IsCheckedStoredAndNeverSentBack(t *testing.T) {
 
 	rec := send("PUT", "/api/connectors/github/private-key", `{"private_key":"bad-key"}`, "owner-1")
 	assert.Equal(t, http.StatusBadRequest, rec.Code, "a key GitHub refuses is not stored")
+	rec = send("PUT", "/api/connectors/github/private-key", `{"private_key":"op://vaultonly"}`, "owner-1")
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "a malformed reference is refused before GitHub is asked")
+	assert.NotContains(t, rec.Body.String(), "vaultonly")
 	rec = send("PUT", "/api/connectors/github/private-key", `{"private_key":"good-key"}`, "member-1")
 	assert.Equal(t, http.StatusForbidden, rec.Code, "storing a key takes connectors:write")
 	assert.Empty(t, appStore.rows["github"].PrivateKey)

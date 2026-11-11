@@ -30,6 +30,30 @@ func TestSlug(t *testing.T) {
 	}
 }
 
+// TestStack_Validate_RejectsMalformedSecretReferences: env values and a rule's overrides are both secret values,
+// so a malformed reference in either is refused naming the variable and never echoing the value.
+func TestStack_Validate_RejectsMalformedSecretReferences(t *testing.T) {
+	base := Stack{Name: "api", Machine: "m1", Strategy: StrategyCompose}
+	env := base
+	env.Env = map[string]string{"DB_URL": "op://vaultonly", "OK": "postgres://example.com/db"}
+	ov := base
+	ov.ProjectID = "p1"
+	ov.BuildSource = &BuildSource{RepoOwner: "acme", RepoName: "app"}
+	ov.BranchDeployRules = []BranchDeployRule{{Pattern: "feat/*", DockerNetwork: "net1", Overrides: map[string]string{"QA_TOKEN": "op://vaultonly"}}}
+
+	for name, s := range map[string]Stack{"env": env, "override": ov} {
+		t.Run(name, func(t *testing.T) {
+			err := s.Validate()
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+			assert.Regexp(t, "DB_URL|QA_TOKEN", err.Error())
+			assert.NotContains(t, err.Error(), "vaultonly")
+		})
+	}
+
+	env.Env = map[string]string{"DB_URL": "op://acme/db/url"}
+	assert.NoError(t, env.Validate())
+}
+
 func TestBranchDeployRule_Validate(t *testing.T) {
 	t.Run("empty pattern is invalid", func(t *testing.T) {
 		err := BranchDeployRule{DockerNetwork: "app-net"}.Validate()

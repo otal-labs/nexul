@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 type Status string
@@ -212,6 +214,16 @@ func (r BranchDeployRule) validateOverrides() error {
 			return fmt.Errorf("%w: branch deploy rule %q has an override with an empty key", apperrs.ErrInvalid, r.Pattern)
 		}
 	}
+	return checkReferences(r.Overrides)
+}
+
+// checkReferences rejects the first malformed secret reference among env values, in name order.
+func checkReferences(env map[string]string) error {
+	for _, k := range slices.Sorted(maps.Keys(env)) {
+		if err := secretref.Check(k, env[k]); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -414,6 +426,9 @@ func (s *Stack) Validate() error {
 	}
 	if bs := s.BuildSource; bs != nil && (strings.TrimSpace(bs.RepoOwner) == "" || strings.TrimSpace(bs.RepoName) == "") {
 		return fmt.Errorf("%w: build source requires a repository", apperrs.ErrInvalid)
+	}
+	if err := checkReferences(s.Env); err != nil {
+		return err
 	}
 	return s.validateBranchDeployRules()
 }

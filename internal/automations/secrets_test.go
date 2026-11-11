@@ -38,6 +38,15 @@ func TestSecretsService_Set(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 
+	t.Run("rejects a malformed secret reference without echoing it", func(t *testing.T) {
+		s := newTestSecretsService(newFakeSecretsRepo(), allowAll("owner"))
+		err := s.Set(context.Background(), "owner", "ws-1", "API_KEY", "op://vaultonly")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Contains(t, err.Error(), "API_KEY")
+		assert.NotContains(t, err.Error(), "vaultonly")
+		require.NoError(t, s.Set(context.Background(), "owner", "ws-1", "API_KEY", "op://acme/api/key"))
+	})
+
 	t.Run("set stores the value and lists the name", func(t *testing.T) {
 		s := newTestSecretsService(newFakeSecretsRepo(), allowAll("owner"))
 		require.NoError(t, s.Set(context.Background(), "owner", "ws-1", "API_KEY", "sk-123"))

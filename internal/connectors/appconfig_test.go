@@ -179,6 +179,23 @@ func TestSetAppConfig_MissingClientSecret_Rejected(t *testing.T) {
 	}
 }
 
+// TestSetAppConfig_MalformedClientSecretReference_RejectedWithoutEchoingIt proves the save check reaches the app secret.
+func TestSetAppConfig_MalformedClientSecretReference_RejectedWithoutEchoingIt(t *testing.T) {
+	owner := &fakeOwnerGate{ownerIDs: map[string]bool{"owner-1": true}}
+	svc, store := testAppConfigService(t, owner)
+
+	_, err := svc.SetAppConfig(context.Background(), "owner-1", "github", "Iv1.abc", "op://vaultonly", "", "")
+	if !errors.Is(err, apperrs.ErrInvalid) || strings.Contains(err.Error(), "vaultonly") {
+		t.Fatalf("SetAppConfig (malformed reference) = %v, want ErrInvalid without the value", err)
+	}
+	if len(store.rows) != 0 {
+		t.Fatalf("rows = %+v, want nothing stored", store.rows)
+	}
+	if _, err := svc.SetAppConfig(context.Background(), "owner-1", "github", "Iv1.abc", "op://acme/github/secret", "", ""); err != nil {
+		t.Fatalf("SetAppConfig (valid reference) = %v, want nil", err)
+	}
+}
+
 // TestSetAppConfig_UnknownConnector_Rejected proves an unknown connector id
 // is rejected rather than silently persisted.
 func TestSetAppConfig_UnknownConnector_Rejected(t *testing.T) {

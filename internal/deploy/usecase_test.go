@@ -210,7 +210,7 @@ func TestStackEvents_CarryEnvKeysNeverValues(t *testing.T) {
 	s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
 	input := validStack()
 	input.ID = ""
-	input.Env = map[string]string{"DB_PASSWORD": "sup3rSecretValue"}
+	input.Env = map[string]string{"DB_PASSWORD": "sup3rSecretValue", "DB_REF": "op://acme/db/password"}
 	created, err := s.CreateStack(context.Background(), input, nil)
 	require.NoError(t, err)
 	changed := *created
@@ -223,6 +223,7 @@ func TestStackEvents_CarryEnvKeysNeverValues(t *testing.T) {
 		raw, err := json.Marshal(evt.Payload)
 		require.NoError(t, err)
 		assert.NotContains(t, string(raw), "SecretValue", evt.Topic)
+		assert.NotContains(t, string(raw), "op://", "%s: a reference is held as closely as a value", evt.Topic)
 		var e StackEvent
 		require.NoError(t, json.Unmarshal(raw, &e))
 		assert.Contains(t, e.Stack.Env, "DB_PASSWORD", "%s: the key still travels", evt.Topic)
