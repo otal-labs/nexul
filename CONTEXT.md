@@ -109,6 +109,19 @@ _Avoid_: Instance (that is the install), recurrence
 One self-hosted install of Nexul, owned by one person or group.
 Single-tenant by design.
 
+**Enterprise feature**:
+A capability that works only on an instance holding a valid license key. Only
+new capabilities become enterprise features; nothing that has shipped free
+ever moves behind the key.
+_Avoid_: Premium, pro, paid tier
+
+**License key**:
+The signed file that unlocks enterprise features on one instance. It names
+its licensee, the features it unlocks, and when it expires, and the instance
+checks it without contacting anyone. When it expires the features stop and
+the data they made stays.
+_Avoid_: Licence, activation code, serial
+
 **Runner**:
 A named service on a machine that executes builds and deploys, connected to
 the server over a WebSocket with its own host credential. A machine can run
