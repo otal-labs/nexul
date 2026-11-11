@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // maxLogLen caps the log tail carried in a progress frame so a chatty step can't balloon it unbounded.
@@ -75,6 +77,9 @@ type ExecutorConfig struct {
 	Ctl string
 	// Streams runs `docker logs` with separate stdout and stderr; nil means ShellStreamRunner.
 	Streams StreamRunner
+	// Registry is the resolvers a deploy's secret references go through, read at each deploy because a manager can open
+	// after start; nil means this runner holds no manager.
+	Registry func() secretref.Registry
 }
 
 // ShellExecutor runs builds and deploys on the host (ADR 0032).
@@ -88,6 +93,7 @@ type ShellExecutor struct {
 	tempDir    string
 	reportPoll time.Duration
 	log        *slog.Logger
+	registry   func() secretref.Registry
 }
 
 // NewShellExecutor wires the host executor; a nil cmd falls back to the real shell runner.
@@ -101,7 +107,7 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 	}
 	return &ShellExecutor{
 		cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
-		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log,
+		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log, registry: cfg.Registry,
 	}
 }
 
@@ -126,6 +132,13 @@ func (e *ShellExecutor) Build(ctx context.Context, req DeployRequestedEvent, sen
 func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployRequestedEvent, send func(Frame)) {
 	var commit string
 	send = stampCommit(send, &commit)
+	logs := newLogStream(req.ID, send)
+	defer logs.close()
+	e, req, err := e.withSecrets(ctx, req, logs)
+	if err != nil {
+		e.failBuild(ctx, req, send, err)
+		return
+	}
 	checkout, err := e.checkoutPath(req)
 	if err != nil {
 		e.failBuild(ctx, req, send, err)
@@ -138,8 +151,6 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 		e.failBuild(ctx, req, send, err)
 		return
 	}
-	logs := newLogStream(req.ID, send)
-	defer logs.close()
 	for i, st := range steps {
 		if ctx.Err() != nil {
 			send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusFailed, Error: "cancelled"})
@@ -502,6 +513,12 @@ func (e *ShellExecutor) Deploy(ctx context.Context, req DeployRequestedEvent, se
 	defer e.recoverAndReport(send, Frame{Type: FrameDeployResult, ID: req.ID})
 	logs := newLogStream(req.ID, send)
 	defer logs.close()
+	e, req, err := e.withSecrets(ctx, req, logs)
+	if err != nil {
+		e.log.Warn("deploy secrets not resolved", "id", req.ID, "error", err)
+		send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusFailed, Error: err.Error()})
+		return
+	}
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhasePulling})
 	if err := e.runStreamed(ctx, "", logs, "docker pull "+req.Image, "docker", "pull", req.Image); err != nil {
 		e.log.Warn("deploy pull failed", "id", req.ID, "error", err)

@@ -1,6 +1,6 @@
 # 17 — A runner resolves a deploy's references before anything changes
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 11, 16
 
@@ -25,3 +25,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
 - [ ] A rollback and a preview deploy resolve the same way.
 
 Verify: `make lint`, `go test ./internal/runner/...`, `make coverage`.
+
+## Comments
+
+Built: `internal/runner/secrets.go`. Before any checkout, pull, build or start, the runner resolves the env's references in one batch per manager (duplicates asked once), substitutes them on a copy, and masks the values in command output and errors. Any failure fails the deploy naming variables and plain reasons only. Checked end to end on Docker with a real 1Password item: the container received the value, the deploy log said "Resolved 1 secret reference in 0.7s", and no log, database or file held the value or the reference.
