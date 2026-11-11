@@ -260,3 +260,43 @@ func TestClient_CheckPropagation(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_RejectedToken_IsReplacedByItsFreshValueAndTheCallSentOnceMore(t *testing.T) {
+	var seen []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Header.Get("Authorization"))
+		if r.Header.Get("Authorization") != "Bearer fresh-token" {
+			w.WriteHeader(http.StatusForbidden)
+			writeJSON(w, map[string]any{"success": false, "errors": []any{map[string]any{"code": 10000, "message": "Invalid token"}}})
+			return
+		}
+		writeJSON(w, map[string]any{"success": true, "result": map[string]any{"id": "tok", "status": "active"}, "errors": []any{}})
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL + "/client/v4")
+	require.NoError(t, err)
+	var asked []string
+	c := New("stale-token", WithBaseURL(u), WithReresolve(func(_ context.Context, stale string) (string, bool) {
+		asked = append(asked, stale)
+		return "fresh-token", true
+	}))
+
+	require.NoError(t, c.Verify(t.Context()))
+
+	assert.Equal(t, []string{"Bearer stale-token", "Bearer fresh-token"}, seen)
+	assert.Equal(t, []string{"stale-token"}, asked)
+}
+
+func TestClient_RejectedToken_WithNothingFresherFailsAfterOneAttempt(t *testing.T) {
+	api := &fakeAPI{statusCode: http.StatusUnauthorized, errBody: `{"success":false,"errors":[{"code":10000,"message":"Invalid token"}],"result":null}`}
+	srv := httptest.NewServer(api)
+	defer srv.Close()
+	u, err := url.Parse(srv.URL + "/client/v4")
+	require.NoError(t, err)
+	c := New("stale-token", WithBaseURL(u), WithReresolve(func(context.Context, string) (string, bool) { return "", false }))
+
+	err = c.Verify(t.Context())
+
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Len(t, api.mu, 1)
+}

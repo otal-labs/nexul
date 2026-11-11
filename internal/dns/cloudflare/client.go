@@ -22,11 +22,13 @@ const defaultBaseURL = "https://api.cloudflare.com/client/v4"
 
 // Client is the Cloudflare DNSProvider implementation.
 type Client struct {
-	base    *url.URL
-	token   string
-	httpc   *http.Client
-	resolve dnsResolver
-	tunnel  tunnelState
+	base  *url.URL
+	token string
+	// reresolve answers a rejected token with its fresh value when its secret manager has one.
+	reresolve func(ctx context.Context, stale string) (string, bool)
+	httpc     *http.Client
+	resolve   dnsResolver
+	tunnel    tunnelState
 }
 
 // Option configures a Client.
@@ -44,6 +46,11 @@ func WithBaseURL(u *url.URL) Option {
 			c.base = &base
 		}
 	}
+}
+
+// WithReresolve gives a rejected token (401 or 403) one chance to be replaced by its fresh value, then retries the call.
+func WithReresolve(fn func(ctx context.Context, stale string) (string, bool)) Option {
+	return func(c *Client) { c.reresolve = fn }
 }
 
 // WithAccountID pins the account for tunnel operations; absent, resolves the first account the token can read.
@@ -282,14 +289,51 @@ type apiResponse struct {
 }
 
 // do performs an authenticated request and maps Cloudflare errors to the platform sentinels (unauthorized/not found/retryable).
-func (c *Client) do(ctx context.Context, method, path string, body any, out *apiResponse) (err error) {
-	var reader io.Reader
+// A 401 or 403 asks reresolve for a fresh token once and sends the request again with it.
+func (c *Client) do(ctx context.Context, method, path string, body any, out *apiResponse) error {
+	var payload []byte
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("marshal request: %w", err)
 		}
-		reader = bytes.NewReader(b)
+		payload = b
+	}
+	status, respBody, err := c.send(ctx, method, path, payload, c.token)
+	if err != nil {
+		return err
+	}
+	if status == http.StatusUnauthorized || status == http.StatusForbidden {
+		if fresh, ok := c.refreshToken(ctx); ok {
+			if status, respBody, err = c.send(ctx, method, path, payload, fresh); err != nil {
+				return err
+			}
+		}
+	}
+	if err := json.Unmarshal(respBody, out); err != nil {
+		return fmt.Errorf("decode cloudflare response: %w", err)
+	}
+	if !out.Success {
+		return fmt.Errorf("%w (%s %s)", mapAPIError(status, out.Errors), method, strings.SplitN(path, "?", 2)[0])
+	}
+	if status >= 300 {
+		return apperrs.Retryable(fmt.Errorf("cloudflare %s %s: unexpected status %d", method, path, status))
+	}
+	return nil
+}
+
+func (c *Client) refreshToken(ctx context.Context) (string, bool) {
+	if c.reresolve == nil {
+		return "", false
+	}
+	return c.reresolve(ctx, c.token)
+}
+
+// send makes one authenticated request and reads the whole response.
+func (c *Client) send(ctx context.Context, method, path string, payload []byte, token string) (status int, respBody []byte, err error) {
+	var reader io.Reader
+	if payload != nil {
+		reader = bytes.NewReader(payload)
 	}
 	u := *c.base
 	pathPart, queryPart, _ := strings.Cut(strings.TrimPrefix(path, "/"), "?")
@@ -297,32 +341,22 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out *api
 	u.RawQuery = queryPart
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reader)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpc.Do(req)
 	if err != nil {
-		return apperrs.Retryable(fmt.Errorf("cloudflare %s %s: %w", method, path, err))
+		return 0, nil, apperrs.Retryable(fmt.Errorf("cloudflare %s %s: %w", method, path, err))
 	}
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
-
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return apperrs.Retryable(fmt.Errorf("read cloudflare response: %w", err))
+		return 0, nil, apperrs.Retryable(fmt.Errorf("read cloudflare response: %w", err))
 	}
-	if err := json.Unmarshal(respBody, out); err != nil {
-		return fmt.Errorf("decode cloudflare response: %w", err)
-	}
-	if !out.Success {
-		return fmt.Errorf("%w (%s %s)", mapAPIError(resp.StatusCode, out.Errors), method, strings.SplitN(path, "?", 2)[0])
-	}
-	if resp.StatusCode >= 300 {
-		return apperrs.Retryable(fmt.Errorf("cloudflare %s %s: unexpected status %d", method, path, resp.StatusCode))
-	}
-	return nil
+	return resp.StatusCode, respBody, nil
 }
 
 func mapAPIError(status int, errs []struct {

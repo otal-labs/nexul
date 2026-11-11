@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -41,6 +42,8 @@ type Config struct {
 	Registry []Connector
 	// Managers lists the secrets managers the server holds a token for and their states; nil lists none.
 	Managers ManagerLister
+	// Secrets resolves stored secrets that are references; nil takes every stored value as it is.
+	Secrets SecretValues
 	// Now is overridable for tests.
 	Now func() time.Time
 }
@@ -52,6 +55,7 @@ type Service struct {
 	gate           Gate
 	settings       SettingsReader
 	managers       ManagerLister
+	secrets        SecretValues
 	registry       map[string]Connector
 	now            func() time.Time
 }
@@ -75,6 +79,7 @@ func NewService(cfg Config) *Service {
 		gate:           cfg.Gate,
 		settings:       cfg.Settings,
 		managers:       cfg.Managers,
+		secrets:        cfg.Secrets,
 		registry:       byID,
 		now:            cfg.Now,
 	}
@@ -140,14 +145,12 @@ func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
 		available := c.OAuth != nil || len(c.Manual) > 0
 		appConfigured := c.OAuth != nil && c.OAuth.Configured()
 		cred, err := s.store.GetCredentials(ctx, c.ID)
-		if err != nil {
-			if errors.Is(err, apperrs.ErrNotFound) {
-				out = append(out, ConnectorStatus{Connector: c, Available: available, AppConfigured: appConfigured})
-				continue
-			}
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			return nil, fmt.Errorf("get credentials %s: %w", c.ID, err)
 		}
-		out = append(out, ConnectorStatus{Connector: c, Status: cred.Status(), Available: available, AppConfigured: appConfigured})
+		status := cred.Status()
+		status.Secret = s.connectorProblem(ctx, c, cred)
+		out = append(out, ConnectorStatus{Connector: c, Status: status, Available: available, AppConfigured: appConfigured})
 	}
 	if len(out) == 0 && refused != nil {
 		return nil, refused
@@ -245,7 +248,11 @@ func (s *Service) checkManual(ctx context.Context, connectorID string, fields ma
 	if c.Verify == nil {
 		return nil, fmt.Errorf("%w: %s has no verifier wired, cannot confirm the credential works", apperrs.ErrInvalid, c.Name)
 	}
-	if err := c.Verify.Verify(ctx, clean); err != nil {
+	live, err := s.liveFields(ctx, c, clean, s.read)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Verify.Verify(ctx, live); err != nil {
 		return nil, asInvalid(err)
 	}
 	return clean, nil
@@ -284,7 +291,11 @@ func (s *Service) VerifyManualCheck(ctx context.Context, connectorID string, fie
 		}
 		clean[f.Key] = v
 	}
-	detail, err := cv.VerifyCheck(ctx, clean, key)
+	live, err := s.liveFields(ctx, c, clean, s.value)
+	if err != nil {
+		return "", err
+	}
+	detail, err := cv.VerifyCheck(ctx, live, key)
 	if err != nil {
 		return "", asInvalid(err)
 	}
@@ -325,7 +336,7 @@ func (s *Service) ManualCredentials(ctx context.Context, connectorID string) (ma
 	if len(cred.ManualFields) == 0 {
 		return nil, fmt.Errorf("%w: %s manual credentials not configured", apperrs.ErrNotFound, connectorID)
 	}
-	return cred.ManualFields, nil
+	return s.liveFields(ctx, s.registry[connectorID], cred.ManualFields, s.value)
 }
 
 // SetAppConfig stores an app-level OAuth registration (CN3a); a person holding connectors:write sets it, since it
@@ -359,7 +370,11 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 	}
 	cfg := AppConfig{ConnectorID: connectorID, ClientID: clientID, ClientSecret: clientSecret, BaseURL: baseURL, AppSlug: appSlug}
 	if v, ok := s.registry[connectorID].OAuth.(AppVerifier); ok {
-		if err := v.VerifyApp(ctx, cfg); err != nil {
+		live, err := resolveApp(ctx, s.read, cfg)
+		if err != nil {
+			return AppConfigStatus{}, refuse("client_secret", err)
+		}
+		if err := v.VerifyApp(ctx, live); err != nil {
 			return AppConfigStatus{}, err
 		}
 	}
@@ -423,7 +438,15 @@ func (s *Service) VerifyPrivateKey(ctx context.Context, userID, connectorID, pri
 	if err := secretref.Check("private_key", strings.TrimSpace(privateKey)); err != nil {
 		return err
 	}
-	if err := v.VerifyKey(ctx, cfg, strings.TrimSpace(privateKey)); err != nil {
+	live, err := resolveApp(ctx, s.value, cfg)
+	if err != nil {
+		return refuse("client_secret", err)
+	}
+	key, err := s.read(ctx, strings.TrimSpace(privateKey))
+	if err != nil {
+		return refuse("private_key", err)
+	}
+	if err := v.VerifyKey(ctx, live, key); err != nil {
 		return asInvalid(err)
 	}
 	return nil
@@ -481,7 +504,7 @@ func (s *Service) AccessToken(ctx context.Context, connectorID string) (string, 
 		return "", fmt.Errorf("get credentials %s: %w", connectorID, err)
 	}
 	if tok := cred.ManualFields[manualTokenField]; tok != "" {
-		return tok, nil
+		return s.value(ctx, tok)
 	}
 	if cred.ExpiresAt.After(s.now().UTC()) || cred.RefreshToken == "" {
 		return cred.AccessToken, nil
@@ -539,4 +562,37 @@ func (s *Service) listManagers() []secretref.ManagerState {
 		return []secretref.ManagerState{}
 	}
 	return s.managers.States()
+}
+
+// liveFields copies fields with every secret one resolved through resolve, for a call that uses it; the stored map is
+// left as it is.
+func (s *Service) liveFields(ctx context.Context, c Connector, fields map[string]string, resolve func(context.Context, string) (string, error)) (map[string]string, error) {
+	live := maps.Clone(fields)
+	for _, f := range c.Manual {
+		if !f.Secret {
+			continue
+		}
+		v, err := resolve(ctx, fields[f.Key])
+		if err != nil {
+			return nil, refuse(f.Label, err)
+		}
+		live[f.Key] = v
+	}
+	return live, nil
+}
+
+// connectorProblem is the first reference of c's stored credential or app registration that cannot be resolved now.
+func (s *Service) connectorProblem(ctx context.Context, c Connector, cred Credentials) *SecretProblem {
+	stored := []string{cred.ManualFields[manualTokenField]}
+	for _, f := range c.Manual {
+		if f.Secret {
+			stored = append(stored, cred.ManualFields[f.Key])
+		}
+	}
+	if s.appConfigStore != nil && c.OAuth != nil {
+		if app, err := s.appConfigStore.GetAppConfig(ctx, c.ID); err == nil {
+			stored = append(stored, app.ClientSecret, app.PrivateKey)
+		}
+	}
+	return s.firstProblem(ctx, stored...)
 }

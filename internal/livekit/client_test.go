@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -364,5 +365,32 @@ func TestIsListener(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, IsListener(tt.identity))
 		})
+	}
+}
+
+func TestListRooms_RejectedSecret_IsReplacedByItsFreshValueAndSentOnceMore(t *testing.T) {
+	var signedWith []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if _, err := parseJWT(token, "fresh-secret"); err != nil {
+			signedWith = append(signedWith, "stale")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		signedWith = append(signedWith, "fresh")
+		_, _ = w.Write([]byte(`{"rooms":[]}`))
+	}))
+	defer srv.Close()
+	c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "stale-secret", Reresolve: func(_ context.Context, stale string) (string, bool) {
+		return "fresh-secret", stale == "stale-secret"
+	}}
+
+	_, err := c.ListRooms(t.Context())
+
+	if err != nil {
+		t.Fatalf("ListRooms = %v, want the retry with the fresh secret to succeed", err)
+	}
+	if len(signedWith) != 2 || signedWith[0] != "stale" || signedWith[1] != "fresh" {
+		t.Fatalf("requests were signed with %v, want [stale fresh]", signedWith)
 	}
 }

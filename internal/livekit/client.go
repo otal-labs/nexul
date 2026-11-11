@@ -35,6 +35,8 @@ type Client struct {
 	WSURL     string
 	APIKey    string
 	APISecret string
+	// Reresolve answers a rejected API secret with its fresh value when its secret manager has one; nil keeps it.
+	Reresolve func(ctx context.Context, stale string) (string, bool)
 }
 
 // MintToken builds a short-lived room-join token; grants are a fixed shape for a Discord-style channel (ADR 0030).
@@ -164,15 +166,28 @@ func (c *Client) RemoveParticipant(ctx context.Context, room, identity string) e
 	return err
 }
 
-// call issues one Twirp RoomService request; grants are per-method (roomList vs roomAdmin).
-func (c *Client) call(ctx context.Context, method string, grant map[string]any, body any, out any) (err error) {
+// call issues one Twirp RoomService request; grants are per-method (roomList vs roomAdmin). A rejected request asks
+// Reresolve for a fresh API secret once and sends again signed with it.
+func (c *Client) call(ctx context.Context, method string, grant map[string]any, body any, out any) error {
+	err := c.callWith(ctx, c.APISecret, method, grant, body, out)
+	if !errors.Is(err, apperrs.ErrUnauthorized) || c.Reresolve == nil {
+		return err
+	}
+	fresh, ok := c.Reresolve(ctx, c.APISecret)
+	if !ok {
+		return err
+	}
+	return c.callWith(ctx, fresh, method, grant, body, out)
+}
+
+func (c *Client) callWith(ctx context.Context, secret, method string, grant map[string]any, body any, out any) (err error) {
 	now := time.Now().UTC()
 	token, err := signJWT(map[string]any{
 		"iss":   c.APIKey,
 		"nbf":   now.Unix(),
 		"exp":   now.Add(serviceTokenTTL).Unix(),
 		"video": grant,
-	}, c.APISecret)
+	}, secret)
 	if err != nil {
 		return err
 	}

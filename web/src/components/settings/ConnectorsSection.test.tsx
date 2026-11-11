@@ -127,6 +127,16 @@ describe("ConnectorsSection", () => {
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();
   });
 
+  it("says on the card that 1Password is unreachable when a stored reference cannot be resolved", async () => {
+    serve({
+      data: [connectorEntry({ status: { configured: true, secret: { manager: "op", state: "unreachable" } } })],
+    });
+    renderSection();
+
+    const row = (await screen.findByText("GitHub")).closest("li") as HTMLElement;
+    expect(row).toHaveTextContent("1Password unreachable");
+  });
+
   it("filters the list with the Connected / Not connected switch", async () => {
     serve({
       data: [
