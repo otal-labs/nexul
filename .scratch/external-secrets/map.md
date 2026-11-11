@@ -33,6 +33,9 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [How the runner, the automations host and the server read 1Password](issues/01-1password-from-go-and-bun.md):
   the official Go SDK on the runner and server and the JS SDK on the host, resolving in one batch per use;
   rate limits are per token hourly and per account daily.
+- [How a value says it is a secret reference, and who sees the reference](issues/02-reference-shape.md):
+  a whole value starting with a known scheme (`op://`), treated exactly like a value, syntax checked at
+  save, a "1Password" tag in the web editors.
 
 ## Not yet specified
 
@@ -40,8 +43,7 @@ instance bootstrap secret. The map is done when nothing is left to decide before
   notices depends on the failure and resolution answers.
 - What a second manager (Vault or OpenBao, a cloud manager) needs from the provider seam, beyond what
   1Password shapes. Sharpens once the reference syntax and the 1Password research land.
-- Rollback and preview deploys: whether a rollback uses the reference's value now or the one it
-  deployed with, and how branch deploy rule overrides carry references.
+- Rollback: whether a rollback uses the reference's value now or the one it deployed with.
 - Docs and the user guide page for external secrets, and the README row.
 
 ## Out of scope
