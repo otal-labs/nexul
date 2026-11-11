@@ -133,6 +133,8 @@ jobs:
           (cd web && bun install --frozen-lockfile && VITE_API_URL=/ bun run build)
           rm -rf server/webui/dist && mkdir -p server/webui/dist && cp -r web/dist/. server/webui/dist/
       - name: Build the automations host binaries
+        env:
+          NEXUL_VERSION: ${{ needs.resolve.outputs.tag }}
         run: |
           (cd automations && bun install --frozen-lockfile)
           bun run --cwd automations build:binaries

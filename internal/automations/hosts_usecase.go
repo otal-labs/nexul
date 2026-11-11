@@ -345,9 +345,9 @@ func (h *HostsService) remove(ctx context.Context, host *Host) error {
 	return nil
 }
 
-// Assignments authenticates a host by its credential, records the poll, and returns the enabled automations
-// placed on it, each with its worker's token. A removed host gets errHostRemoved.
-func (h *HostsService) Assignments(ctx context.Context, credential string) (Assignments, error) {
+// Assignments authenticates a host by its credential, records the poll with the version it reported, and returns the
+// enabled automations placed on it, each with its worker's token. A removed host gets errHostRemoved.
+func (h *HostsService) Assignments(ctx context.Context, credential, version string) (Assignments, error) {
 	cred, err := h.authenticate(ctx, credential)
 	if err != nil {
 		return Assignments{}, err
@@ -359,7 +359,12 @@ func (h *HostsService) Assignments(ctx context.Context, credential string) (Assi
 	if err != nil {
 		return Assignments{}, fmt.Errorf("get automations host %s: %w", cred.HostID, err)
 	}
-	if err := h.repo.TouchHost(ctx, host.ID, h.now().UTC()); err != nil {
+	// A host older than the version report sends none; it keeps the version it enrolled with.
+	version = strings.TrimSpace(version)
+	if version == "" {
+		version = host.Version
+	}
+	if err := h.repo.TouchHost(ctx, host.ID, h.now().UTC(), version); err != nil {
 		return Assignments{}, fmt.Errorf("touch automations host %s: %w", host.ID, err)
 	}
 	placed, err := h.placedOn(ctx, host)

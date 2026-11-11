@@ -367,6 +367,24 @@ func TestHostAssignments_RefusesUnknownAndRemovedHosts(t *testing.T) {
 	assert.JSONEq(t, automations.HostRemovedRefusal, string(body))
 }
 
+func TestHostAssignments_RecordTheVersionTheHostReports(t *testing.T) {
+	f := newHostsFixture(t)
+	_, credential := f.enroll(t, "jobs")
+	listed := func() string {
+		hosts, err := f.hosts.List(adminCtx())
+		require.NoError(t, err)
+		require.Len(t, hosts, 1)
+		return hosts[0].Version
+	}
+
+	status, body := f.do(t, http.MethodGet, "/api/automation-hosts/self/assignments?version=v0.3.85", credential, nil)
+	require.Equal(t, http.StatusOK, status, string(body))
+	assert.Equal(t, "v0.3.85", listed(), "an upgraded host reports its new build, not the one it enrolled with")
+
+	f.assignments(t, credential)
+	assert.Equal(t, "v0.3.85", listed(), "a poll that reports no version keeps the last one")
+}
+
 func TestHostAssignments_FollowPlacement(t *testing.T) {
 	f := newHostsFixture(t)
 	_, instanceCred := f.enroll(t, automations.InstanceHostName)

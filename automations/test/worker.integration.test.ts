@@ -53,6 +53,35 @@ describe("threadWorkerFactory (real worker_thread)", () => {
     }
 
     expect(stale).toBe(false);
-    expect(lines.filter((l) => l.includes("worker crashed") || l.includes("automation worker error"))).toEqual([]);
+    expect(lines.filter((l) => l.includes("worker crashed") || l.includes("automation worker error") || l.includes("exited"))).toEqual([]);
+  });
+
+  test("a worker that exits on its own is reported stale, so the next poll respawns it", async () => {
+    const lines: string[] = [];
+    const logSpy = spyOn(console, "log").mockImplementation((line: unknown) => lines.push(String(line)));
+    const errorSpy = spyOn(console, "error").mockImplementation((line: unknown) => lines.push(String(line)));
+
+    try {
+      await new Promise<void>((resolve) => {
+        threadWorkerFactory.spawn(
+          {
+            automationId: "crash-1",
+            automationName: "crash-test",
+            code: "export const notDefault = 1;",
+            url: "http://127.0.0.1:1",
+            token: "dat_crash",
+            timeoutMs: 30_000,
+            heartbeatTimeoutMs: 60_000,
+            memoryMb: 64,
+          },
+          resolve,
+        );
+      });
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+
+    expect(lines.some((l) => l.includes("automation worker exited on its own"))).toBe(true);
   });
 });

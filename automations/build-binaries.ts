@@ -9,11 +9,13 @@ const targets = [
 ] as const;
 
 const only = process.argv[2];
+// The release workflow sets NEXUL_VERSION to the tag, so the host reports the release it was built for.
+const define = `NEXUL_HOST_VERSION=${JSON.stringify(process.env.NEXUL_VERSION ?? "dev")}`;
 for (const [target, suffix] of targets) {
   if (only && !suffix.startsWith(only)) continue;
   const outfile = `dist/nexul-automations-${suffix}`;
   const build = Bun.spawnSync(
-    [process.execPath, "build", "--compile", `--target=${target}`, "./src/main.ts", "./src/worker-entry.ts", "--outfile", outfile],
+    [process.execPath, "build", "--compile", `--target=${target}`, "--define", define, "./src/main.ts", "./src/worker-entry.ts", "--outfile", outfile],
     { cwd: import.meta.dir, stdout: "inherit", stderr: "inherit" },
   );
   if (build.exitCode !== 0) {

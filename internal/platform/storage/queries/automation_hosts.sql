@@ -17,7 +17,7 @@ ORDER BY h.created_at, h.id;
 INSERT INTO automation_hosts (id, name, machine, os, arch, version, last_seen, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: TouchAutomationHost :execrows
-UPDATE automation_hosts SET last_seen = ? WHERE id = ?;
+UPDATE automation_hosts SET last_seen = ?, version = ? WHERE id = ?;
 
 -- name: DeleteAutomationHost :execrows
 DELETE FROM automation_hosts WHERE id = ?;

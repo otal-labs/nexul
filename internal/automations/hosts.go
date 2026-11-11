@@ -15,6 +15,7 @@ type Host struct {
 	Machine string
 	OS      string
 	Arch    string
+	// Version is what it reported at its latest poll, or at enrollment before the first one that reported any.
 	Version string
 	// LastSeen is its latest assignments poll, or its enrollment before the first one.
 	LastSeen  time.Time
@@ -109,7 +110,8 @@ type HostStore interface {
 	ListHosts(ctx context.Context) ([]Host, error)
 	// ListHostsOn lists the hosts filed under the machines with these ids, for a caller who sees only some.
 	ListHostsOn(ctx context.Context, machineIDs []string) ([]Host, error)
-	TouchHost(ctx context.Context, id string, at time.Time) error
+	// TouchHost records a poll and the version the host reported with it.
+	TouchHost(ctx context.Context, id string, at time.Time, version string) error
 }
 
 // HostCredentialStore persists enrollment codes and host credentials, both by hash only.

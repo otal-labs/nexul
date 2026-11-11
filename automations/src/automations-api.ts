@@ -1,3 +1,5 @@
+import { hostVersion } from "./version.ts";
+
 // AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with.
 export interface AutomationTarget {
   id: string;
@@ -7,7 +9,8 @@ export interface AutomationTarget {
 
 export interface RemoteState {
   enabled: boolean;
-  updatedAt: string;
+  // The config values as JSON text, compared to tell when the worker's hello is out of date.
+  configValues: string;
   activeVersionId: string | null;
   activeCode: string | null;
 }
@@ -22,7 +25,7 @@ export interface AutomationsApi {
 
 interface AutomationResponse {
   enabled: boolean;
-  updated_at: string;
+  config_values: unknown;
 }
 
 interface VersionDiffResponse {
@@ -36,7 +39,7 @@ interface AssignmentsResponse {
 export const httpAutomationsApi: AutomationsApi = {
   async fetchAssignments(serverUrl, credential) {
     const url = `${serverUrl}/api/automation-hosts/self/assignments`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${credential}` } });
+    const res = await fetch(`${url}?version=${encodeURIComponent(hostVersion)}`, { headers: { Authorization: `Bearer ${credential}` } });
     if (res.status === 401 && (await res.text()).includes('"automations_host_removed"')) return { removed: true };
     if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`);
     const body = (await res.json()) as AssignmentsResponse;
@@ -52,7 +55,7 @@ export const httpAutomationsApi: AutomationsApi = {
     ]);
     return {
       enabled: automation.enabled,
-      updatedAt: automation.updated_at,
+      configValues: JSON.stringify(automation.config_values ?? null),
       activeVersionId: diff.active?.id ?? null,
       activeCode: diff.active?.code ?? null,
     };

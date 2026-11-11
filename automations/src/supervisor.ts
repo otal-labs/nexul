@@ -11,7 +11,7 @@ export interface SupervisorConfig {
 
 interface TrackedState {
   activeVersionId: string | null;
-  updatedAt: string;
+  configValues: string;
   token: string;
   running: boolean;
 }
@@ -69,8 +69,9 @@ export class Supervisor {
       return;
     }
 
+    // Only what the worker holds restarts it: its own announce moves updated_at, so that would restart every new worker.
     const changed =
-      !prev || prev.activeVersionId !== state.activeVersionId || prev.updatedAt !== state.updatedAt || prev.token !== target.token;
+      !prev || prev.activeVersionId !== state.activeVersionId || prev.configValues !== state.configValues || prev.token !== target.token;
     if (prev?.running && !changed) return;
 
     if (prev?.running) await this.stop(target.id);
@@ -110,5 +111,5 @@ export class Supervisor {
 }
 
 function toTracked(state: RemoteState, target: AutomationTarget, running: boolean): TrackedState {
-  return { activeVersionId: state.activeVersionId, updatedAt: state.updatedAt, token: target.token, running };
+  return { activeVersionId: state.activeVersionId, configValues: state.configValues, token: target.token, running };
 }
