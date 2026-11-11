@@ -2,7 +2,6 @@ import { KeyRound } from "lucide-react";
 import { useState } from "react";
 
 import { AutomationTokenReveal } from "@/components/automation/AutomationTokenReveal";
-import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
@@ -25,11 +24,16 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
   const [rotated, setRotated] = useState<string | null>(null);
   const revoked = !!automation.token_revoked_at;
   const labelOf = (scope: string) => catalog?.find((entry) => entry.value === scope)?.label;
+  // The catalog lists each domain read first, as the scope grid does.
+  const catalogIndex = (scope: string) => {
+    const at = catalog?.findIndex((entry) => entry.value === scope) ?? -1;
+    return at === -1 ? Number.MAX_SAFE_INTEGER : at;
+  };
 
   const onRotate = async () => {
     const ok = await confirm({
       title: "Rotate this token?",
-      message: "The current token stops working now. The new one shows once, so copy it into the automation's code.",
+      message: "The current token stops working now. The new one shows once.",
       confirmLabel: "Rotate token",
       destructive: false,
     });
@@ -49,7 +53,7 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
     <SettingsCard
       id="token"
       title="Token"
-      description="How this automation's code signs in, and what it may do."
+      description="What its code may do."
       aside={
         automation.token_prefix && (
           <SettingsStatus tone={revoked ? "destructive" : "success"}>
@@ -59,7 +63,6 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
       }
       footer={
         <>
-          <p className="text-xs text-muted-foreground">A new token shows once.</p>
           <div className="ml-auto flex items-center gap-1">
             {!revoked && (
               <ActionButton permission="automations:write" verb="revoke automation tokens" type="button" variant="ghost" size="sm" liveClassName="hover:text-destructive" onClick={() => void onRevoke()} loading={revoke.isPending}>
@@ -85,17 +88,14 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
           </div>
         )}
         {rotated && <AutomationTokenReveal token={rotated} />}
-        <section className="space-y-2">
-          <Microheader>May do</Microheader>
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {automation.scopes.map((scope) => (
-              <li key={scope} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                {labelOf(scope) && <span className="min-w-0 truncate">{labelOf(scope)}</span>}
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">{scope}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ul className="divide-y divide-border rounded-md border border-border">
+          {[...automation.scopes].sort((a, b) => catalogIndex(a) - catalogIndex(b)).map((scope) => (
+            <li key={scope} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              {labelOf(scope) && <span className="min-w-0 truncate">{labelOf(scope)}</span>}
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">{scope}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </SettingsCard>
   );

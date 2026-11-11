@@ -33,3 +33,6 @@ SELECT id, automation_id, sequence, pusher_id, message, status, created_at FROM 
 
 -- name: GetAutomationVersionBySequence :one
 SELECT * FROM automation_versions WHERE automation_id = ? AND sequence = ?;
+
+-- name: FillAutomationVersionSource :exec
+UPDATE automation_versions SET source = ? WHERE id = ? AND source = '';

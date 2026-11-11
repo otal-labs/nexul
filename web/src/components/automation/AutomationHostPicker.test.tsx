@@ -61,9 +61,9 @@ describe("AutomationHostPicker", () => {
     renderPicker(null);
 
     const picker = screen.getByRole("combobox", { name: "Runs on" });
-    expect(picker).toHaveTextContent("instance (built in)");
+    expect(picker).toHaveTextContent("This instance");
     await user.click(picker);
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["instance (built in)", "jobs-1", "fresh-1"]);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["This instance", "jobs-1", "fresh-1"]);
   });
 
   it("keeps the host an automation already runs on named but not pickable when Deploy to there is gone", async () => {
@@ -88,7 +88,7 @@ describe("AutomationHostPicker", () => {
     const user = userEvent.setup();
     renderPicker("h-jobs");
 
-    await pickOption(user, "Runs on", "instance (built in)");
+    await pickOption(user, "Runs on", "This instance");
 
     await waitFor(() => expect(mocks.patch).toHaveBeenCalledWith("/api/automations/a1/host", { host_id: null }));
   });

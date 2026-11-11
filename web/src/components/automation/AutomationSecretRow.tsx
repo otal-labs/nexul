@@ -26,7 +26,8 @@ export const AutomationSecretRow = ({ onLeave, secret, onReplace }: AutomationSe
       <div className="min-w-0">
         <p className="truncate font-mono text-sm font-medium">{secret.name}</p>
         <p className="font-mono text-xs text-muted-foreground">
-          <span aria-hidden>••••••••</span> · updated {formatRelativeTime(secret.updated_at)}
+          <span aria-hidden>•••••••• · </span>
+          <span className="sr-only">Value saved, </span>updated {formatRelativeTime(secret.updated_at)}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">

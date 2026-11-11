@@ -86,7 +86,7 @@ describe("AutomationRunsFeed", () => {
     expect(screen.getByText("Today")).toBeInTheDocument();
     expect(screen.getByText("Success")).toBeInTheDocument();
     expect(screen.getByText(formatClockTime("2026-08-27T12:00:00Z"))).toBeInTheDocument();
-    expect(screen.getByText("1 run · 0 failed")).toBeInTheDocument();
+    expect(screen.getByText("1 run")).toBeInTheDocument();
   });
 
   it("puts a failed run's error on its second line", async () => {

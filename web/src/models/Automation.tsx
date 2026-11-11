@@ -114,6 +114,8 @@ export interface AutomationConfigField {
 
 export interface AutomationConfigSchema {
   fields: AutomationConfigField[];
+  /** False until the code has connected once and announced its schema. */
+  announced: boolean;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -141,7 +143,7 @@ const parseConfigField = (key: string, prop: Record<string, unknown>, required: 
 
 // Defensive parse: a malformed schema renders as "no config" instead of crashing the detail page.
 export const parseConfigSchema = (raw: unknown): AutomationConfigSchema => {
-  if (!isRecord(raw) || !isRecord(raw.properties)) return { fields: [] };
+  if (!isRecord(raw) || !isRecord(raw.properties)) return { fields: [], announced: false };
   const required = Array.isArray(raw.required)
     ? raw.required.filter((r): r is string => typeof r === "string")
     : [];
@@ -150,7 +152,7 @@ export const parseConfigSchema = (raw: unknown): AutomationConfigSchema => {
     if (!isRecord(prop)) continue;
     fields.push(parseConfigField(key, prop, required));
   }
-  return { fields };
+  return { fields, announced: true };
 };
 
 // The form holds every value as text; booleans and numbers turn back into JSON types in configValuesToSave.
@@ -180,11 +182,12 @@ export const configValuesToSave = (
   );
 
 // The Automation record has no "needs configuration" flag; it's computed client-side from its own schema.
-export const automationNeedsConfiguration = (automation: Automation): boolean => {
-  const { fields } = parseConfigSchema(automation.config_schema);
+export const missingRequiredFields = (automation: Automation): AutomationConfigField[] => {
   const values = parseConfigValues(automation.config_values);
-  return fields.some((f) => f.required && !values[f.key]?.trim());
+  return parseConfigSchema(automation.config_schema).fields.filter((f) => f.required && !values[f.key]?.trim());
 };
+
+export const automationNeedsConfiguration = (automation: Automation): boolean => missingRequiredFields(automation).length > 0;
 
 export const CreateAutomationFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),

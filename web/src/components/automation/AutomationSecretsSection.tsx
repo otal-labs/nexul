@@ -21,8 +21,8 @@ export const AutomationSecretsSection = () => {
   return (
     <SettingsCard
       id="automation-secrets"
-      title="Automation secrets"
-      description="Every automation reads these as ctx.secrets.NAME. A saved value can't be read back, only replaced or deleted."
+      title="Secrets"
+      description={<>Every automation reads them as <code className="font-mono">ctx.secrets.NAME</code>.</>}
       footer={
         !editing && (
           <ActionButton permission="automations:write" verb="add automation secrets" icon={PlusIcon} variant="outline" size="sm" onClick={() => setEditing({})}>
@@ -37,7 +37,7 @@ export const AutomationSecretsSection = () => {
         )}
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {data && data.length === 0 && !editing && <EmptyRow>No secrets yet. Add one for automations to read.</EmptyRow>}
+        {data && data.length === 0 && !editing && <EmptyRow>No secrets yet.</EmptyRow>}
         {data && data.length > 0 && (
           <div ref={glideRef}>
             <EnterList className={settingsRowListClass}>

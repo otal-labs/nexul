@@ -7,7 +7,7 @@ import { AutomationProblemChips } from "@/components/automation/AutomationProble
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { Button } from "@/components/ui/button";
-import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
+import { useSwitchAutomation } from "@/hooks/useSwitchAutomation";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Automation } from "@/models/Automation";
@@ -17,7 +17,7 @@ interface AutomationDetailHeaderProps {
 }
 
 export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderProps) => {
-  const setEnabled = useSetAutomationEnabled();
+  const power = useSwitchAutomation();
   const wsPath = useWorkspacePath();
   const workspaceCrumb = useWorkspaceCrumb();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -57,8 +57,8 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
               verb="switch automations on or off"
               aria-label={automation.enabled ? "Disable automation" : "Enable automation"}
               checked={automation.enabled}
-              disabled={setEnabled.isPending}
-              onCheckedChange={(checked) => setEnabled.mutate({ id: automation.id, enabled: checked })}
+              disabled={power.isPending}
+              onCheckedChange={(checked) => void power.switchTo(automation, checked)}
             />
           </label>
           {historyOpen && <AutomationHistoryDialog automationId={automation.id} name={automation.name} onClose={() => setHistoryOpen(false)} />}

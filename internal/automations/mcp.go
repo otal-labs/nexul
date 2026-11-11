@@ -134,7 +134,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			}),
 		mcptool.New("automation_delete", "Delete a workspace automation",
 			"Deletes an automation from the workspace it belongs to, for good, and revokes its token, dropping its live "+
-				"connection. To pause one instead, use automation_update with enabled "+
+				"connection. Defaults stay; pause one with automation_update enabled "+
 				"false. Needs automations:delete in the automation's workspace.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationIDIn) (any, error) {

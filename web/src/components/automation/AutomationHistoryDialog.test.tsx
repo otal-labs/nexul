@@ -106,10 +106,10 @@ describe("AutomationHistoryDialog", () => {
     await screen.findByRole("group", { name: /^Change 1 of 1/ });
 
     await user.click(screen.getByRole("button", { name: /first cut/ }));
-    await user.click(await screen.findByRole("button", { name: "Rollback to #1" }));
+    await user.click(await screen.findByRole("button", { name: "Roll back to #1" }));
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(api.post).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Rollback to #1" }));
+    await user.click(screen.getByRole("button", { name: "Roll back to #1" }));
     await user.click(await screen.findByRole("button", { name: "Confirm" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/automations/a1/versions/v1/rollback");

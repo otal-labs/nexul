@@ -1,28 +1,33 @@
 import { defineAutomation } from "@otal-labs/nexul-sdk/automation";
+import { firstStatusOfKind } from "../board-statuses.ts";
 
-// Narrows the one field this automation reads instead of trusting the whole payload.
-function ticketID(ticket: unknown): string | undefined {
-  const id = (ticket as { id?: unknown } | null)?.id;
-  return typeof id === "string" ? id : undefined;
+// Narrows the fields this automation reads instead of trusting the whole payload.
+function ticketRef(ticket: unknown): { id?: string; projectId?: string } {
+  const { id, project_id } = (ticket ?? {}) as { id?: unknown; project_id?: unknown };
+  return {
+    ...(typeof id === "string" && id ? { id } : {}),
+    ...(typeof project_id === "string" && project_id ? { projectId: project_id } : {}),
+  };
 }
 
 const automation = defineAutomation({
   name: "Ticket finished",
-  description: "Moves a ticket to its workspace's completed status once every linked PR has merged.",
-  config: {
-    completedStatusId: { type: "status", label: "Completed status", required: true },
-  },
+  description: "Moves a ticket to its project's Done status once every linked PR has merged.",
 });
 
 automation.on("ticket.finished", async (payload, ctx) => {
-  const id = ticketID(payload.ticket);
-  const statusId = ctx.config.completedStatusId;
-  if (!id || !statusId) {
-    ctx.log("skipped: missing ticket id or no completed status configured", { ticketId: id, statusId });
+  const { id, projectId } = ticketRef(payload.ticket);
+  if (!id || !projectId) {
+    ctx.log("skipped: missing ticket id or project id", { ticketId: id, projectId });
     return false;
   }
+  const statusId = await firstStatusOfKind(ctx, projectId, "done");
+  if (!statusId) {
+    ctx.log("no done status in the ticket's project, nothing to move", { ticketId: id, projectId });
+    return true;
+  }
   await ctx.api.request("PATCH", `/api/tickets/${id}/status`, { status: statusId });
-  ctx.log("moved ticket to completed status", { ticketId: id, statusId });
+  ctx.log("moved ticket to its done status", { ticketId: id, statusId });
   return true;
 });
 

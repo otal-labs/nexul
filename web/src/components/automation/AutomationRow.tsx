@@ -4,7 +4,7 @@ import { AutomationAttentionChip } from "@/components/automation/AutomationAtten
 import { AutomationStatusMark } from "@/components/automation/AutomationStatusMark";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { AutomationRunOutcome } from "@/enums/Automation";
-import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
+import { useSwitchAutomation } from "@/hooks/useSwitchAutomation";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { AutomationState } from "@/models/Automation";
@@ -14,9 +14,9 @@ interface AutomationRowProps {
   item: AutomationListItem;
 }
 
-// Two lines: the name and its one chip, then why it is failing (the last error) or, when it isn't, what it does.
+// The name and its one chip, then the last error while it fails, else what it does when its code says.
 export const AutomationRow = ({ item: { automation, state, attention } }: AutomationRowProps) => {
-  const setEnabled = useSetAutomationEnabled();
+  const power = useSwitchAutomation();
   const wsPath = useWorkspacePath();
   const failing = state === AutomationState.Failing;
   const crashed = automation.last_run?.outcome === AutomationRunOutcome.Crash;
@@ -35,11 +35,11 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
         >
           {automation.name}
         </Link>
-        <AutomationAttentionChip automation={automation} attention={attention} />
+        <AutomationAttentionChip automation={automation} attention={attention} muted={failing} />
       </div>
-      <span className="font-mono text-xs leading-5 whitespace-nowrap text-muted-foreground tabular-nums" title="The last run, then the runs of the last seven days">
+      <span className="font-mono text-xs leading-5 whitespace-nowrap text-muted-foreground tabular-nums" title="The last run, then the last 7 days">
         {automationLastRunText(automation)}
-        {week && <span className="max-lg:hidden"> · {week}</span>}
+        {week && ` · ${week}`}
       </span>
       <span className="row-span-2 flex h-5 items-center self-start justify-self-end">
         <ActionSwitch
@@ -47,14 +47,13 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
           verb="switch automations on or off"
           aria-label={automation.enabled ? `Disable ${automation.name}` : `Enable ${automation.name}`}
           checked={automation.enabled}
-          disabled={setEnabled.isPending}
-          onCheckedChange={(checked) => setEnabled.mutate({ id: automation.id, enabled: checked })}
+          disabled={power.isPending}
+          onCheckedChange={(checked) => void power.switchTo(automation, checked)}
         />
       </span>
       {failing && (
         <p className="col-span-2 col-start-2 truncate font-mono text-xs leading-5 text-muted-foreground" title={automation.last_run?.error}>
-          <span className="text-destructive">{crashed ? "Crashed" : "Failed"}</span>
-          {automation.last_run?.error && `: ${automation.last_run.error}`}
+          {automation.last_run?.error || (crashed ? "Crashed" : "Failed")}
         </p>
       )}
       {!failing && automation.description && (
@@ -62,7 +61,6 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
           {automation.description}
         </p>
       )}
-      {!failing && !automation.description && <p className="col-span-2 col-start-2 text-row leading-5 text-muted-foreground italic">No description</p>}
     </li>
   );
 };

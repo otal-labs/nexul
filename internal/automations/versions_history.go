@@ -1,6 +1,7 @@
 package automations
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"time"
@@ -75,7 +76,7 @@ func (s *VersionsService) History(ctx context.Context, actorID, automationID str
 	return &out, nil
 }
 
-// VersionBody returns one version by its sequence with its code as the body.
+// VersionBody returns one version by its sequence, its body the file its author pushed, else the bundle.
 func (s *VersionsService) VersionBody(ctx context.Context, actorID, automationID string, sequence int) (*VersionBody, error) {
 	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
@@ -87,5 +88,5 @@ func (s *VersionsService) VersionBody(ctx context.Context, actorID, automationID
 	if err != nil {
 		return nil, fmt.Errorf("get version %d of automation %s: %w", sequence, automationID, err)
 	}
-	return &VersionBody{VersionInfo: versionInfo(*v), Body: v.Code}, nil
+	return &VersionBody{VersionInfo: versionInfo(*v), Body: cmp.Or(v.Source, v.Code)}, nil
 }

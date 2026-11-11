@@ -6,8 +6,8 @@ import type { HistoryVersionSummary } from "@/models/History";
 
 const NOTES = {
   active: "This is the active code",
-  pending: "Merging makes it the active code; nothing is deleted",
-  inactive: "Rolling back makes it the active code; nothing is deleted",
+  pending: "Merging makes it active",
+  inactive: "Rolling back makes it active",
 };
 
 interface AutomationHistoryFooterProps {
@@ -41,7 +41,7 @@ export const AutomationHistoryFooter = ({ automationId, version, onDone }: Autom
       )}
       {status === "inactive" && (
         <ActionButton permission="automations:write" verb="roll back automations" className="tabular-nums" loading={rollback.isPending} onClick={onRollback}>
-          Rollback to #{version.version}
+          Roll back to #{version.version}
         </ActionButton>
       )}
     </HistoryFooter>

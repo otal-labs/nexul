@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationRun } from "@/models/AutomationRun";
-import { RUNS_PAGE, automationRunDays, automationRunsLine } from "@/utils/AutomationRunUtility";
+import { RUNS_PAGE, automationLogLine, automationRunDays, automationRunsLine } from "@/utils/AutomationRunUtility";
 
 const run = (id: string, started_at: string, outcome: AutomationRunOutcome = AutomationRunOutcome.Success): AutomationRun => ({
   id,
@@ -40,5 +40,20 @@ describe("automationRunsLine", () => {
 
   it("counts a short list as it is", () => {
     expect(automationRunsLine([run("a", "2026-10-30T10:00:00Z", AutomationRunOutcome.Crash)], true)).toBe("1 failure");
+  });
+});
+
+describe("automationLogLine", () => {
+  it.each([
+    { raw: "plain text", want: { message: "plain text", fields: "" } },
+    { raw: "[1,2]", want: { message: "[1,2]", fields: "" } },
+    { raw: '{"level":"info"}', want: { message: '{"level":"info"}', fields: "" } },
+    { raw: '{"level":"warn","message":"slow","ms":812,"tags":["a"]}', want: { level: "warn", message: "slow", fields: 'ms=812 tags=["a"]' } },
+  ])("$raw", ({ raw, want }) => {
+    expect(automationLogLine(raw)).toEqual({ time: undefined, level: undefined, ...want });
+  });
+
+  it("reads the SDK's ts as a clock time", () => {
+    expect(automationLogLine('{"ts":"2026-11-11T16:29:04.112Z","message":"ok"}').time).toMatch(/^\d{2}:\d{2}:\d{2}$/);
   });
 });

@@ -1,16 +1,10 @@
-import { CheckCircle2, Circle, Skull, XCircle, type LucideIcon } from "lucide-react";
+import { Circle } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AutomationRunOutcome } from "@/enums/Automation";
 import { cn } from "@/lib/utils";
 import type { Automation } from "@/models/Automation";
+import { runOutcomes } from "@/models/AutomationRun";
 import { formatRelativeTime } from "@/utils/TimeUtility";
-
-const marks: Record<AutomationRunOutcome, { icon: LucideIcon; color: string; word: string }> = {
-  [AutomationRunOutcome.Success]: { icon: CheckCircle2, color: "text-success", word: "succeeded" },
-  [AutomationRunOutcome.Failure]: { icon: XCircle, color: "text-destructive", word: "failed" },
-  [AutomationRunOutcome.Crash]: { icon: Skull, color: "text-destructive", word: "crashed" },
-};
 
 interface AutomationStatusMarkProps {
   automation: Automation;
@@ -19,8 +13,8 @@ interface AutomationStatusMarkProps {
 // The last run's outcome in the row's leading slot: a hollow ring before the first run, muted while the automation is off.
 export const AutomationStatusMark = ({ automation }: AutomationStatusMarkProps) => {
   const run = automation.last_run;
-  const mark = run ? marks[run.outcome] : { icon: Circle, color: "text-muted-foreground/60", word: "" };
-  const label = run ? `Last run ${mark.word} ${formatRelativeTime(run.started_at)}` : "Never ran";
+  const mark = run ? runOutcomes[run.outcome] : { icon: Circle, color: "text-muted-foreground/60", past: "" };
+  const label = run ? `Last run ${mark.past} ${formatRelativeTime(run.started_at)}` : "Never ran";
   const Icon = mark.icon;
 
   return (

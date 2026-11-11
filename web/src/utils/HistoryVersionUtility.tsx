@@ -47,7 +47,7 @@ export interface KeptCounts {
   long: string;
 }
 
-export const KEEPS_ALL_NOTE = "Every version is kept.";
+export const KEEPS_ALL_NOTE = "Every merged version is kept.";
 
 // The rule says "plus named ones" only where a named version can exist: the item can name versions, or one is already kept.
 export const keepsNamed = (versions: HistoryVersionSummary[], retention: HistoryRetention): boolean => retention === "ten-plus-named" || versions.some((v) => v.name);

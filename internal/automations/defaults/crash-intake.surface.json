@@ -1,0 +1,35 @@
+{
+  "subscriptions": [
+    "chat.bot_message.posted"
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "channel": {
+        "type": "string",
+        "format": "channel",
+        "title": "Crash report channel"
+      },
+      "projectId": {
+        "type": "string",
+        "format": "project",
+        "title": "Project"
+      },
+      "bugType": {
+        "type": "string",
+        "title": "Bug ticket type",
+        "default": "bug"
+      },
+      "label": {
+        "type": "string",
+        "title": "High-priority label",
+        "default": "high-priority"
+      }
+    },
+    "required": [
+      "channel",
+      "projectId"
+    ]
+  },
+  "source": "import { defineAutomation } from \"@otal-labs/nexul-sdk/automation\";\n\ninterface IntakeResult {\n  outcome: string;\n  ticket_id?: string;\n  reason?: string;\n}\n\nconst automation = defineAutomation({\n  name: \"Crash intake\",\n  description:\n    \"Files each crash report a bot posts in a channel as one bug ticket, notes repeats on it, and files a high-priority bug when a fixed crash comes back.\",\n  config: {\n    channel: { type: \"channel\", label: \"Crash report channel\", required: true },\n    projectId: { type: \"project\", label: \"Project\", required: true },\n    bugType: { type: \"string\", label: \"Bug ticket type\", default: \"bug\" },\n    label: { type: \"string\", label: \"High-priority label\", default: \"high-priority\" },\n  },\n});\n\n// The rules live in the server's intake, which can post notes for a default automation that has no creator.\nautomation.on(\"chat.bot_message.posted\", async (payload, ctx) => {\n  const { channel, projectId, bugType, label } = ctx.config;\n  if (!channel || !projectId) {\n    ctx.log(\"skipped: no crash report channel or project configured\", { channel, projectId });\n    return false;\n  }\n  if (payload.conversation_id !== channel) return true;\n  const result = await ctx.api.request<IntakeResult>(\"POST\", \"/api/crash-reports\", {\n    project_id: projectId,\n    bug_type: bugType,\n    label,\n    content: payload.content,\n    embeds: payload.embeds ?? [],\n  });\n  ctx.log(`crash report ${result.outcome}`, { ticketId: result.ticket_id, reason: result.reason });\n  return true;\n});\n\nexport default automation;\n"
+}

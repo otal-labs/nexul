@@ -36,6 +36,20 @@ func TestAutomationVersionsRepo_InsertActive(t *testing.T) {
 	assert.Equal(t, automations.VersionActive, got.Status)
 }
 
+func TestAutomationVersionsRepo_FillSource_OnlyWhereNoneWasKept(t *testing.T) {
+	s := newTestStore(t)
+	seedTestAutomation(t, s, "a1")
+	v := &automations.Version{ID: "v1", AutomationID: "a1", Code: "bundle", PusherID: "seed", Status: automations.VersionActive, CreatedAt: time.Now().UTC()}
+	require.NoError(t, s.AutomationVersions.InsertActive(context.Background(), v))
+
+	require.NoError(t, s.AutomationVersions.FillSource(context.Background(), "v1", "first"))
+	require.NoError(t, s.AutomationVersions.FillSource(context.Background(), "v1", "second"))
+
+	got, err := s.AutomationVersions.Active(context.Background(), "a1")
+	require.NoError(t, err)
+	assert.Equal(t, "first", got.Source)
+}
+
 func TestAutomationVersionsRepo_ReplacePending(t *testing.T) {
 	s := newTestStore(t)
 	seedTestAutomation(t, s, "a1")

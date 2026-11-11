@@ -1,7 +1,10 @@
 package automations
 
 import (
+	"bytes"
+	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -21,6 +24,13 @@ type DefaultDefinition struct {
 	Code string
 	// Scopes are the least-privilege token scopes this default needs.
 	Scopes []string
+	// Message names what this release of the code changes; it titles the version an upgrade lands.
+	Message string
+	// Source is the file the bundle was built from, so the Versions tab shows what was written, not the inlined SDK.
+	Source string
+	// ConfigSchema and Subscriptions are what the code announces on dial-in, seeded so a default that is off can still be configured.
+	ConfigSchema  json.RawMessage
+	Subscriptions []string
 	// Enabled sets whether a brand-new install starts on or off; ignored once the automation already exists.
 	Enabled bool
 }
@@ -90,14 +100,18 @@ func (s *Seeder) SeedWorkspace(ctx context.Context, workspaceID string) error {
 			}
 		}
 		// Scopes are code-owned: a default's token must carry whatever the shipped code needs after an upgrade.
-		if !slices.Equal(a.Scopes, scopes) {
-			a.Scopes = scopes
+		changed := !slices.Equal(a.Scopes, scopes)
+		a.Scopes = scopes
+		if seedAnnounced(a, def) {
+			changed = true
+		}
+		if changed {
 			a.UpdatedAt = s.now().UTC()
 			if err := s.automations.Update(ctx, a); err != nil {
-				return fmt.Errorf("update default automation %s scopes: %w", id, err)
+				return fmt.Errorf("update default automation %s: %w", id, err)
 			}
 		}
-		v, err := s.versions.SeedVersion(ctx, a.ID, def.Code, "seed: "+def.Name)
+		v, err := s.versions.SeedVersion(ctx, a.ID, def.Code, def.Source, cmp.Or(def.Message, "Shipped with Nexul"))
 		if err != nil {
 			return fmt.Errorf("seed version for default automation %s: %w", id, err)
 		}
@@ -106,6 +120,25 @@ func (s *Seeder) SeedWorkspace(ctx context.Context, workspaceID string) error {
 		}
 	}
 	return nil
+}
+
+// seedAnnounced fills what a dial-in has not announced yet and never overwrites what it has.
+func seedAnnounced(a *Automation, def DefaultDefinition) bool {
+	changed := false
+	if len(a.Subscriptions) == 0 && len(def.Subscriptions) > 0 {
+		a.Subscriptions = def.Subscriptions
+		changed = true
+	}
+	if isEmptySchema(a.ConfigSchema) && len(def.ConfigSchema) > 0 {
+		a.ConfigSchema = def.ConfigSchema
+		changed = true
+	}
+	return changed
+}
+
+func isEmptySchema(raw json.RawMessage) bool {
+	trimmed := bytes.TrimSpace(raw)
+	return len(trimmed) == 0 || string(trimmed) == "{}" || string(trimmed) == "null"
 }
 
 // defaultID keeps the home workspace's original ids, so its version history, cursors, and runs carry over.
@@ -128,17 +161,19 @@ func (s *Seeder) create(ctx context.Context, def DefaultDefinition, id, workspac
 	}
 	now := s.now().UTC()
 	a := &Automation{
-		ID:          id,
-		WorkspaceID: workspaceID,
-		Name:        def.Name,
-		Description: def.Description,
-		Kind:        KindDefault,
-		Enabled:     enabled,
-		Scopes:      scopes,
-		TokenHash:   hash,
-		TokenPrefix: prefix,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:            id,
+		WorkspaceID:   workspaceID,
+		Name:          def.Name,
+		Description:   def.Description,
+		Kind:          KindDefault,
+		Enabled:       enabled,
+		Scopes:        scopes,
+		Subscriptions: def.Subscriptions,
+		ConfigSchema:  def.ConfigSchema,
+		TokenHash:     hash,
+		TokenPrefix:   prefix,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 	if err := a.Validate(); err != nil {
 		return nil, fmt.Errorf("default automation %s: %w", id, err)

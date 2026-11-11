@@ -89,9 +89,9 @@ describe("HistoryVersionList", () => {
     expect(screen.getByText("Only the last 10 versions are kept, plus named ones.")).toBeInTheDocument();
     third.unmount();
     render_({ retention: "all" });
-    expect(screen.getByText("Every version is kept.")).toBeInTheDocument();
+    expect(screen.getByText("Every merged version is kept.")).toBeInTheDocument();
     expect(screen.queryByText(/Only the last 10/)).not.toBeInTheDocument();
-    expect(screen.getByTitle("Every version is kept.")).toHaveTextContent("2 versions");
+    expect(screen.getByTitle("Every merged version is kept.")).toHaveTextContent("2 versions");
   });
 
   describe("below 1024px", () => {

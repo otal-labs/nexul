@@ -14,10 +14,9 @@ interface AutomationConfigFormProps {
   automation: Automation;
 }
 
-// Renders a real form from the code-declared config schema — never a
-// generic JSON editor. Values round-trip through PATCH /config.
+// A form built from the schema the code declares, never a JSON editor.
 export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) => {
-  const { fields } = parseConfigSchema(automation.config_schema);
+  const { fields, announced } = parseConfigSchema(automation.config_schema);
   const values = parseConfigValues(automation.config_values);
   const updateConfig = useUpdateAutomationConfig(automation.id);
 
@@ -42,7 +41,6 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
     <SettingsCard
       id="configuration"
       title="Configuration"
-      description="Declared by the automation's code. The next run uses the saved values."
       footer={
         fields.length > 0 && (
           <GatedSaveBar
@@ -58,7 +56,7 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
         )
       }
     >
-      {fields.length === 0 && <EmptyRow>This automation has no settings.</EmptyRow>}
+      {fields.length === 0 && <EmptyRow flush>{announced ? "Its code declares none." : "Announced when its code first connects."}</EmptyRow>}
       {fields.length > 0 && (
         <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="max-w-[36rem] space-y-4">
           {fields.map((field) => (

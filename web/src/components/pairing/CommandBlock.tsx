@@ -1,5 +1,5 @@
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 interface CommandBlockProps {
   // The shell the lines run in, shown as the window title.
@@ -8,7 +8,7 @@ interface CommandBlockProps {
   prompt?: string;
 }
 
-// A static terminal window; lines wrap inside it so a long token never widens the page.
+// A static terminal window; a line wraps between its arguments, and inside one only when it is wider than the window.
 export const CommandBlock = ({ shell, lines, prompt = "$" }: CommandBlockProps) => {
   const [copied, setCopied] = useState(false);
 
@@ -40,12 +40,19 @@ export const CommandBlock = ({ shell, lines, prompt = "$" }: CommandBlockProps) 
         </button>
       </div>
       <pre className="terminal-window__body !overflow-x-visible text-xs leading-relaxed">
-        {lines.map((line) => (
-          <code key={line} className="flex gap-2">
+        {lines.map((line, index) => (
+          <code key={index} className="flex gap-2">
             <span className="terminal-window__prompt shrink-0" aria-hidden>
               {prompt}
             </span>
-            <span className="min-w-0 break-all whitespace-pre-wrap">{line}</span>
+            <span className="min-w-0 whitespace-pre-wrap">
+              {(line.match(/(?:"[^"]*"|\S)+/g) ?? []).map((arg, i) => (
+                <Fragment key={i}>
+                  {i > 0 && " "}
+                  <span className="inline-block max-w-full wrap-anywhere">{arg}</span>
+                </Fragment>
+              ))}
+            </span>
           </code>
         ))}
       </pre>

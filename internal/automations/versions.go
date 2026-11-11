@@ -44,6 +44,8 @@ type VersionsRepo interface {
 	InsertActive(ctx context.Context, v *Version) error
 	// ReplacePending stores v as the one pending version, discarding whatever pending version preceded it.
 	ReplacePending(ctx context.Context, v *Version) error
+	// FillSource sets a version's source when it kept none, so shipped code that is unchanged still reads as its file.
+	FillSource(ctx context.Context, versionID, source string) error
 	// Activate repoints automationID's active version to versionID, moving the prior active version to inactive.
 	Activate(ctx context.Context, automationID, versionID string) (*Version, error)
 	Get(ctx context.Context, automationID, versionID string) (*Version, error)
@@ -156,7 +158,7 @@ func (s *VersionsService) Diff(ctx context.Context, actorID, automationID string
 }
 
 // SeedVersion lands shipped code at startup: the first version activates, later ones land pending so an upgrade never silently changes a default's behaviour; ungated.
-func (s *VersionsService) SeedVersion(ctx context.Context, automationID, code, message string) (*Version, error) {
+func (s *VersionsService) SeedVersion(ctx context.Context, automationID, code, source, message string) (*Version, error) {
 	active, err := s.repo.Active(ctx, automationID)
 	if err != nil {
 		if !errors.Is(err, apperrs.ErrNotFound) {
@@ -166,6 +168,7 @@ func (s *VersionsService) SeedVersion(ctx context.Context, automationID, code, m
 			ID:           ids.New(),
 			AutomationID: automationID,
 			Code:         code,
+			Source:       source,
 			PusherID:     seedPusherID,
 			Message:      message,
 			Status:       VersionActive,
@@ -177,12 +180,27 @@ func (s *VersionsService) SeedVersion(ctx context.Context, automationID, code, m
 		return v, nil
 	}
 	if active.Code == code {
+		if active.Source != "" || source == "" {
+			return nil, nil
+		}
+		if err := s.repo.FillSource(ctx, active.ID, source); err != nil {
+			return nil, fmt.Errorf("fill source of automation %s's active version: %w", automationID, err)
+		}
+		return nil, nil
+	}
+	// A restart would otherwise replace the same upgrade and hand it a new number each time.
+	pending, err := s.repo.Pending(ctx, automationID)
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("get pending version for automation %s: %w", automationID, err)
+	}
+	if err == nil && pending.Code == code && pending.Source == source && pending.Message == message {
 		return nil, nil
 	}
 	v := &Version{
 		ID:           ids.New(),
 		AutomationID: automationID,
 		Code:         code,
+		Source:       source,
 		PusherID:     seedPusherID,
 		Message:      message,
 		Status:       VersionPending,

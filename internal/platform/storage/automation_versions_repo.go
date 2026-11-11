@@ -56,6 +56,12 @@ func (r *AutomationVersionsRepo) ReplacePending(ctx context.Context, v *automati
 	})
 }
 
+func (r *AutomationVersionsRepo) FillSource(ctx context.Context, versionID, source string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		return r.q.WithTx(tx).FillAutomationVersionSource(ctx, sqlcgen.FillAutomationVersionSourceParams{Source: source, ID: versionID})
+	})
+}
+
 func (r *AutomationVersionsRepo) Activate(ctx context.Context, automationID, versionID string) (*automations.Version, error) {
 	var result *automations.Version
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

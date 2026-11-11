@@ -1,13 +1,13 @@
-import { KeyRound, Skull, XCircle } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { Link } from "react-router";
 
 import { AutomationAttentionChip } from "@/components/automation/AutomationAttentionChip";
 import { NoFillBadge } from "@/components/ui/badge";
-import { AutomationRunOutcome } from "@/enums/Automation";
 import { useFetchAutomationHosts, useOfflineAutomationHostIds } from "@/hooks/AutomationHostHooks";
 import { useTabPath } from "@/hooks/useTabPath";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { AutomationAttention, automationAttentions, automationLastRunFailed, automationPoolUnresolvable, type Automation } from "@/models/Automation";
+import { runOutcomes } from "@/models/AutomationRun";
 
 const chipLinkClass = "group inline-flex rounded-sm";
 // Ink and a dotted underline set a problem apart from the plain facts before it, and say it can be followed.
@@ -29,14 +29,14 @@ export const AutomationProblemChips = ({ automation }: AutomationProblemChipsPro
     [AutomationAttention.TokenRevoked]: tabPath("settings"),
     [AutomationAttention.PendingVersion]: tabPath("versions"),
   };
-  const crashed = automation.last_run?.outcome === AutomationRunOutcome.Crash;
+  const lastRun = automation.last_run && runOutcomes[automation.last_run.outcome];
 
   return (
     <>
-      {automation.enabled && automationLastRunFailed(automation) && (
+      {automation.enabled && lastRun && automationLastRunFailed(automation) && (
         <Link to={tabPath()} className={chipLinkClass}>
-          <NoFillBadge icon={crashed ? Skull : XCircle} color="text-destructive" className={`whitespace-nowrap ${chipClass}`}>
-            {crashed ? "Last run crashed" : "Last run failed"}
+          <NoFillBadge icon={lastRun.icon} color="text-destructive" className={`whitespace-nowrap ${chipClass}`}>
+            Last run {lastRun.past}
           </NoFillBadge>
         </Link>
       )}

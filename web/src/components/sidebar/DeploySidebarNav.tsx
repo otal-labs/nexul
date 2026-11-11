@@ -1,13 +1,11 @@
 import { CalendarDays, Cpu, Network, ShieldCheck, SlidersHorizontal, Sparkles, Workflow } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { microheaderClass } from "@/components/Microheader";
 import { type SidebarNavEntry } from "@/components/SidebarNav";
 import { SidebarFoldHeader } from "@/components/sidebar/SidebarFoldHeader";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen, useShowRunnersLink } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
@@ -15,7 +13,7 @@ const deployNav: SidebarNavEntry[] = [
   { to: "/runners", label: "Runners", icon: Cpu },
   { to: "/topology", label: "Topology", icon: Network, area: "topology" },
   { to: "/plays", label: "Plays", icon: Sparkles, area: "plays" },
-  { to: "/automations", label: "Automations", icon: Workflow, area: "automations", wip: true },
+  { to: "/automations", label: "Automations", icon: Workflow, area: "automations" },
   { to: "/access", label: "Access", icon: ShieldCheck, area: "access" },
   { to: "/configuration", label: "Configuration", icon: SlidersHorizontal, area: "configuration" },
 ];
@@ -50,13 +48,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
               icon={entry.icon}
               collapsed={collapsed}
               end={entry.end ?? false}
-            >
-              {entry.wip && (
-                <span className={cn(microheaderClass, "shrink-0")} title="Work in progress">
-                  WIP
-                </span>
-              )}
-            </SidebarNavLink>
+            />
           ))}
         </div>
       )}
