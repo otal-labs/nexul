@@ -58,6 +58,8 @@ Saving doesn't redeploy: the running containers keep their old values, and the n
 - A change to a stack, its environment included, reaches live updates, webhooks and automations as the names only.
 - Agents list a stack's variables by name with `stack_get` and change them with `stack_update`, which sets and unsets single variables so values they never saw are kept. A value never leaves the server over MCP, whatever the caller may do.
 
+A value can also be a 1Password reference, read by the runner at deploy: see [External secrets](/docs/guide/external-secrets/).
+
 ## Retrying a failed deploy
 
 A failed deploy's page has **Retry**. It starts a new deploy of the same commit the failed one built, with the stack's settings as they are now. Change what made it fail, such as a missing environment variable on the stack, click **Retry**, and the build runs again on the same code with the new value.

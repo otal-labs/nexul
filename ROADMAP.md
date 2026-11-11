@@ -398,6 +398,16 @@ security key instead of a round trip to GitHub, Google or Discord. Passkeys
 sit beside your linked accounts, never in place of them, need the instance on
 https, and each signs in only on the domain it was made for. ADR 0177.
 
+### External secrets
+
+Paste a 1Password reference such as `op://vault/item/field` instead of a
+secret into a stack's environment, a branch rule, the automation secrets pool,
+a connector or a sign-in provider. The runner, automations host or server that
+uses it reads it with its own service account, so a copy of Nexul's database
+holds no secret, and a changed value shows on the stack with Redeploy beside
+it. Vault and the cloud managers come later behind the same shape. ADRs 0181
+to 0183.
+
 ---
 
 ## Now — improving what's built

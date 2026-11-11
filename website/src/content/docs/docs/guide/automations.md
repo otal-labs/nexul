@@ -114,7 +114,7 @@ Every push is kept as a version with its author, time, and message, and lands pe
 
 ## Secrets
 
-Set secrets on the **Secrets** tab of the Automations page. Every automation in the workspace reads them as `ctx.secrets.NAME`; no other workspace sees them. Once saved, a value can be replaced (**Replace** on its row) or deleted but never read back.
+Set secrets on the **Secrets** tab of the Automations page. Every automation in the workspace reads them as `ctx.secrets.NAME`; no other workspace sees them. Once saved, a value can be replaced (**Replace** on its row) or deleted but never read back. A value can be a 1Password reference instead of a secret: see [External secrets](/docs/guide/external-secrets/).
 
 ## Where automations run
 

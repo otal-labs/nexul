@@ -75,6 +75,8 @@ An account renamed on GitHub keeps its workspaces. If its owner uninstalls the A
 
 Adding or raising a permission on the App does not reach existing installations. GitHub asks each installation's owner to accept it: **Settings → Applications → Installed GitHub Apps → Configure → Review request**. Until they accept, anything that needs the new permission keeps failing.
 
+A connector's secret fields, like the client secret here, can be a 1Password reference instead: see [External secrets](/docs/guide/external-secrets/).
+
 ## Which token does what
 
 - Your GitHub sign-in token reads your profile and lists your repositories. Nexul keeps it encrypted and refreshes it every eight hours while you use it; if GitHub refuses a refresh, you are asked to reconnect. **Disconnect** under **Settings → Profile → GitHub** forgets it.
