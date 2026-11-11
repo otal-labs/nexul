@@ -22,8 +22,8 @@ Decided 2026-11-12.
 - **When:** every deploy, with no cache. All of a deploy's references go in one `ResolveAll`, which
   costs one read and about 0.7 s (ticket 07). A value rotated in 1Password takes effect on the next
   deploy, retry or rollback.
-- **Runner client:** one 1Password client per runner process, created on the first deploy that needs
-  it and kept, so its start-up (about 2.6 s of CPU) is paid once.
+- **Runner client:** one 1Password client per runner process, kept for its life, so its start-up
+  (about 2.6 s of CPU) is paid once. Ticket 03 moved its creation to when the runner starts.
 - **Order:** the runner resolves first, before pull, build or `compose up`.
 - **Failure:** any reference that fails (missing item or field, a vault the token can't reach,
   1Password down, or no token on the runner) fails the deploy and leaves the running containers
