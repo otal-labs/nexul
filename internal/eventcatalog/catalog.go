@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/botwebhook"
@@ -57,6 +58,7 @@ func declared() []eventbus.Topic {
 		tickets.Topics(),
 		deploy.Topics(),
 		runner.Topics(),
+		license.Topics(),
 		secretref.Topics(),
 		codereview.Topics(),
 		dns.Topics(),

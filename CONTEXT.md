@@ -117,9 +117,10 @@ _Avoid_: Premium, pro, paid tier
 
 **License key**:
 The signed file that unlocks enterprise features on one instance. It names
-its licensee, the features it unlocks, and when it expires, and the instance
-checks it without contacting anyone. When it expires the features stop and
-the data they made stays.
+its licensee, the instance's public URL, the features it unlocks, and when it
+expires, and the instance checks it without contacting anyone. A key for
+another URL unlocks nothing. Whoever can change it is told 14 days before it
+expires; when it expires the features stop and the data they made stays.
 _Avoid_: Licence, activation code, serial
 
 **Runner**:

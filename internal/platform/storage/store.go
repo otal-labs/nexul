@@ -39,6 +39,7 @@ type Store struct {
 	Users                 *UsersRepo
 	Allowlist             *AllowlistRepo
 	Settings              *SettingsRepo
+	License               *LicenseRepo
 	GitHubManifests       *GitHubManifestsRepo
 	SetupCodes            *SetupCodesRepo
 	ConnectCodes          *ConnectCodesRepo
@@ -121,6 +122,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Users:                 &UsersRepo{db: db, w: w, q: q},
 		Allowlist:             &AllowlistRepo{db: db, w: w, q: q},
 		Settings:              &SettingsRepo{db: db, w: w, q: q, encKey: encKey},
+		License:               &LicenseRepo{db: db, w: w, q: q},
 		GitHubManifests:       &GitHubManifestsRepo{db: db, w: w, q: q, encKey: encKey},
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
 		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},

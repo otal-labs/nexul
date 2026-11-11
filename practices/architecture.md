@@ -72,7 +72,7 @@ service's unexported state, and never splits by layer.
 
 Which domains this covers, as the tree stands:
 
-- Full five-file shape: `access`, `botwebhook`, `chat`, `codereview`, `deploy`, `dns`,
+- Full five-file shape: `access`, `botwebhook`, `chat`, `codereview`, `deploy`, `dns`, `ee/license`,
   `docs`, `memories`, `pairing`, `plays`, `repository`, `roles`, `runner`,
   `templates`, `tenancy`, `tickets`, `topology`, `workspace`.
 - No `events.go` yet: `attachments`, `automations`, `connectors`,

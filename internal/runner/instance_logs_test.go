@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -151,5 +152,23 @@ func TestInstanceGet_Logs(t *testing.T) {
 	t.Run("an unknown filter is refused", func(t *testing.T) {
 		_, err := callTool(asAdmin(), t, logsService(t, reader), "instance_get", `{"logs":{"query":"select"}}`)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+}
+
+func TestInstanceGetTool_License(t *testing.T) {
+	reader := &fakeLogReader{}
+	t.Run("the license rides beside the upgrade facts", func(t *testing.T) {
+		s := logsService(t, reader).WithLicense(func(context.Context) (any, error) { return map[string]string{"state": "active"}, nil })
+		got, err := callTool(asAdmin(), t, s, "instance_get", `{}`)
+		require.NoError(t, err)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err)
+		assert.Contains(t, string(raw), `"license":{"state":"active"}`)
+	})
+	t.Run("a failed license read fails the call", func(t *testing.T) {
+		boom := errors.New("boom")
+		s := logsService(t, reader).WithLicense(func(context.Context) (any, error) { return nil, boom })
+		_, err := callTool(asAdmin(), t, s, "instance_get", `{}`)
+		require.ErrorIs(t, err, boom)
 	})
 }

@@ -64,7 +64,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		TokenKey:   crypto.DeriveKey("nexul computer enrollment token key:" + cfg.AuthSecret),
 	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithGate(svc.accessSvc).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
-		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc})
+		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc}).
+		WithLicense(func(ctx context.Context) (any, error) { return svc.licenseSvc.Status(ctx) })
 	if cfg.LogsURL != nil {
 		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
 	}

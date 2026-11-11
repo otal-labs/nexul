@@ -177,7 +177,7 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		s := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 		got, err := callTool(asAdmin(), t, s, "instance_get", `{}`)
 		require.NoError(t, err)
-		status := got.(UpgradeStatus)
+		status := got.(instanceDetail).UpgradeStatus
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "dev build", status.Reason)
 	})
@@ -187,7 +187,7 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		s := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 		got, err := callTool(asAdmin(), t, s, "instance_get", `{"refresh":true}`)
 		require.NoError(t, err)
-		assert.Equal(t, "v0.2.1", got.(UpgradeStatus).Latest.Version)
+		assert.Equal(t, "v0.2.1", got.(instanceDetail).Latest.Version)
 	})
 	t.Run("instance_upgrade records the mcp source", func(t *testing.T) {
 		withVersion(t, "v0.2.0")

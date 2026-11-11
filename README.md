@@ -123,7 +123,7 @@ Nexul is open core: one repository, two licenses.
   network, publish your changes.
 - Everything inside `ee/` is under a commercial license (`ee/LICENSE`). You
   can read and patch it, but running it in production needs a subscription.
-  Today the directory holds only the license.
+  It holds the license key check, and `web/src/ee/` its settings page.
 
 Outside contributions need the [Contributor License Agreement](CLA.md) so the
 project can keep licensing both parts. Tick the box in the pull request
@@ -137,7 +137,7 @@ What the subscription will include.
 |---|:---:|---|
 | Cloud hosting | ⬜ | A managed control plane we run. Your runners and servers stay yours. |
 | Priority support | ⬜ | A response-time SLA and a direct channel. |
-| License key | ⬜ | One signed key per instance unlocks every enterprise feature, checked offline. |
+| License key | ✅ | One signed key per instance unlocks every enterprise feature, checked offline. |
 | Single sign-on | ⬜ | Sign in through your company's identity provider (OIDC), with an SSO-only switch. |
 | Branding | ⬜ | Your name, logo, accent colour and an imported theme across the instance. |
 | Many instances in one place | ⬜ | Planned: one console for a partner to see and upgrade every instance they host. |

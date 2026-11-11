@@ -4546,6 +4546,47 @@
       "login"
     ]
   },
+  "instance.license_changed": {
+    "type": "object",
+    "properties": {
+      "licensee": {
+        "type": "string",
+        "description": "Who the new key is for; empty when the key was removed."
+      },
+      "features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The enterprise features the new key unlocks; empty when the key was removed."
+      },
+      "expires_at": {
+        "type": "string",
+        "description": "When the new key stops unlocking its features.",
+        "format": "date-time"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "True when the key was removed and the instance holds none."
+      },
+      "changed_by": {
+        "type": "string",
+        "description": "The account that pasted or removed the key."
+      },
+      "changed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "licensee",
+      "features",
+      "removed",
+      "changed_by",
+      "changed_at"
+    ]
+  },
   "instance.upgrade_changed": {
     "type": "object",
     "properties": {

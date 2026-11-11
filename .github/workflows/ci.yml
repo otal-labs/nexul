@@ -32,6 +32,7 @@ jobs:
               - 'runner/**'
               - 'internal/**'
               - 'cmd/**'
+              - 'ee/**'
               - '*.go'
               - 'go.mod'
               - 'go.sum'

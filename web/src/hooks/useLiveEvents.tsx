@@ -17,6 +17,7 @@ import { dnsFollower } from "@/hooks/DnsHooks";
 import { docFolderFollower } from "@/hooks/DocFolderHooks";
 import { docFollower } from "@/hooks/DocHooks";
 import { instanceUpgradeFollower } from "@/hooks/InstanceUpgradeHooks";
+import { licenseFollower } from "@/ee/hooks/LicenseHooks";
 import { interviewSourceFollower } from "@/hooks/InterviewSourceHooks";
 import { machineFollower } from "@/hooks/MachineHooks";
 import { memoryFollower } from "@/hooks/MemoryHooks";
@@ -89,6 +90,7 @@ const followers: LiveFollower[] = [
   docFolderFollower,
   docFollower,
   instanceUpgradeFollower,
+  licenseFollower,
   interviewSourceFollower,
   machineFollower,
   memoryFollower,
