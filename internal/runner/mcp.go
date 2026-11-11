@@ -234,7 +234,8 @@ func withoutLabels(g GroupedDiscovery) GroupedDiscovery {
 func instanceGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_get", "Get instance",
 		"Returns the instance's running version and release channel, the channel's newest release, whether an upgrade "+
-			"can start now and if not why, and the latest upgrade record. Poll it after instance_upgrade; refresh asks "+
+			"can start now and if not why, the latest upgrade record, and the enterprise license (licensee, features, expiry, "+
+			"state; instance_update changes it). Poll it after instance_upgrade; refresh asks "+
 			"GitHub for a release from the last few minutes. Pass logs to also read the instance's own logs (server, "+
 			"browser, runners, automations hosts), newest first, 100 lines by default, at most 500; pass the result's "+
 			"until back with next_offset for the next page. It needs logs:read besides instance:read and never includes a "+
@@ -245,18 +246,29 @@ func instanceGetTool(s *Service) mcptool.Tool {
 				s.RefreshReleases()
 			}
 			status, err := s.UpgradeStatus(ctx)
-			if err != nil || in.Logs == nil {
-				return status, err
+			if err != nil {
+				return nil, err
+			}
+			detail := instanceDetail{UpgradeStatus: status}
+			if s.license != nil {
+				if detail.License, err = s.license(ctx); err != nil {
+					return nil, err
+				}
+			}
+			if in.Logs == nil {
+				return detail, nil
 			}
 			page, err := s.InstanceLogs(ctx, *in.Logs)
-			return instanceDetail{UpgradeStatus: status, Logs: &page}, err
+			detail.Logs = &page
+			return detail, err
 		})
 }
 
-// instanceDetail is instance_get's answer: the upgrade facts plus the logs read when asked for.
+// instanceDetail is instance_get's answer: the upgrade facts, the enterprise license, and the logs read when asked for.
 type instanceDetail struct {
 	UpgradeStatus
-	Logs *logstore.Page `json:"logs,omitempty"`
+	License any            `json:"license,omitempty"`
+	Logs    *logstore.Page `json:"logs,omitempty"`
 }
 
 func instanceUpgradeTool(s *Service) mcptool.Tool {

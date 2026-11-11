@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -114,6 +115,7 @@ type coreServices struct {
 	tenancySvc   *tenancy.Service
 	workspaceSvc *workspace.Service
 	templatesSvc *templates.Service
+	licenseSvc   *license.Service
 
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
@@ -473,6 +475,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		tenancySvc:   tenancySvc,
 		workspaceSvc: workspaceSvc,
 		templatesSvc: templatesSvc,
+		licenseSvc:   license.NewService(store.License, dnsSettingsAdapter{store.Settings}.GetInstanceURL).WithGate(accessSvc),
 
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,

@@ -34,6 +34,10 @@ tickets have merged and nothing is left to decide for them.
 
 ## Decisions so far
 
+- NEXUL-120 (license key): `license.Service.Enabled(ctx, feature)` in `ee/license` is the one check 121 and 122
+  call. Instance settings they add are fields on the `instance_update` MCP tool and read back on `instance_get`
+  (ADR 0185); the web settings page lives in `web/src/ee/`.
+
 ## Not yet specified
 
 - Selling keys through a shop that issues the key after payment, once there is a second buyer.

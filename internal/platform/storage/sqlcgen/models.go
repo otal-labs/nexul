@@ -680,6 +680,13 @@ type LabelColor struct {
 	UpdatedAt int64
 }
 
+type LicenseKey struct {
+	ID    int64
+	Key   string
+	SetBy string
+	SetAt int64
+}
+
 type Machine struct {
 	ID               string
 	Name             string

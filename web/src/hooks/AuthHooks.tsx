@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { getLicenseKey } from "@/ee/hooks/LicenseHooks";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useViewAsStore } from "@/stores/viewAsStore";
@@ -84,6 +85,8 @@ export const useUpdateSettings = () => {
     onSuccess: async () => {
       // No toast: the card's Save answers, and its row already says new connection tokens use the address.
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
+      // A license key names the address, so a new one can stop the key fitting.
+      await client.invalidateQueries({ queryKey: [getLicenseKey] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

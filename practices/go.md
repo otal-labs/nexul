@@ -66,6 +66,7 @@ internal/
   topology/              # topology model and canvas JSON schema
   voice/                 # voice channel domain
   workspace/             # projects, repositories, ticket moves, notifications inbox
+ee/                      # enterprise features under ee/LICENSE: license/ (the key check), cmd/license-sign
 web/                     # React frontend (see practices/react-guide.md)
 native/                  # phone app (see practices/native.md)
 client-core/             # modules the web and phone apps share (see practices/typescript.md)

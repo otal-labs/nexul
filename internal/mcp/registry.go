@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -55,6 +56,7 @@ type RegistryOptions struct {
 	GitGate       gitprovider.Gate
 	Repository    *repository.Service
 	Runner        *runner.Service
+	License       *license.Service
 	// Hosts adapts each host kind (runner, automations host, machine) to the shared host_create and host_delete tools.
 	Hosts       map[string]composite.HostKind
 	DNS         *dns.Service
@@ -119,6 +121,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		topology.MCPTools(opts.Topology),
 		deploy.MCPTools(opts.Deploy),
 		runner.MCPTools(opts.Runner),
+		license.MCPTools(opts.License),
 		composite.HostTools(opts.Hosts),
 		gitprovider.MCPTools(opts.Git, opts.ChangeContext, opts.GitGate),
 		repository.MCPTools(opts.Repository),

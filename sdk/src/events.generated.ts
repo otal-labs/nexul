@@ -92,6 +92,7 @@ export interface EventPayloads {
   "github_link.changed": { "user_id": string; "state": "connected" | "reconnect" | "none"; };
   "identity.linked": { "user_id": string; "provider": string; "login": string; };
   "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
+  "instance.license_changed": { "licensee": string; "features": string[]; "expires_at"?: string; "removed": boolean; "changed_by": string; "changed_at": string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error": string; "requested_by": string; "created_at": string; "updated_at": string; };
   "instance.upgrade_requested": { "id": string; "version": string; };
   "instance_template.updated": { "kind": "interview" | "mention_chip" | "play_instructions" | "ticket_body" | "agent_prompt" | "role"; "key": string; "author_id": string; "updated_at": string; "reset": boolean; "deleted"?: boolean; };
@@ -278,6 +279,7 @@ export const TOPICS: Topic[] = [
   "github_link.changed",
   "identity.linked",
   "identity.unlinked",
+  "instance.license_changed",
   "instance.upgrade_changed",
   "instance.upgrade_requested",
   "instance_template.updated",
@@ -462,6 +464,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "github_link.changed": {"user_id":"fixture-user_id","state":"connected"},
   "identity.linked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
+  "instance.license_changed": {"licensee":"fixture-licensee","features":["fixture-features"],"expires_at":"2026-01-01T00:00:00Z","removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_requested": {"id":"fixture-id","version":"fixture-version"},
   "instance_template.updated": {"kind":"interview","key":"fixture-key","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z","reset":false,"deleted":false},

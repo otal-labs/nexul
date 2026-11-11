@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/attachments"
@@ -159,6 +160,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.HandleFunc("GET /api/instance/upgrade", instanceUpgradeGetHandler(runnerSvc))
 	apiMux.HandleFunc("POST /api/instance/upgrade", instanceUpgradePostHandler(runnerSvc))
 	apiMux.HandleFunc("GET /api/instance/logs", instanceLogsHandler(runnerSvc))
+	licenseRoutes := license.NewHandler(svc.licenseSvc).Routes()
+	apiMux.Handle("GET /api/instance/license", licenseRoutes)
+	apiMux.Handle("PUT /api/instance/license", licenseRoutes)
+	apiMux.Handle("DELETE /api/instance/license", licenseRoutes)
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -179,6 +184,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		GitGate:       repoGate,
 		Repository:    svc.repositorySvc,
 		Runner:        runnerSvc,
+		License:       svc.licenseSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -309,6 +315,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("events", "Published event-schema catalog")
 	spec.SetTagDescription("audit", "Audit log")
 	spec.SetTagDescription("logs", "The instance's logs: the browser log relay into the server's sinks, and reading them back")
+	spec.SetTagDescription("license", "The instance's enterprise license key, checked offline against the key built into the binary")
 	spec.SetTagDescription("version", "Build version, channel, and update check")
 	spec.SetTagDescription("templates", "Instance templates, and cloning or resetting a template at any layer")
 
@@ -319,6 +326,9 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/instance/upgrade", "Needs instance:read: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
 	spec.Register("POST", "/api/instance/upgrade", "Needs instance:write: upgrade the instance to the channel's newest release", "version")
 	spec.Register("GET", "/api/instance/logs", "Needs logs:read: the instance's own logs, newest first, filtered by ?source, ?level, ?since, ?until, ?trace_id, ?name and ?text; ?limit (1 to 500, default 100) and ?offset page them, and the until a page returns pins the next one", "logs")
+	spec.Register("GET", "/api/instance/license", "Needs instance:read: the enterprise license key's state, who it is for, what it unlocks and when it expires", "license")
+	spec.Register("PUT", "/api/instance/license", "Needs instance:write: paste a license key; one for another instance address, with a bad signature or already expired is refused with the reason", "license")
+	spec.Register("DELETE", "/api/instance/license", "Needs instance:write: remove the license key; the enterprise features stop and their data stays", "license")
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")
 	spec.Register("DELETE", "/api/auth/tokens/{id}", "Revoke a personal access token", "auth")

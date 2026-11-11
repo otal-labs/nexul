@@ -5,6 +5,7 @@ import { CommandPalette } from "@/components/command/CommandPalette";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
+import { LicenseNotice } from "@/ee/components/LicenseNotice";
 import { ViewAsBanner } from "@/components/ViewAsBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { VoiceCallAudio } from "@/components/voice/VoiceCallAudio";
@@ -59,6 +60,7 @@ export const Layout = () => {
           <div className="flex min-w-0 flex-1 flex-col">
             <ViewAsBanner />
             <ServerUpdatedBanner />
+            <LicenseNotice />
             <PhoneBanner />
             <main className="min-h-0 flex-1 p-2">
               <div ref={frame} className="app-frame">

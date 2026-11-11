@@ -9,7 +9,7 @@ const sortedUnique = (values: string[]) => [...new Set(values)].sort();
 
 const productionToolNames = async (): Promise<string[]> => {
   const names: string[] = [];
-  for await (const path of new Bun.Glob('internal/**/*.go').scan({ cwd: repoRoot, absolute: true })) {
+  for await (const path of new Bun.Glob('{internal,ee}/**/*.go').scan({ cwd: repoRoot, absolute: true })) {
     if (path.endsWith('_test.go')) continue;
     for (const match of readFileSync(path, 'utf8').matchAll(/mcptool\.New\("([a-z][a-z_]*)"/g)) {
       if (match[1]) names.push(match[1]);
