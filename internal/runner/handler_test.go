@@ -255,7 +255,7 @@ func TestHandler_popFitting_SkipsToFirstMatchingJob(t *testing.T) {
 	h.pending = []DeployRequestedEvent{prodJob, anyJob}
 	qa := &runnerConn{id: "r-qa", name: "qa", machine: "qa"}
 
-	got, ok := h.popFitting(qa)
+	got, _, ok := h.popFitting(t.Context(), qa)
 	require.True(t, ok)
 	assert.Equal(t, "d-any", got.ID)
 	require.Len(t, h.pending, 1)
@@ -286,15 +286,19 @@ func TestHandler_idleConnected_PoolsByMachine(t *testing.T) {
 func TestHandler_Dispatch_ReferencesReachOnlyAReadyRunner(t *testing.T) {
 	ready := []ManagerState{{Manager: "op", State: ManagerReady}}
 	rejected := []ManagerState{{Manager: "op", State: ManagerTokenRejected}}
-	withRefs := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", Target: "prod", SecretManagers: []string{"op"}}
+	withRefs := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", Target: "prod"}
+	refEnv := &fakeEnvLookup{values: map[string]map[string]string{"api": {"DB_PASSWORD": "op://vault/item/password"}}}
+	withEnvs := func(c *HandlerConfig) { c.Envs = refEnv }
 
 	t.Run("a deploy with references skips the runner that is not ready", func(t *testing.T) {
 		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		req := withRefs
+		req.SecretManagers = []string{"op"}
 		h.conns["r-bad"] = &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
 		h.conns["r-none"] = &runnerConn{id: "r-none", machine: "prod"}
 		h.conns["r-ok"] = &runnerConn{id: "r-ok", machine: "prod", managers: ready}
 		for range 10 {
-			got := h.idleConnected(withRefs)
+			got := h.idleConnected(req)
 			require.NotNil(t, got)
 			assert.Equal(t, "r-ok", got.id)
 		}
@@ -306,17 +310,39 @@ func TestHandler_Dispatch_ReferencesReachOnlyAReadyRunner(t *testing.T) {
 	})
 
 	t.Run("a deploy waits for the ready runner when only the other one is connected", func(t *testing.T) {
-		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		h := newTestHandler(newFakeBus(), newFakeRunnerRepo(), withEnvs)
 		bad := &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
 		h.conns["r-bad"] = bad
 		require.NoError(t, h.handleRequest(t.Context(), eventbus.Event{Payload: mustJSON(t, withRefs)}))
 		require.Len(t, h.Queue(), 1)
 		assert.Nil(t, bad.jobSnapshot())
 
-		_, taken := h.popFitting(bad)
+		_, _, taken := h.popFitting(t.Context(), bad)
 		assert.False(t, taken, "a runner that is not ready never takes it from the queue")
-		_, taken = h.popFitting(&runnerConn{id: "r-ok", machine: "prod", managers: ready})
+		_, _, taken = h.popFitting(t.Context(), &runnerConn{id: "r-ok", machine: "prod", managers: ready})
 		assert.True(t, taken)
+	})
+
+	// The request carries no managers: the stack's env gained its reference after the deploy was requested.
+	t.Run("a queued deploy whose env gained a reference meanwhile goes only to a ready runner", func(t *testing.T) {
+		envs := &fakeEnvLookup{values: map[string]map[string]string{"api": {"PORT": "8080"}}}
+		h := newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) { c.Envs = envs })
+		busy := &runnerConn{id: "r-busy", machine: "prod", managers: ready}
+		busy.setJob(&DeployRequestedEvent{ID: "running"}, time.Time{})
+		h.conns["r-busy"] = busy
+		require.NoError(t, h.handleRequest(t.Context(), eventbus.Event{Payload: mustJSON(t, withRefs)}))
+		require.Len(t, h.Queue(), 1)
+
+		envs.values["api"] = map[string]string{"PORT": "8080", "DB_PASSWORD": "op://vault/item/password"}
+		bad := &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
+		_, _, taken := h.popFitting(t.Context(), bad)
+		assert.False(t, taken, "a runner without the token never takes the deploy")
+		require.Len(t, h.Queue(), 1)
+
+		got, env, taken := h.popFitting(t.Context(), &runnerConn{id: "r-ok", machine: "prod", managers: ready})
+		require.True(t, taken)
+		assert.Equal(t, "d1", got.ID)
+		assert.Equal(t, "op://vault/item/password", env["DB_PASSWORD"], "the managers were read from the env the frame carries")
 	})
 }
 
@@ -333,17 +359,17 @@ func (f fakeGitTokens) RepoToken(context.Context, string) (CloneCredentials, err
 // A build frame carries the connector token the server resolved; deploy frames never do.
 func TestHandler_buildFrame_AttachesCloneTokenToBuilds(t *testing.T) {
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) { c.GitTokens = fakeGitTokens{token: "ghu_job"} })
-	build, err := h.buildFrame(context.Background(), DeployRequestedEvent{ID: "b1", Kind: RequestBuild, Repo: "org/app", Ref: "main"})
+	build, err := h.buildFrame(context.Background(), DeployRequestedEvent{ID: "b1", Kind: RequestBuild, Repo: "org/app", Ref: "main"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "ghu_job", build.GitToken)
-	deploy, err := h.buildFrame(context.Background(), DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "s", Image: "img"})
+	deploy, err := h.buildFrame(context.Background(), DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "s", Image: "img"}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, deploy.GitToken)
 
 	h = newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) {
 		c.GitTokens = fakeGitTokens{err: errors.New("github not connected"), allowFallback: true}
 	})
-	build, err = h.buildFrame(context.Background(), DeployRequestedEvent{ID: "b2", Kind: RequestBuild, Repo: "org/app", Ref: "main"})
+	build, err = h.buildFrame(context.Background(), DeployRequestedEvent{ID: "b2", Kind: RequestBuild, Repo: "org/app", Ref: "main"}, nil)
 	require.NoError(t, err, "a missing token degrades to the runner's own, never blocks dispatch")
 	assert.Empty(t, build.GitToken)
 }
@@ -1024,7 +1050,7 @@ func TestHandler_DispatchRefusesAppAuthorizationAndOnlyPermitsExplicitLegacyFall
 	for _, deny := range []error{apperrs.ErrNotFound, apperrs.ErrForbidden, apperrs.ErrUnauthorized} {
 		bus := newFakeBus()
 		h := newTestHandler(bus, newFakeRunnerRepo(), func(c *HandlerConfig) { c.GitTokens = fakeGitTokens{err: deny} })
-		err := h.dispatchOne(t.Context(), connection, req)
+		err := h.dispatchOne(t.Context(), connection, req, nil)
 		assert.ErrorIs(t, err, deny)
 		assert.Nil(t, connection.jobSnapshot(), "a denied build never acquires or dispatches work to the runner")
 		connection.clearJob(req.ID)
@@ -1044,7 +1070,7 @@ func TestHandler_DispatchRefusesAppAuthorizationAndOnlyPermitsExplicitLegacyFall
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) {
 		c.GitTokens = fakeGitTokens{err: errors.New("legacy connector not configured"), allowFallback: true}
 	})
-	require.NoError(t, h.dispatchOne(t.Context(), connection, req))
+	require.NoError(t, h.dispatchOne(t.Context(), connection, req, nil))
 	var frame Frame
 	require.NoError(t, wsjson.Read(t.Context(), client, &frame))
 	assert.Equal(t, FrameAssignBuild, frame.Type)

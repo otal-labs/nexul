@@ -259,8 +259,34 @@ func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
 }
 
 // ManagersOn lists the managers, by scheme, that some deploy runner on the named machine last reported ready or
-// unreachable, online or not. A runner whose token was rejected, or that holds none, adds nothing.
+// unreachable, online or not; an empty machine means every deploy runner, as a dispatch does. A runner whose token was
+// rejected, or that holds none, adds nothing.
 func (s *Service) ManagersOn(ctx context.Context, machine string) ([]string, error) {
+	rs, err := s.runnersFor(ctx, machine)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, rn := range rs {
+		for _, ms := range rn.Managers {
+			if ms.State == ManagerReady || ms.State == ManagerUnreachable {
+				out = append(out, ms.Manager)
+			}
+		}
+	}
+	return out, nil
+}
+
+// runnersFor lists the deploy runners on the named machine, or every deploy runner for an empty name; none when the
+// machine is unknown.
+func (s *Service) runnersFor(ctx context.Context, machine string) ([]*Runner, error) {
+	if machine == "" {
+		rs, err := s.repo.List(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list runners: %w", err)
+		}
+		return rs, nil
+	}
 	if s.machines == nil {
 		return nil, nil
 	}
@@ -275,15 +301,7 @@ func (s *Service) ManagersOn(ctx context.Context, machine string) ([]string, err
 	if err != nil {
 		return nil, fmt.Errorf("runners on %s: %w", machine, err)
 	}
-	var out []string
-	for _, rn := range rs {
-		for _, ms := range rn.Managers {
-			if ms.State == ManagerReady || ms.State == ManagerUnreachable {
-				out = append(out, ms.Manager)
-			}
-		}
-	}
-	return out, nil
+	return rs, nil
 }
 
 func (s *Service) runnersOf(ctx context.Context, r reach) ([]*Runner, error) {
