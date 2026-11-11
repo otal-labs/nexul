@@ -144,6 +144,18 @@ describe("InboxPage", () => {
     expect(screen.getByRole("link", { name: "Open Computers" })).toHaveAttribute("href", "/settings/pairing");
   });
 
+  it.each([
+    ["runner:box-1", "The runner box-1's 1Password token was rejected. Set a new one with `nexul runner 1password box-1`.", "Open runners", "/acme/runners"],
+    ["server:", "The server's 1Password token was rejected. Set a new one with `nexul server 1password`.", "Open connectors", "/settings/connectors"],
+  ])("opens a rejected token notice (%s) on its command, with the way to the page that shows it", async (subjectId, title, link, href) => {
+    const notice = { ...ticketNotification, id: "n6", kind: "secret_manager.token_rejected", subject_type: "secrets_manager", subject_id: subjectId, subject_title: title };
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [notice] }) : mockApiResponse(url)));
+    renderPage("/acme/inbox/n:n6");
+
+    expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: link })).toHaveAttribute("href", href);
+  });
+
   it("opens an interview notice on the way to the project's Interview, never as a ticket", async () => {
     const notice = { ...ticketNotification, id: "n5", kind: "play.run_waiting", subject_type: "interview", subject_id: "p-1", subject_title: "Interview needs your answer on Backend" };
     vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [notice] }) : mockApiResponse(url)));

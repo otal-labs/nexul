@@ -102,6 +102,8 @@ sudo nexul runner 1password build-box-1 --remove
 
 The command writes the token into the runner's service settings (readable by root only) and restarts the runner. `nexul upgrade` keeps it, and `nexul status` says whether a runner has one, never what it is.
 
+When 1Password refuses the token, the runner's row shows **token rejected** and everyone who can **Manage** the runner's machine gets one inbox notice naming the command above. Reconnecting with the same token sends no second notice; setting a good token and then having it refused again sends a new one. The same notice reaches the people who manage an automations host's machine, and the instance Owner for the server's own token.
+
 ## Removing a runner
 
 Open the **⋯** on the runner's row, pick **Remove runner** and confirm. It takes **Manage** on the runner's machine. Agents use `host_delete` with `kind: "runner"`. A machine with a connected runner can't be deleted until that runner is removed.

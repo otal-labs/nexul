@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // NotificationService is the notifications use-case layer (ADR 0019): the inbox plus v1's fan-out generation rules.
@@ -28,6 +29,7 @@ type NotificationService struct {
 	tickets  TicketProjects
 	watchers DocWatchers
 	unwatch  StackUnwatchers
+	managers TokenAudience
 	now      func() time.Time
 }
 
@@ -44,6 +46,12 @@ func NewNotificationService(repo NotificationRepo, users UserStore, members Work
 // WithDocWatchers sets who a doc's changes notify; without it a doc save notifies only the people it mentions.
 func (s *NotificationService) WithDocWatchers(w DocWatchers) *NotificationService {
 	s.watchers = w
+	return s
+}
+
+// WithTokenAudience sets who hears a rejected secrets manager token; without it that notice has nobody to tell.
+func (s *NotificationService) WithTokenAudience(a TokenAudience) *NotificationService {
+	s.managers = a
 	return s
 }
 
@@ -516,17 +524,72 @@ const moveNoticeTitle = "Move your computers to the Nexul app"
 // onComputerMoveRequested puts the move notice in the first workspace its owner joined: a computer belongs to no
 // workspace, and the notice is one per owner.
 func (s *NotificationService) onComputerMoveRequested(ctx context.Context, userID, computerID string) error {
-	n := notice{subjectType: SubjectComputer, subjectID: computerID, subjectTitle: moveNoticeTitle}
-	if s.access != nil {
-		workspaceIDs, _, err := s.access.ProjectsAnywhere(ctx, userID, permissions.Member)
+	workspaceID, err := s.firstWorkspace(ctx, userID)
+	if err != nil {
+		return err
+	}
+	n := notice{subjectType: SubjectComputer, subjectID: computerID, subjectTitle: moveNoticeTitle, workspaceID: workspaceID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindComputerMove, []string{userID})
+}
+
+// firstWorkspace is the first workspace userID belongs to, empty for none: a notice about no workspace is filed there.
+func (s *NotificationService) firstWorkspace(ctx context.Context, userID string) (string, error) {
+	if s.access == nil {
+		return "", nil
+	}
+	workspaceIDs, _, err := s.access.ProjectsAnywhere(ctx, userID, permissions.Member)
+	if err != nil {
+		return "", fmt.Errorf("workspaces of %s: %w", userID, err)
+	}
+	if len(workspaceIDs) == 0 {
+		return "", nil
+	}
+	return workspaceIDs[0], nil
+}
+
+// onTokenRejected tells the people who can fix a refused secrets manager token: those who manage the runner's or host's
+// machine, or the instance Owner for the server's. Each is filed in the first workspace they belong to.
+func (s *NotificationService) onTokenRejected(ctx context.Context, e secretref.TokenRejectedEvent) error {
+	if s.managers == nil {
+		return nil
+	}
+	userIDs, err := s.tokenAudience(ctx, e)
+	if err != nil {
+		return err
+	}
+	key := evtKey(ctx)
+	title := tokenRejectedTitle(e)
+	for _, userID := range userIDs {
+		workspaceID, err := s.firstWorkspace(ctx, userID)
 		if err != nil {
-			return fmt.Errorf("workspaces of %s: %w", userID, err)
+			return err
 		}
-		if len(workspaceIDs) > 0 {
-			n.workspaceID = workspaceIDs[0]
+		n := notice{subjectType: SubjectSecretsManager, subjectID: e.Source + ":" + e.Name, subjectTitle: title, workspaceID: workspaceID}
+		if err := s.fanOutByUserID(ctx, key, n, KindTokenRejected, []string{userID}); err != nil {
+			return err
 		}
 	}
-	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindComputerMove, []string{userID})
+	return nil
+}
+
+func (s *NotificationService) tokenAudience(ctx context.Context, e secretref.TokenRejectedEvent) ([]string, error) {
+	if e.Source == secretref.SourceServer {
+		return s.managers.InstanceOwners(ctx)
+	}
+	return s.managers.MachineManagers(ctx, e.Machine)
+}
+
+// tokenRejectedTitle names what holds the token and the command that sets a new one; it never carries a token.
+func tokenRejectedTitle(e secretref.TokenRejectedEvent) string {
+	manager := secretref.ManagerName(e.Manager)
+	arg := strings.ToLower(manager)
+	switch e.Source {
+	case secretref.SourceRunner:
+		return fmt.Sprintf("The runner %s's %s token was rejected. Set a new one with `nexul runner %s %s`.", e.Name, manager, arg, e.Name)
+	case secretref.SourceHost:
+		return fmt.Sprintf("The automations host %s's %s token for workspace %s was rejected. Set a new one with `nexul automations %s %s --workspace %s`.", e.Name, manager, e.Workspace, arg, e.Name, e.Workspace)
+	}
+	return fmt.Sprintf("The server's %s token was rejected. Set a new one with `nexul server %s`.", manager, arg)
 }
 
 // onMeeting tells userIDs who still belong to the meeting's workspace about it; whoever made the change is left out, as

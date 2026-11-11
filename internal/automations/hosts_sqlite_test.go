@@ -28,6 +28,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
 
@@ -727,4 +728,54 @@ func TestAutomationUpdateTool_MovesBetweenHosts(t *testing.T) {
 	out, err = json.Marshal(got)
 	require.NoError(t, err)
 	assert.NotContains(t, string(out), "host_id", "back on the instance host")
+}
+
+// TestHostManagers_ANotificationFollowsEachChangeIntoTokenRejected: a workspace's token turning rejected, on a first
+// report or after it was ready, writes one event naming the host and the workspace; reporting it again writes none, and
+// another workspace's token turning rejected is its own change.
+func TestHostManagers_ANotificationFollowsEachChangeIntoTokenRejected(t *testing.T) {
+	f := newHostsFixture(t)
+	_, credential := f.enroll(t, "jobs")
+	report := func(managers ...automations.HostManager) {
+		status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", credential, automations.HostManagersReport{Managers: managers})
+		require.Equal(t, http.StatusNoContent, status, string(body))
+	}
+	var payloads []string
+	told := func() []string {
+		rows, err := f.db.QueryContext(t.Context(), `SELECT payload FROM outbox WHERE topic = ? ORDER BY created_at, rowid`, secretref.TopicTokenRejected)
+		require.NoError(t, err)
+		defer func() { _ = rows.Close() }() // read-only
+		payloads = nil
+		for rows.Next() {
+			var p string
+			require.NoError(t, rows.Scan(&p))
+			payloads = append(payloads, p)
+		}
+		require.NoError(t, rows.Err())
+		return payloads
+	}
+	acme := func(state string) automations.HostManager {
+		return automations.HostManager{Workspace: "acme", Manager: "op", State: state}
+	}
+	globex := automations.HostManager{Workspace: "globex", Manager: "op", State: automations.ManagerTokenRejected}
+
+	report(acme(automations.ManagerTokenRejected))
+	require.Len(t, told(), 1)
+	assert.JSONEq(t, `{"source":"automations_host","name":"jobs","machine":"`+f.hostMachine(t, "jobs")+`","manager":"op","workspace":"acme"}`, payloads[0])
+
+	report(acme(automations.ManagerTokenRejected))
+	assert.Len(t, told(), 1, "a report that is still rejected tells nobody")
+
+	report(acme(automations.ManagerReady))
+	assert.Len(t, told(), 1, "recovering tells nobody")
+
+	report(acme(automations.ManagerTokenRejected), globex)
+	assert.Len(t, told(), 3, "failing again tells again, and another workspace's rejection is its own")
+}
+
+func (f *hostsFixture) hostMachine(t *testing.T, name string) string {
+	t.Helper()
+	host, err := f.store.AutomationHosts.GetHostByName(t.Context(), name)
+	require.NoError(t, err)
+	return host.Machine
 }

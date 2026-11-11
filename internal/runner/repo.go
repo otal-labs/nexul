@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // Repo persists runners together with their enrollment codes and credentials.
@@ -29,8 +31,9 @@ type RunnerStore interface {
 	SetConnected(ctx context.Context, id string, connected bool) error
 	// SetVersion records the runner's stamped build version, reported on each connect.
 	SetVersion(ctx context.Context, id string, version string) error
-	// SetManagers records the secrets managers' states the runner reported on its latest connect.
-	SetManagers(ctx context.Context, id string, managers []ManagerState) error
+	// SetManagers records the secrets managers' states the runner reported on its latest connect. events, when set, is
+	// given the states stored before and returns the outbox events to write in the same transaction.
+	SetManagers(ctx context.Context, id string, managers []ManagerState, events func(prev []ManagerState) []eventbus.OutboxEvent) error
 }
 
 // CredentialStore persists enrollment codes and runner credentials, both by hash only.

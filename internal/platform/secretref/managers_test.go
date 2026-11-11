@@ -74,3 +74,40 @@ func TestManagers_UnreachableAtStartIsRetriedUntilItOpens_ARejectedTokenIsNot(t 
 	assert.Equal(t, []secretref.ManagerState{{Manager: "op", State: secretref.ManagerTokenRejected}}, rejected.States())
 	assert.EqualValues(t, 1, rejects.Load(), "a rejected token is not retried")
 }
+
+func TestManagers_OnRejectedFiresOnceWhenAStateTurnsTokenRejected(t *testing.T) {
+	var attempts atomic.Int32
+	tests := []struct {
+		name  string
+		open  func(context.Context) (secretref.Resolver, error)
+		fired int32
+	}{
+		{"a token the manager accepts", opens(&secretreftest.Fake{}, nil), 0},
+		{"a token refused at once", opens(nil, errors.New("rejected")), 1},
+		{"unreachable, then refused when it answers", func(context.Context) (secretref.Resolver, error) {
+			if attempts.Add(1) < 3 {
+				return nil, secretref.ErrUnreachable
+			}
+			return nil, errors.New("rejected")
+		}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			var wg sync.WaitGroup
+			var fired atomic.Int32
+			m := secretref.NewManagers(slog.Default(), secretref.Setup{Scheme: "op", Open: tt.open})
+			m.SetRetry(time.Millisecond, 5*time.Millisecond)
+			m.SetOnRejected(func(_ context.Context, scheme string) {
+				assert.Equal(t, "op", scheme)
+				fired.Add(1)
+			})
+			m.Start(ctx, &wg)
+			t.Cleanup(func() { cancel(); wg.Wait() })
+
+			require.Eventually(t, func() bool { return m.States()[0].State != secretref.ManagerUnreachable }, 2*time.Second, time.Millisecond)
+			wg.Wait()
+			assert.Equal(t, tt.fired, fired.Load())
+		})
+	}
+}

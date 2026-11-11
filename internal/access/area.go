@@ -39,6 +39,25 @@ func (s *Service) IsInstanceOwner(ctx context.Context, userID string) (bool, err
 	return s.IsOwner(ctx, userID, s.ownerWorkspace)
 }
 
+// InstanceOwners is the people holding the Owner role of the default workspace.
+func (s *Service) InstanceOwners(ctx context.Context) ([]string, error) {
+	users, err := s.users.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	owners := []string{}
+	for _, u := range users {
+		owner, err := s.IsInstanceOwner(ctx, u.ID)
+		if err != nil {
+			return nil, err
+		}
+		if owner {
+			owners = append(owners, u.ID)
+		}
+	}
+	return owners, nil
+}
+
 // RequireArea checks the caller on ctx holds action on the instance area keyed area; a forbidden answer names its
 // source. The server's own calls pass.
 func (s *Service) RequireArea(ctx context.Context, area string, action permissions.Action) error {

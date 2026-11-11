@@ -99,8 +99,8 @@ func serve() {
 		fail(fmt.Errorf("write setup code: %w", err))
 	}
 
-	startSecretManagers(ctx, svc.secretManagers, warmConnectorSecrets(svc.connectorsSvc, logger))
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
+	startSecretManagers(ctx, svc.secretManagers, warmConnectorSecrets(svc.connectorsSvc, logger))
 	wireIntegrationFanout(ctx, bus, store, svc, logger)
 	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger, logRelay)
 	// runner is constructed above, after deploy (wireCoreServices); closing the machine-import cycle here

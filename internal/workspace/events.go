@@ -10,6 +10,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // TopicNotificationCreated is published by the workspace capability after it fans out new notifications (ws-26).
@@ -538,6 +539,19 @@ func HandleDueDateReminder(ctx context.Context, svc *NotificationService, ev eve
 	n := notice{subjectType: SubjectTicket, subjectID: e.TicketID, subjectTitle: e.Key + " " + e.Title + " is due tomorrow", workspaceID: e.WorkspaceID, projectID: e.ProjectID}
 	ctx = CtxWithEventKey(ctx, ev.ID)
 	return svc.fanOutByUserID(ctx, evtKey(ctx), n, KindTicketDueSoon, e.UserIDs)
+}
+
+// HandleTokenRejected tells the people who can set a new token that a secrets manager refused the one a runner, an
+// automations host or the server holds.
+func HandleTokenRejected(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e secretref.TokenRejectedEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", secretref.TopicTokenRejected, err))
+	}
+	if e.Source == "" || e.Manager == "" {
+		return apperrs.Fatal(fmt.Errorf("%s missing its source or manager", secretref.TopicTokenRejected))
+	}
+	return svc.onTokenRejected(CtxWithEventKey(ctx, ev.ID), e)
 }
 
 // sweepFinishedEvent is the slice of auto_play.sweep_finished the notifier reads.

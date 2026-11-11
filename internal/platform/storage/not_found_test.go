@@ -70,7 +70,7 @@ func TestRepos_AnIdNobodyStoredIsNotFound(t *testing.T) {
 		{"RolesRepo.Delete", func(ctx context.Context) error { return s.Roles.Delete(ctx, "missing") }},
 		{"RunnersRepo.GetByID", func(ctx context.Context) error { return ign(s.Runners.GetByID(ctx, "missing")) }},
 		{"RunnersRepo.SetVersion", func(ctx context.Context) error { return s.Runners.SetVersion(ctx, "missing", "v0.1.6") }},
-		{"RunnersRepo.SetManagers", func(ctx context.Context) error { return s.Runners.SetManagers(ctx, "missing", nil) }},
+		{"RunnersRepo.SetManagers", func(ctx context.Context) error { return s.Runners.SetManagers(ctx, "missing", nil, nil) }},
 		{"RunnersRepo.Heartbeat", func(ctx context.Context) error { return s.Runners.Heartbeat(ctx, "missing", time.Now()) }},
 		{"RunnersRepo.GetCredential", func(ctx context.Context) error { return ign(s.Runners.GetCredential(ctx, "nope")) }},
 		{"ServicesRepo.Get", func(ctx context.Context) error { return ign(s.Services.Get(ctx, "missing")) }},

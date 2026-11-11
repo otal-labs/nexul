@@ -19,6 +19,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/release"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 func newTestHandler(bus Bus, repo Repo, opts ...func(*HandlerConfig)) *Handler {
@@ -1048,4 +1049,37 @@ func TestHandler_DispatchRefusesAppAuthorizationAndOnlyPermitsExplicitLegacyFall
 	require.NoError(t, wsjson.Read(t.Context(), client, &frame))
 	assert.Equal(t, FrameAssignBuild, frame.Type)
 	assert.Empty(t, frame.GitToken, "the pre-key frame explicitly permits the existing runner credential fallback")
+}
+
+// TestHandler_registerRunner_ANotificationFollowsEachChangeIntoTokenRejected: the first report of a rejected token, and
+// each failure after a recovery, writes one event naming the runner and its machine; reporting it again on a reconnect
+// writes none; and a personal runner's report writes none.
+func TestHandler_registerRunner_ANotificationFollowsEachChangeIntoTokenRejected(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	repo.enrolled("r-1", "build-box-1", "prod")
+	repo.personal("p-1", "u-1", "c-1")
+	h := newTestHandler(newFakeBus(), repo)
+	rejected := []ManagerState{{Manager: "op", State: ManagerTokenRejected}}
+	ready := []ManagerState{{Manager: "op", State: ManagerReady}}
+	connect := func(id string, personal bool, managers []ManagerState) {
+		c := &runnerConn{id: id, name: "build-box-1", machine: "prod", personal: personal}
+		require.NoError(t, h.registerRunner(t.Context(), c, connectInfo{managers: managers}))
+	}
+
+	connect("r-1", false, rejected)
+	require.Len(t, repo.outbox, 1)
+	assert.Equal(t, secretref.TopicTokenRejected, repo.outbox[0].Topic)
+	assert.Equal(t, secretref.TokenRejectedEvent{Source: secretref.SourceRunner, Name: "build-box-1", Machine: "prod", Manager: "op"}, repo.outbox[0].Payload)
+
+	connect("r-1", false, rejected)
+	assert.Len(t, repo.outbox, 1, "a reconnect that is still rejected tells nobody")
+
+	connect("r-1", false, ready)
+	assert.Len(t, repo.outbox, 1, "recovering tells nobody")
+
+	connect("r-1", false, rejected)
+	assert.Len(t, repo.outbox, 2, "failing again tells again")
+
+	connect("p-1", true, rejected)
+	assert.Len(t, repo.outbox, 2)
 }

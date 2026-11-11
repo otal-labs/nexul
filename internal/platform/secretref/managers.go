@@ -45,10 +45,11 @@ type Managers struct {
 	base   time.Duration
 	max    time.Duration
 
-	mu        sync.Mutex
-	states    map[string]string
-	resolvers []Resolver
-	changed   chan struct{}
+	mu         sync.Mutex
+	states     map[string]string
+	resolvers  []Resolver
+	changed    chan struct{}
+	onRejected func(ctx context.Context, scheme string)
 }
 
 // NewManagers prepares the setups; nothing is opened until Start.
@@ -61,6 +62,9 @@ func NewManagers(log *slog.Logger, setups ...Setup) *Managers {
 
 // SetRetry changes the wait between attempts on an unreachable manager; call it before Start.
 func (m *Managers) SetRetry(base, max time.Duration) { m.base, m.max = base, max }
+
+// SetOnRejected calls fn once each time a manager's state turns token rejected; call it before Start.
+func (m *Managers) SetOnRejected(fn func(ctx context.Context, scheme string)) { m.onRejected = fn }
 
 // Start opens every manager once, waiting for the first outcome of each, then keeps retrying the unreachable ones in
 // the background until ctx ends. Its goroutines join wg.
@@ -90,7 +94,9 @@ func (m *Managers) try(ctx context.Context, s Setup) string {
 		}
 		m.log.Warn("secrets manager not ready", "manager", s.Scheme, "state", state, "error", err)
 	}
-	m.set(s.Scheme, state, res)
+	if m.set(s.Scheme, state, res) && state == ManagerTokenRejected && m.onRejected != nil {
+		m.onRejected(ctx, s.Scheme)
+	}
 	return state
 }
 
@@ -122,11 +128,12 @@ func (m *Managers) wait(ctx context.Context, attempt int) bool {
 	}
 }
 
-func (m *Managers) set(scheme, state string, res Resolver) {
+// set records a manager's state and reports whether it changed.
+func (m *Managers) set(scheme, state string, res Resolver) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.states[scheme] == state {
-		return
+		return false
 	}
 	m.states[scheme] = state
 	if state == ManagerReady {
@@ -134,6 +141,7 @@ func (m *Managers) set(scheme, state string, res Resolver) {
 	}
 	close(m.changed)
 	m.changed = make(chan struct{})
+	return true
 }
 
 // States is each manager's state in setup order; empty when no manager was set up.

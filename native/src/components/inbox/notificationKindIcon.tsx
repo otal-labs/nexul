@@ -10,6 +10,7 @@ import CircleHelp from "lucide-react-native/icons/circle-question-mark";
 import CircleX from "lucide-react-native/icons/circle-x";
 import FilePenLine from "lucide-react-native/icons/file-pen-line";
 import FilePlus from "lucide-react-native/icons/file-plus";
+import KeyRound from "lucide-react-native/icons/key-round";
 import Laptop from "lucide-react-native/icons/laptop";
 import MessageCircleQuestion from "lucide-react-native/icons/message-circle-question-mark";
 import MessageSquareReply from "lucide-react-native/icons/message-square-reply";
@@ -43,4 +44,5 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.MeetingReminder]: BellRing,
   [NotificationKind.TicketDueSoon]: CalendarClock,
   [NotificationKind.SweepFinished]: MoonStar,
+  [NotificationKind.TokenRejected]: KeyRound,
 };

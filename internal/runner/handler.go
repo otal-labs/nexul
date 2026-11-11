@@ -18,8 +18,10 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/release"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 	"github.com/otal-labs/nexul/internal/platform/version"
 )
 
@@ -368,11 +370,24 @@ func (h *Handler) registerRunner(ctx context.Context, c *runnerConn, info connec
 		return err
 	}
 	if !c.personal {
-		if err := h.repo.SetManagers(ctx, c.id, info.managers); err != nil {
+		if err := h.repo.SetManagers(ctx, c.id, info.managers, rejectedEvents(c, info.managers)); err != nil {
 			return err
 		}
 	}
 	return h.repo.SetConnected(ctx, c.id, true)
+}
+
+// rejectedEvents is the outbox event for each manager whose token turned rejected against what the runner reported before.
+func rejectedEvents(c *runnerConn, managers []ManagerState) func(prev []ManagerState) []eventbus.OutboxEvent {
+	return func(prev []ManagerState) []eventbus.OutboxEvent {
+		var out []eventbus.OutboxEvent
+		for _, m := range secretref.NewlyRejected(prev, managers) {
+			out = append(out, eventbus.OutboxEvent{ID: ids.New(), Topic: secretref.TopicTokenRejected, Payload: secretref.TokenRejectedEvent{
+				Source: secretref.SourceRunner, Name: c.name, Machine: c.machine, Manager: m.Manager,
+			}})
+		}
+		return out
+	}
 }
 
 // handleRequest is the deploy.requested consumer; a malformed payload is fatal (dead-lettered).

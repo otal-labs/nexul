@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/automations"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -73,7 +74,7 @@ func (r *AutomationHostsRepo) TouchHost(ctx context.Context, id string, at time.
 	})
 }
 
-func (r *AutomationHostsRepo) SetHostManagers(ctx context.Context, id string, managers []automations.HostManager) error {
+func (r *AutomationHostsRepo) SetHostManagers(ctx context.Context, id string, managers []automations.HostManager, events func(prev []automations.HostManager) []eventbus.OutboxEvent) error {
 	if managers == nil {
 		managers = []automations.HostManager{}
 	}
@@ -82,14 +83,18 @@ func (r *AutomationHostsRepo) SetHostManagers(ctx context.Context, id string, ma
 		return fmt.Errorf("encode automations host %s managers: %w", id, err)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetAutomationHostManagers(ctx, sqlcgen.SetAutomationHostManagersParams{Managers: string(raw), ID: id})
+		q := r.q.WithTx(tx)
+		row, err := q.GetAutomationHost(ctx, id)
 		if err != nil {
+			return fmt.Errorf("get automations host %s managers: %w", id, notFoundIfNoRows(err))
+		}
+		if _, err := q.SetAutomationHostManagers(ctx, sqlcgen.SetAutomationHostManagersParams{Managers: string(raw), ID: id}); err != nil {
 			return fmt.Errorf("set automations host %s managers: %w", id, err)
 		}
-		if n == 0 {
-			return fmt.Errorf("set automations host %s managers: %w", id, apperrs.ErrNotFound)
+		if events == nil {
+			return nil
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events(toHost(row).Managers))
 	})
 }
 

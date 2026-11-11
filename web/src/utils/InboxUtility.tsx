@@ -22,6 +22,7 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.MeetingReminder]: "starting soon",
   [NotificationKind.TicketDueSoon]: "due tomorrow",
   [NotificationKind.SweepFinished]: "sweep finished",
+  [NotificationKind.TokenRejected]: "token rejected",
 };
 
 /** One inbox row: a doc or ticket with every notification about it, or any other notification on its own. */

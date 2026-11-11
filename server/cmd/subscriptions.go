@@ -27,6 +27,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/live"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -245,6 +246,10 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 	mustSubscribe(ctx, bus, "notifications", pairing.TopicMoveRequested, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleComputerMoveRequested(ctx, svc.notifSvc, ev)
+	})
+
+	mustSubscribe(ctx, bus, "notifications", secretref.TopicTokenRejected, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleTokenRejected(ctx, svc.notifSvc, ev)
 	})
 
 	mustSubscribe(ctx, bus, "notifications", deploy.TopicContainerStopped, "", func(ctx context.Context, ev eventbus.Event) error {

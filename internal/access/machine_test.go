@@ -350,3 +350,24 @@ func TestMachineRules_ListAndSeeSomeoneElsesAnswers(t *testing.T) {
 	_, err = s.ExplainRole(ctx, "dana", resourceTypeMachine, "m1", "role-fe")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+func TestMachineManagers_AreWhoHoldManageOnTheMachineAndInstanceOwnersAreTheOwnerRole(t *testing.T) {
+	s, repo := newMachineService(nil)
+	s.users = newFakeUsers(&User{ID: "alice"}, &User{ID: "bob"}, &User{ID: "carl"}, &User{ID: "dana"}, &User{ID: "olga"})
+	machineRule(t, repo, TargetPerson, "carl", acts(permissions.MachinesSee), nil)
+	machineRule(t, repo, TargetPerson, "dana", acts(permissions.MachinesSee), nil)
+	machineRule(t, repo, TargetPerson, "olga", acts(permissions.MachinesSee), nil)
+	ctx := context.Background()
+
+	managers, err := s.MachineManagers(ctx, "m1")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"alice", "carl"}, managers, "dana only sees it and olga's Owner role in another workspace holds nothing here")
+
+	managers, err = s.MachineManagers(ctx, "m-gone")
+	require.NoError(t, err)
+	assert.Empty(t, managers)
+
+	owners, err := s.InstanceOwners(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"alice"}, owners)
+}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -123,20 +124,24 @@ func (r *RunnersRepo) SetVersion(ctx context.Context, id string, version string)
 	})
 }
 
-func (r *RunnersRepo) SetManagers(ctx context.Context, id string, managers []runner.ManagerState) error {
+func (r *RunnersRepo) SetManagers(ctx context.Context, id string, managers []runner.ManagerState, events func(prev []runner.ManagerState) []eventbus.OutboxEvent) error {
 	raw, err := json.Marshal(managers)
 	if err != nil {
 		return fmt.Errorf("encode runner %s managers: %w", id, err)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetRunnerManagers(ctx, sqlcgen.SetRunnerManagersParams{Managers: string(raw), ID: id})
+		q := r.q.WithTx(tx)
+		row, err := q.GetRunner(ctx, id)
 		if err != nil {
+			return fmt.Errorf("get runner %s managers: %w", id, notFoundIfNoRows(err))
+		}
+		if _, err := q.SetRunnerManagers(ctx, sqlcgen.SetRunnerManagersParams{Managers: string(raw), ID: id}); err != nil {
 			return fmt.Errorf("set runner %s managers: %w", id, err)
 		}
-		if n == 0 {
-			return fmt.Errorf("set runner %s managers: %w", id, apperrs.ErrNotFound)
+		if events == nil {
+			return nil
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events(decodeManagers(row.Managers)))
 	})
 }
 

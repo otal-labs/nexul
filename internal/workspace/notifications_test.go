@@ -21,6 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 var notifFixedNow = time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
@@ -1066,4 +1067,64 @@ func TestHandleSweepFinished_TellsEachPersonItsRunsWentOutAsOnce(t *testing.T) {
 		assert.Equal(t, "sw-1", n.SubjectID)
 		assert.Equal(t, "Fix with AI swept 6 tickets: 4 finished, 1 asked, 1 skipped", n.SubjectTitle)
 	}
+}
+
+// fakeTokenAudience answers who manages each machine and who owns the instance.
+type fakeTokenAudience struct {
+	managers map[string][]string
+	owners   []string
+}
+
+func (f fakeTokenAudience) MachineManagers(_ context.Context, name string) ([]string, error) {
+	return f.managers[name], nil
+}
+
+func (f fakeTokenAudience) InstanceOwners(context.Context) ([]string, error) { return f.owners, nil }
+
+// TestHandleTokenRejected_TellsOnlyWhoCanSetANewToken: a runner's or host's rejected token reaches the people who manage
+// its machine, the server's reaches the instance Owner, each is told once with the command that sets a new token, and a
+// redelivery adds none.
+func TestHandleTokenRejected_TellsOnlyWhoCanSetANewToken(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload secretref.TokenRejectedEvent
+		told    []string
+		title   string
+	}{
+		{"a runner", secretref.TokenRejectedEvent{Source: secretref.SourceRunner, Name: "build-box-1", Machine: "build-box", Manager: "op"}, []string{"u1", "u2"},
+			"The runner build-box-1's 1Password token was rejected. Set a new one with `nexul runner 1password build-box-1`."},
+		{"an automations host", secretref.TokenRejectedEvent{Source: secretref.SourceHost, Name: "edge-1", Machine: "build-box", Manager: "op", Workspace: "acme"}, []string{"u1", "u2"},
+			"The automations host edge-1's 1Password token for workspace acme was rejected. Set a new one with `nexul automations 1password edge-1 --workspace acme`."},
+		{"the server", secretref.TokenRejectedEvent{Source: secretref.SourceServer, Manager: "op"}, []string{"u3"},
+			"The server's 1Password token was rejected. Set a new one with `nexul server 1password`."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeNotifRepo()
+			s := newTestNotifService(repo, newFakeNotifUsers()).WithTokenAudience(fakeTokenAudience{managers: map[string][]string{"build-box": {"u1", "u2"}}, owners: []string{"u3"}})
+			ev := notifEvFor(t, secretref.TopicTokenRejected, tt.payload)
+
+			require.NoError(t, HandleTokenRejected(t.Context(), s, ev))
+			require.NoError(t, HandleTokenRejected(t.Context(), s, ev))
+
+			for _, id := range []string{"u1", "u2", "u3", "u4"} {
+				if !slices.Contains(tt.told, id) {
+					assert.Empty(t, repo.notifsFor(id), id)
+					continue
+				}
+				require.Len(t, repo.notifsFor(id), 1, id)
+				n := repo.notifsFor(id)[0]
+				assert.Equal(t, KindTokenRejected, n.Kind)
+				assert.Equal(t, SubjectSecretsManager, n.SubjectType)
+				assert.Equal(t, tt.payload.Source+":"+tt.payload.Name, n.SubjectID)
+				assert.Equal(t, tt.title, n.SubjectTitle)
+			}
+		})
+	}
+}
+
+func TestHandleTokenRejected_AMalformedEventIsFatal(t *testing.T) {
+	s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
+	require.ErrorIs(t, HandleTokenRejected(t.Context(), s, eventbus.Event{ID: "e1", Payload: []byte(`{`)}), apperrs.ErrFatal)
+	require.ErrorIs(t, HandleTokenRejected(t.Context(), s, notifEvFor(t, secretref.TopicTokenRejected, map[string]any{"name": "x"})), apperrs.ErrFatal)
 }

@@ -20,6 +20,7 @@ export const NotificationKind = {
   MeetingReminder: "meeting.reminder",
   TicketDueSoon: "ticket.due_soon",
   SweepFinished: "auto_play.sweep_finished",
+  TokenRejected: "secret_manager.token_rejected",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -38,6 +39,8 @@ export const SubjectType = {
   Interview: "interview",
   // Opens a schedule auto play's sweep digest; the id is the sweep's.
   Sweep: "sweep",
+  // Opens where a rejected secrets manager token is set; the id is "<source>:<name>", the name empty for the server.
+  SecretsManager: "secrets_manager",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];
