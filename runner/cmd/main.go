@@ -46,15 +46,18 @@ func main() {
 		fail(err)
 	}
 
+	managers := openManagers(cfg, logger)
+	execCfg := runner.ExecutorConfig{GitToken: cfg.GitToken, StackRoot: cfg.StackRoot, Ctl: cfg.Ctl}
+	if managers != nil {
+		execCfg.Registry = managers.Registry
+	}
 	client := runner.NewClient(runner.ClientConfig{
-		URL:        cfg.WSURL(),
-		Credential: cfg.Credential,
-		Name:       cfg.Name,
-		Version:    version.Version,
-		Logger:     logger,
-		Executor: runner.NewShellExecutor(nil, runner.ExecutorConfig{
-			GitToken: cfg.GitToken, StackRoot: cfg.StackRoot, Ctl: cfg.Ctl,
-		}, logger),
+		URL:               cfg.WSURL(),
+		Credential:        cfg.Credential,
+		Name:              cfg.Name,
+		Version:           version.Version,
+		Logger:            logger,
+		Executor:          runner.NewShellExecutor(nil, execCfg, logger),
 		HeartbeatInterval: cfg.HeartbeatInterval,
 		ConnectTimeout:    cfg.ConnectTimeout,
 		BackoffBase:       cfg.BackoffBase,
@@ -67,7 +70,7 @@ func main() {
 		RunnerLog:         runnerLog,
 		Containers:        runner.HostContainerWatch(),
 		Logs:              logs,
-		Managers:          openManagers(cfg, logger),
+		Managers:          managers,
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)
