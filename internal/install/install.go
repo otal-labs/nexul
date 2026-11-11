@@ -77,6 +77,8 @@ type Options struct {
 	Yes     bool
 	// OnePasswordToken is the 1Password service account token the server starts with, if it has one.
 	OnePasswordToken string
+	// RunnerOnePasswordToken is the one the bundled runner starts with, if it has one.
+	RunnerOnePasswordToken string
 }
 
 func (h *Host) runInstall(ctx context.Context, args []string) error {
@@ -185,8 +187,56 @@ func (h *Host) choose(o Options, prev *installed) (Options, *installed, error) {
 	if o.Port, err = h.askPort("Web port", o.Port, prev); err != nil {
 		return o, nil, err
 	}
+	if o, err = h.askTokens(o); err != nil {
+		return o, nil, err
+	}
 	h.printf("\n")
 	return o, prev, nil
+}
+
+// askTokens offers the server's and the bundled runner's 1Password tokens; a token file already named the server's.
+func (h *Host) askTokens(o Options) (Options, error) {
+	var err error
+	if o.OnePasswordToken == "" {
+		if o.OnePasswordToken, err = h.askToken("Server 1Password token"); err != nil {
+			return o, err
+		}
+	}
+	o.RunnerOnePasswordToken, err = h.askToken("Runner 1Password token")
+	return o, err
+}
+
+// askToken offers to take a 1Password service account token, "" when skipped. The paste is read without echo where
+// the terminal allows it, and an unusable one is asked for again.
+func (h *Host) askToken(label string) (string, error) {
+	for {
+		h.printf("  %-22s paste a token, or press Enter to skip: ", label)
+		restore := func() {}
+		if h.HideEcho != nil {
+			r, err := h.HideEcho()
+			if err != nil {
+				h.printf("\n  This terminal cannot hide input, so the paste will be visible.\n  ")
+			}
+			if err == nil {
+				restore = r
+			}
+		}
+		line, err := h.In.ReadString('\n')
+		restore()
+		h.printf("\n")
+		if err != nil && line == "" {
+			return "", fmt.Errorf("read answer: %w", err)
+		}
+		if strings.TrimSpace(line) == "" {
+			return "", nil
+		}
+		token, err := cleanToken(line)
+		if err != nil {
+			h.printf("  %s.\n", err)
+			continue
+		}
+		return token, nil
+	}
 }
 
 // askDir asks for the install directory until the answer is one installDir accepts.
@@ -373,6 +423,7 @@ func (h *Host) installBundled(ctx context.Context, o Options, kind, tag string) 
 	host := HostOptions{Kind: kind, Server: fmt.Sprintf("http://127.0.0.1:%d", o.Port), Name: "instance", Code: code}
 	if kind == kindRunner {
 		host.StackRoot = o.Dir
+		host.OnePasswordToken = o.RunnerOnePasswordToken
 	}
 	return h.installHost(ctx, host, tag)
 }
@@ -526,6 +577,7 @@ func (h *Host) printSummary(o Options, tag string, settings map[string]string, c
 		fmt.Sprintf("  Logs password  %s  (also in %s)", settings["NEXUL_LOGS_PASSWORD"], filepath.Join(o.Dir, ".env")),
 		"  Upgrade        nexul upgrade",
 		"  Status         nexul status",
+		"  1Password      nexul server 1password, nexul runner 1password <name>, nexul automations 1password <host> --workspace <slug>",
 	)
 	if h.GOOS == "linux" {
 		lines = append(lines, fmt.Sprintf("  Firewall       port %d now accepts Docker containers on this machine, so a tunnel can reach Nexul", o.Port))

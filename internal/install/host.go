@@ -62,6 +62,8 @@ type Host struct {
 	Out         io.Writer
 	In          *bufio.Reader
 	Interactive bool
+	// HideEcho turns terminal echo off for one read and returns what turns it back on; nil reads with echo.
+	HideEcho func() (func(), error)
 	// Live means Out is a terminal, so a running step can redraw its line with how long it has taken.
 	Live bool
 	// ReleaseURL is the base the release's files are downloaded from; NEXUL_RELEASE_URL overrides it for testing.
@@ -128,6 +130,7 @@ func NewHost() *Host {
 		Out:             os.Stdout,
 		In:              bufio.NewReader(os.Stdin),
 		Interactive:     isTerminal(os.Stdin),
+		HideEcho:        func() (func(), error) { return hideEcho(os.Stdin) },
 		Live:            isTerminal(os.Stdout),
 		ReleaseURL:      strings.TrimSuffix(releaseURL, "/"),
 		DockerScriptURL: "https://get.docker.com",
