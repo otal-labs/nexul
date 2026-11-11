@@ -67,6 +67,35 @@ func TestInstall_Interactive_EnterSkipsBothTokens(t *testing.T) {
 	assert.Empty(t, unitToken(t, th, "runner-instance"))
 }
 
+func TestInstall_Rerun_StoresAPastedRunnerTokenOnTheExistingRunner(t *testing.T) {
+	th := newTestHost(t)
+	th.serverInstall(t)
+	th.exec.calls = nil
+	th.PortFree = func(int) bool { return false }
+
+	installAsking(t, th, nil, "\n"+testOPToken+"\n")
+
+	assert.Equal(t, testOPToken, unitToken(t, th, "runner-instance"))
+	assert.True(t, th.exec.ran("systemctl restart nexul-runner-instance.service"), "the runner restarts to pick it up")
+	assert.Contains(t, th.out.String(), "1Password token stored and runner restarted")
+	assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the runner is not enrolled again")
+	assertNoExecHolds(t, th, testOPToken)
+}
+
+func TestInstall_Rerun_EnterLeavesTheExistingRunnerTokenAlone(t *testing.T) {
+	th := newTestHost(t)
+	th.serverInstall(t)
+	require.NoError(t, th.SetRunnerToken(t.Context(), "instance", testOPToken))
+	th.exec.calls = nil
+	th.PortFree = func(int) bool { return false }
+
+	installAsking(t, th, nil, "\n\n")
+
+	assert.Equal(t, testOPToken, unitToken(t, th, "runner-instance"))
+	assert.False(t, th.exec.ran("systemctl restart nexul-runner-instance.service"))
+	assert.Contains(t, th.out.String(), "1Password token left as it was")
+}
+
 func TestInstall_Interactive_AServerTokenFileSkipsTheServerPrompt(t *testing.T) {
 	th := newTestHost(t)
 	withVersion(t, "v0.2.1")

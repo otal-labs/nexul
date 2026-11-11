@@ -2,6 +2,7 @@ package install
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,45 @@ func TestRunnerToken_SetRotateRemove_OnEachServiceManager(t *testing.T) {
 			assertNoExecHolds(t, th, testOPToken, testOPTokenNew)
 			assert.NotContains(t, th.out.String(), "ops_acme", "the terminal never shows the token")
 		})
+	}
+}
+
+func TestTokenCommands_HideEchoOnATerminalAndNotOnAPipe(t *testing.T) {
+	commands := []struct {
+		name string
+		run  func(th *testHost) error
+	}{
+		{"runner", func(th *testHost) error { return th.runRunner(t.Context(), []string{"1password", "edge"}) }},
+		{"server", func(th *testHost) error { return th.runServer(t.Context(), []string{"1password"}) }},
+		{"automations", func(th *testHost) error {
+			th.instanceAnswers("acme", "ws-acme")
+			return th.runAutomations(t.Context(), []string{"1password", "edge", "--workspace", "acme"})
+		}},
+	}
+	for _, c := range commands {
+		for _, interactive := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/interactive=%t", c.name, interactive), func(t *testing.T) {
+				th := newTestHost(t)
+				th.installed(t)
+				th.hostInstalled(t, kindRunner, "edge")
+				th.hostInstalled(t, kindAutomations, "edge")
+				hid, hidden := 0, 0
+				th.HideEcho = func() (func(), error) { hid++; hidden++; return func() { hidden-- }, nil }
+				th.Interactive = interactive
+				th.feedStdin(testOPToken + "\n")
+
+				require.NoError(t, c.run(th))
+
+				assert.Contains(t, th.out.String(), "Stored the 1Password token")
+				assert.NotContains(t, th.out.String(), testOPToken)
+				assert.Zero(t, hidden, "echo is back on after the read")
+				if interactive {
+					assert.Equal(t, 1, hid, "the paste is read with echo off")
+					return
+				}
+				assert.Zero(t, hid, "piped input is read as it comes")
+			})
+		}
 	}
 }
 

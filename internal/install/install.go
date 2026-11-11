@@ -211,19 +211,7 @@ func (h *Host) askTokens(o Options) (Options, error) {
 func (h *Host) askToken(label string) (string, error) {
 	for {
 		h.printf("  %-22s paste a token, or press Enter to skip: ", label)
-		restore := func() {}
-		if h.HideEcho != nil {
-			r, err := h.HideEcho()
-			if err != nil {
-				h.printf("\n  This terminal cannot hide input, so the paste will be visible.\n  ")
-			}
-			if err == nil {
-				restore = r
-			}
-		}
-		line, err := h.In.ReadString('\n')
-		restore()
-		h.printf("\n")
+		line, err := h.readHidden('\n')
 		if err != nil && line == "" {
 			return "", fmt.Errorf("read answer: %w", err)
 		}
@@ -414,7 +402,7 @@ func (h *Host) installBundled(ctx context.Context, o Options, kind, tag string) 
 		return "", err
 	}
 	if existing != nil {
-		return existing.Name + ", already installed", nil
+		return h.keepBundled(ctx, existing, o)
 	}
 	code, err := h.waitCode(ctx, filepath.Join(o.Dir, "data", "enroll", kind+"-instance"))
 	if err != nil {
@@ -426,6 +414,21 @@ func (h *Host) installBundled(ctx context.Context, o Options, kind, tag string) 
 		host.OnePasswordToken = o.RunnerOnePasswordToken
 	}
 	return h.installHost(ctx, host, tag)
+}
+
+// keepBundled leaves an installed bundled host as it is, except that a runner token pasted at this install is stored
+// on it, which restarts the runner; with none given the runner's token stays.
+func (h *Host) keepBundled(ctx context.Context, existing *Unit, o Options) (string, error) {
+	if existing.Kind != kindRunner {
+		return existing.Name + ", already installed", nil
+	}
+	if o.RunnerOnePasswordToken == "" {
+		return existing.Name + ", already installed, 1Password token left as it was", nil
+	}
+	if err := h.SetRunnerToken(ctx, "instance", o.RunnerOnePasswordToken); err != nil {
+		return "", err
+	}
+	return existing.Name + ", already installed, 1Password token stored and runner restarted", nil
 }
 
 // waitCode reads an enrollment code file the server writes at boot, giving it the health timeout to appear.
