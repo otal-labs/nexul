@@ -21,6 +21,8 @@ const (
 	TopicStackCreated  = "service.created"
 	TopicStackUpdated  = "service.updated"
 	TopicStackDeleted  = "service.deleted"
+	// TopicSecretsChanged is a stack's secrets changing in the secrets manager since its last deploy, found by its runner's secret check.
+	TopicSecretsChanged = "service.secrets_changed"
 	// TopicContainerStopped opens an outage; a restart loop raises it once, at its first crash.
 	TopicContainerStopped = "service.container_stopped"
 	// TopicContainerRecovered closes an outage once the container has stayed running.
@@ -43,6 +45,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicStackCreated, Payload: StackEvent{}},
 		{Name: TopicStackUpdated, Payload: StackEvent{}},
 		{Name: TopicStackDeleted, Payload: StackDeletedEvent{}},
+		{Name: TopicSecretsChanged, Payload: SecretsChangedEvent{}},
 		{Name: TopicContainerStopped, Payload: OutageEvent{}},
 		{Name: TopicContainerRecovered, Payload: OutageEvent{}},
 		{Name: TopicErrorRateCrossed, Payload: ErrorRateEvent{}},
@@ -183,6 +186,15 @@ type StackDeletedEvent struct {
 	Slug     string   `json:"slug,omitempty"`
 	Strategy Strategy `json:"strategy,omitempty" enum:"compose,run"`
 	Managed  bool     `json:"managed,omitempty"`
+}
+
+// SecretsChangedEvent is the service.secrets_changed payload: the stack's runner found secrets that changed in the
+// secrets manager since the stack's last deploy. It names variables only, never a value or a reference.
+type SecretsChangedEvent struct {
+	ProjectID string   `json:"project_id,omitempty" jsonschema:"The stack's project; empty for an instance stack."`
+	StackID   string   `json:"stack_id" jsonschema:"The stack whose secrets changed."`
+	StackName string   `json:"stack_name" jsonschema:"The stack's name."`
+	Variables []string `json:"variables" jsonschema:"The names of every variable of the stack whose secret changed since its last deploy, sorted; a redeploy picks the new values up and clears them."`
 }
 
 // PushTrigger mirrors gitprovider's PushEvent wire shape so deploy never imports gitprovider (ADR 0017).

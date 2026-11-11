@@ -643,7 +643,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return nil
 	case FrameFacts:
 		return h.publishFacts(ctx, c, f)
-	case FrameContainerEvent, FrameContainerStates, FrameLog, FrameRequestCounts:
+	case FrameContainerEvent, FrameContainerStates, FrameLog, FrameRequestCounts, FrameSecretsChanged:
 		return h.machineFrame(ctx, c, f)
 	case FrameJoinNetworksResult, FrameGatewayRoutesResult, FrameStackTeardownResult:
 		if f.Status == BuildStatusFailed {
@@ -669,6 +669,9 @@ func (h *Handler) machineFrame(ctx context.Context, c *runnerConn, f Frame) erro
 	if f.Type == FrameRequestCounts {
 		return h.publishRequestCounts(ctx, c, f)
 	}
+	if f.Type == FrameSecretsChanged {
+		return h.publishSecretsChanged(ctx, c, f)
+	}
 	return h.publishContainers(ctx, c, f)
 }
 
@@ -680,6 +683,16 @@ func (h *Handler) publishRequestCounts(ctx context.Context, c *runnerConn, f Fra
 		return nil
 	}
 	return h.bus.Publish(ctx, TopicRequestCounts, RequestCountsEvent{Machine: c.machine, Counts: f.Counts})
+}
+
+// publishSecretsChanged hands a machine runner's secret check to the deploy domain, stamped with the machine its
+// connection belongs to; a personal runner never sends one.
+func (h *Handler) publishSecretsChanged(ctx context.Context, c *runnerConn, f Frame) error {
+	if c.personal {
+		h.log.Warn("secrets_changed from a personal runner", "runner_id", c.id)
+		return nil
+	}
+	return h.bus.Publish(ctx, TopicSecretsChanged, SecretsChangedReport{Machine: c.machine, Changes: f.SecretChanges})
 }
 
 // publishContainers hands a machine runner's Docker events to the deploy domain, which knows whose containers they are;

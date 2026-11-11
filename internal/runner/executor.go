@@ -80,6 +80,8 @@ type ExecutorConfig struct {
 	// Registry is the resolvers a deploy's secret references go through, read at each deploy because a manager can open
 	// after start; nil means this runner holds no manager.
 	Registry func() secretref.Registry
+	// Fingerprints keeps what each deploy resolved for the secret check; nil keeps nothing.
+	Fingerprints *Fingerprints
 }
 
 // ShellExecutor runs builds and deploys on the host (ADR 0032).
@@ -94,6 +96,8 @@ type ShellExecutor struct {
 	reportPoll time.Duration
 	log        *slog.Logger
 	registry   func() secretref.Registry
+	// fingerprints is shared with the secret check, so a copy of the executor made per deploy still writes the same files.
+	fingerprints *Fingerprints
 }
 
 // NewShellExecutor wires the host executor; a nil cmd falls back to the real shell runner.
@@ -108,6 +112,7 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 	return &ShellExecutor{
 		cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
 		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log, registry: cfg.Registry,
+		fingerprints: cfg.Fingerprints,
 	}
 }
 
@@ -134,7 +139,7 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 	send = stampCommit(send, &commit)
 	logs := newLogStream(req.ID, send)
 	defer logs.close()
-	e, req, err := e.withSecrets(ctx, req, logs)
+	e, req, send, err := e.withSecrets(ctx, req, send, logs)
 	if err != nil {
 		e.failBuild(ctx, req, send, err)
 		return
@@ -513,7 +518,7 @@ func (e *ShellExecutor) Deploy(ctx context.Context, req DeployRequestedEvent, se
 	defer e.recoverAndReport(send, Frame{Type: FrameDeployResult, ID: req.ID})
 	logs := newLogStream(req.ID, send)
 	defer logs.close()
-	e, req, err := e.withSecrets(ctx, req, logs)
+	e, req, send, err := e.withSecrets(ctx, req, send, logs)
 	if err != nil {
 		e.log.Warn("deploy secrets not resolved", "id", req.ID, "error", err)
 		send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusFailed, Error: err.Error()})

@@ -88,12 +88,23 @@ func (h *Handler) flushTeardowns(ctx context.Context, c *runnerConn) {
 // is force-removed. Volumes, networks and the checkout stay.
 func (e *ShellExecutor) Teardown(ctx context.Context, slug, strategy string, send func(Frame)) {
 	result := Frame{Type: FrameStackTeardownResult, StackSlug: slug, Status: BuildStatusSuccess}
+	e.dropFingerprints(slug)
 	if err := e.teardownStack(ctx, slug, strategy); err != nil {
 		e.log.Warn("stack_teardown failed", "slug", slug, "error", err)
 		result.Status = BuildStatusFailed
 		result.Error = err.Error()
 	}
 	send(result)
+}
+
+// dropFingerprints removes a deleted stack's secret check record, whether or not its containers came down.
+func (e *ShellExecutor) dropFingerprints(slug string) {
+	if e.fingerprints == nil {
+		return
+	}
+	if err := e.fingerprints.remove(slug); err != nil {
+		e.log.Warn("secret check record not removed", "slug", slug, "error", err)
+	}
 }
 
 func (e *ShellExecutor) teardownStack(ctx context.Context, slug, strategy string) error {

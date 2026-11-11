@@ -70,3 +70,6 @@ WHERE (env NOT IN ('{}', '') AND env NOT LIKE 'enc1:%')
 
 -- name: SetStackSecrets :exec
 UPDATE stacks SET env = ?, branch_deploy_rules = ? WHERE id = ?;
+
+-- name: SetStackSecretsChanged :execrows
+UPDATE stacks SET secrets_changed = ? WHERE id = ?;

@@ -874,6 +874,7 @@ func (s *Service) HandleStatusChanged(ctx context.Context, ev eventbus.Event) er
 	}
 	if status == StatusHealthy {
 		s.endOutagesAfterDeploy(ctx, p)
+		s.clearSecretsChanged(ctx, p.ID)
 	}
 	return nil
 }

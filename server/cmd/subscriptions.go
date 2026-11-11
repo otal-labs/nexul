@@ -185,6 +185,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "deploy.container_states", deploy.TopicRunnerContainerStates, "", svc.deploySvc.HandleContainerStates)
 	// A machine runner's proxy router counts become the stacks' minutes.
 	mustSubscribe(ctx, bus, "deploy.request_counts", deploy.TopicRunnerRequestCounts, "", svc.deploySvc.HandleRequestCounts)
+	// A machine runner's secret check puts a changed-secret notice on the stacks it names.
+	mustSubscribe(ctx, bus, "deploy.secrets_changed", deploy.TopicRunnerSecretsChanged, "", svc.deploySvc.HandleSecretsChanged)
 	// A stack with crash tickets switched on files a ticket per crashed service, then comments on repeats and recoveries.
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerStopped, "", svc.deploySvc.HandleContainerStopped)
 	mustSubscribe(ctx, bus, "deploy.crash_tickets", deploy.TopicContainerRecovered, "", svc.deploySvc.HandleContainerRecovered)

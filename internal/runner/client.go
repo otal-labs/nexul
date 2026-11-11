@@ -63,6 +63,8 @@ type ClientConfig struct {
 	// Managers is the secrets managers this runner holds a token for, opened at start and reported on every connect; nil
 	// for none, and a personal runner never reports any.
 	Managers *secretref.Managers
+	// SecretCheck re-reads the secrets of the stacks this runner deployed and reports the ones that changed; nil for none.
+	SecretCheck *SecretCheck
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -146,6 +148,9 @@ func (c *Client) Run(ctx context.Context) error {
 	if c.managers() != nil {
 		c.cfg.Managers.Start(ctx, &c.streams)
 	}
+	if c.cfg.SecretCheck != nil && !c.cfg.Personal {
+		c.streams.Go(func() { c.cfg.SecretCheck.run(ctx) })
+	}
 	backoff := NewBackoff(c.cfg.BackoffBase, c.cfg.BackoffMax,
 		rand.New(rand.NewSource(time.Now().UnixNano())))
 	attempt := 0
@@ -214,15 +219,7 @@ func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
 	if c.cfg.Personal {
 		loops.Go(func() { c.factsLoop(ctx, conn) })
 	}
-	if !c.cfg.Personal && c.cfg.Containers != nil {
-		loops.Go(func() { c.watchContainers(ctx, conn) })
-		if c.cfg.Containers.Fetch != nil {
-			loops.Go(func() { c.watchRequests(ctx, conn) })
-		}
-	}
-	if c.cfg.Logs != nil && !c.cfg.Personal {
-		loops.Go(func() { c.logLoop(ctx, conn) })
-	}
+	c.startMachineLoops(ctx, conn, &loops)
 
 	for {
 		var raw json.RawMessage
@@ -238,6 +235,26 @@ func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
 			return true, errRemoved
 		}
 		c.handleFrame(streamCtx, ctx, conn, *frame)
+	}
+}
+
+// startMachineLoops starts what only a machine's runner reports on a connection: its host's containers and proxy
+// counters, its own log records and what its secret check found.
+func (c *Client) startMachineLoops(ctx context.Context, conn *websocket.Conn, loops *sync.WaitGroup) {
+	if c.cfg.Personal {
+		return
+	}
+	if c.cfg.Containers != nil {
+		loops.Go(func() { c.watchContainers(ctx, conn) })
+		if c.cfg.Containers.Fetch != nil {
+			loops.Go(func() { c.watchRequests(ctx, conn) })
+		}
+	}
+	if c.cfg.Logs != nil {
+		loops.Go(func() { c.logLoop(ctx, conn) })
+	}
+	if c.cfg.SecretCheck != nil {
+		loops.Go(func() { c.reportSecrets(ctx, conn) })
 	}
 }
 

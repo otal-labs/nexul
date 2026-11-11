@@ -330,8 +330,10 @@ type Stack struct {
 	CrashNoticeBotID string `json:"crash_notice_bot_id,omitempty" jsonschema:"A bot of that conversation the notices post as; empty posts them as the instance."`
 	// ErrorRate is the stack's error-rate rule; a stack that predates it, or a client that omits it, gets the defaults, off.
 	ErrorRate ErrorRateRule `json:"error_rate" jsonschema:"The stack's error-rate rule: off until switched on."`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	// SecretsChanged names the variables a runner's secret check found changed in the secrets manager since the stack's last deploy; never stored by a stack write.
+	SecretsChanged []string  `json:"secrets_changed,omitempty" jsonschema:"The names of the variables whose secret changed in the secrets manager since the last deploy, so the stack needs a redeploy; names only, never a value or a reference. The next successful deploy, retry or rollback clears it."`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // The error-rate rule's defaults and the bounds its numbers are held to.

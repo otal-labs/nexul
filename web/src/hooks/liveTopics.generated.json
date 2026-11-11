@@ -106,6 +106,7 @@
   "service.container_stopped",
   "service.created",
   "service.deleted",
+  "service.secrets_changed",
   "service.updated",
   "session.created",
   "session.revoked",

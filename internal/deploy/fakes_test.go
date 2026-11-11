@@ -440,6 +440,18 @@ func (f *fakeStackRepo) Update(_ context.Context, stack *Stack, evts ...eventbus
 	return nil
 }
 
+func (f *fakeStackRepo) SetSecretsChanged(_ context.Context, id string, names []string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stack, ok := f.stored[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	stack.SecretsChanged = names
+	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
 func (f *fakeStackRepo) Delete(_ context.Context, id string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

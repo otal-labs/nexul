@@ -16,6 +16,22 @@ func TestLoadRunnerConfig_UnreadableCredentialFile_Fails(t *testing.T) {
 	require.ErrorContains(t, err, "NEXUL_CREDENTIAL_FILE")
 }
 
+func TestLoadRunnerConfig_SecretCheckInterval_IsHeldToItsMinimumAtStart(t *testing.T) {
+	t.Setenv("NEXUL_CREDENTIAL_FILE", "")
+	cfg, err := LoadRunnerConfig()
+	require.NoError(t, err)
+	assert.Equal(t, time.Hour, cfg.SecretCheckInterval)
+
+	t.Setenv("NEXUL_SECRET_CHECK_INTERVAL", "off")
+	cfg, err = LoadRunnerConfig()
+	require.NoError(t, err)
+	assert.Zero(t, cfg.SecretCheckInterval)
+
+	t.Setenv("NEXUL_SECRET_CHECK_INTERVAL", "1m")
+	_, err = LoadRunnerConfig()
+	require.ErrorContains(t, err, "NEXUL_SECRET_CHECK_INTERVAL")
+}
+
 func TestLoadRunnerConfig(t *testing.T) {
 	credFile := filepath.Join(t.TempDir(), "credential")
 	require.NoError(t, os.WriteFile(credFile, []byte("nxr_abc\n"), 0o600))
