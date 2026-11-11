@@ -19,8 +19,8 @@ instance bootstrap secret. The map is done when nothing is left to decide before
   - Scope: stack environment, the automation secrets pool, connector credentials, the bootstrap secret.
   - One reference per variable: each value is a literal or a reference, and a stack can mix both.
   - The side that uses a secret resolves it with its own credential. The runner resolves stack
-    environment references; the automations host resolves the pool; the server resolves connector
-    credentials and the bootstrap secret.
+    environment references; the automations host resolves the pool (with a token per workspace,
+    ticket 05); the server resolves connector credentials and the bootstrap secret.
   - Each runner's 1Password token lives only on its machine, scoped to the vaults it deploys from.
     Nexul never holds a runner's token or a resolved value. The server has its own token, scoped to its
     own vault. Why: a Nexul breach (database, backup, server) yields no vault access. The trust left is
@@ -45,6 +45,9 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [How a runner gets its 1Password token and tells Nexul it can resolve](issues/03-runner-setup.md):
   an install flag plus `nexul runner 1password <name>`; the token is checked at start and reported as
   ready or rejected; deploys with references go only to a ready runner; a tag on the runner list.
+- [Automation secrets by reference on the automations host](issues/05-automation-pool.md): one token
+  per workspace per host, held by the supervisor and never by an automation's thread; resolved once per
+  connection; a failed entry is left out and named in the automation's log.
 
 ## Not yet specified
 
