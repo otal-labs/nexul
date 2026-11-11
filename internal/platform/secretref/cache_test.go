@@ -75,7 +75,7 @@ func TestCache_AManagerThatDidNotOpen_AnswersWithWhyAndReadsNothing(t *testing.T
 		want    error
 	}{
 		{"unreachable", secretref.ErrUnreachable, secretref.ErrUnreachable},
-		{"token rejected", secretref.ErrNoAccess, secretref.ErrTokenRejected},
+		{"token rejected", secretref.ErrTokenRejected, secretref.ErrTokenRejected},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

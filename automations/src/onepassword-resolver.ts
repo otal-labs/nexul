@@ -20,13 +20,16 @@ export function mapResolveError(error: ResolveReferenceError): ResolveErrorKind 
   }
 }
 
-const NETWORK_FAILURE = /dial|no such host|connection refused|fetch failed|econn|enotfound|eai_again|network|timed? ?out/i;
+const NETWORK_FAILURE = /dial|no such host|connection refused/i;
+// Keep equal to tokenRefused in internal/platform/secretref/onepassword/resolver.go, whose tests run the same messages.
+const TOKEN_REFUSED = /invalid.*token|token.*invalid|unauthori[sz]ed|forbidden|deserializ|\b40[13]\b/i;
 
-// The SDK reports a failed creation as plain text: a transport failure is unreachable and any other failure is a
-// rejected token, as the runner and the server read it.
-function openFailureState(err: unknown): ManagerState {
+// The SDK reports a failed creation as plain text: only wording that says the token was refused is a rejected token
+// (final); anything else, a transport failure or an unrecognised one, is unreachable and tried again.
+export function openFailureState(err: unknown): ManagerState {
   const message = err instanceof Error ? err.message : "";
-  return NETWORK_FAILURE.test(message) ? "unreachable" : "token rejected";
+  if (NETWORK_FAILURE.test(message)) return "unreachable";
+  return TOKEN_REFUSED.test(message) ? "token rejected" : "unreachable";
 }
 
 // One client per token, created on first use and kept: creating one costs about a second of CPU, a read costs none.

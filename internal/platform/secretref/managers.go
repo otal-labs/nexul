@@ -81,18 +81,18 @@ func (m *Managers) Start(ctx context.Context, wg *sync.WaitGroup) {
 	first.Wait()
 }
 
-// try makes one attempt and records its state; a failure that is not the manager being out of reach is a rejected token.
+// try makes one attempt and records its state; only an open error marked ErrTokenRejected is a rejected token; any other failure is retried.
 func (m *Managers) try(ctx context.Context, s Setup) string {
 	openCtx, cancel := context.WithTimeout(ctx, openTimeout)
 	defer cancel()
 	res, err := s.Open(openCtx)
 	state := ManagerReady
 	if err != nil {
-		state = ManagerTokenRejected
-		if errors.Is(err, ErrUnreachable) || openCtx.Err() != nil {
-			state = ManagerUnreachable
+		state = ManagerUnreachable
+		if errors.Is(err, ErrTokenRejected) && openCtx.Err() == nil {
+			state = ManagerTokenRejected
 		}
-		m.log.Warn("secrets manager not ready", "manager", s.Scheme, "state", state, "error", err)
+		m.log.Warn("secrets manager not ready", "manager", s.Scheme, "state", state)
 	}
 	if m.set(s.Scheme, state, res) && state == ManagerTokenRejected && m.onRejected != nil {
 		m.onRejected(ctx, s.Scheme)
