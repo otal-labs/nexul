@@ -17,8 +17,10 @@ import (
 
 const integrationName = "nexul"
 
-// Resolver holds the one SDK client for the life of the process; creating it costs about 2.6 s of CPU.
+// Resolver holds the one SDK client for the life of the process; creating it costs about 2.6 s of CPU. The client itself
+// is kept, not only its Secrets(): the SDK releases the client in its core once the *Client is garbage collected.
 type Resolver struct {
+	client  *sdk.Client
 	secrets sdk.SecretsAPI
 }
 
@@ -32,7 +34,7 @@ func New(ctx context.Context, token, version string) (*Resolver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create 1password client: %w", classifyOpen(ctx, err))
 	}
-	return &Resolver{secrets: client.Secrets()}, nil
+	return &Resolver{client: client, secrets: client.Secrets()}, nil
 }
 
 func (r *Resolver) Scheme() string { return "op" }
