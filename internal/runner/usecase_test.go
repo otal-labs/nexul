@@ -88,7 +88,8 @@ func TestService_ListRunners(t *testing.T) {
 }
 
 // The managers a machine's runners can read are what a deploy with references is refused against: a ready or an
-// unreachable one counts, a rejected token, no token and another machine's runner do not.
+// unreachable one counts, a rejected token, no token and another machine's runner do not; an empty machine counts every
+// deploy runner.
 func TestService_ManagersOn(t *testing.T) {
 	machines := newFakeMachineRepo()
 	require.NoError(t, machines.Create(t.Context(), &Machine{ID: "m-prod", Name: "prod"}))
@@ -100,6 +101,7 @@ func TestService_ManagersOn(t *testing.T) {
 		{ID: "r-bad", MachineID: "m-prod", Managers: []ManagerState{{Manager: "aws", State: ManagerTokenRejected}}},
 		{ID: "r-none", MachineID: "m-prod"},
 		{ID: "r-qa", MachineID: "m-qa", Managers: []ManagerState{{Manager: "gcp", State: ManagerReady}}},
+		{ID: "p-1", OwnerUserID: "u-1", ComputerID: "c-1", Managers: []ManagerState{{Manager: "ssm", State: ManagerReady}}},
 	} {
 		require.NoError(t, repo.Create(t.Context(), r))
 	}
@@ -112,6 +114,14 @@ func TestService_ManagersOn(t *testing.T) {
 	got, err = svc.ManagersOn(t.Context(), "no-such-machine")
 	require.NoError(t, err)
 	assert.Empty(t, got)
+
+	got, err = svc.ManagersOn(t.Context(), "")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"op", "vault", "gcp"}, got, "an empty machine reads every deploy runner, never a personal one")
+
+	got, err = NewService(newFakeRunnerRepo(), &fakeDispatch{}).WithMachines(machines).ManagersOn(t.Context(), "")
+	require.NoError(t, err)
+	assert.Empty(t, got, "an empty machine with no runner anywhere reads nothing")
 }
 
 func TestService_ListQueue(t *testing.T) {

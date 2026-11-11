@@ -399,12 +399,20 @@ func (h *Handler) handleRequest(ctx context.Context, ev eventbus.Event) error {
 	if _, err := req.toFrame(nil); err != nil {
 		return apperrs.Fatal(fmt.Errorf("deploy.requested %s: %w", req.ID, err))
 	}
+	env, err := h.resolveEnv(ctx, req)
+	if err != nil {
+		h.log.Warn("env lookup failed, request queued", "id", req.ID, "error", err)
+		h.queue(req)
+		return nil
+	}
+	// The managers come from the env the frame will carry, never from the copy taken when the deploy was requested.
+	req.SecretManagers = secretref.Schemes(env)
 	c := h.idleConnected(req)
 	if c == nil {
 		h.queue(req)
 		return nil
 	}
-	if err := h.dispatchOne(ctx, c, req); err != nil {
+	if err := h.dispatchOne(ctx, c, req, env); err != nil {
 		if h.failDeniedBuild(ctx, req, err) {
 			return nil
 		}
@@ -442,8 +450,8 @@ func (h *Handler) queue(req DeployRequestedEvent) {
 }
 
 // dispatchOne assigns one request to a runner; a send/env failure leaves the job unowned to requeue.
-func (h *Handler) dispatchOne(ctx context.Context, c *runnerConn, req DeployRequestedEvent) error {
-	frame, err := h.buildFrame(ctx, req)
+func (h *Handler) dispatchOne(ctx context.Context, c *runnerConn, req DeployRequestedEvent, env map[string]string) error {
+	frame, err := h.buildFrame(ctx, req, env)
 	if err != nil {
 		return err
 	}
@@ -456,12 +464,8 @@ func (h *Handler) dispatchOne(ctx context.Context, c *runnerConn, req DeployRequ
 	return nil
 }
 
-// buildFrame resolves the secrets a job needs at dispatch time: real env values and, for builds, a clone token.
-func (h *Handler) buildFrame(ctx context.Context, req DeployRequestedEvent) (Frame, error) {
-	env, err := h.resolveEnv(ctx, req)
-	if err != nil {
-		return Frame{}, err
-	}
+// buildFrame adds what a job needs at dispatch time to its resolved env: for builds, a clone token.
+func (h *Handler) buildFrame(ctx context.Context, req DeployRequestedEvent, env map[string]string) (Frame, error) {
 	frame, err := req.toFrame(env)
 	if err != nil {
 		return Frame{}, err
@@ -538,12 +542,12 @@ func (h *Handler) dispatchPending(ctx context.Context, c *runnerConn) {
 		if c.jobSnapshot() != nil || c.upgradeSnapshot() != "" {
 			return
 		}
-		req, ok := h.popFitting(c)
+		req, env, ok := h.popFitting(ctx, c)
 		if !ok {
 			return
 		}
 
-		if err := h.dispatchOne(ctx, c, req); err != nil {
+		if err := h.dispatchOne(ctx, c, req, env); err != nil {
 			if h.failDeniedBuild(ctx, req, err) {
 				continue
 			}
@@ -556,17 +560,43 @@ func (h *Handler) dispatchPending(ctx context.Context, c *runnerConn) {
 	}
 }
 
-// popFitting removes and returns the first pending job that fits c, leaving the order of the rest untouched.
-func (h *Handler) popFitting(c *runnerConn) (DeployRequestedEvent, bool) {
+// popFitting removes and returns the first pending job that fits c, with the env it will be sent, leaving the order of
+// the rest untouched. A job fits on the managers of its env as it is now, not as it was when requested; a job whose env
+// cannot be read stays queued.
+func (h *Handler) popFitting(ctx context.Context, c *runnerConn) (DeployRequestedEvent, map[string]string, bool) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	for i, req := range h.pending {
-		if req.fits(c) {
-			h.pending = append(h.pending[:i], h.pending[i+1:]...)
-			return req, true
+	candidates := slices.Clone(h.pending)
+	h.mu.Unlock()
+	for _, req := range candidates {
+		if c.personal || (req.Target != "" && req.Target != c.machine) {
+			continue
+		}
+		env, err := h.resolveEnv(ctx, req)
+		if err != nil {
+			h.log.Warn("env lookup failed, request stays queued", "runner_id", c.id, "id", req.ID, "error", err)
+			continue
+		}
+		req.SecretManagers = secretref.Schemes(env)
+		if !req.fits(c) {
+			continue
+		}
+		if h.unqueue(req.ID) {
+			return req, env, true
 		}
 	}
-	return DeployRequestedEvent{}, false
+	return DeployRequestedEvent{}, nil, false
+}
+
+// unqueue drops the pending job id and reports whether it was still there.
+func (h *Handler) unqueue(id string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	i := slices.IndexFunc(h.pending, func(r DeployRequestedEvent) bool { return r.ID == id })
+	if i < 0 {
+		return false
+	}
+	h.pending = slices.Delete(h.pending, i, i+1)
+	return true
 }
 
 // readLoop drains inbound frames until close; a dropped mid-job runner fails the job, never requeues it.

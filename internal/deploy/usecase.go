@@ -56,7 +56,8 @@ type GatewayJoin interface {
 // SecretReaders is the runner seam a deploy with secret references asks which managers a machine's runners can read.
 type SecretReaders interface {
 	// ManagersOn lists the managers, by scheme, that some deploy runner on the named machine last reported ready or
-	// unreachable, online or not; a runner whose token was rejected, or that holds none, adds nothing.
+	// unreachable, online or not (every deploy runner for an empty machine); a runner whose token was rejected, or that
+	// holds none, adds nothing.
 	ManagersOn(ctx context.Context, machine string) ([]string, error)
 }
 
@@ -337,7 +338,11 @@ func (s *Service) requireReaders(ctx context.Context, stack *Stack) error {
 	}
 	for _, m := range managers {
 		if !slices.Contains(readable, m) {
-			return fmt.Errorf("%w: no runner on %s can read %s references", apperrs.ErrConflict, stack.Machine, secretref.ManagerName(m))
+			where := "any machine"
+			if stack.Machine != "" {
+				where = stack.Machine
+			}
+			return fmt.Errorf("%w: no runner on %s can read %s references", apperrs.ErrConflict, where, secretref.ManagerName(m))
 		}
 	}
 	return nil
