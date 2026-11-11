@@ -1,6 +1,6 @@
 # 20 — The host's supervisor resolves an automation's pool references at connection
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 19
 
@@ -29,3 +29,5 @@ Verify: `bun run typecheck` and `bun run test` in `automations/`, `sdk/` and `we
 Until a host holds tokens for one workspace only (ADR 0182, as amended), the pool refuses a reference on save and `nexul automations 1password` refuses to store a token (`--remove` still works). Lifting both, and their two tests, is part of this ticket.
 
 A host now holds one workspace's token and runs only that workspace's automations, and `nexul automations 1password` stores tokens again, keyed by workspace id (`WorkspaceManagers.resolverFor` takes the assignment's `workspace_id`). The pool's refusal of references and its test (`internal/automations/secrets.go`) are still this ticket's to lift.
+
+Built: a worker thread asks the supervisor, over its message channel, to resolve the references in its hello pool, and the supervisor answers with the values of that worker's own workspace's token only, since the thread never names a workspace. Requests of one workspace within a second share one `resolveAll`. A failed name is left out of `ctx.secrets` and logged as `<NAME>: <reason>`. A resolve also moves the reported state (unreachable to ready and back), sent at the next poll. The pool accepts references again. The automation read carries `pool_has_references`, and the automation page warns when its host has no ready manager for the workspace. A bring-your-own SDK automation has no supervisor, so it still receives the pool as stored.

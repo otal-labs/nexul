@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // tokenPrefix marks a scoped automation token so the gateway can tell token kinds apart.
@@ -34,6 +35,8 @@ type Service struct {
 	resolveScopes ScopeResolver
 	// hosts checks host-scoped tokens and backs placement; nil until SetHosts wires it.
 	hosts *HostsService
+	// pool is the workspace's secrets, read only to say whether it holds references; nil until SetSecrets wires it.
+	pool SecretsProvider
 }
 
 // NewService wires the automations use-cases over the given repo and permission gate.
@@ -49,6 +52,11 @@ func (s *Service) SetConnectionRegistry(r DeliveryRegistry) {
 // SetHosts wires the automations hosts, whose workers authenticate with host-scoped tokens.
 func (s *Service) SetHosts(h *HostsService) {
 	s.hosts = h
+}
+
+// SetSecrets wires the workspace secrets pool, so a read can say whether it holds references.
+func (s *Service) SetSecrets(p SecretsProvider) {
+	s.pool = p
 }
 
 // errSwitchedOff refuses a switched-off automation's token the way a revoked one is refused, saying why.
@@ -185,7 +193,28 @@ func (s *Service) Get(ctx context.Context, actorID, id string) (*Automation, err
 	if err := s.withHealth(ctx, one); err != nil {
 		return nil, err
 	}
+	if err := s.withPoolReferences(ctx, &one[0]); err != nil {
+		return nil, err
+	}
 	return &one[0], nil
+}
+
+// withPoolReferences sets whether the automation's workspace pool holds a secret reference.
+func (s *Service) withPoolReferences(ctx context.Context, a *Automation) error {
+	if s.pool == nil {
+		return nil
+	}
+	pool, err := s.pool.AllSecrets(ctx, a.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("read workspace secrets: %w", err)
+	}
+	for _, value := range pool {
+		if kind, _ := secretref.Parse(value); kind == secretref.Reference {
+			a.PoolHasReferences = true
+			return nil
+		}
+	}
+	return nil
 }
 
 // withHealth fills each automation's Health in one read for the whole list.

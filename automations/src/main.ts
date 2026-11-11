@@ -5,6 +5,7 @@ import { pollOnce, uninstallSelf } from "./host.ts";
 import { log, LogQueue, shipLogsTo } from "./log.ts";
 import { httpPostLogs, LogShipper } from "./log-shipper.ts";
 import { WorkspaceManagers } from "./managers.ts";
+import { PoolResolution } from "./pool-resolution.ts";
 import { OnePasswordResolver } from "./onepassword-resolver.ts";
 import { Supervisor } from "./supervisor.ts";
 import { takeWorkspaceTokens } from "./workspace-tokens.ts";
@@ -20,12 +21,17 @@ async function main(): Promise<void> {
   shipper.start();
   log("info", "automations host starting", { serverUrl: cfg.serverUrl, name: cfg.hostName });
 
-  const supervisor = new Supervisor(httpAutomationsApi, threadWorkerFactory, {
-    serverUrl: cfg.serverUrl,
-    timeoutMs: cfg.runTimeoutMs,
-    heartbeatTimeoutMs: cfg.heartbeatTimeoutMs,
-    memoryMb: cfg.memoryMb,
-  });
+  const supervisor = new Supervisor(
+    httpAutomationsApi,
+    threadWorkerFactory,
+    {
+      serverUrl: cfg.serverUrl,
+      timeoutMs: cfg.runTimeoutMs,
+      heartbeatTimeoutMs: cfg.heartbeatTimeoutMs,
+      memoryMb: cfg.memoryMb,
+    },
+    new PoolResolution(managers),
+  );
   managers.start();
   const deps = { api: httpAutomationsApi, supervisor, managers, serverUrl: cfg.serverUrl, credential };
 

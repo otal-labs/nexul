@@ -198,6 +198,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// DefaultDefinitions supplies the board pair's bundled default automation code.
 	automationVersionsSvc := automations.NewVersionsService(store.AutomationVersions, store.Automations, accessSvc)
 	automationSecretsSvc := automations.NewSecretsService(store.AutomationSecrets, accessSvc)
+	automationsSvc.SetSecrets(automationSecretsSvc)
 	automationSeeder := automations.NewSeeder(store.Automations, automationVersionsSvc, automations.DefaultDefinitions(), store.EventWorkspaces, tenancy.DefaultWorkspaceID, logger)
 	automationRunsSvc := automations.NewRunsService(store.AutomationRuns, store.Automations, accessSvc)
 	if cfg.DevLogin {

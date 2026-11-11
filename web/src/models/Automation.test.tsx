@@ -2,8 +2,10 @@
 import { describe, expect, it } from "vitest";
 
 import { AutomationKind } from "@/enums/Automation";
+import type { AutomationHost } from "@/models/AutomationHost";
 import {
   automationNeedsConfiguration,
+  automationPoolUnresolvable,
   configValuesToSave,
   parseConfigSchema,
   parseConfigValues,
@@ -136,5 +138,34 @@ describe("automationNeedsConfiguration", () => {
       config_values: { targetStatus: "status-1" },
     });
     expect(automationNeedsConfiguration(automation)).toBe(false);
+  });
+});
+
+describe("automationPoolUnresolvable", () => {
+  const hostWith = (managers: AutomationHost["managers"]): AutomationHost => ({
+    id: "h1",
+    name: "jobs",
+    machine: "box",
+    os: "linux",
+    arch: "amd64",
+    version: "dev",
+    connected: true,
+    last_seen: "2026-08-01T00:00:00Z",
+    managers,
+  });
+  const onJobs = baseAutomation({ host_id: "h1", pool_has_references: true });
+
+  it("is false while the host list has not loaded, the host is unknown, or the pool holds no reference", () => {
+    expect(automationPoolUnresolvable(onJobs, undefined)).toBe(false);
+    expect(automationPoolUnresolvable(onJobs, [])).toBe(false);
+    expect(automationPoolUnresolvable(baseAutomation({ host_id: "h1" }), [hostWith([])])).toBe(false);
+  });
+
+  it("is true unless the host reports a ready manager for this very workspace", () => {
+    const ready = { manager: "op", state: "ready" } as const;
+    expect(automationPoolUnresolvable(onJobs, [hostWith([])])).toBe(true);
+    expect(automationPoolUnresolvable(onJobs, [hostWith([{ workspace_id: "ws-1", manager: "op", state: "unreachable" }])])).toBe(true);
+    expect(automationPoolUnresolvable(onJobs, [hostWith([{ workspace_id: "ws-2", ...ready }])])).toBe(true);
+    expect(automationPoolUnresolvable(onJobs, [hostWith([{ workspace_id: "ws-1", ...ready }])])).toBe(false);
   });
 });

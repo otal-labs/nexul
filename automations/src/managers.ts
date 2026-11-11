@@ -1,6 +1,6 @@
 import type { AutomationTarget, AutomationsApi, ManagerReport } from "./automations-api.ts";
 import { log } from "./log.ts";
-import type { ManagerState, Resolver } from "./resolver.ts";
+import { failed, type ManagerState, type ResolveResult, type Resolver } from "./resolver.ts";
 
 export type OpenResolver = (token: string) => Resolver;
 
@@ -66,6 +66,23 @@ export class WorkspaceManagers {
 
   resolverFor(workspaceId: string): Resolver | undefined {
     return this.resolvers.get(workspaceId);
+  }
+
+  // Resolves references with the workspace's own token; a workspace with no token on this host fails every one. What
+  // the manager answered also keeps the reported state true: it answered, so it is ready; nothing got through, so it
+  // is unreachable. A rejected token stays rejected.
+  async resolve(workspaceId: string, refs: string[]): Promise<Map<string, ResolveResult>> {
+    const resolver = this.resolvers.get(workspaceId);
+    if (!resolver) return new Map(refs.map((ref) => [ref, failed("no_token")]));
+    const results = await resolver.resolveAll(refs);
+    this.follow(workspaceId, [...results.values()]);
+    return results;
+  }
+
+  private follow(workspaceId: string, results: ResolveResult[]): void {
+    const current = this.states.get(workspaceId);
+    if (current === undefined || current === "token rejected" || results.length === 0) return;
+    this.states.set(workspaceId, results.every((r) => !r.ok && r.error === "unreachable") ? "unreachable" : "ready");
   }
 
   // The targets this host may run. Every automation on it can read its tokens, so with a token held only that token's

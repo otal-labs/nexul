@@ -110,6 +110,18 @@ describe("AutomationPage", () => {
     expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
   });
 
+  it("warns under the title when the pool holds references and its host has no ready manager for the workspace", async () => {
+    const instance = { id: "h0", name: "instance", machine: "", os: "linux", arch: "amd64", version: "dev", connected: true, last_seen: "2026-08-01T00:00:00Z" };
+
+    renderPage({
+      ...baseEndpoints,
+      "/api/automations/a1": { ...automation, workspace_id: "ws-1", pool_has_references: true },
+      "/api/automation-hosts": [{ ...instance, managers: [{ workspace_id: "ws-1", manager: "op", state: "unreachable" }] }],
+    });
+
+    expect(await screen.findByText("Host can't resolve secret references")).toBeInTheDocument();
+  });
+
   it("opens /versions directly on the pending version's diff", async () => {
     renderPage({ ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/versions");
 

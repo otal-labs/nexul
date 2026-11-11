@@ -61,6 +61,7 @@ describe("takeWorkspaceTokens", () => {
           timeoutMs: 30_000,
           heartbeatTimeoutMs: 60_000,
           memoryMb: 64,
+          resolvePool: async () => ({}),
         },
         () => {},
       );
@@ -231,6 +232,53 @@ describe("WorkspaceManagers", () => {
 });
 
 // The same messages and states are tested for the runner and server in internal/platform/secretref/onepassword.
+describe("WorkspaceManagers.resolve", () => {
+  const drain = () => new Promise<void>((resolve) => setImmediate(resolve));
+  const timers: ManagerTimers = { delay: () => new Promise<void>(() => {}), random: () => 0 };
+  const server = (sent: ManagerReport[][]): AutomationsApi => ({
+    fetchAssignments: async () => ({ removed: false, automations: [] }),
+    fetchState: async () => {
+      throw new Error("not used");
+    },
+    reportManagers: async (_url, _credential, managers) => {
+      sent.push(managers.map((m) => ({ ...m })));
+    },
+  });
+
+  test("the reported state follows what resolving shows: unreachable until a read gets through, then ready, and back", async () => {
+    const entries: Record<string, string | { error: "unreachable" }> = { "op://a/b/c": { error: "unreachable" } };
+    const managers = new WorkspaceManagers(new Map([["ws-1", "ops_acme"]]), () => new FakeResolver("op", entries, "ready"), timers);
+    const sent: ManagerReport[][] = [];
+    managers.start();
+    await drain();
+
+    await managers.resolve("ws-1", ["op://a/b/c"]);
+    await managers.report(server(sent), "http://server", "nxa_1");
+    entries["op://a/b/c"] = "value";
+    await managers.resolve("ws-1", ["op://a/b/c"]);
+    await managers.report(server(sent), "http://server", "nxa_1");
+    await managers.report(server(sent), "http://server", "nxa_1");
+
+    expect(sent.map((report) => report[0]?.state)).toEqual(["unreachable", "ready"]);
+  });
+
+  test("a rejected token stays rejected whatever a resolve returns", async () => {
+    const managers = new WorkspaceManagers(
+      new Map([["ws-1", "ops_acme"]]),
+      () => new FakeResolver("op", { "op://a/b/c": { error: "unreachable" } }, "token rejected"),
+      timers,
+    );
+    const sent: ManagerReport[][] = [];
+    managers.start();
+    await drain();
+
+    await managers.resolve("ws-1", ["op://a/b/c"]);
+    await managers.report(server(sent), "http://server", "nxa_1");
+
+    expect(sent.map((report) => report[0]?.state)).toEqual(["token rejected"]);
+  });
+});
+
 describe("OnePasswordResolver.check", () => {
   const failing = (message: string) =>
     new OnePasswordResolver("ops_secret", async () => {

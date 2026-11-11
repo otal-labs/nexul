@@ -6,6 +6,7 @@ import type { SpawnOptions, WorkerFactory, WorkerHandle } from "../src/worker.ts
 const target: AutomationTarget = { id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace_id: "ws-1", workspace: "acme" };
 const other: AutomationTarget = { id: "a2", name: "PR opened", token: "dat_h.a2.y", workspace_id: "ws-1", workspace: "acme" };
 const cfg = { serverUrl: "http://server", timeoutMs: 30_000, heartbeatTimeoutMs: 90_000, memoryMb: 128 };
+const noPool = { resolve: async () => ({}) };
 
 function fakeApi(states: RemoteState[]): AutomationsApi {
   let i = 0;
@@ -50,7 +51,7 @@ describe("Supervisor", () => {
         return state();
       },
     };
-    const sup = new Supervisor(api, workers, cfg);
+    const sup = new Supervisor(api, workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);
@@ -61,7 +62,7 @@ describe("Supervisor", () => {
 
   test("skips spawning when enabled but there is no active version yet", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state({ activeCode: null, activeVersionId: null })]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state({ activeCode: null, activeVersionId: null })]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
 
@@ -70,7 +71,7 @@ describe("Supervisor", () => {
 
   test("spawns a worker with the automation's host-scoped token", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state()]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state()]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
 
@@ -81,7 +82,7 @@ describe("Supervisor", () => {
 
   test("does not respawn when nothing changed", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state(), state()]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state(), state()]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);
@@ -91,7 +92,7 @@ describe("Supervisor", () => {
 
   test("respawns when the active version changes", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state({ activeVersionId: "v1" }), state({ activeVersionId: "v2" })]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state({ activeVersionId: "v1" }), state({ activeVersionId: "v2" })]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);
@@ -102,7 +103,7 @@ describe("Supervisor", () => {
 
   test("respawns when the config values change, since the worker got the old ones at hello", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state({ configValues: '{"channel":"a"}' }), state({ configValues: '{"channel":"b"}' })]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state({ configValues: '{"channel":"a"}' }), state({ configValues: '{"channel":"b"}' })]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);
@@ -112,7 +113,7 @@ describe("Supervisor", () => {
 
   test("respawns with the new token when the instance hands out another", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state(), state()]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state(), state()]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([{ ...target, token: "dat_h.a1.rotated" }]);
@@ -123,7 +124,7 @@ describe("Supervisor", () => {
 
   test("terminates the worker when the automation is disabled", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state({ enabled: true }), state({ enabled: false })]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state({ enabled: true }), state({ enabled: false })]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);
@@ -134,7 +135,7 @@ describe("Supervisor", () => {
 
   test("stops the worker of an automation moved off this host and starts one placed on it", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state()]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state()]), workers, cfg, noPool);
 
     await sup.reconcile([target]);
     await sup.reconcile([other]);
@@ -148,7 +149,7 @@ describe("Supervisor", () => {
 
   test("stopAll terminates every running worker", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state()]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state()]), workers, cfg, noPool);
     await sup.reconcile([target]);
 
     await sup.stopAll();

@@ -1,5 +1,6 @@
 import type { AutomationTarget, AutomationsApi, RemoteState } from "./automations-api.ts";
 import { log } from "./log.ts";
+import type { PoolResolver } from "./pool-resolution.ts";
 import type { WorkerFactory, WorkerHandle } from "./worker.ts";
 
 export interface SupervisorConfig {
@@ -27,6 +28,7 @@ export class Supervisor {
     private readonly api: AutomationsApi,
     private readonly workers: WorkerFactory,
     private readonly cfg: SupervisorConfig,
+    private readonly pool: PoolResolver,
   ) {}
 
   // reconcile stops the workers of automations no longer placed here, then brings each placed one up to date.
@@ -89,6 +91,8 @@ export class Supervisor {
         timeoutMs: this.cfg.timeoutMs,
         heartbeatTimeoutMs: this.cfg.heartbeatTimeoutMs,
         memoryMb: this.cfg.memoryMb,
+        resolvePool: (entries) =>
+          this.pool.resolve({ workspaceId: target.workspace_id, automationId: target.id, automationName: target.name }, entries),
       },
       () => this.markStale(target.id),
     );
