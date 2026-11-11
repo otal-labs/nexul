@@ -55,6 +55,8 @@ export interface Stack {
   machine: string;
   strategy: DeployStrategy;
   managed: boolean;
+  // Variables whose secret value changed since the last deploy; absent when none did.
+  secrets_changed?: string[];
   created_at: string;
   updated_at: string;
 }

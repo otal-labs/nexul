@@ -4,6 +4,7 @@ import { ScrollView, View } from "react-native";
 import { ActionButton } from "@/components/action/ActionButton";
 import { ContainerRow } from "@/components/deploys/ContainerRow";
 import { DeployRow } from "@/components/deploys/DeployRow";
+import { StackSecretsChangedNotice } from "@/components/deploys/StackSecretsChangedNotice";
 import { StackLiveWell } from "@/components/deploys/StackLiveWell";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -35,6 +36,21 @@ export const StackScreen = () => {
   // The server refuses a second deploy while one is active; live deploy.updated events re-enable the button.
   const deploying = latest?.status === DeployStatus.Pending || latest?.status === DeployStatus.Running;
 
+  const changed = stack?.secrets_changed ?? [];
+  // The notice carries this button when it shows, so the screen never has two.
+  const redeploy = canRedeploy && latest && stack && (
+    <ActionButton
+      permission="deploys:write"
+      projectId={stack.project_id || undefined}
+      verb="deploy"
+      name="Redeploy"
+      disabled={deploying}
+      onPress={() => router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })}
+    >
+      <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
+    </ActionButton>
+  );
+
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="pb-8">
       <Stack.Screen options={{ title: "Stack" }} />
@@ -45,18 +61,8 @@ export const StackScreen = () => {
         <View className="gap-6 px-4">
           <StackLiveWell latest={latest} containers={containers} />
 
-          {canRedeploy && latest && (
-            <ActionButton
-              permission="deploys:write"
-              projectId={stack.project_id || undefined}
-              verb="deploy"
-              name="Redeploy"
-              disabled={deploying}
-              onPress={() => router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })}
-            >
-              <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
-            </ActionButton>
-          )}
+          {changed.length > 0 && <StackSecretsChangedNotice names={changed}>{redeploy}</StackSecretsChangedNotice>}
+          {changed.length === 0 && redeploy}
           {stack.strategy === DeployStrategy.Compose && (
             <Text className="text-[13px] text-muted-foreground">Redeploy from the web: this stack builds from its compose file.</Text>
           )}

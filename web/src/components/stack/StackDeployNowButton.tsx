@@ -13,9 +13,10 @@ interface StackDeployNowButtonProps {
   image: string | undefined;
   // Unsaved edits are not what a deploy would run with.
   disabled?: boolean;
+  label?: string;
 }
 
-export const StackDeployNowButton = ({ stack, image, disabled }: StackDeployNowButtonProps) => {
+export const StackDeployNowButton = ({ stack, image, disabled, label = "Deploy now" }: StackDeployNowButtonProps) => {
   const deploy = useDeployStack();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
@@ -38,7 +39,7 @@ export const StackDeployNowButton = ({ stack, image, disabled }: StackDeployNowB
       title={disabled ? "Save your changes first" : undefined}
       onClick={() => deploy.mutate({ stackId: stack.id, ...input }, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
     >
-      Deploy now
+      {label}
     </ActionButton>
   );
 };

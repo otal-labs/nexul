@@ -212,6 +212,8 @@ describe("dispatch", () => {
     ["service.container_recovered", { stack_id: "s-1", service: "web" }, getStackKey, "s-1", "s-2"],
     ["stack.error_rate_crossed", { stack_id: "s-1", episode_id: "e-1" }, getStackKey, "s-1", "s-2"],
     ["stack.error_rate_recovered", { stack_id: "s-1", episode_id: "e-1" }, getStackKey, "s-1", "s-2"],
+    ["service.secrets_changed", { stack_id: "s-1", stack_name: "api", variables: ["DB_PASSWORD"] }, getStackKey, "s-1", "s-2"],
+    ["service.updated", { stack: { id: "s-1", project_id: "p-1" } }, getStackKey, "s-1", "s-2"],
   ])("%s refetches only the entry its payload names", (topic, payload, key, named, other) => {
     const client = new QueryClient();
     client.setQueryData([key, named], []);
