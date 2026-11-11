@@ -106,6 +106,7 @@ func serve() {
 	// runner is constructed above, after deploy (wireCoreServices); closing the machine-import cycle here
 	// mirrors deploy's own dns seams (SetGatewayLookup/SetExposureManager), just wired one phase later.
 	svc.deploySvc.SetMachineLookup(deployMachineLookupAdapter{runner: runnerSvc, machines: store.Machines})
+	svc.deploySvc.SetSecretReaders(runnerSvc)
 	svc.deploySvc.SetMachineDiscoverer(deployMachineDiscovererAdapter{runner: runnerSvc})
 	liveHub, agentHandler := wireLiveHubAndAgent(ctx, bus, store, svc, logger)
 

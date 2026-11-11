@@ -40,6 +40,15 @@ func TestParse(t *testing.T) {
 	}
 }
 
+// Only a whole-value reference names a manager: a URL, an embedded reference and a malformed one do not.
+func TestSchemes_NamesEachManagerOfTheReferencesOnce(t *testing.T) {
+	env := map[string]string{
+		"A": "op://v/i/f", "B": "op://v/i/s/f", "C": "postgres://u:p@h/db", "D": "x op://v/i/f", "E": "op://broken",
+	}
+	assert.Equal(t, []string{"op"}, Schemes(env, map[string]string{"F": "plain"}))
+	assert.Empty(t, Schemes(map[string]string{"C": "postgres://u:p@h/db"}))
+}
+
 func TestCheck_NamesTheHolderAndNeverTheValue(t *testing.T) {
 	require.NoError(t, Check("DB_URL", "op://acme/db/password"))
 	require.NoError(t, Check("DB_URL", "literal"))

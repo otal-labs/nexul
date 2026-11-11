@@ -87,6 +87,33 @@ func TestService_ListRunners(t *testing.T) {
 	})
 }
 
+// The managers a machine's runners can read are what a deploy with references is refused against: a ready or an
+// unreachable one counts, a rejected token, no token and another machine's runner do not.
+func TestService_ManagersOn(t *testing.T) {
+	machines := newFakeMachineRepo()
+	require.NoError(t, machines.Create(t.Context(), &Machine{ID: "m-prod", Name: "prod"}))
+	require.NoError(t, machines.Create(t.Context(), &Machine{ID: "m-qa", Name: "qa"}))
+	repo := newFakeRunnerRepo()
+	for _, r := range []*Runner{
+		{ID: "r-ready", MachineID: "m-prod", Managers: []ManagerState{{Manager: "op", State: ManagerReady}}},
+		{ID: "r-down", MachineID: "m-prod", Managers: []ManagerState{{Manager: "vault", State: ManagerUnreachable}}},
+		{ID: "r-bad", MachineID: "m-prod", Managers: []ManagerState{{Manager: "aws", State: ManagerTokenRejected}}},
+		{ID: "r-none", MachineID: "m-prod"},
+		{ID: "r-qa", MachineID: "m-qa", Managers: []ManagerState{{Manager: "gcp", State: ManagerReady}}},
+	} {
+		require.NoError(t, repo.Create(t.Context(), r))
+	}
+	svc := NewService(repo, &fakeDispatch{}).WithMachines(machines)
+
+	got, err := svc.ManagersOn(t.Context(), "prod")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"op", "vault"}, got)
+
+	got, err = svc.ManagersOn(t.Context(), "no-such-machine")
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
 func TestService_ListQueue(t *testing.T) {
 	repo := newFakeRunnerRepo()
 	svc := NewService(repo, &fakeDispatch{

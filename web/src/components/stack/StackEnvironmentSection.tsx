@@ -2,10 +2,12 @@ import { useState } from "react";
 
 import { StackEnvironmentForm } from "@/components/stack/StackEnvironmentForm";
 import { StackEnvironmentKeys } from "@/components/stack/StackEnvironmentKeys";
+import { StackSecretReaderWarning } from "@/components/stack/StackSecretReaderWarning";
 import { useActionState } from "@/hooks/useActionState";
 import { useFlash } from "@/hooks/useFlash";
 import { useStackActions } from "@/hooks/useStackActions";
 import type { Stack } from "@/models/Stack";
+import { referenceManagers } from "@/utils/SecretReaderUtility";
 
 interface StackEnvironmentSectionProps {
   stack: Stack;
@@ -25,6 +27,7 @@ export const StackEnvironmentSection = ({ stack, image }: StackEnvironmentSectio
 
   return (
     <>
+      {!stack.env_masked && referenceManagers(stack.env).length > 0 && <StackSecretReaderWarning stack={stack} />}
       {derived && (
         <StackEnvironmentKeys keys={keys} description="A branch deployment takes its variables from the base stack and the branch rule's overrides." />
       )}

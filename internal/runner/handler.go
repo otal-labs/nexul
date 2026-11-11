@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1004,6 +1005,13 @@ func (h *Handler) publish(ctx context.Context, topic string, payload any) {
 	if err := h.bus.Publish(ctx, topic, payload); err != nil {
 		h.log.Warn("bus publish failed", "topic", topic, "error", err)
 	}
+}
+
+// reads reports whether the runner reported every one of managers ready.
+func (c *runnerConn) reads(managers []string) bool {
+	return !slices.ContainsFunc(managers, func(m string) bool {
+		return !slices.Contains(c.managers, ManagerState{Manager: m, State: ManagerReady})
+	})
 }
 
 func (c *runnerConn) touchHeartbeat() {

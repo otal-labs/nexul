@@ -2924,6 +2924,13 @@
         "type": "string",
         "description": "When the deploy was created; absent on a deploy requested before this field existed.",
         "format": "date-time"
+      },
+      "secret_managers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The secrets managers, named by the scheme of their references, that the deploy's environment holds references to; only a runner ready for each takes the deploy."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

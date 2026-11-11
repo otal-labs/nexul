@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // ProjectStore validates a stack's project and build-source repo against the workspace domain (ADR 0017).
@@ -51,6 +53,13 @@ type GatewayJoin interface {
 	GatewayForStackNetwork(ctx context.Context, network string) (gatewayContainer string, found bool, err error)
 }
 
+// SecretReaders is the runner seam a deploy with secret references asks which managers a machine's runners can read.
+type SecretReaders interface {
+	// ManagersOn lists the managers, by scheme, that some deploy runner on the named machine last reported ready or
+	// unreachable, online or not; a runner whose token was rejected, or that holds none, adds nothing.
+	ManagersOn(ctx context.Context, machine string) ([]string, error)
+}
+
 // Service is the deploy use-case layer (ADR 0019): stacks, their observed containers, deploy executions, and the
 // status_changed consumer.
 type Service struct {
@@ -61,6 +70,7 @@ type Service struct {
 	gateways    GatewayLookup
 	exposures   ExposureManager
 	machines    MachineLookup
+	readers     SecretReaders
 	discoverer  MachineDiscoverer
 	adopter     GatewayAdopter
 	gatewayJoin GatewayJoin
@@ -241,6 +251,10 @@ func (s *Service) SetExposureManager(e ExposureManager) { s.exposures = e }
 // SetMachineLookup wires the runner-domain machine-name seam Import uses; set after runner is constructed (ADR 0017).
 func (s *Service) SetMachineLookup(m MachineLookup) { s.machines = m }
 
+// SetSecretReaders wires the runner seam that refuses a deploy no runner on its machine can read the references of;
+// unset, no deploy is refused for its references.
+func (s *Service) SetSecretReaders(r SecretReaders) { s.readers = r }
+
 // SetMachineDiscoverer wires the runner-domain discovery seam Import uses to fetch fresh observed facts (ADR 0017).
 func (s *Service) SetMachineDiscoverer(d MachineDiscoverer) { s.discoverer = d }
 
@@ -286,6 +300,9 @@ func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) 
 	if active {
 		return nil, fmt.Errorf("%w: stack %q already has an active deploy", apperrs.ErrConflict, stack.Name)
 	}
+	if err := s.requireReaders(ctx, stack); err != nil {
+		return nil, fmt.Errorf("deploy %s: %w", stack.Name, err)
+	}
 	now := s.now().UTC()
 	d := &Deploy{
 		ID: ids.New(), StackID: stack.ID, ServiceID: stack.ID, Service: stack.Name, Target: stack.Machine,
@@ -305,6 +322,25 @@ func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) 
 		return nil, fmt.Errorf("create deploy: %w", err)
 	}
 	return d, nil
+}
+
+// requireReaders refuses a deploy whose env holds references to a manager no runner on the stack's machine can read, so
+// it fails at once instead of waiting for a runner that will never take it.
+func (s *Service) requireReaders(ctx context.Context, stack *Stack) error {
+	managers := secretref.Schemes(stack.Env)
+	if s.readers == nil || len(managers) == 0 {
+		return nil
+	}
+	readable, err := s.readers.ManagersOn(ctx, stack.Machine)
+	if err != nil {
+		return fmt.Errorf("secret managers on %s: %w", stack.Machine, err)
+	}
+	for _, m := range managers {
+		if !slices.Contains(readable, m) {
+			return fmt.Errorf("%w: no runner on %s can read %s references", apperrs.ErrConflict, stack.Machine, secretref.ManagerName(m))
+		}
+	}
+	return nil
 }
 
 // Retry starts a failed deploy again on the commit it built, else its ref or image, with the stack's current settings.

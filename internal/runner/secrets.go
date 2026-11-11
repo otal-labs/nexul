@@ -12,9 +12,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
-// managerNames is how a failure names the manager a scheme belongs to.
-var managerNames = map[string]string{"op": "1Password"}
-
 // resolvedEnv is a request whose references hold their values.
 type resolvedEnv struct {
 	req DeployRequestedEvent
@@ -78,7 +75,7 @@ func resolveEnv(ctx context.Context, reg secretref.Registry, req DeployRequested
 // resolveBatch resolves the variables holding one scheme's references in a single call to its resolver.
 func resolveBatch(ctx context.Context, reg secretref.Registry, scheme string, env map[string]string, keys []string) (map[string]string, map[string]string) {
 	failed := map[string]string{}
-	name := managerNames[scheme]
+	name := secretref.ManagerName(scheme)
 	res, ok := reg[scheme]
 	if !ok {
 		for _, k := range keys {
