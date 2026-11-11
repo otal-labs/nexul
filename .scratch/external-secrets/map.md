@@ -62,8 +62,7 @@ connectors and sign-in providers. The map is done when nothing is left to decide
   per workspace; one guide page; fake-only tests; three ADRs; a rejected token notifies machine
   managers; an optional install prompt.
 
-**Destination reached 2026-11-12:** [spec.md](spec.md) with ADRs 0181–0183. Next: cut it into build
-tickets.
+**Destination reached 2026-11-12:** [spec.md](spec.md) with ADRs 0181–0183, cut into build tickets 11–28.
 
 ## Not yet specified
 

@@ -242,6 +242,9 @@ no real-token test; ticket 07 measured the real behaviour. The guards to add:
 
 ## Build order
 
+Cut into tickets 11–28 in `issues/` (ready-for-agent), each with its blockers. 11 waits on NEXUL-94,
+and 15 can start at once.
+
 1. The parser and save check, with the web tag and inline errors (no resolution yet).
 2. The `Resolver` interface, the 1Password resolver and the fake, in Go and TypeScript.
 3. The runner: token command and install flag, the start check and its reported state, resolution in
