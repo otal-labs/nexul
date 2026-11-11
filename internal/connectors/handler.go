@@ -13,6 +13,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 const oauthStateCookie = "nexul_connector_oauth_state"
@@ -31,6 +32,7 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/connectors", h.list)
+	mux.HandleFunc("GET /api/connectors/managers", h.managers)
 	mux.HandleFunc("GET /api/connectors/{id}/oauth/start", h.oauthStart)
 	mux.HandleFunc("POST /api/connectors/{id}/manual/verify", h.verifyManual)
 	mux.HandleFunc("POST /api/connectors/{id}/manual", h.saveManual)
@@ -57,6 +59,17 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, st)
+}
+
+// managers answers who may read any connector with the secrets managers the server holds a token for, each with its
+// state; it names no manager but by its reference scheme.
+func (h *Handler) managers(w http.ResponseWriter, r *http.Request) {
+	managers, err := h.svc.Managers(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string][]secretref.ManagerState{"managers": managers})
 }
 
 // oauthStart mints a CSRF state carrying the user id, the only way the public callback below learns who connected.

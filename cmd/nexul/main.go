@@ -47,13 +47,14 @@ func usage(w io.Writer) {
 	_, _ = fmt.Fprint(w, `Usage: nexul <command> [flags]
 
 Commands:
-  install [server]         Install the server, OpenObserve and the bundled runner and automations host
+  install [server]         Install the server, OpenObserve and the bundled runner and automations host: [--1password-token-file F]
   install runner           Install a named runner: --server URL --name N --code C [--1password-token-file F]
   install automations      Install a named automations host: --server URL --name N --code C
   install computer         Add this computer to Nexul with sudo, as a service that runs as you: --token T (computer.sh runs it);
                            with no systemd, --foreground runs it without sudo and stays running as nexul run computer
   run computer             Run this computer's runner and T3 Code in the foreground, on a host with no systemd
   runner 1password <name>  Set a runner's 1Password token, read from stdin (--remove removes it)
+  server 1password         Set the server's 1Password token, read from stdin (--remove removes it)
   upgrade                  Upgrade every Nexul service on this machine to the newest release, or to --version
   status                   List every Nexul service on this machine with its state and version
   uninstall                Remove every Nexul service on this machine; --purge also deletes the data

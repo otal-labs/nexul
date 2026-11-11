@@ -96,6 +96,9 @@ func (h *Host) writeSettings(ctx context.Context, o Options, prev *installed, ta
 	if env["NEXUL_LOGS_TOKEN"] == "" {
 		env["NEXUL_LOGS_TOKEN"] = randomSecret()
 	}
+	if o.OnePasswordToken != "" {
+		env[opTokenEnv] = o.OnePasswordToken
+	}
 	if err := writeEnvFile(filepath.Join(o.Dir, ".env"), env); err != nil {
 		return nil, err
 	}

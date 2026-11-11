@@ -22,6 +22,7 @@ import (
 	"github.com/coder/websocket/wsjson"
 
 	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // ClientConfig wires the runner host binary's connection to the server.
@@ -61,7 +62,7 @@ type ClientConfig struct {
 	Logs *logging.Queue
 	// Managers is the secrets managers this runner holds a token for, opened at start and reported on every connect; nil
 	// for none, and a personal runner never reports any.
-	Managers *Managers
+	Managers *secretref.Managers
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -504,7 +505,7 @@ func (c *Client) wsURL() string {
 }
 
 // managers is the secrets managers this runner reports; none from a personal runner.
-func (c *Client) managers() *Managers {
+func (c *Client) managers() *secretref.Managers {
 	if c.cfg.Personal {
 		return nil
 	}

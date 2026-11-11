@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 type Config struct {
@@ -37,6 +39,9 @@ type Config struct {
 	SiteURL string
 	// ReleaseURL (NEXUL_RELEASE_URL) is where those scripts download the release from; empty is GitHub's.
 	ReleaseURL string
+	// OnePasswordToken (OP_SERVICE_ACCOUNT_TOKEN) is the service account token the server resolves its own connector and sign-in
+	// secrets with; empty means no secrets manager is configured.
+	OnePasswordToken string
 }
 
 func Load() (*Config, error) {
@@ -55,6 +60,15 @@ func Load() (*Config, error) {
 		LogsPassword: os.Getenv("NEXUL_LOGS_PASSWORD"),
 		SiteURL:      os.Getenv("NEXUL_SITE_URL"),
 		ReleaseURL:   os.Getenv("NEXUL_RELEASE_URL"),
+
+		OnePasswordToken: os.Getenv("OP_SERVICE_ACCOUNT_TOKEN"),
+	}
+	// The token leaves the environment once read, so no process the server starts inherits it.
+	if err := os.Unsetenv("OP_SERVICE_ACCOUNT_TOKEN"); err != nil {
+		return nil, fmt.Errorf("clear OP_SERVICE_ACCOUNT_TOKEN from the environment: %w", err)
+	}
+	if kind, _ := secretref.Parse(cfg.AuthSecret); kind != secretref.Literal {
+		return nil, errors.New("NEXUL_AUTH_SECRET is a secret reference, but the bootstrap secret must stay a local value: it signs sessions and derives the key every stored secret is sealed with, so the server cannot start waiting on a secrets manager (ADR 0183); set a literal value, or unset it and one is generated")
 	}
 	logsURL, err := parseLogsURL(os.Getenv("NEXUL_LOGS_URL"))
 	if err != nil {

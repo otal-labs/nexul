@@ -1,6 +1,6 @@
 # 21 — The server's own 1Password token, from install or a command, checked at start
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 13, 15
 
@@ -21,3 +21,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
 - [ ] `NEXUL_AUTH_SECRET=op://…` is refused at start with a message naming ADR 0183's reason.
 
 Verify: `make lint`, `go test ./internal/install/... ./internal/platform/config/... ./server/...`.
+
+## Comments
+
+Built: `nexul install --1password-token-file` and `nexul server 1password` (`internal/install/servertoken.go`), the token in both the install `.env` and the server unit, the shared `secretref.Managers` (now also the runner's), the start-up open off the serving path, `GET /api/connectors/managers` (`{"managers":[{"manager":"op","state":…}]}`), and the Settings status. The server unsets the token from its environment once read, and refuses a reference in `NEXUL_AUTH_SECRET` at start. Checked against a real server: no token gives `[]`, a bogus token gives `token rejected` with the server still serving, and `NEXUL_AUTH_SECRET=op://v/i/f` stops the start.

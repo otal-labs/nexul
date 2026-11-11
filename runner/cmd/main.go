@@ -83,7 +83,7 @@ const opTokenEnv = "OP_SERVICE_ACCOUNT_TOKEN"
 
 // openManagers sets up the managers this runner holds a token for. The token leaves the environment once read, so
 // no container or command the runner starts inherits it; a personal runner takes none.
-func openManagers(cfg *runner.RunnerConfig, logger *slog.Logger) *runner.Managers {
+func openManagers(cfg *runner.RunnerConfig, logger *slog.Logger) *secretref.Managers {
 	token := os.Getenv(opTokenEnv)
 	if err := os.Unsetenv(opTokenEnv); err != nil {
 		logger.Warn("clear the 1password token from the environment", "error", err)
@@ -91,7 +91,7 @@ func openManagers(cfg *runner.RunnerConfig, logger *slog.Logger) *runner.Manager
 	if token == "" || cfg.Mode == runner.ModePersonal {
 		return nil
 	}
-	return runner.NewManagers(logger, runner.ManagerSetup{
+	return secretref.NewManagers(logger, secretref.Setup{
 		Scheme: "op",
 		Open: func(ctx context.Context) (secretref.Resolver, error) {
 			res, err := onepassword.New(ctx, token, version.Version)

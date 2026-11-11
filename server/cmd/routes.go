@@ -451,6 +451,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/dns/exposures", "List exposures", "dns")
 	spec.Register("DELETE", "/api/dns/exposures/{exposureID}", "Remove an exposure", "dns")
 	spec.Register("GET", "/api/connectors", "List connectors and their connection status", "connectors")
+	spec.Register("GET", "/api/connectors/managers", "Needs connectors:read on any connector: the secrets managers the server holds a token for, each as its reference scheme and a state (ready, token rejected or unreachable)", "connectors")
 	spec.Register("GET", "/api/connectors/{id}/oauth/start", "Start a connector's OAuth consent flow", "connectors")
 	spec.Register("POST", "/api/connectors/{id}/disconnect", "Disconnect a connector", "connectors")
 	spec.Register("GET", "/api/notifications", "List the notification inbox", "notifications")

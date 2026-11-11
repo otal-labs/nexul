@@ -4,6 +4,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 type Runner struct {
@@ -24,18 +25,15 @@ type Runner struct {
 	Managers []ManagerState
 }
 
-// Secrets manager states a runner reports (ADR 0181).
+// The secrets manager states a runner reports are the ones every process reports (ADR 0181).
 const (
-	ManagerReady         = "ready"
-	ManagerTokenRejected = "token rejected"
-	ManagerUnreachable   = "unreachable"
+	ManagerReady         = secretref.ManagerReady
+	ManagerTokenRejected = secretref.ManagerTokenRejected
+	ManagerUnreachable   = secretref.ManagerUnreachable
 )
 
-// ManagerState is one secrets manager's state on a runner; Manager is the scheme of the references it resolves.
-type ManagerState struct {
-	Manager string `json:"manager" jsonschema:"The secrets manager, named by the scheme of the references it resolves, such as op."`
-	State   string `json:"state" jsonschema:"Whether the runner can resolve this manager's references." enum:"ready,token rejected,unreachable"`
-}
+// ManagerState is one secrets manager's state on a runner.
+type ManagerState = secretref.ManagerState
 
 // Personal reports whether the runner belongs to a person's computer, which never takes deploy work.
 func (r *Runner) Personal() bool {

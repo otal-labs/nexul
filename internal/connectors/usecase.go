@@ -39,6 +39,8 @@ type Config struct {
 	Settings SettingsReader
 	// Registry overrides the package's static Registry() for tests.
 	Registry []Connector
+	// Managers lists the secrets managers the server holds a token for and their states; nil lists none.
+	Managers ManagerLister
 	// Now is overridable for tests.
 	Now func() time.Time
 }
@@ -49,6 +51,7 @@ type Service struct {
 	appConfigStore AppConfigStore
 	gate           Gate
 	settings       SettingsReader
+	managers       ManagerLister
 	registry       map[string]Connector
 	now            func() time.Time
 }
@@ -71,6 +74,7 @@ func NewService(cfg Config) *Service {
 		appConfigStore: cfg.AppConfigStore,
 		gate:           cfg.Gate,
 		settings:       cfg.Settings,
+		managers:       cfg.Managers,
 		registry:       byID,
 		now:            cfg.Now,
 	}
@@ -506,4 +510,33 @@ func (s *Service) get(connectorID string) (Connector, error) {
 		return Connector{}, fmt.Errorf("%w: %s is not connectable yet (coming soon)", apperrs.ErrInvalid, connectorID)
 	}
 	return c, nil
+}
+
+// ManagerLister is the consumer-side view of the server's secrets managers (ADR 0017).
+type ManagerLister interface {
+	States() []secretref.ManagerState
+}
+
+// Managers lists each secrets manager the server holds a token for with its state, for anyone who may read any
+// connector; a manager's state says nothing about which connectors use it.
+func (s *Service) Managers(ctx context.Context) ([]secretref.ManagerState, error) {
+	var refused error
+	for id := range s.registry {
+		err := s.require(ctx, id, permissions.ConnectorsRead)
+		if err == nil {
+			return s.listManagers(), nil
+		}
+		if !permissions.Refused(err) {
+			return nil, err
+		}
+		refused = err
+	}
+	return nil, refused
+}
+
+func (s *Service) listManagers() []secretref.ManagerState {
+	if s.managers == nil {
+		return []secretref.ManagerState{}
+	}
+	return s.managers.States()
 }

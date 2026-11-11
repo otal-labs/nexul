@@ -95,3 +95,16 @@ export const privateKeyFormSchema = z.object({
 });
 
 export type PrivateKeyFormData = z.infer<typeof privateKeyFormSchema>;
+
+export type SecretManagerState = "ready" | "token rejected" | "unreachable";
+
+// A secrets manager the server holds a token for. `manager` is the reference scheme it serves ("op"), never a name, so a second manager adds a row here.
+export interface SecretManager {
+  manager: string;
+  state: SecretManagerState;
+}
+
+export interface SecretManagers {
+  managers: SecretManager[];
+}
+

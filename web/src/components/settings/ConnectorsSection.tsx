@@ -9,6 +9,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ConnectorCard } from "@/components/settings/ConnectorCard";
 import { settingsListClass } from "@/components/settings/SettingsRow";
+import { SecretManagersStatus } from "@/components/settings/SecretManagersStatus";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
 
@@ -88,6 +89,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
     <SettingsCard
       id="connectors"
       title="Connected tools"
+      aside={<SecretManagersStatus />}
       description="Third-party tools this instance calls for you, each with one stored credential."
     >
       {content}
