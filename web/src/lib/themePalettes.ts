@@ -600,6 +600,10 @@ export const applyThemePalette = (id: ThemeIdType, mode: "light" | "dark"): void
     }
     root.style.setProperty(cssVar, value);
   }
+  const canvas = getComputedStyle(root).getPropertyValue("--background").trim();
+  if (!canvas) return;
+  // The status bar takes the canvas colour, so it follows the mode and the palette.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", canvas);
 };
 
 export interface ThemePreviewColors {

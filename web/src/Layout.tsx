@@ -50,7 +50,7 @@ export const Layout = () => {
         </main>
       )}
       {shell && (
-        <div className="flex h-dvh">
+        <div className="safe-area flex h-dvh">
           <div className="light-field" aria-hidden />
           {!onboarding && (
             <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} unreadCount={unread?.count ?? 0} />
