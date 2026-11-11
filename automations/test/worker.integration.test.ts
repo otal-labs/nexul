@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { FakeResolver } from "../src/fake-resolver.ts";
+import { FakeResolver } from "./fake-resolver.ts";
 import { WorkspaceManagers } from "../src/managers.ts";
 import { PoolResolution } from "../src/pool-resolution.ts";
 import { threadWorkerFactory } from "../src/worker.ts";
