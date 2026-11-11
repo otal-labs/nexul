@@ -36,6 +36,9 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [How a value says it is a secret reference, and who sees the reference](issues/02-reference-shape.md):
   a whole value starting with a known scheme (`op://`), treated exactly like a value, syntax checked at
   save, a "1Password" tag in the web editors.
+- [Measure a real resolve with a test service account](issues/07-measure-a-real-resolve.md): one
+  batch resolve is one read whatever its size; the account's daily limit is 1,000 across all tokens;
+  client start-up (about 2.6 s in Go) is the real cost; errors name the missing part, never the vault.
 
 ## Not yet specified
 
