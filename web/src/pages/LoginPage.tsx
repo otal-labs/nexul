@@ -14,6 +14,7 @@ import { SsoSignInButton } from "@/ee/components/SsoSignInButton";
 import { usePublicSso } from "@/ee/hooks/SsoHooks";
 import { InlineNotice } from "@/components/InlineNotice";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { useProductName } from "@/ee/hooks/useProductName";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { passkeysSupported } from "@/lib/passkeys";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -34,6 +35,7 @@ export const LoginPage = () => {
   const { data: sso } = usePublicSso();
   const ssoActive = sso?.active ?? false;
   const ssoOnly = ssoActive && (sso?.only ?? false);
+  const name = useProductName();
   const googleEnabled = bootstrapStatus?.google_configured ?? false;
   const discordEnabled = bootstrapStatus?.discord_configured ?? false;
   const clientsEnabled = googleEnabled || discordEnabled;
@@ -76,7 +78,7 @@ export const LoginPage = () => {
       {!exchange.isPending && (
         <>
           <SignedOutHeader
-            title="Sign in to Nexul"
+            title={`Sign in to ${name}`}
             subtitle={subtitle(ssoOnly, clientsEnabled)}
           />
           {declined && <InlineNotice tone="info" title="Invitation declined" className="mt-6">The link stays unused.</InlineNotice>}

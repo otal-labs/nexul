@@ -1,11 +1,27 @@
+import { useLook } from "@/ee/hooks/BrandingHooks";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  className?: string;
+  className?: string | undefined;
 }
 
-/** Brand mark: the Nexul hub glyph (same drawing as public/favicon.svg) on the primary tile. */
-export const Logo = ({ className }: LogoProps) => (
+/** Brand mark: the Nexul hub glyph (same drawing as public/favicon.svg) on the primary tile, or the instance's own logo. */
+export const Logo = ({ className }: LogoProps) => {
+  const { data: look } = useLook();
+  const logoURL = look?.enabled ? look.logo_url : "";
+  return (
+    <>
+      {logoURL && (
+        <span className={cn("grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg", className)} aria-hidden>
+          <img src={logoURL} alt="" className="size-full object-contain" />
+        </span>
+      )}
+      {!logoURL && <NexulMark className={className} />}
+    </>
+  );
+};
+
+const NexulMark = ({ className }: LogoProps) => (
   <span
     className={cn(
       "grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground",

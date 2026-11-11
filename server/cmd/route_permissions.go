@@ -162,6 +162,10 @@ var routePermissions = map[string][]string{
 	"DELETE /api/docs/{id}/watchers/me":                             {"docs:read"},
 	"PUT /api/docs/{id}/watchers/me":                                {"docs:read"},
 
+	"DELETE /api/instance/branding":                       {"instance:write"},
+	"PATCH /api/instance/branding":                        {"instance:write"},
+	"DELETE /api/instance/branding/logo":                  {"instance:write"},
+	"PUT /api/instance/branding/logo":                     {"instance:write"},
 	"DELETE /api/instance/license":                        {"instance:write"},
 	"PUT /api/instance/license":                           {"instance:write"},
 	"DELETE /api/instance/sso":                            {"instance:write"},

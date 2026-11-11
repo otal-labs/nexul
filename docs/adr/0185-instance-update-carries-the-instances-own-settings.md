@@ -13,4 +13,6 @@ their own, and `instance_get` reads them back.
 Why not an existing tool: `template_update` and `workspace_update` change a template or a workspace, and a license
 field there would make their arguments mean two things; `instance_upgrade` is a confirmed execution, never a setting.
 
+Branding (ADR 0187) added its fields on the same day and raised the advertised budget by a further 1,000 characters.
+
 Decided: 2026-11-11.

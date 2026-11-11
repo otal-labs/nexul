@@ -2,12 +2,14 @@ package composite
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -55,9 +57,45 @@ func (f *fakeSSOSettings) Remove(context.Context) (sso.View, error) {
 	return f.view, nil
 }
 
+type fakeBrandingSettings struct {
+	calls []string
+	patch branding.Patch
+	logo  []byte
+	err   error
+}
+
+func (f *fakeBrandingSettings) Get(context.Context) (branding.Settings, error) {
+	return branding.Settings{ProductName: "Acme"}, f.err
+}
+
+func (f *fakeBrandingSettings) Update(_ context.Context, p branding.Patch) (branding.Settings, error) {
+	f.calls, f.patch = append(f.calls, "update"), p
+	return f.Get(context.Background())
+}
+
+func (f *fakeBrandingSettings) SetLogo(_ context.Context, data []byte) (branding.Settings, error) {
+	f.calls, f.logo = append(f.calls, "set-logo"), data
+	return f.Get(context.Background())
+}
+
+func (f *fakeBrandingSettings) RemoveLogo(context.Context) (branding.Settings, error) {
+	f.calls = append(f.calls, "remove-logo")
+	return f.Get(context.Background())
+}
+
+func (f *fakeBrandingSettings) Clear(context.Context) (branding.Settings, error) {
+	f.calls = append(f.calls, "clear")
+	return f.Get(context.Background())
+}
+
 func instanceCall(t *testing.T, l LicenseKeeper, s SSOSettings, args string) (instanceSettings, error) {
 	t.Helper()
-	out, err := call(t, t.Context(), InstanceTools(l, s), "instance_update", args)
+	return instanceCallWith(t, l, s, &fakeBrandingSettings{}, args)
+}
+
+func instanceCallWith(t *testing.T, l LicenseKeeper, s SSOSettings, b BrandingSettings, args string) (instanceSettings, error) {
+	t.Helper()
+	out, err := call(t, t.Context(), InstanceTools(l, s, b), "instance_update", args)
 	if err != nil {
 		return instanceSettings{}, err
 	}
@@ -123,4 +161,57 @@ func TestInstanceUpdate_AnUnknownSSOFieldIsRefused(t *testing.T) {
 	t.Parallel()
 	_, err := instanceCall(t, &fakeLicenseKeeper{}, &fakeSSOSettings{}, `{"sso":{"client_secrt":"typo"}}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a mistyped field is never taken for an omitted one")
+}
+
+func TestInstanceUpdate_BrandingFieldsReachTheirUseCases(t *testing.T) {
+	t.Parallel()
+	l, s, b := &fakeLicenseKeeper{}, &fakeSSOSettings{}, &fakeBrandingSettings{}
+
+	got, err := instanceCallWith(t, l, s, b, `{}`)
+	require.NoError(t, err)
+	assert.Equal(t, "Acme", got.Branding.ProductName, "branding is read back whatever the call changed")
+	assert.Empty(t, b.calls)
+
+	_, err = instanceCallWith(t, l, s, b, `{"branding":{"product_name":"Acme Hub","accent":"#2563eb","theme_file":"{}","remove_theme":"light"}}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"update"}, b.calls)
+	assert.Equal(t, "Acme Hub", *b.patch.ProductName)
+	assert.Equal(t, "#2563eb", *b.patch.Accent)
+	assert.Equal(t, "{}", *b.patch.Theme)
+	assert.Equal(t, "light", b.patch.RemoveTheme)
+}
+
+func TestInstanceUpdate_BrandingLogoTravelsAsADataURL(t *testing.T) {
+	t.Parallel()
+	l, s, b := &fakeLicenseKeeper{}, &fakeSSOSettings{}, &fakeBrandingSettings{}
+	png := []byte("\x89PNG\r\n\x1a\nbody")
+
+	_, err := instanceCallWith(t, l, s, b, `{"branding":{"logo":"data:image/png;base64,`+base64.StdEncoding.EncodeToString(png)+`"}}`)
+	require.NoError(t, err)
+	assert.Equal(t, png, b.logo)
+	assert.Equal(t, []string{"set-logo"}, b.calls, "a logo alone saves no other branding")
+
+	_, err = instanceCallWith(t, l, s, b, `{"branding":{"logo":""}}`)
+	require.NoError(t, err)
+	assert.Equal(t, "remove-logo", b.calls[len(b.calls)-1])
+
+	for _, bad := range []string{`"not a data url"`, `"data:image/png,raw"`, `"data:image/png;base64,@@@"`} {
+		_, err = instanceCallWith(t, l, s, b, `{"branding":{"logo":`+bad+`}}`)
+		require.ErrorIs(t, err, apperrs.ErrInvalid, bad)
+	}
+
+	b.calls = nil
+	_, err = instanceCallWith(t, l, s, b, `{"branding":{"clear":true,"product_name":"ignored"}}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"clear"}, b.calls, "clear removes everything and nothing else is applied")
+}
+
+func TestInstanceUpdate_ABrandingRefusalAfterAKeyWasSaved_SaysWhatWasChanged(t *testing.T) {
+	t.Parallel()
+	l := &fakeLicenseKeeper{}
+	_, err := instanceCallWith(t, l, &fakeSSOSettings{}, &fakeBrandingSettings{err: apperrs.ErrForbidden}, `{"license_key":"key-1","branding":{"product_name":"x"}}`)
+	var partial *mcptool.PartialError
+	require.True(t, errors.As(err, &partial), "%v", err)
+	assert.Equal(t, []string{"license_key"}, partial.Applied)
+	assert.Equal(t, "key-1", l.key)
 }

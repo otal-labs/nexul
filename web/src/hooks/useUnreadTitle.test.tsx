@@ -8,6 +8,8 @@ import { getChatUnreadKey } from "@/hooks/ChatHooks";
 import { useUnreadTitle } from "@/hooks/useUnreadTitle";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
+vi.mock("@/ee/hooks/useProductName", () => ({ useProductName: () => "Nexul" }));
+
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() } }));
 
 const conversations = [

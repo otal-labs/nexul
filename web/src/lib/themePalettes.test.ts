@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { ThemeId } from "@/enums/Theme";
-import { applyThemePalette, getThemeDefinition, THEME_DEFINITIONS } from "@/lib/themePalettes";
+import { applyThemePalette, getThemeDefinition, instanceThemes, setInstanceRoles, THEME_DEFINITIONS } from "@/lib/themePalettes";
 
 const OKLCH_PATTERN = /^oklch\(/;
 
@@ -136,5 +136,53 @@ describe("Brutalism's primary", () => {
     const { light, dark } = getThemeDefinition(ThemeId.Brutalism).colors!;
     expect(dark.primary).toBe(light.primary);
     expect(dark["primary-foreground"]).toBe(light["primary-foreground"]);
+  });
+});
+
+describe("applyThemePalette under the instance's own look", () => {
+  const root = document.documentElement;
+  const accentOnly = { themed: false, roles: { brand: "oklch(0.6 0.2 250)", "brand-foreground": "oklch(1 0 0)" } };
+  const themed = { themed: true, roles: { background: "oklch(0.2 0.03 260)", brand: "oklch(0.7 0.15 150)", primary: "oklch(0.7 0.15 150)" } };
+
+  beforeEach(() => {
+    root.removeAttribute("style");
+    root.removeAttribute("data-theme-id");
+  });
+
+  it("an accent alone repaints the default palette's brand and nothing else", () => {
+    setInstanceRoles({ light: accentOnly, dark: accentOnly });
+    applyThemePalette(ThemeId.Console, "dark");
+    expect(root.style.getPropertyValue("--brand")).toBe("oklch(0.6 0.2 250)");
+    expect(root.style.getPropertyValue("--background")).toBe("");
+  });
+
+  it("a person who picked a palette of their own keeps its accent", () => {
+    setInstanceRoles({ light: accentOnly, dark: accentOnly });
+    applyThemePalette(ThemeId.Ocean, "dark");
+    expect(root.style.getPropertyValue("--brand")).toBe(getThemeDefinition(ThemeId.Ocean).colors?.dark.primary);
+  });
+
+  it("an imported theme replaces the person's palette in its own mode only", () => {
+    setInstanceRoles({ light: accentOnly, dark: themed });
+    expect(instanceThemes("dark")).toBe(true);
+    expect(instanceThemes("light")).toBe(false);
+
+    applyThemePalette(ThemeId.Brutalism, "dark");
+    expect(root.style.getPropertyValue("--background")).toBe("oklch(0.2 0.03 260)");
+    expect(root.style.getPropertyValue("--shape-md")).toBe("");
+    expect(root.dataset.themeId).toBe("");
+
+    applyThemePalette(ThemeId.Brutalism, "light");
+    expect(root.dataset.themeId).toBe(ThemeId.Brutalism);
+    expect(root.style.getPropertyValue("--shape-md")).toBe("0px");
+  });
+
+  it("clearing the look gives the person's palette back", () => {
+    setInstanceRoles({ light: themed, dark: themed });
+    applyThemePalette(ThemeId.Console, "dark");
+    setInstanceRoles(null);
+    applyThemePalette(ThemeId.Console, "dark");
+    expect(root.style.getPropertyValue("--background")).toBe("");
+    expect(root.style.getPropertyValue("--brand")).toBe("");
   });
 });

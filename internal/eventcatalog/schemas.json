@@ -4546,6 +4546,29 @@
       "login"
     ]
   },
+  "instance.branding_changed": {
+    "type": "object",
+    "properties": {
+      "cleared": {
+        "type": "boolean",
+        "description": "True when all the branding was removed and the instance shows the default look."
+      },
+      "changed_by": {
+        "type": "string",
+        "description": "The account that changed the branding."
+      },
+      "changed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "cleared",
+      "changed_by",
+      "changed_at"
+    ]
+  },
   "instance.license_changed": {
     "type": "object",
     "properties": {

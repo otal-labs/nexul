@@ -34,6 +34,10 @@ When a key expires, its features stop. Everything they made stays: nothing is de
 
 Click **Remove key**, then **Remove**. The features stop the same way they do at expiry, and their data stays.
 
+## Branding
+
+A key that includes **Branding** unlocks the instance's own name, logo, accent and color theme: see [Branding](/docs/guide/branding/). Without that feature in the key, the instance keeps Nexul's look.
+
 ## From an agent
 
 `instance_get` returns the license with the rest of the instance's state. `instance_update` with `license_key` set to a key's text replaces the key, and an empty `license_key` removes it. Both need the same permissions as the web page, and the change shows on every open Settings page at once.

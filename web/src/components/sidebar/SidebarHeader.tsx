@@ -3,6 +3,9 @@ import { Link } from "react-router";
 import { Logo } from "@/components/Logo";
 import { CollapseToggleButton } from "@/components/sidebar/CollapseToggleButton";
 import { UpdateButton } from "@/components/sidebar/UpdateButton";
+import { useLook } from "@/ee/hooks/BrandingHooks";
+import { isBranded } from "@/ee/models/Branding";
+import { useProductName } from "@/ee/hooks/useProductName";
 import { useServerVersion } from "@/hooks/VersionHooks";
 
 interface SidebarHeaderProps {
@@ -12,6 +15,8 @@ interface SidebarHeaderProps {
 
 export const SidebarHeader = ({ collapsed, onToggleCollapse }: SidebarHeaderProps) => {
   const { data: server } = useServerVersion();
+  const name = useProductName();
+  const branded = isBranded(useLook().data);
 
   return (
     <>
@@ -21,11 +26,13 @@ export const SidebarHeader = ({ collapsed, onToggleCollapse }: SidebarHeaderProp
           <>
             <Link to="/" className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
               <Logo />
-              <span className="text-base">Nexul</span>
+              <span className="truncate text-base">{name}</span>
             </Link>
-            <span title={server?.version} className="rounded-full bg-foreground/[0.07] px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Beta
-            </span>
+            {!branded && (
+              <span title={server?.version} className="rounded-full bg-foreground/[0.07] px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Beta
+              </span>
+            )}
             <div className="ml-auto flex items-center gap-0.5">
               <UpdateButton />
               <CollapseToggleButton collapsed={false} onToggle={onToggleCollapse} />

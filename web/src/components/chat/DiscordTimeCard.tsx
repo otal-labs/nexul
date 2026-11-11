@@ -6,13 +6,15 @@ import { discordTimeIcs, fullDiscordTime, type DiscordTime } from "@nexul/client
 import { Button } from "@/components/ui/button";
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { CopyButton } from "@/components/settings/CopyButton";
+import { useProductName } from "@/ee/hooks/useProductName";
 import { saveTextFile } from "@/utils/ContainerLogUtility";
 
 const icsFilename = (title: string): string => `${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() || "event"}.ics`;
 
 // What a timestamp's popover holds: the full time, the code as written, and the two ways to take it elsewhere.
 export const DiscordTimeCard = ({ time }: { time: DiscordTime }) => {
-  const title = useContext(CalendarTitleContext);
+  const name = useProductName();
+  const title = useContext(CalendarTitleContext) || name;
   return (
     <div className="space-y-3">
       <div className="space-y-1">

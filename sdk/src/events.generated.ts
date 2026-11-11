@@ -92,6 +92,7 @@ export interface EventPayloads {
   "github_link.changed": { "user_id": string; "state": "connected" | "reconnect" | "none"; };
   "identity.linked": { "user_id": string; "provider": string; "login": string; };
   "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
+  "instance.branding_changed": { "cleared": boolean; "changed_by": string; "changed_at": string; };
   "instance.license_changed": { "licensee": string; "features": string[]; "expires_at"?: string; "removed": boolean; "changed_by": string; "changed_at": string; };
   "instance.sso_changed": { "display_name": string; "issuer_url": string; "only": boolean; "removed": boolean; "changed_by": string; "changed_at": string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error": string; "requested_by": string; "created_at": string; "updated_at": string; };
@@ -280,6 +281,7 @@ export const TOPICS: Topic[] = [
   "github_link.changed",
   "identity.linked",
   "identity.unlinked",
+  "instance.branding_changed",
   "instance.license_changed",
   "instance.sso_changed",
   "instance.upgrade_changed",
@@ -466,6 +468,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "github_link.changed": {"user_id":"fixture-user_id","state":"connected"},
   "identity.linked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
+  "instance.branding_changed": {"cleared":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.license_changed": {"licensee":"fixture-licensee","features":["fixture-features"],"expires_at":"2026-01-01T00:00:00Z","removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.sso_changed": {"display_name":"fixture-display_name","issuer_url":"fixture-issuer_url","only":false,"removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},

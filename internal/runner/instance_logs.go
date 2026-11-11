@@ -41,6 +41,12 @@ func (s *Service) WithSSO(read func(context.Context) (any, error)) *Service {
 	return s
 }
 
+// WithBranding attaches the read of the instance branding instance_get includes, so runner never imports ee.
+func (s *Service) WithBranding(read func(context.Context) (any, error)) *Service {
+	s.branding = read
+	return s
+}
+
 // WithLicense attaches the read of the enterprise license instance_get includes, so runner never imports ee.
 func (s *Service) WithLicense(read func(context.Context) (any, error)) *Service {
 	s.license = read

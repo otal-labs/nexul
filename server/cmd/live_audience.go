@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/access"
@@ -75,6 +76,7 @@ var liveRules = map[string]liveRule{
 	auth.TopicAccountRestored:          everyone,
 	auth.TopicProfileUpdated:           everyone,
 	templates.TopicUpdated:             everyone,
+	branding.TopicChanged:              everyone,
 
 	auth.TopicTokenMinted:            ownFrame,
 	auth.TopicTokenRevoked:           ownFrame,

@@ -67,6 +67,7 @@
   "doc.moved",
   "doc.updated",
   "doc.watchers.changed",
+  "instance.branding_changed",
   "instance.license_changed",
   "instance.sso_changed",
   "instance.upgrade_changed",

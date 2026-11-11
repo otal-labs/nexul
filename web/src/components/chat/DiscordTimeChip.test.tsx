@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { MessageBody } from "@/components/chat/MessageBody";
 
+vi.mock("@/ee/hooks/useProductName", () => ({ useProductName: () => "Nexul" }));
+
 const UNIX = 1792867165;
 const ISO = "2026-10-24T18:39:25.000Z";
 

@@ -43,6 +43,9 @@ tickets have merged and nothing is left to decide for them.
   callback, the settings `/api/instance/sso`, and `instance_update` (now in `internal/mcp/composite`) takes an `sso`
   object. SSO-only is refused on the server for every method but an instance Owner's passkey, and turns on only while one
   holds a passkey. A branding ticket reads `license.Service.Enabled(ctx, license.FeatureBranding)` the same way.
+- Ticket 01 (License and Branding pages): one Branding card of hairline rows under License, an Owner's imported
+  theme paints its own mode and an accent alone repaints only the default palette; see
+  [the answer](issues/01-branding-and-license-pages.md).
 
 ## Not yet specified
 

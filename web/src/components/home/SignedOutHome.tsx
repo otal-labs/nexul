@@ -5,13 +5,19 @@ import { microheaderClass } from "@/components/Microheader";
 import { PlayTrailPreview } from "@/components/play/PlayTrailPreview";
 import { displayTitleClass } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { RunsOnNexul } from "@/ee/components/RunsOnNexul";
+import { useLook } from "@/ee/hooks/BrandingHooks";
+import { isBranded, productName } from "@/ee/models/Branding";
 import { cn } from "@/lib/utils";
 
-export const SignedOutHome = () => (
+export const SignedOutHome = () => {
+  const { data: look } = useLook();
+  const branded = isBranded(look);
+  return (
   <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-8 lg:px-12">
     <header className="flex items-center gap-2.5 py-6 text-base font-semibold tracking-tight">
       <Logo className="size-7 rounded-md" />
-      Nexul
+      {productName(look)}
     </header>
     <section className="flex flex-1 flex-col justify-center py-14">
       <p className={microheaderClass}>Open source, self-hosted</p>
@@ -28,11 +34,13 @@ export const SignedOutHome = () => (
             <Button asChild size="lg">
               <Link to="/login">Sign in</Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
-              <a href="https://nexul.io/docs/guide/install/" target="_blank" rel="noreferrer">
-                Self-host your own
-              </a>
-            </Button>
+            {!branded && (
+              <Button asChild variant="outline" size="lg">
+                <a href="https://nexul.io/docs/guide/install/" target="_blank" rel="noreferrer">
+                  Self-host your own
+                </a>
+              </Button>
+            )}
           </div>
         </div>
         <PlayTrailPreview />
@@ -40,9 +48,13 @@ export const SignedOutHome = () => (
     </section>
     <footer className="flex items-center justify-between border-t border-border py-6 font-mono text-xs text-muted-foreground">
       <span>self-hosted · sqlite · no cloud required</span>
-      <a href="https://nexul.io" target="_blank" rel="noreferrer" className="hover:text-foreground">
-        nexul.io
-      </a>
+      {!branded && (
+        <a href="https://nexul.io" target="_blank" rel="noreferrer" className="hover:text-foreground">
+          nexul.io
+        </a>
+      )}
+      <RunsOnNexul />
     </footer>
   </div>
-);
+  );
+};

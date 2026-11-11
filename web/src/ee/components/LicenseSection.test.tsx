@@ -94,7 +94,9 @@ describe("LicenseSection", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save key" }));
 
     expect(await screen.findByText("Acme")).toBeInTheDocument();
-    expect(screen.getByText("Single sign-on, Branding")).toBeInTheDocument();
+    expect(screen.getByText("Single sign-on")).toBeInTheDocument();
+    expect(screen.getByText("Branding")).toBeInTheDocument();
+    expect(screen.getAllByText("Unlocked")).toHaveLength(2);
     expect(screen.getByText(/11 Nov 2027|Nov 11, 2027/)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(mocks.toast.success).toHaveBeenCalledWith("License key saved");
@@ -112,6 +114,7 @@ describe("LicenseSection", () => {
     renderWith(<LicenseSection />);
     expect(await screen.findByText("The enterprise features are off")).toBeInTheDocument();
     expect(screen.getByText("Expired")).toBeInTheDocument();
+    expect(screen.getAllByText("Off")).toHaveLength(2);
   });
 
   it("says why a stored key unlocks nothing here", async () => {
