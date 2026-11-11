@@ -4,8 +4,8 @@
 
 A spec at `.scratch/external-secrets/spec.md`, with ADRs for the hard calls, ready to cut into build
 tickets: a secret used by Nexul can be a **secret reference** to 1Password instead of a value Nexul
-stores. It covers stack environment values, the automation secrets pool, connector credentials and the
-instance bootstrap secret. The map is done when nothing is left to decide before the build.
+stores. It covers stack environment values, the automation secrets pool, and the secret fields of
+connectors and sign-in providers. The map is done when nothing is left to decide before the build.
 
 ## Notes
 
@@ -16,11 +16,12 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - Related, separate: NEXUL-94 (Encrypt stack env values at rest) seals the literal values Nexul keeps
   and ships before this build. References are stored as references.
 - Settled while charting (2026-11-11), to become an ADR in the spec:
-  - Scope: stack environment, the automation secrets pool, connector credentials, the bootstrap secret.
+  - Scope: stack environment, the automation secrets pool, and connector and sign-in provider secrets
+    (the bootstrap secret was later ruled out, ticket 06).
   - One reference per variable: each value is a literal or a reference, and a stack can mix both.
   - The side that uses a secret resolves it with its own credential. The runner resolves stack
     environment references; the automations host resolves the pool (with a token per workspace,
-    ticket 05); the server resolves connector credentials and the bootstrap secret.
+    ticket 05); the server resolves connector and sign-in provider secrets.
   - Each runner's 1Password token lives only on its machine, scoped to the vaults it deploys from.
     Nexul never holds a runner's token or a resolved value. The server has its own token, scoped to its
     own vault. Why: a Nexul breach (database, backup, server) yields no vault access. The trust left is
@@ -48,15 +49,18 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [Automation secrets by reference on the automations host](issues/05-automation-pool.md): one token
   per workspace per host, held by the supervisor and never by an automation's thread; resolved once per
   connection; a failed entry is left out and named in the automation's log.
+- [Connector credentials and the bootstrap secret by reference on the server](issues/06-server-references.md):
+  connector and sign-in provider secrets resolve at start and on save with the server's own token; a
+  1Password outage degrades only those credentials; a 401/403 re-resolves.
 
 ## Not yet specified
-
-- Rotation: a rotated value takes effect on the next deploy (ticket 04). Whether Nexul should ever
-  notice a change and offer a redeploy is still open.
-- What a second manager (Vault or OpenBao, a cloud manager) needs from the provider seam, beyond what
-  1Password shapes. Sharpens once the reference syntax and the 1Password research land.
-- Docs and the user guide page for external secrets, and the README row.
 
 ## Out of scope
 
 - Building a second manager's provider. This spec defines the seam and ships 1Password only.
+- The bootstrap secret (`NEXUL_AUTH_SECRET`) as a reference ([ticket 06](issues/06-server-references.md)):
+  backups already lack it and the server's token would sit beside it, so it adds almost no protection
+  and would stop the server starting while 1Password is down.
+
+The spec also carries the user guide page for external secrets and the README row; they are writing,
+not decisions.

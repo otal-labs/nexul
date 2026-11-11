@@ -69,7 +69,7 @@ git history, and anything durable it decided is an ADR.
   a chosen-computer auto play's ordered list.
 - `.scratch/external-secrets/` — a wayfinder map (`map.md`) toward a spec for
   secret references to 1Password, resolved by the runner, the automations host
-  or the server with its own token. Charted 2026-11-11, tickets 01–07.
+  or the server with its own token. Charted 2026-11-11, tickets 01–09.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
