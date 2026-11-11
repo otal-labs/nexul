@@ -1,6 +1,6 @@
 # 13 — The Go resolver interface, its 1Password implementation and a fake
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 11
 
@@ -24,3 +24,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
 - [ ] `CGO_ENABLED=0` builds of the runner and server still succeed.
 
 Verify: `make lint`, `go test ./internal/platform/...`, `make vuln`.
+
+## Comments
+
+Built: `secretref.Resolver` (results line up with the input slice), `Registry`, the typed errors, `secretref/onepassword` on the SDK at v0.4.1, and `secretref/secretreftest.Fake`. `cmd/nexul` is guarded against linking the SDK. Checked against real 1Password: a value, each typed error, and `ErrUnreachable` with the network cut.
