@@ -48,16 +48,37 @@ func (h *Host) runRunner(ctx context.Context, args []string) error {
 	return h.SetRunnerToken(ctx, name, token)
 }
 
-// readStdinToken reads the token one line of standard input holds, prompting first when a person is typing.
+// readStdinToken reads the token one line of standard input holds. A person typing is prompted and the paste is not
+// echoed; piped input is read as it comes.
 func (h *Host) readStdinToken() (string, error) {
+	read := h.In.ReadString
 	if h.Interactive {
 		h.printf("Paste the 1Password service account token, then press Enter.\n")
+		read = h.readHidden
 	}
-	line, err := h.In.ReadString('\n')
+	line, err := read('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", fmt.Errorf("read the token: %w", err)
 	}
 	return cleanToken(line)
+}
+
+// readHidden reads one line with terminal echo off where the terminal allows it, and puts echo back after.
+func (h *Host) readHidden(delim byte) (string, error) {
+	restore := func() {}
+	if h.HideEcho != nil {
+		r, err := h.HideEcho()
+		if err != nil {
+			h.printf("\n  This terminal cannot hide input, so the paste will be visible.\n  ")
+		}
+		if err == nil {
+			restore = r
+		}
+	}
+	line, err := h.In.ReadString(delim)
+	restore()
+	h.printf("\n")
+	return line, err
 }
 
 // cleanToken trims a token read from stdin or a file and refuses one that could not sit on one env line.

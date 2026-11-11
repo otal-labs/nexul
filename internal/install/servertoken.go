@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
-	"io"
 	"path/filepath"
 )
 
@@ -33,14 +31,7 @@ func (h *Host) runServer(ctx context.Context, args []string) error {
 	if err := h.checkUser(); err != nil {
 		return err
 	}
-	if h.Interactive {
-		h.printf("Paste the 1Password service account token, then press Enter.\n")
-	}
-	line, err := h.In.ReadString('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("read the token: %w", err)
-	}
-	token, err := cleanToken(line)
+	token, err := h.readStdinToken()
 	if err != nil {
 		return err
 	}
