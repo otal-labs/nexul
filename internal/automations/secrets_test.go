@@ -44,7 +44,14 @@ func TestSecretsService_Set(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 		assert.Contains(t, err.Error(), "API_KEY")
 		assert.NotContains(t, err.Error(), "vaultonly")
-		require.NoError(t, s.Set(context.Background(), "owner", "ws-1", "API_KEY", "op://acme/api/key"))
+	})
+
+	t.Run("refuses a well-formed reference until a host can resolve one safely", func(t *testing.T) {
+		s := newTestSecretsService(newFakeSecretsRepo(), allowAll("owner"))
+		err := s.Set(context.Background(), "owner", "ws-1", "API_KEY", "op://acme/api/key")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Contains(t, err.Error(), "API_KEY is not a valid secret reference")
+		assert.NotContains(t, err.Error(), "acme/api")
 	})
 
 	t.Run("set stores the value and lists the name", func(t *testing.T) {

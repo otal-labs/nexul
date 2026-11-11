@@ -62,6 +62,10 @@ func (s *SecretsService) Set(ctx context.Context, actorID, workspaceID, name, va
 	if err := secretref.Check(name, value); err != nil {
 		return err
 	}
+	// shortcut: refused until an automations host holds tokens for one workspace only (ADR 0182), then this check goes.
+	if kind, _ := secretref.Parse(value); kind == secretref.Reference {
+		return fmt.Errorf("%w: %s is not a valid secret reference here: automation secrets can't hold 1Password references yet", apperrs.ErrInvalid, name)
+	}
 	if err := s.repo.Set(ctx, workspaceID, name, value, s.now().UTC()); err != nil {
 		return fmt.Errorf("set secret %s: %w", name, err)
 	}

@@ -54,11 +54,11 @@ func (h *Host) runAutomations(ctx context.Context, args []string) error {
 	if _, err := h.hostUnit(kindAutomations, name); err != nil {
 		return err
 	}
-	token, err := h.readStdinToken()
-	if err != nil {
+	if _, err := h.readStdinToken(); err != nil {
 		return err
 	}
-	return h.SetAutomationsToken(ctx, name, *workspace, token)
+	// shortcut: storing is refused until a host holds tokens for one workspace only (ADR 0182), then this goes.
+	return errors.New("an automations host can't hold a 1Password token yet, because automations on a shared host could read it; --remove still removes one already set")
 }
 
 // SetAutomationsToken stores token as the named automations host's 1Password token for a workspace, or removes it
