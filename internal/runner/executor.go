@@ -86,7 +86,9 @@ type ExecutorConfig struct {
 
 // ShellExecutor runs builds and deploys on the host (ADR 0032).
 type ShellExecutor struct {
-	cmd       CommandRunner
+	cmd CommandRunner
+	// rawCmd hands its callback unmasked output, for callers that parse it; its errors are masked like cmd's.
+	rawCmd    CommandRunner
 	streams   StreamRunner
 	gitToken  string
 	stackRoot string
@@ -110,7 +112,7 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 		streams = ShellStreamRunner
 	}
 	return &ShellExecutor{
-		cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
+		cmd: cmd, rawCmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
 		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log, registry: cfg.Registry,
 		fingerprints: cfg.Fingerprints,
 	}
@@ -204,7 +206,7 @@ func stampCommit(send func(Frame), commit *string) func(Frame) {
 // headCommit is the checkout's HEAD; empty when git cannot say, which leaves the deploy without a recorded commit.
 func (e *ShellExecutor) headCommit(ctx context.Context, checkout string) string {
 	var out strings.Builder
-	if err := e.cmd(ctx, checkout, func(s string) { out.WriteString(s) }, "git", "rev-parse", "HEAD"); err != nil {
+	if err := e.rawCmd(ctx, checkout, func(s string) { out.WriteString(s) }, "git", "rev-parse", "HEAD"); err != nil {
 		return ""
 	}
 	return strings.TrimSpace(out.String())
@@ -568,7 +570,7 @@ func primaryAddress(services []ObservedService, network string) string {
 // output runs a command through the same CommandRunner seam as everything else, collecting stdout instead of streaming it.
 func (e *ShellExecutor) output(ctx context.Context, name string, args ...string) (string, error) {
 	var buf bytes.Buffer
-	if err := e.cmd(ctx, "", func(s string) { buf.WriteString(s) }, name, args...); err != nil {
+	if err := e.rawCmd(ctx, "", func(s string) { buf.WriteString(s) }, name, args...); err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(buf.String()), nil

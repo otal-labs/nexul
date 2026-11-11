@@ -152,3 +152,53 @@ func TestShellExecutor_ResolvedValue_IsMaskedInCommandOutputAndErrors(t *testing
 	assert.NotContains(t, frameText(rec), "s3cret-pw")
 	assert.Contains(t, rec.logText(LogPhaseDeploy), "connecting with ***")
 }
+
+// The mask is for the deploy log and errors only: a resolved value equal to a port must not rewrite the inspect output
+// the observation report is parsed from.
+func TestShellExecutor_ResolvedValue_NeverRewritesWhatObserveParses(t *testing.T) {
+	cmd := &fakeCmd{inspectOut: `{"Config":{"Image":"img:1"},"State":{"Status":"running"},"NetworkSettings":{"Networks":{"app-net":{"IPAddress":"172.18.0.4"}},"Ports":{"80/tcp":[{"HostPort":"8080"}]}}}`}
+	rec := &frameRecorder{}
+	req := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, StackSlug: "api", Image: "img:1", Strategy: "run",
+		Env: map[string]string{"PORT": "op://Acme/web/port"}}
+	e := secretExecutor(cmd, &secretreftest.Fake{Values: map[string]string{"op://Acme/web/port": "8080"}})
+
+	e.Deploy(context.Background(), req, rec.send)
+
+	require.Equal(t, DeployStatusHealthy, rec.last().Status)
+	require.Len(t, rec.last().Services, 1)
+	assert.Equal(t, []string{"8080:80/tcp"}, rec.last().Services[0].Ports)
+	assert.Equal(t, "172.18.0.4", rec.last().Address)
+}
+
+// A value that starts another must not leave the rest of the longer one showing, and each line of a multi-line value
+// is hidden on its own, because a command's output reaches the log line by line.
+func TestShellExecutor_ResolvedValues_AreMaskedWhole_PrefixesAndEachLine(t *testing.T) {
+	tests := []struct {
+		name   string
+		values map[string]string
+		stdout string
+		want   string
+		never  string
+	}{
+		{"a value that starts another", map[string]string{"op://Acme/x/a": "abc", "op://Acme/x/b": "abcdef"},
+			"saw abcdef and abc\n", "saw *** and ***", "def"},
+		{"each line of a multi-line value", map[string]string{"op://Acme/x/a": "-----BEGIN KEY-----\nMIIEvQIBADAN\n-----END KEY-----"},
+			"key line: MIIEvQIBADAN\n", "key line: ***", "MIIEvQIBADAN"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &fakeCmd{failNext: 1, err: errors.New("exit 125"), stdout: tt.stdout}
+			rec := &frameRecorder{}
+			env := map[string]string{}
+			for ref := range tt.values {
+				env["V"+ref[len(ref)-1:]] = ref
+			}
+			req := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, StackSlug: "api", Image: "img:1", Strategy: "run", Env: env}
+
+			secretExecutor(cmd, &secretreftest.Fake{Values: tt.values}).Deploy(context.Background(), req, rec.send)
+
+			assert.Contains(t, rec.logText(LogPhaseDeploy), tt.want)
+			assert.NotContains(t, frameText(rec), tt.never)
+		})
+	}
+}

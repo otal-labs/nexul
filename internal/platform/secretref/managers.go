@@ -170,3 +170,30 @@ func (m *Managers) Registry() Registry {
 	defer m.mu.Unlock()
 	return NewRegistry(slices.Clone(m.resolvers)...)
 }
+
+// refused stands in for a manager that is not ready, so a reference to it fails with the manager's own reason.
+type refused struct {
+	scheme string
+	err    error
+}
+
+func (r refused) Scheme() string { return r.scheme }
+
+func (r refused) ResolveAll(context.Context, []string) ([]Result, error) { return nil, r.err }
+
+// DeployRegistry is Registry plus, for each manager that is rejected or unreachable, a resolver that fails with that
+// state, so a deploy says why a reference cannot resolve instead of claiming there is no token.
+func (m *Managers) DeployRegistry() Registry {
+	reg := m.Registry()
+	for _, s := range m.States() {
+		if _, ok := reg[s.Manager]; ok {
+			continue
+		}
+		err := ErrUnreachable
+		if s.State == ManagerTokenRejected {
+			err = ErrTokenRejected
+		}
+		reg[s.Manager] = refused{scheme: s.Manager, err: err}
+	}
+	return reg
+}

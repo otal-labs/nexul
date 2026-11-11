@@ -17,7 +17,7 @@ type resolvedEnv struct {
 	req DeployRequestedEvent
 	// line is the deploy-log line; empty when the env held no reference.
 	line string
-	// mask hides the resolved values wherever a command might echo them; nil when there are none.
+	// mask hides the resolved values in a deploy's log and errors; nil when there are none.
 	mask *strings.Replacer
 	// refs is each resolved variable's reference, for the fingerprints the secret check compares against; nil when none.
 	refs map[string]string
@@ -44,15 +44,13 @@ func resolveEnv(ctx context.Context, reg secretref.Registry, req DeployRequested
 
 	start := time.Now()
 	env := maps.Clone(req.Env)
-	var pairs []string
+	var secrets []string
 	for scheme, keys := range byScheme {
 		values, reasons := resolveBatch(ctx, reg, scheme, req.Env, keys)
 		maps.Copy(failed, reasons)
 		for k, v := range values {
 			env[k] = v
-			if v != "" {
-				pairs = append(pairs, v, "***")
-			}
+			secrets = append(secrets, v)
 		}
 	}
 	if len(failed) > 0 {
@@ -74,9 +72,34 @@ func resolveEnv(ctx context.Context, reg secretref.Registry, req DeployRequested
 	return resolvedEnv{
 		req:  req,
 		line: fmt.Sprintf("Resolved %d secret %s in %.1fs", count, noun, time.Since(start).Seconds()),
-		mask: strings.NewReplacer(pairs...),
+		mask: maskOf(secrets),
 		refs: refs,
 	}, nil
+}
+
+// maskOf hides each value and each line of a multi-line one, longest first so a value that is the start of another
+// leaves none of it showing; nil when no value is non-empty.
+func maskOf(values []string) *strings.Replacer {
+	var olds []string
+	for _, v := range values {
+		olds = append(olds, v)
+		if !strings.Contains(v, "\n") {
+			continue
+		}
+		for line := range strings.SplitSeq(v, "\n") {
+			olds = append(olds, strings.TrimSuffix(line, "\r"))
+		}
+	}
+	olds = slices.DeleteFunc(olds, func(s string) bool { return s == "" })
+	if len(olds) == 0 {
+		return nil
+	}
+	slices.SortStableFunc(olds, func(a, b string) int { return len(b) - len(a) })
+	pairs := make([]string, 0, 2*len(olds))
+	for _, o := range slices.Compact(olds) {
+		pairs = append(pairs, o, "***")
+	}
+	return strings.NewReplacer(pairs...)
 }
 
 // resolveBatch resolves the variables holding one scheme's references in a single call to its resolver.
@@ -128,8 +151,8 @@ func resolveError(failed map[string]string) error {
 	return errors.New("secret references could not be resolved (" + strings.Join(parts, "; ") + ")")
 }
 
-// withSecrets resolves req's references and returns the request holding the values with an executor whose commands
-// never echo them, in their output or their errors. The first deploy-log line says how many were resolved. The
+// withSecrets resolves req's references and returns the request holding the values with an executor whose deploy log
+// and errors never show them. The output a caller parses (output, headCommit) stays raw. The first deploy-log line says how many were resolved. The
 // returned send also keeps the stack's fingerprints once the deploy reports healthy.
 func (e *ShellExecutor) withSecrets(ctx context.Context, req DeployRequestedEvent, send func(Frame), logs *logStream) (*ShellExecutor, DeployRequestedEvent, func(Frame), error) {
 	var registry secretref.Registry
@@ -148,12 +171,15 @@ func (e *ShellExecutor) withSecrets(ctx context.Context, req DeployRequestedEven
 	logs.flush()
 	cp := *e
 	inner := e.cmd
-	cp.cmd = func(ctx context.Context, dir string, logf func(string), name string, args ...string) error {
-		err := inner(ctx, dir, func(s string) { logf(got.mask.Replace(s)) }, name, args...)
+	cp.rawCmd = func(ctx context.Context, dir string, logf func(string), name string, args ...string) error {
+		err := inner(ctx, dir, logf, name, args...)
 		if err == nil {
 			return nil
 		}
 		return errors.New(got.mask.Replace(err.Error()))
+	}
+	cp.cmd = func(ctx context.Context, dir string, logf func(string), name string, args ...string) error {
+		return cp.rawCmd(ctx, dir, func(s string) { logf(got.mask.Replace(s)) }, name, args...)
 	}
 	return &cp, got.req, send, nil
 }

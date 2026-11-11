@@ -76,6 +76,28 @@ func TestManagers_AnyOtherFailureAtStartIsRetriedUntilItOpens_ARejectedTokenIsNo
 	assert.EqualValues(t, 1, rejects.Load(), "a rejected token is not retried")
 }
 
+func TestManagers_DeployRegistry_AManagerThatIsNotReadyFailsWithItsState(t *testing.T) {
+	tests := []struct {
+		name string
+		open func(context.Context) (secretref.Resolver, error)
+		want error
+	}{
+		{"a refused token", opens(nil, secretref.ErrTokenRejected), secretref.ErrTokenRejected},
+		{"an unreachable manager", opens(nil, errors.New("503")), secretref.ErrUnreachable},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := startManagers(t, secretref.Setup{Scheme: "op", Open: tt.open})
+
+			res, err := m.DeployRegistry().For("op://v/i/f")
+
+			require.NoError(t, err)
+			_, err = res.ResolveAll(context.Background(), []string{"op://v/i/f"})
+			assert.ErrorIs(t, err, tt.want)
+		})
+	}
+}
+
 func TestManagers_OnRejectedFiresOnceWhenAStateTurnsTokenRejected(t *testing.T) {
 	var attempts atomic.Int32
 	tests := []struct {
