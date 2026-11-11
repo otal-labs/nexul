@@ -59,9 +59,9 @@ func (r *AutomationHostsRepo) ListHostsOn(ctx context.Context, machineIDs []stri
 	return out, nil
 }
 
-func (r *AutomationHostsRepo) TouchHost(ctx context.Context, id string, at time.Time) error {
+func (r *AutomationHostsRepo) TouchHost(ctx context.Context, id string, at time.Time, version string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).TouchAutomationHost(ctx, sqlcgen.TouchAutomationHostParams{LastSeen: at.Unix(), ID: id})
+		n, err := r.q.WithTx(tx).TouchAutomationHost(ctx, sqlcgen.TouchAutomationHostParams{LastSeen: at.Unix(), Version: version, ID: id})
 		if err != nil {
 			return fmt.Errorf("touch automations host %s: %w", id, err)
 		}

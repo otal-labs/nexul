@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { HostConfig } from "./config.ts";
 import { log } from "./log.ts";
+import { hostVersion } from "./version.ts";
 
 // EnrollRefused is a refusal retrying cannot fix: the server read the code and said no.
 export class EnrollRefused extends Error {
@@ -64,7 +65,7 @@ async function enrollOnce(cfg: HostConfig, codeFile: string, deps: EnrollDeps): 
   const res = await deps.fetch(`${cfg.serverUrl}/api/automation-hosts/enroll`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name: cfg.hostName, os: hostOS(), arch: hostArch(), version: "dev" }),
+    body: JSON.stringify({ code, name: cfg.hostName, os: hostOS(), arch: hostArch(), version: hostVersion }),
   });
   const text = await res.text();
   if (res.status >= 500) throw new Error(`the server answered ${res.status}`);

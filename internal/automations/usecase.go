@@ -375,7 +375,7 @@ func (s *Service) SyncFromCode(ctx context.Context, id, name, description string
 	if len(configSchema) == 0 {
 		configSchema = a.ConfigSchema
 	}
-	// The host restarts a worker whenever updated_at moves; an unchanged announce must not write, or reconnects loop.
+	// An unchanged announce writes nothing, so a reconnect leaves updated_at alone.
 	if a.Name == name && a.Description == description && slices.Equal(a.Subscriptions, subscriptions) && bytes.Equal(a.ConfigSchema, configSchema) {
 		return a, nil
 	}

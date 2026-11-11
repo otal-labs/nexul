@@ -33,7 +33,7 @@ function fakeWorkers(): WorkerFactory & { spawns: SpawnOptions[]; terminated: st
 }
 
 function state(overrides: Partial<RemoteState> = {}): RemoteState {
-  return { enabled: true, updatedAt: "2026-01-01T00:00:00Z", activeVersionId: "v1", activeCode: "export default {}", ...overrides };
+  return { enabled: true, configValues: "{}", activeVersionId: "v1", activeCode: "export default {}", ...overrides };
 }
 
 describe("Supervisor", () => {
@@ -98,9 +98,9 @@ describe("Supervisor", () => {
     expect(workers.terminated).toEqual(["a1"]);
   });
 
-  test("respawns when config/enabled state's updated_at changes", async () => {
+  test("respawns when the config values change, since the worker got the old ones at hello", async () => {
     const workers = fakeWorkers();
-    const sup = new Supervisor(fakeApi([state({ updatedAt: "t1" }), state({ updatedAt: "t2" })]), workers, cfg);
+    const sup = new Supervisor(fakeApi([state({ configValues: '{"channel":"a"}' }), state({ configValues: '{"channel":"b"}' })]), workers, cfg);
 
     await sup.reconcile([target]);
     await sup.reconcile([target]);

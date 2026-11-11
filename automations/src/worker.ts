@@ -16,9 +16,9 @@ export interface WorkerHandle {
   terminate(): Promise<void>;
 }
 
-// onStale fires when the watchdog kills the worker itself (missed
-// heartbeat) rather than the supervisor asking for it — the supervisor
-// needs to know so its next poll respawns instead of assuming it's still up.
+// onStale fires when the worker ends without the supervisor asking for it
+// (a missed heartbeat or an exit of its own), so its next poll respawns
+// instead of assuming it's still up.
 export interface WorkerFactory {
   spawn(opts: SpawnOptions, onStale: () => void): WorkerHandle;
 }
@@ -50,12 +50,18 @@ export const threadWorkerFactory: WorkerFactory = {
     });
 
     let lastHeartbeat = Date.now();
+    // Bun reports a terminated worker's exit as code 1, like Node, so an exit the host asked for is not a failure.
+    let terminating = false;
+    const terminate = async (): Promise<void> => {
+      terminating = true;
+      clearInterval(watchdog);
+      await worker.terminate();
+    };
     const watchdog = setInterval(
       () => {
         if (Date.now() - lastHeartbeat <= opts.heartbeatTimeoutMs) return;
         log("warn", "automation worker missed its heartbeat, terminating", { automationId: opts.automationId });
-        clearInterval(watchdog);
-        void worker.terminate().then(() => onStale());
+        void terminate().then(() => onStale());
       },
       Math.max(1000, Math.floor(opts.heartbeatTimeoutMs / 3)),
     );
@@ -70,14 +76,11 @@ export const threadWorkerFactory: WorkerFactory = {
     worker.on("error", (err: Error) => log("error", "automation worker error", { automationId: opts.automationId, error: err.message }));
     worker.on("exit", (code) => {
       clearInterval(watchdog);
-      if (code !== 0) log("warn", "automation worker exited non-zero", { automationId: opts.automationId, code });
+      if (terminating) return;
+      log("warn", "automation worker exited on its own", { automationId: opts.automationId, code });
+      onStale();
     });
 
-    return {
-      async terminate() {
-        clearInterval(watchdog);
-        await worker.terminate();
-      },
-    };
+    return { terminate };
   },
 };

@@ -101,7 +101,7 @@ func (h *HostsHandler) removeSelf(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HostsHandler) assignments(w http.ResponseWriter, r *http.Request) {
-	a, err := h.svc.Assignments(r.Context(), bearerToken(r))
+	a, err := h.svc.Assignments(r.Context(), bearerToken(r), r.URL.Query().Get("version"))
 	if errors.Is(err, errHostRemoved) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)

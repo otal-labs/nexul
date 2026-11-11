@@ -310,16 +310,17 @@ func (q *Queries) RevokeAutomationHostCredentials(ctx context.Context, arg Revok
 }
 
 const touchAutomationHost = `-- name: TouchAutomationHost :execrows
-UPDATE automation_hosts SET last_seen = ? WHERE id = ?
+UPDATE automation_hosts SET last_seen = ?, version = ? WHERE id = ?
 `
 
 type TouchAutomationHostParams struct {
 	LastSeen int64
+	Version  string
 	ID       string
 }
 
 func (q *Queries) TouchAutomationHost(ctx context.Context, arg TouchAutomationHostParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, touchAutomationHost, arg.LastSeen, arg.ID)
+	result, err := q.db.ExecContext(ctx, touchAutomationHost, arg.LastSeen, arg.Version, arg.ID)
 	if err != nil {
 		return 0, err
 	}
