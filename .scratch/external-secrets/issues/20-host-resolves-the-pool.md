@@ -27,3 +27,5 @@ Verify: `bun run typecheck` and `bun run test` in `automations/`, `sdk/` and `we
 ## Comments
 
 Until a host holds tokens for one workspace only (ADR 0182, as amended), the pool refuses a reference on save and `nexul automations 1password` refuses to store a token (`--remove` still works). Lifting both, and their two tests, is part of this ticket.
+
+A host now holds one workspace's token and runs only that workspace's automations, and `nexul automations 1password` stores tokens again, keyed by workspace id (`WorkspaceManagers.resolverFor` takes the assignment's `workspace_id`). The pool's refusal of references and its test (`internal/automations/secrets.go`) are still this ticket's to lift.

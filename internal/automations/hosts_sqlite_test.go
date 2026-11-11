@@ -150,6 +150,7 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	mux.Handle("GET /api/automation-hosts/self/assignments", public)
 	mux.Handle("POST /api/automation-hosts/self/logs", public)
 	mux.Handle("POST /api/automation-hosts/self/managers", public)
+	mux.Handle("GET /api/automation-hosts/self/workspace", public)
 	mux.Handle("/api/automation-hosts", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("/api/automation-hosts/", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("PATCH /api/automations/{id}/host", asAdmin(automationsHTTP))
@@ -590,18 +591,157 @@ func TestHostLogs_Refusals(t *testing.T) {
 	assert.Empty(t, f.logs.snapshot())
 }
 
-func TestHostAssignments_CarryTheSlugOfTheAutomationsWorkspace(t *testing.T) {
+func TestHostAssignments_CarryTheIDAndSlugOfTheAutomationsWorkspace(t *testing.T) {
 	f := newHostsFixture(t)
 	_, credential := f.enroll(t, automations.InstanceHostName)
-	_, err := f.db.ExecContext(t.Context(), `INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-1', 'Acme Ops', 'acme-ops', 1, 1)`)
-	require.NoError(t, err)
+	f.workspace(t, "ws-1", "acme-ops")
 	id := f.createAutomation(t, "on instance", true)
 
 	got := f.assignments(t, credential)
 
 	require.Len(t, got, 1)
 	assert.Equal(t, id, got[0].ID)
-	assert.Equal(t, "acme-ops", got[0].Workspace, "the host keys its token by slug, so it is told the slug and not the id")
+	assert.Equal(t, "ws-1", got[0].WorkspaceID, "the host keys its token by workspace id, which a rename never moves")
+	assert.Equal(t, "acme-ops", got[0].Workspace)
+}
+
+func (f *hostsFixture) workspace(t *testing.T, id, slug string) {
+	t.Helper()
+	_, err := f.db.ExecContext(t.Context(), `INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, 1, 1)`, id, slug, slug)
+	require.NoError(t, err)
+}
+
+// holdsToken has the host report a ready 1Password token for each workspace id, as it does at start.
+func (f *hostsFixture) holdsToken(t *testing.T, credential string, workspaceIDs ...string) {
+	t.Helper()
+	report := automations.HostManagersReport{Managers: []automations.HostManager{}}
+	for _, id := range workspaceIDs {
+		report.Managers = append(report.Managers, automations.HostManager{WorkspaceID: id, Manager: "op", State: automations.ManagerReady})
+	}
+	status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", credential, report)
+	require.Equal(t, http.StatusNoContent, status, string(body))
+}
+
+func (f *hostsFixture) mcpTool(t *testing.T, name string) func(ctx context.Context, args json.RawMessage) (any, error) {
+	t.Helper()
+	for _, tool := range automations.MCPTools(f.svc) {
+		if tool.Name == name {
+			return tool.Call
+		}
+	}
+	t.Fatalf("no tool %s", name)
+	return nil
+}
+
+func TestPlacement_OnAHostHoldingAnotherWorkspacesToken_IsRefused(t *testing.T) {
+	f := newHostsFixture(t)
+	f.workspace(t, "ws-1", "acme")
+	f.workspace(t, "ws-2", "globex")
+	jobsID, jobsCred := f.enroll(t, "jobs")
+	_, instanceCred := f.enroll(t, automations.InstanceHostName)
+	own := f.createAutomation(t, "acme's", true)
+	other, _, err := f.svc.Create(adminCtx(), "admin", "ws-2", "globex's", []string{"tickets:read"})
+	require.NoError(t, err)
+	f.holdsToken(t, jobsCred, "ws-1")
+	refused := "jobs holds a 1Password token for another workspace"
+
+	status, body := f.do(t, http.MethodPatch, "/api/automations/"+own+"/host", "", map[string]string{"host_id": jobsID})
+	require.Equal(t, http.StatusOK, status, "the token's own workspace moves on: %s", body)
+
+	status, body = f.do(t, http.MethodPatch, "/api/automations/"+other.ID+"/host", "", map[string]string{"host_id": jobsID})
+	assert.Equal(t, http.StatusConflict, status)
+	assert.Contains(t, string(body), refused)
+
+	update := f.mcpTool(t, "automation_update")
+	_, err = update(adminCtx(), json.RawMessage(`{"id":"`+other.ID+`","host_id":"`+jobsID+`"}`))
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), refused)
+	a, err := f.store.Automations.Get(t.Context(), other.ID)
+	require.NoError(t, err)
+	assert.Nil(t, a.HostID, "a refused move leaves it where it was")
+
+	f.holdsToken(t, instanceCred, "ws-1")
+	_, _, err = f.svc.Create(adminCtx(), "admin", "ws-2", "new", []string{"tickets:read"})
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a new automation lands on the instance host")
+	create := f.mcpTool(t, "automation_create")
+	_, err = create(adminCtx(), json.RawMessage(`{"workspace_id":"ws-2","name":"new","scopes":["tickets:read"]}`))
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "instance holds a 1Password token for another workspace")
+	_, err = f.svc.SetEnabled(adminCtx(), "admin", other.ID, true)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "one already there stays off")
+	_, _, err = f.svc.Create(adminCtx(), "admin", "ws-1", "acme's second", []string{"tickets:read"})
+	require.NoError(t, err)
+}
+
+func TestHostWorkspaceLookup_KeysTheTokenByIDThroughARename(t *testing.T) {
+	f := newHostsFixture(t)
+	f.workspace(t, "ws-1", "acme")
+	jobsID, jobsCred := f.enroll(t, "jobs")
+	own := f.createAutomation(t, "acme's", true)
+	_, err := f.svc.SetHost(adminCtx(), "admin", own, jobsID)
+	require.NoError(t, err)
+	lookup := func(slug string) (int, automations.HostWorkspaceLookup) {
+		status, body := f.do(t, http.MethodGet, "/api/automation-hosts/self/workspace?slug="+slug, jobsCred, nil)
+		var got automations.HostWorkspaceLookup
+		if status == http.StatusOK {
+			require.NoError(t, json.Unmarshal(body, &got))
+		}
+		return status, got
+	}
+
+	status, got := lookup("acme")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, automations.HostWorkspace{ID: "ws-1", Slug: "acme"}, got.Workspace)
+	assert.Equal(t, []automations.HostWorkspace{{ID: "ws-1", Slug: "acme"}}, got.Placed)
+	f.holdsToken(t, jobsCred, "ws-1")
+
+	_, err = f.db.ExecContext(t.Context(), `UPDATE workspaces SET slug = 'acme-old' WHERE id = 'ws-1'`)
+	require.NoError(t, err)
+	f.workspace(t, "ws-2", "acme")
+	other, _, err := f.svc.Create(adminCtx(), "admin", "ws-2", "the new acme's", []string{"tickets:read"})
+	require.NoError(t, err)
+
+	status, got = lookup("acme")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "ws-2", got.Workspace.ID, "the old slug now names the new workspace, which holds no token here")
+	assert.Equal(t, []automations.HostWorkspace{{ID: "ws-1", Slug: "acme-old"}}, got.Placed, "placed workspaces carry today's slug")
+	_, err = f.svc.SetHost(adminCtx(), "admin", other.ID, jobsID)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "the new workspace with the old slug gets no use of the token")
+	second := f.createAutomation(t, "acme's second", false)
+	_, err = f.svc.SetHost(adminCtx(), "admin", second, jobsID)
+	require.NoError(t, err, "the renamed workspace keeps its own token")
+
+	status, _ = lookup("initech")
+	assert.Equal(t, http.StatusNotFound, status, "an unknown slug")
+	status, _ = f.do(t, http.MethodGet, "/api/automation-hosts/self/workspace?slug=acme", "nxa_unknown", nil)
+	assert.Equal(t, http.StatusUnauthorized, status, "an unknown credential")
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/remove", jobsCred, nil)
+	require.Equal(t, http.StatusNoContent, status)
+	status, _ = lookup("acme")
+	assert.Equal(t, http.StatusUnauthorized, status, "a removed host")
+}
+
+func TestSeeder_OnAnInstanceHostHoldingAnotherWorkspacesToken_CreatesTheDefaultsSwitchedOff(t *testing.T) {
+	f := newHostsFixture(t)
+	f.workspace(t, "ws-2", "globex")
+	_, instanceCred := f.enroll(t, automations.InstanceHostName)
+	f.holdsToken(t, instanceCred, "ws-1")
+	defs := []automations.DefaultDefinition{{ID: "default-x", Name: "X", Code: "export default {}", Scopes: []string{"tickets:read"}, Enabled: true}}
+	seeder := automations.NewSeeder(f.store.Automations, automations.NewVersionsService(f.store.AutomationVersions, f.store.Automations, allowAllPerm{}), defs, nil, "ws-1", testutil.DiscardLogger())
+	seeder.SetHosts(f.hosts)
+
+	require.NoError(t, seeder.SeedWorkspace(t.Context(), "ws-1"))
+	require.NoError(t, seeder.SeedWorkspace(t.Context(), "ws-2"), "a new workspace is still created")
+
+	own, err := f.store.Automations.Get(t.Context(), "default-x")
+	require.NoError(t, err)
+	assert.True(t, own.Enabled, "the token's own workspace runs its defaults")
+	other, err := f.store.Automations.Get(t.Context(), "default-x-ws-2")
+	require.NoError(t, err)
+	assert.False(t, other.Enabled, "another workspace's default waits switched off")
+	_, err = f.svc.SetEnabled(adminCtx(), "admin", other.ID, true)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "instance holds a 1Password token for another workspace", "switching it on says why")
 }
 
 func TestHostManagers_AReportReplacesTheLastAndBelongsToOneHost(t *testing.T) {
@@ -621,8 +761,8 @@ func TestHostManagers_AReportReplacesTheLastAndBelongsToOneHost(t *testing.T) {
 		}
 		return out
 	}
-	ready := automations.HostManager{Workspace: "acme", Manager: "op", State: automations.ManagerReady}
-	rejected := automations.HostManager{Workspace: "globex", Manager: "op", State: automations.ManagerTokenRejected}
+	ready := automations.HostManager{WorkspaceID: "ws-acme", Manager: "op", State: automations.ManagerReady}
+	rejected := automations.HostManager{WorkspaceID: "ws-globex", Manager: "op", State: automations.ManagerTokenRejected}
 
 	report(jobsCredential, ready, rejected)
 	assert.Equal(t, []automations.HostManager{ready, rejected}, managersOf()["jobs"])
@@ -644,13 +784,13 @@ func TestHostManagers_AReportReplacesTheLastAndBelongsToOneHost(t *testing.T) {
 func TestHostManagers_Refusals(t *testing.T) {
 	f := newHostsFixture(t)
 	_, credential := f.enroll(t, "jobs")
-	ready := automations.HostManager{Workspace: "acme", Manager: "op", State: automations.ManagerReady}
+	ready := automations.HostManager{WorkspaceID: "ws-acme", Manager: "op", State: automations.ManagerReady}
 	tests := []struct {
 		name     string
 		managers []automations.HostManager
 	}{
-		{"an unknown manager", []automations.HostManager{{Workspace: "acme", Manager: "vault", State: automations.ManagerReady}}},
-		{"an unknown state", []automations.HostManager{{Workspace: "acme", Manager: "op", State: "fine"}}},
+		{"an unknown manager", []automations.HostManager{{WorkspaceID: "ws-acme", Manager: "vault", State: automations.ManagerReady}}},
+		{"an unknown state", []automations.HostManager{{WorkspaceID: "ws-acme", Manager: "op", State: "fine"}}},
 		{"no workspace", []automations.HostManager{{Manager: "op", State: automations.ManagerReady}}},
 		{"the same workspace twice", []automations.HostManager{ready, ready}},
 	}
@@ -754,14 +894,16 @@ func TestHostManagers_ANotificationFollowsEachChangeIntoTokenRejected(t *testing
 		require.NoError(t, rows.Err())
 		return payloads
 	}
+	f.workspace(t, "ws-acme", "acme")
 	acme := func(state string) automations.HostManager {
-		return automations.HostManager{Workspace: "acme", Manager: "op", State: state}
+		return automations.HostManager{WorkspaceID: "ws-acme", Manager: "op", State: state}
 	}
-	globex := automations.HostManager{Workspace: "globex", Manager: "op", State: automations.ManagerTokenRejected}
+	globex := automations.HostManager{WorkspaceID: "ws-globex", Manager: "op", State: automations.ManagerTokenRejected}
 
 	report(acme(automations.ManagerTokenRejected))
 	require.Len(t, told(), 1)
-	assert.JSONEq(t, `{"source":"automations_host","name":"jobs","machine":"`+f.hostMachine(t, "jobs")+`","manager":"op","workspace":"acme"}`, payloads[0])
+	assert.JSONEq(t, `{"source":"automations_host","name":"jobs","machine":"`+f.hostMachine(t, "jobs")+`","manager":"op","workspace":"acme","workspace_id":"ws-acme"}`, payloads[0],
+		"the id names the workspace for good, the slug it bears now is for the notice's text")
 
 	report(acme(automations.ManagerTokenRejected))
 	assert.Len(t, told(), 1, "a report that is still rejected tells nobody")

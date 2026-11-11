@@ -142,6 +142,9 @@ func (s *Service) Create(ctx context.Context, actorID, workspaceID, name string,
 	if err := a.Validate(); err != nil {
 		return nil, "", err
 	}
+	if err := s.requirePlaceable(ctx, nil, workspaceID); err != nil {
+		return nil, "", err
+	}
 	if err := s.repo.Create(ctx, a); err != nil {
 		return nil, "", fmt.Errorf("create automation: %w", err)
 	}
@@ -213,6 +216,11 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 	if a.Enabled == enabled {
 		return a, nil
 	}
+	if enabled {
+		if err := s.requirePlaceable(ctx, a.HostID, a.WorkspaceID); err != nil {
+			return nil, err
+		}
+	}
 	// Events published while it was off are skipped, not replayed on enable; the cursor otherwise resumes downtime.
 	if enabled && s.conns != nil {
 		if err := s.conns.SkipBacklog(ctx, id); err != nil {
@@ -245,6 +253,9 @@ func (s *Service) SetHost(ctx context.Context, actorID, id, hostID string) (*Aut
 	}
 	if equalHost(a.HostID, next) {
 		return a, nil
+	}
+	if err := s.requirePlaceable(ctx, next, a.WorkspaceID); err != nil {
+		return nil, err
 	}
 	a.HostID = next
 	a.UpdatedAt = s.now().UTC()
@@ -279,6 +290,14 @@ func (s *Service) resolveHost(ctx context.Context, hostID string) (*string, erro
 		return nil, err
 	}
 	return &host.ID, nil
+}
+
+// requirePlaceable is HostsService.requirePlaceable, passing everything while no hosts are wired.
+func (s *Service) requirePlaceable(ctx context.Context, hostID *string, workspaceID string) error {
+	if s.hosts == nil {
+		return nil
+	}
+	return s.hosts.requirePlaceable(ctx, hostID, workspaceID)
 }
 
 func equalHost(a, b *string) bool {

@@ -7203,6 +7203,10 @@
       "workspace": {
         "type": "string",
         "description": "The workspace slug whose token the host holds; empty for a runner and the server."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The id of the workspace whose token the host holds, which a rename never changes; empty for a runner and the server."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

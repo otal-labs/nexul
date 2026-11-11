@@ -56,7 +56,8 @@ Commands:
   runner 1password <name>  Set a runner's 1Password token, read from stdin (--remove removes it)
   server 1password         Set the server's 1Password token, read from stdin (--remove removes it)
   automations 1password <host> --workspace <slug>
-                           Set an automations host's 1Password token for a workspace, read from stdin (--remove removes it)
+                           Set an automations host's 1Password token for the one workspace it runs, read from stdin
+                           (--remove instead of --workspace removes it)
   upgrade                  Upgrade every Nexul service on this machine to the newest release, or to --version
   status                   List every Nexul service on this machine with its state and version
   uninstall                Remove every Nexul service on this machine; --purge also deletes the data

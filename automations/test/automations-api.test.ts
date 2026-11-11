@@ -35,7 +35,7 @@ describe("httpAutomationsApi.fetchAssignments", () => {
   });
 
   test("returns the automations placed on this host", async () => {
-    const automations = [{ id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace: "acme" }];
+    const automations = [{ id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace_id: "ws-1", workspace: "acme" }];
     responses.nxa_live = [200, JSON.stringify({ automations })];
     expect(await httpAutomationsApi.fetchAssignments(url, "nxa_live")).toEqual({ removed: false, automations });
     expect(requested).toContain("/api/automation-hosts/self/assignments?version=dev");
@@ -44,7 +44,7 @@ describe("httpAutomationsApi.fetchAssignments", () => {
 
 describe("httpAutomationsApi.fetchState", () => {
   test("a write that leaves the version and config alone, like the worker's own announce, reads as the same state", async () => {
-    const target = { id: "a1", name: "PR opened", token: "dat_h.a1.x", workspace: "acme" };
+    const target = { id: "a1", name: "PR opened", token: "dat_h.a1.x", workspace_id: "ws-1", workspace: "acme" };
     const diff = JSON.stringify({ active: { id: "v1", code: "export default {}" } });
     responses["dat_h.a1.x /api/automations/a1/versions/diff"] = [200, diff];
     const automation = (updatedAt: string) => JSON.stringify({ enabled: true, updated_at: updatedAt, config_values: { channel: "ops" } });
@@ -62,9 +62,9 @@ describe("httpAutomationsApi.fetchState", () => {
 describe("httpAutomationsApi.reportManagers", () => {
   test("posts the managers to the host's own route with its credential", async () => {
     responses.nxa_live = [204, ""];
-    await httpAutomationsApi.reportManagers(url, "nxa_live", [{ workspace: "acme", manager: "op", state: "ready" }]);
+    await httpAutomationsApi.reportManagers(url, "nxa_live", [{ workspace_id: "ws-1", manager: "op", state: "ready" }]);
     expect(requested).toContain("/api/automation-hosts/self/managers");
-    expect(posted.map((b) => JSON.parse(b))).toContainEqual({ managers: [{ workspace: "acme", manager: "op", state: "ready" }] });
+    expect(posted.map((b) => JSON.parse(b))).toContainEqual({ managers: [{ workspace_id: "ws-1", manager: "op", state: "ready" }] });
   });
 
   test("a refusal is an error, so the report is tried again", async () => {

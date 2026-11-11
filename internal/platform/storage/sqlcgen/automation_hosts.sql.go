@@ -196,6 +196,28 @@ func (q *Queries) GetAutomationHostEnrollmentCode(ctx context.Context, arg GetAu
 	return i, err
 }
 
+const getAutomationHostWorkspaceIDBySlug = `-- name: GetAutomationHostWorkspaceIDBySlug :one
+SELECT id FROM workspaces WHERE slug = ?
+`
+
+func (q *Queries) GetAutomationHostWorkspaceIDBySlug(ctx context.Context, slug string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getAutomationHostWorkspaceIDBySlug, slug)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getAutomationHostWorkspaceSlug = `-- name: GetAutomationHostWorkspaceSlug :one
+SELECT slug FROM workspaces WHERE id = ?
+`
+
+func (q *Queries) GetAutomationHostWorkspaceSlug(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getAutomationHostWorkspaceSlug, id)
+	var slug string
+	err := row.Scan(&slug)
+	return slug, err
+}
+
 const getLiveAutomationHostCredential = `-- name: GetLiveAutomationHostCredential :one
 SELECT credential_hash, host_id, host_name, created_at, revoked_at FROM automation_host_credentials WHERE host_id = ? AND revoked_at IS NULL LIMIT 1
 `

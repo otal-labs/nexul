@@ -27,9 +27,9 @@ const host = (name: string, managers: unknown[]) => ({
 
 const hosts = [
   host("jobs", [
-    { workspace: "acme", manager: "op", state: "ready" },
-    { workspace: "globex", manager: "op", state: "token rejected" },
-    { workspace: "initech", manager: "op", state: "unreachable" },
+    { workspace_id: "ws-1", manager: "op", state: "ready" },
+    { workspace_id: "ws-2", manager: "op", state: "token rejected" },
+    { workspace_id: "ws-3", manager: "op", state: "unreachable" },
   ]),
   host("bare", []),
 ];
@@ -40,11 +40,14 @@ describe("AutomationHostsSection", () => {
     vi.mocked(api.get).mockReset().mockImplementation(((url: string) => {
       if (url === "/api/automation-hosts") return Promise.resolve({ data: hosts });
       if (url === "/api/machines") return Promise.resolve({ data: [] });
+      if (url === "/api/workspaces") {
+        return Promise.resolve({ data: [{ id: "ws-1", name: "Acme renamed", slug: "acme" }, { id: "ws-2", name: "Globex", slug: "globex" }] });
+      }
       return Promise.reject(new Error(`unexpected GET ${url}`));
     }) as typeof api.get);
   });
 
-  it("lists each workspace token a host reported with its manager and how it fared, and none for a host with no token", async () => {
+  it("lists each workspace token a host reported under the workspace's current name, with its manager and how it fared, and none for a host with no token", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
         <AutomationHostsSection />
@@ -52,9 +55,10 @@ describe("AutomationHostsSection", () => {
     );
 
     const managers = within(await screen.findByRole("list", { name: "Secrets managers" }));
+    await managers.findByText("Acme renamed");
     const items = managers.getAllByRole("listitem").map((item) => item.textContent);
 
-    expect(items).toEqual(["acme1Password", "globex1Password token rejected", "initech1Password unreachable"]);
+    expect(items).toEqual(["Acme renamed1Password", "Globex1Password token rejected", "Another workspace1Password unreachable"]);
     expect(screen.getAllByRole("list", { name: "Secrets managers" })).toHaveLength(1);
   });
 });

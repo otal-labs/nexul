@@ -996,7 +996,8 @@ other machines. A host follows its machine's rules (Machine rules): seeing it
 takes See on the machine, adding or removing one takes Manage, and placing an
 automation on it takes Deploy to there, beside `automations:write` in the
 automation's workspace. A host on a machine Nexul doesn't know yet is the
-instance Owner's alone.
+instance Owner's alone. A host that holds a 1Password token runs one
+workspace's automations only, since each of them can read its tokens.
 _Avoid_: Automations container, runner (a runner builds and deploys)
 
 **Enrollment code**:

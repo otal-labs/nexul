@@ -24,6 +24,8 @@ type TokenRejectedEvent struct {
 	Machine   string `json:"machine,omitempty" jsonschema:"The machine the runner or host sits on; the people who manage it are told. Empty for the server, whose Owner is told."`
 	Manager   string `json:"manager" jsonschema:"The secrets manager, named by the scheme of the references it resolves, such as op."`
 	Workspace string `json:"workspace,omitempty" jsonschema:"The workspace slug whose token the host holds; empty for a runner and the server."`
+	// WorkspaceID names the workspace for good; Workspace is its slug at the time, for display.
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"The id of the workspace whose token the host holds, which a rename never changes; empty for a runner and the server."`
 }
 
 // Topics returns the topics the secrets manager seam publishes.

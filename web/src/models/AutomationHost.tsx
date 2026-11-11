@@ -12,9 +12,10 @@ export const ManagerStateSchema = z.enum(["ready", "token rejected", "unreachabl
 
 export type ManagerState = z.infer<typeof ManagerStateSchema>;
 
-// A secrets manager the host holds a token for in one workspace; manager is the scheme of the references it resolves.
+// A secrets manager the host holds a token for in one workspace, named by its id, which a rename never moves; manager is
+// the scheme of the references it resolves.
 export const AutomationHostManagerSchema = z.object({
-  workspace: z.string(),
+  workspace_id: z.string(),
   manager: z.string(),
   state: ManagerStateSchema,
 });

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AutomationTarget, AutomationsApi } from "../src/automations-api.ts";
 import { pollOnce, uninstallSelf } from "../src/host.ts";
 
-const target: AutomationTarget = { id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace: "acme" };
+const target: AutomationTarget = { id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace_id: "ws-1", workspace: "acme" };
 
 function deps(result: Awaited<ReturnType<AutomationsApi["fetchAssignments"]>>) {
   const reconciled: AutomationTarget[][] = [];
@@ -27,6 +27,7 @@ function deps(result: Awaited<ReturnType<AutomationsApi["fetchAssignments"]>>) {
         report: async () => {
           reports.push("reported");
         },
+        servable: (targets: AutomationTarget[]) => targets,
       },
       supervisor: {
         reconcile: async (targets: AutomationTarget[]) => {

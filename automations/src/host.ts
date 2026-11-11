@@ -7,7 +7,7 @@ import type { Supervisor } from "./supervisor.ts";
 export interface PollDeps {
   api: AutomationsApi;
   supervisor: Pick<Supervisor, "reconcile">;
-  managers: Pick<WorkspaceManagers, "report">;
+  managers: Pick<WorkspaceManagers, "report" | "servable">;
   serverUrl: string;
   credential: string;
 }
@@ -17,7 +17,7 @@ export async function pollOnce(deps: PollDeps): Promise<"running" | "removed"> {
   const result = await deps.api.fetchAssignments(deps.serverUrl, deps.credential);
   if (result.removed) return "removed";
   await deps.managers.report(deps.api, deps.serverUrl, deps.credential);
-  await deps.supervisor.reconcile(result.automations);
+  await deps.supervisor.reconcile(deps.managers.servable(result.automations));
   return "running";
 }
 

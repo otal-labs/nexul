@@ -98,6 +98,22 @@ func (r *AutomationHostsRepo) SetHostManagers(ctx context.Context, id string, ma
 	})
 }
 
+func (r *AutomationHostsRepo) WorkspaceIDBySlug(ctx context.Context, slug string) (string, error) {
+	id, err := r.q.GetAutomationHostWorkspaceIDBySlug(ctx, slug)
+	if err != nil {
+		return "", fmt.Errorf("get workspace with slug %s: %w", slug, notFoundIfNoRows(err))
+	}
+	return id, nil
+}
+
+func (r *AutomationHostsRepo) WorkspaceSlug(ctx context.Context, id string) (string, error) {
+	slug, err := r.q.GetAutomationHostWorkspaceSlug(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("get workspace %s slug: %w", id, notFoundIfNoRows(err))
+	}
+	return slug, nil
+}
+
 func (r *AutomationHostsRepo) CreateHostEnrollment(ctx context.Context, e *automations.HostEnrollmentCode) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)

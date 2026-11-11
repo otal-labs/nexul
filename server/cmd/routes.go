@@ -219,6 +219,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /api/automation-hosts/self/assignments", automationHostsPublic)
 	httpMux.Handle("POST /api/automation-hosts/self/logs", automationHostsPublic)
 	httpMux.Handle("POST /api/automation-hosts/self/managers", automationHostsPublic)
+	httpMux.Handle("GET /api/automation-hosts/self/workspace", automationHostsPublic)
 	viewAs := withViewAs(svc.tenancySvc, svc.authSvc)
 	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(viewAs(withIdentity(h))) }
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
@@ -421,7 +422,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/automation-hosts/self/remove", "Remove the automations host whose credential is the bearer token", "automation-hosts")
 	spec.Register("GET", "/api/automation-hosts/self/assignments", "The enabled automations placed on the calling host, each with its worker's token; ?version= records the host's build (host credential)", "automation-hosts")
 	spec.Register("POST", "/api/automation-hosts/self/logs", "Relay a batch of the calling host's own log records to the log store, stamped with the host's name, machine and version (host credential)", "automation-hosts")
-	spec.Register("POST", "/api/automation-hosts/self/managers", "Replace the secrets managers the calling host holds tokens for, each with its workspace slug, manager (its reference scheme) and state: ready, token rejected or unreachable (host credential)", "automation-hosts")
+	spec.Register("POST", "/api/automation-hosts/self/managers", "Replace the secrets managers the calling host holds tokens for, each with its workspace id, manager (its reference scheme) and state: ready, token rejected or unreachable (host credential)", "automation-hosts")
+	spec.Register("GET", "/api/automation-hosts/self/workspace", "The id of the workspace ?slug= names, and each workspace with automations placed on the calling host (host credential)", "automation-hosts")
 	spec.Register("GET", "/api/runners", "List the runners on the machines the caller sees", "runners")
 	spec.Register("POST", "/api/runners/enrollments", "Mint a one-time runner enrollment code and its install commands; Manage on the machine it names, or Add machines for a new one", "runners")
 	spec.Register("GET", "/api/runners/enrollments", "List the unused enrollment codes you may revoke: your own, those of machines you manage, and every one for the instance Owner", "runners")

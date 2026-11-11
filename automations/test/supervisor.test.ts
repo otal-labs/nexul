@@ -3,8 +3,8 @@ import type { AutomationTarget, AutomationsApi, RemoteState } from "../src/autom
 import { Supervisor } from "../src/supervisor.ts";
 import type { SpawnOptions, WorkerFactory, WorkerHandle } from "../src/worker.ts";
 
-const target: AutomationTarget = { id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace: "acme" };
-const other: AutomationTarget = { id: "a2", name: "PR opened", token: "dat_h.a2.y", workspace: "acme" };
+const target: AutomationTarget = { id: "a1", name: "Ticket finished", token: "dat_h.a1.x", workspace_id: "ws-1", workspace: "acme" };
+const other: AutomationTarget = { id: "a2", name: "PR opened", token: "dat_h.a2.y", workspace_id: "ws-1", workspace: "acme" };
 const cfg = { serverUrl: "http://server", timeoutMs: 30_000, heartbeatTimeoutMs: 90_000, memoryMb: 128 };
 
 function fakeApi(states: RemoteState[]): AutomationsApi {
