@@ -77,7 +77,8 @@ describe("AutomationHistoryDialog", () => {
 
     const change = await screen.findByRole("group", { name: /^Change 1 of 1/ });
     expect(change).toHaveTextContent("b :=");
-    expect(within(change).getByText("3").tagName).toBe("INS");
+    expect(within(change).getByText("3", { selector: "ins" })).toBeInTheDocument();
+    expect(within(change).getByText("2", { selector: "del" })).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Current")).toBeInTheDocument();
     expect(screen.getByText("tighten the retry")).toBeInTheDocument();
