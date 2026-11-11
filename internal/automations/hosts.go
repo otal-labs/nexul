@@ -33,12 +33,13 @@ const (
 	ManagerUnreachable   = "unreachable"
 )
 
-// HostManager is one secrets manager a host holds a token for in one workspace, and whether that token works. Manager
-// names the manager by its reference scheme ("op"), so a second manager adds a value and no field.
+// HostManager is one secrets manager a host holds a token for in one workspace, and whether that token works. The
+// workspace is its id, since a rename can hand a slug to another workspace. Manager names the manager by its reference
+// scheme ("op"), so a second manager adds a value and no field.
 type HostManager struct {
-	Workspace string `json:"workspace"`
-	Manager   string `json:"manager"`
-	State     string `json:"state"`
+	WorkspaceID string `json:"workspace_id"`
+	Manager     string `json:"manager"`
+	State       string `json:"state"`
 }
 
 // HostView is an automations host as the list shows it; connected means it polled within hostOnlineWindow.
@@ -105,13 +106,27 @@ type HostEnrolled struct {
 	Credential string `json:"credential"`
 }
 
-// Assignment is one enabled automation placed on the polling host, with the token its worker dials in with and the slug
-// of its workspace, which names the secrets manager token the host resolves its pool with.
+// Assignment is one enabled automation placed on the polling host, with the token its worker dials in with and its
+// workspace: the id names the secrets manager token the host resolves its pool with, the slug is for its logs.
 type Assignment struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Token     string `json:"token"`
-	Workspace string `json:"workspace"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Token       string `json:"token"`
+	WorkspaceID string `json:"workspace_id"`
+	Workspace   string `json:"workspace"`
+}
+
+// HostWorkspace is a workspace as a host's token command names it: its id, and its slug at the time of asking.
+type HostWorkspace struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
+}
+
+// HostWorkspaceLookup is the GET /api/automation-hosts/self/workspace response: the workspace a slug names now, and each
+// workspace with automations placed on the calling host, switched on or off.
+type HostWorkspaceLookup struct {
+	Workspace HostWorkspace   `json:"workspace"`
+	Placed    []HostWorkspace `json:"placed"`
 }
 
 // HostManagersReport is the POST /api/automation-hosts/self/managers body: every manager the host holds a token for.
@@ -143,6 +158,10 @@ type HostStore interface {
 	// SetHostManagers replaces the managers the host reported; an unknown id is apperrs.ErrNotFound. events, when set,
 	// is given the managers stored before and returns the outbox events to write in the same transaction.
 	SetHostManagers(ctx context.Context, id string, managers []HostManager, events func(prev []HostManager) []eventbus.OutboxEvent) error
+	// WorkspaceIDBySlug is the id of the workspace that bears slug now, or apperrs.ErrNotFound.
+	WorkspaceIDBySlug(ctx context.Context, slug string) (string, error)
+	// WorkspaceSlug is the slug the workspace with id bears now, or apperrs.ErrNotFound.
+	WorkspaceSlug(ctx context.Context, id string) (string, error)
 }
 
 // HostCredentialStore persists enrollment codes and host credentials, both by hash only.

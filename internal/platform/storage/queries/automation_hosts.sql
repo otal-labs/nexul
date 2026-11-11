@@ -48,3 +48,9 @@ SELECT * FROM automation_host_credentials WHERE host_id = ? AND revoked_at IS NU
 
 -- name: RevokeAutomationHostCredentials :exec
 UPDATE automation_host_credentials SET revoked_at = ? WHERE host_id = ? AND revoked_at IS NULL;
+
+-- name: GetAutomationHostWorkspaceIDBySlug :one
+SELECT id FROM workspaces WHERE slug = ?;
+
+-- name: GetAutomationHostWorkspaceSlug :one
+SELECT slug FROM workspaces WHERE id = ?;

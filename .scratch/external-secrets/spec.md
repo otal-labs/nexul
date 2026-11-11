@@ -124,13 +124,25 @@ the state is stored on the runner and rides `runner.connected` as a new field.
 
 ## Automations hosts (tickets 05, 08, 10; ADR 0182)
 
-- **Tokens:** one per workspace per host, set, rotated and removed with
-  `nexul automations 1password <host> --workspace <slug>` from stdin and kept by `upgrade`. The
-  server's host target gains the automation's workspace (`AutomationTarget` carries only id, name and
-  token today).
-- **Supervisor only:** tokens live in the supervisor and are stripped from the environment the
-  automation threads inherit. There is one client per token, opened at host start, and the state of
-  each (`ready` or `token rejected`) is reported per workspace.
+- **One workspace per token host (ADR 0182, as amended):** every automation on a host runs in its
+  process as the same OS user and can read its env file, so a host holding a token for a workspace
+  runs only that workspace's automations. The `instance` host runs every workspace's defaults, so it
+  can hold a token only while the instance has one workspace.
+- **Tokens:** set and rotated with `nexul automations 1password <host> --workspace <slug>` from stdin,
+  removed with `--remove`, and kept by `upgrade`. The command asks the instance as the host
+  (`GET /api/automation-hosts/self/workspace?slug=`) for the workspace's id and the workspaces placed
+  on the host, and refuses a token for a second workspace or for a host with another workspace's
+  automations. The token is stored as `NEXUL_OP_TOKEN_<id in upper case hex>`: keyed by id, since a
+  rename can hand a slug to another workspace.
+- **Placement:** the server refuses to create, move or switch on an automation on a host whose
+  reported tokens name another workspace (`<host> holds a 1Password token for another workspace`), in
+  HTTP and MCP alike. A new workspace's defaults on such an `instance` host are created switched off,
+  and switching one on is refused with the same reason. The host itself runs only its token's
+  workspace's assignments, and none with tokens of two workspaces.
+- **Supervisor only:** tokens live in the supervisor and are stripped from `process.env` before the
+  automation threads start, which keeps them out of the SDK's way but is no isolation. There is one
+  client per token, opened at host start, and the state of each (`ready` or `token rejected`) is
+  reported by workspace id; the host list shows the workspace's current name.
 - **Resolution:** an automation's hello passes through the supervisor, which resolves that workspace's
   references and hands the values in, once per connection, when literals are delivered today. Hellos
   of one workspace that arrive within about a second are resolved in one batch, so a host restart

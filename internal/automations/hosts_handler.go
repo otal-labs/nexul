@@ -39,7 +39,17 @@ func (h *HostsHandler) PublicRoutes() http.Handler {
 	mux.HandleFunc("GET /api/automation-hosts/self/assignments", h.assignments)
 	mux.HandleFunc("POST /api/automation-hosts/self/logs", h.logs)
 	mux.HandleFunc("POST /api/automation-hosts/self/managers", h.managers)
+	mux.HandleFunc("GET /api/automation-hosts/self/workspace", h.workspace)
 	return mux
+}
+
+func (h *HostsHandler) workspace(w http.ResponseWriter, r *http.Request) {
+	lookup, err := h.svc.LookupWorkspace(r.Context(), bearerToken(r), r.URL.Query().Get("slug"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, lookup)
 }
 
 func (h *HostsHandler) list(w http.ResponseWriter, r *http.Request) {

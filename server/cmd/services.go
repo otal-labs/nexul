@@ -397,6 +397,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		WithInstanceURL(dnsSettingsAdapter{store.Settings}).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
 	automationsSvc.SetHosts(automationHostsSvc)
+	automationSeeder.SetHosts(automationHostsSvc)
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects).
 		WithDocWatchers(docWatchersAdapter{repo: store.Docs}).

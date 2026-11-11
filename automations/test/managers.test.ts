@@ -15,18 +15,23 @@ parentPort.postMessage({ type: "log", level: "info", message: "env-probe:" + JSO
 export default { name: "probe", description: "d", configSchema: {}, subscriptions: [], getHandler: () => undefined };`;
 
 describe("takeWorkspaceTokens", () => {
-  test("files each token under its workspace slug and leaves none in the environment", () => {
+  // The same names internal/install's TestWorkspaceTokenEnv_RoundTripsAnyID writes.
+  test("files each token under the workspace id its name encodes and leaves none in the environment", () => {
     const env: NodeJS.ProcessEnv = {
-      [`${TOKEN_ENV_PREFIX}ACME`]: "ops_acme",
-      [`${TOKEN_ENV_PREFIX}ACME_OPS_2`]: "ops_acme_ops",
+      [`${TOKEN_ENV_PREFIX}776F726B73706163652D64656661756C74`]: "ops_default",
+      [`${TOKEN_ENV_PREFIX}30313961366633652D376331642D376232612D396630302D316332643365346635613662`]: "ops_globex",
       [`${TOKEN_ENV_PREFIX}`]: "ops_nameless",
-      [`${TOKEN_ENV_PREFIX}_BAD`]: "ops_bad",
+      [`${TOKEN_ENV_PREFIX}ACME`]: "ops_slug",
+      [`${TOKEN_ENV_PREFIX}abcd`]: "ops_lower",
       NEXUL_SERVER_URL: "http://server",
     };
 
     const tokens = takeWorkspaceTokens(env);
 
-    expect(Object.fromEntries(tokens)).toEqual({ acme: "ops_acme", "acme-ops-2": "ops_acme_ops" });
+    expect(Object.fromEntries(tokens)).toEqual({
+      "workspace-default": "ops_default",
+      "019a6f3e-7c1d-7b2a-9f00-1c2d3e4f5a6b": "ops_globex",
+    });
     expect(env).toEqual({ NEXUL_SERVER_URL: "http://server" });
   });
 
@@ -134,11 +139,25 @@ describe("WorkspaceManagers", () => {
     expect(opened).toEqual(["ops_acme", "ops_globex"]);
     expect(sent).toEqual([
       [
-        { workspace: "acme", manager: "op", state: "ready" },
-        { workspace: "globex", manager: "op", state: "token rejected" },
+        { workspace_id: "acme", manager: "op", state: "ready" },
+        { workspace_id: "globex", manager: "op", state: "token rejected" },
       ],
     ]);
     expect(JSON.stringify(sent)).not.toContain("ops_");
+  });
+
+  test.each([
+    ["no token runs every workspace's automations", [] as string[], ["a-acme", "a-globex"]],
+    ["one workspace's token runs only that workspace's automations", ["ws-acme"], ["a-acme"]],
+    ["tokens of two workspaces run none", ["ws-acme", "ws-globex"], []],
+  ])("%s", (_name, held, want) => {
+    const managers = new WorkspaceManagers(new Map(held.map((id) => [id, `ops_${id}`])), () => new FakeResolver("op", {}));
+    const targets = [
+      { id: "a-acme", name: "a", token: "dat_a", workspace_id: "ws-acme", workspace: "acme" },
+      { id: "a-globex", name: "b", token: "dat_b", workspace_id: "ws-globex", workspace: "globex" },
+    ];
+
+    expect(managers.servable(targets).map((t) => t.id)).toEqual(want);
   });
 
   test("with no token it still reports an empty list once, so a removed token clears, and a failed report is retried", async () => {
@@ -166,13 +185,13 @@ describe("WorkspaceManagers", () => {
     await drain();
     await managers.report(server, "http://server", "nxa_1");
     await managers.report(server, "http://server", "nxa_1");
-    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "unreachable" }]]);
+    expect(sent).toEqual([[{ workspace_id: "acme", manager: "op", state: "unreachable" }]]);
 
     for (const wait of [5_000, 10_000, 20_000, 40_000, 80_000, 160_000, 300_000, 300_000]) await release(wait);
     await managers.report(server, "http://server", "nxa_1");
 
     expect(resolver.calls).toBe(9);
-    expect(sent.at(-1)).toEqual([{ workspace: "acme", manager: "op", state: "ready" }]);
+    expect(sent.at(-1)).toEqual([{ workspace_id: "acme", manager: "op", state: "ready" }]);
     expect(sent).toHaveLength(2);
   });
 
@@ -186,7 +205,7 @@ describe("WorkspaceManagers", () => {
     await drain();
     await managers.report(api(sent), "http://server", "nxa_1");
 
-    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "token rejected" }]]);
+    expect(sent).toEqual([[{ workspace_id: "acme", manager: "op", state: "token rejected" }]]);
     expect(pending.filter((p) => p.ms !== 30_000)).toEqual([]);
     expect(resolver.calls).toBe(1);
   });
@@ -207,7 +226,7 @@ describe("WorkspaceManagers", () => {
     await release(30_000);
     await pollOnce(poll);
 
-    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "unreachable" }]]);
+    expect(sent).toEqual([[{ workspace_id: "acme", manager: "op", state: "unreachable" }]]);
   });
 });
 

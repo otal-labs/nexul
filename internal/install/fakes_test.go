@@ -140,15 +140,31 @@ type fakeInstance struct {
 	// status overrides the answer for a path, with body as its body if set; unset paths answer 200.
 	status map[string]int
 	body   map[string]string
+	// get answers a GET of a path with its body, recording the request, under status if set; other GETs answer 200 empty.
+	get map[string]string
 }
 
 type instanceRequest struct {
-	path, auth string
-	body       map[string]string
+	path, auth, query string
+	body              map[string]string
 }
 
 func (f *fakeInstance) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		answer, answers := f.get[r.URL.Path]
+		f.mu.Unlock()
+		if r.Method == http.MethodGet && answers {
+			f.mu.Lock()
+			f.requests = append(f.requests, instanceRequest{path: r.URL.Path, auth: r.Header.Get("Authorization"), query: r.URL.RawQuery})
+			status, ok := f.status[r.URL.Path]
+			f.mu.Unlock()
+			if ok {
+				w.WriteHeader(status)
+			}
+			_, _ = fmt.Fprint(w, answer)
+			return
+		}
 		if r.Method == http.MethodGet {
 			return
 		}
@@ -243,7 +259,7 @@ func newTestHost(t *testing.T) *testHost {
 	}
 	srv := httptest.NewServer(rel.handler())
 	t.Cleanup(srv.Close)
-	inst := &fakeInstance{status: map[string]int{}}
+	inst := &fakeInstance{status: map[string]int{}, get: map[string]string{}}
 	web := httptest.NewServer(inst.handler())
 	t.Cleanup(web.Close)
 	oo := newFakeOpenObserve(t, "v1.0.4")

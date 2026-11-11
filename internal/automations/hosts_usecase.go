@@ -379,9 +379,67 @@ func (h *HostsService) Assignments(ctx context.Context, credential, version stri
 		if !a.Runs() {
 			continue
 		}
-		out.Automations = append(out.Automations, Assignment{ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash), Workspace: a.WorkspaceSlug})
+		out.Automations = append(out.Automations, Assignment{
+			ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash), WorkspaceID: a.WorkspaceID, Workspace: a.WorkspaceSlug,
+		})
 	}
 	return out, nil
+}
+
+// LookupWorkspace answers a host's token command: the id of the workspace slug names now, and each workspace with
+// automations placed on the host, so the command can refuse a token for a second one. A removed host gets errHostRemoved.
+func (h *HostsService) LookupWorkspace(ctx context.Context, credential, slug string) (HostWorkspaceLookup, error) {
+	cred, err := h.authenticate(ctx, credential)
+	if err != nil {
+		return HostWorkspaceLookup{}, err
+	}
+	if cred.Revoked {
+		return HostWorkspaceLookup{}, errHostRemoved
+	}
+	slug = strings.TrimSpace(slug)
+	id, err := h.repo.WorkspaceIDBySlug(ctx, slug)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return HostWorkspaceLookup{}, fmt.Errorf("%w: no workspace has the slug %q", apperrs.ErrNotFound, slug)
+	}
+	if err != nil {
+		return HostWorkspaceLookup{}, fmt.Errorf("look up workspace %s: %w", slug, err)
+	}
+	host, err := h.repo.GetHost(ctx, cred.HostID)
+	if err != nil {
+		return HostWorkspaceLookup{}, fmt.Errorf("get automations host %s: %w", cred.HostID, err)
+	}
+	placed, err := h.placedOn(ctx, host)
+	if err != nil {
+		return HostWorkspaceLookup{}, err
+	}
+	out := HostWorkspaceLookup{Workspace: HostWorkspace{ID: id, Slug: slug}, Placed: []HostWorkspace{}}
+	seen := map[string]bool{}
+	for _, a := range placed {
+		if seen[a.WorkspaceID] {
+			continue
+		}
+		seen[a.WorkspaceID] = true
+		out.Placed = append(out.Placed, HostWorkspace{ID: a.WorkspaceID, Slug: a.WorkspaceSlug})
+	}
+	return out, nil
+}
+
+// requirePlaceable refuses an automation of workspaceID on the host hostID names (nil is the instance host) while that
+// host holds a secrets manager token for another workspace: every automation on a host can read its tokens (ADR 0182).
+func (h *HostsService) requirePlaceable(ctx context.Context, hostID *string, workspaceID string) error {
+	host, err := h.hostOf(ctx, hostID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read the automations host's tokens: %w", err)
+	}
+	for _, m := range host.Managers {
+		if m.WorkspaceID != "" && m.WorkspaceID != workspaceID {
+			return fmt.Errorf("%w: %s holds a 1Password token for another workspace", apperrs.ErrConflict, host.Name)
+		}
+	}
+	return nil
 }
 
 // ReportManagers stores the managers a host holds tokens for and how each token fared, replacing what it reported
@@ -401,14 +459,26 @@ func (h *HostsService) ReportManagers(ctx context.Context, credential string, ma
 	if err != nil {
 		return fmt.Errorf("get automations host %s: %w", cred.HostID, err)
 	}
-	if err := h.repo.SetHostManagers(ctx, host.ID, managers, rejectedEvents(host, managers)); err != nil {
+	slugs := map[string]string{}
+	for _, m := range managers {
+		if m.State != ManagerTokenRejected {
+			continue
+		}
+		slug, err := h.repo.WorkspaceSlug(ctx, m.WorkspaceID)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return fmt.Errorf("get workspace %s slug: %w", m.WorkspaceID, err)
+		}
+		slugs[m.WorkspaceID] = slug
+	}
+	if err := h.repo.SetHostManagers(ctx, host.ID, managers, rejectedEvents(host, managers, slugs)); err != nil {
 		return fmt.Errorf("set automations host %s managers: %w", cred.HostID, err)
 	}
 	return nil
 }
 
-// rejectedEvents is the outbox event for each manager whose token turned rejected against what the host reported before.
-func rejectedEvents(host *Host, managers []HostManager) func(prev []HostManager) []eventbus.OutboxEvent {
+// rejectedEvents is the outbox event for each manager whose token turned rejected against what the host reported before;
+// slugs gives each rejected workspace's slug for display.
+func rejectedEvents(host *Host, managers []HostManager, slugs map[string]string) func(prev []HostManager) []eventbus.OutboxEvent {
 	return func(prev []HostManager) []eventbus.OutboxEvent {
 		var out []eventbus.OutboxEvent
 		for _, m := range managers {
@@ -416,7 +486,8 @@ func rejectedEvents(host *Host, managers []HostManager) func(prev []HostManager)
 				continue
 			}
 			out = append(out, eventbus.OutboxEvent{ID: ids.New(), Topic: secretref.TopicTokenRejected, Payload: secretref.TokenRejectedEvent{
-				Source: secretref.SourceHost, Name: host.Name, Machine: host.Machine, Manager: m.Manager, Workspace: m.Workspace,
+				Source: secretref.SourceHost, Name: host.Name, Machine: host.Machine, Manager: m.Manager,
+				Workspace: slugs[m.WorkspaceID], WorkspaceID: m.WorkspaceID,
 			}})
 		}
 		return out
@@ -432,8 +503,8 @@ func validateManagers(managers []HostManager) error {
 	}
 	seen := map[[2]string]bool{}
 	for _, m := range managers {
-		key := [2]string{m.Workspace, m.Manager}
-		if m.Workspace == "" || len(m.Workspace) > 64 || !secretref.KnownScheme(m.Manager) || seen[key] {
+		key := [2]string{m.WorkspaceID, m.Manager}
+		if m.WorkspaceID == "" || len(m.WorkspaceID) > 64 || !secretref.KnownScheme(m.Manager) || seen[key] {
 			return fmt.Errorf("%w: each manager names a workspace and a known scheme once", apperrs.ErrInvalid)
 		}
 		seen[key] = true
@@ -526,8 +597,13 @@ func (h *HostsService) authenticateToken(ctx context.Context, raw string) (*Auto
 
 // placement resolves the host an automation runs on; an unplaced one runs on the instance host.
 func (h *HostsService) placement(ctx context.Context, a *Automation) (*Host, error) {
-	if a.HostID != nil {
-		return h.repo.GetHost(ctx, *a.HostID)
+	return h.hostOf(ctx, a.HostID)
+}
+
+// hostOf is the host hostID names; nil is the instance host.
+func (h *HostsService) hostOf(ctx context.Context, hostID *string) (*Host, error) {
+	if hostID != nil {
+		return h.repo.GetHost(ctx, *hostID)
 	}
 	return h.repo.GetHostByName(ctx, InstanceHostName)
 }

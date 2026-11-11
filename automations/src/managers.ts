@@ -1,4 +1,4 @@
-import type { AutomationsApi, ManagerReport } from "./automations-api.ts";
+import type { AutomationTarget, AutomationsApi, ManagerReport } from "./automations-api.ts";
 import { log } from "./log.ts";
 import type { ManagerState, Resolver } from "./resolver.ts";
 
@@ -18,13 +18,14 @@ const realTimers: ManagerTimers = {
   random: Math.random,
 };
 
-// The secrets managers this host holds a token for, by workspace. Each token's client is opened in the background at
+// The secrets managers this host holds a token for, by workspace id. Each token's client is opened in the background at
 // start and kept; an unreachable one is tried again with backoff, a rejected token is final. The supervisor alone holds
 // the tokens, and a worker thread never sees one (ADR 0182).
 export class WorkspaceManagers {
   private readonly resolvers = new Map<string, Resolver>();
   private readonly states = new Map<string, ManagerState>();
   private lastReported: string | undefined;
+  private readonly refused = new Set<string>();
 
   constructor(
     private readonly tokens: Map<string, string>,
@@ -63,8 +64,27 @@ export class WorkspaceManagers {
     return base + this.timers.random() * (base / 2);
   }
 
-  resolverFor(workspace: string): Resolver | undefined {
-    return this.resolvers.get(workspace);
+  resolverFor(workspaceId: string): Resolver | undefined {
+    return this.resolvers.get(workspaceId);
+  }
+
+  // The targets this host may run. Every automation on it can read its tokens, so with a token held only that token's
+  // workspace's automations run, and tokens of two workspaces run none; the server refuses such placements, this
+  // catches one it let through.
+  servable(targets: AutomationTarget[]): AutomationTarget[] {
+    if (this.tokens.size === 0) return targets;
+    const [only] = this.tokens.keys();
+    return targets.filter((target) => {
+      if (this.tokens.size === 1 && target.workspace_id === only) return true;
+      if (!this.refused.has(target.id)) {
+        this.refused.add(target.id);
+        log("error", "automation not run: this host holds a 1Password token for another workspace", {
+          automationId: target.id,
+          workspace: target.workspace,
+        });
+      }
+      return false;
+    });
   }
 
   // Tells the server the states once every token's first outcome is known, and again whenever they change; empty
@@ -72,7 +92,7 @@ export class WorkspaceManagers {
   async report(api: AutomationsApi, serverUrl: string, credential: string): Promise<void> {
     if (this.states.size < this.tokens.size) return;
     const reports: ManagerReport[] = [...this.resolvers].map(([workspace, resolver]) => ({
-      workspace,
+      workspace_id: workspace,
       manager: resolver.scheme,
       state: this.states.get(workspace) ?? "unreachable",
     }));

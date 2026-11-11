@@ -1,18 +1,19 @@
 import type { ManagerState } from "./resolver.ts";
 import { hostVersion } from "./version.ts";
 
-// AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with and the
-// slug of its workspace, which names the secrets manager token the host resolves its pool with.
+// AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with and its
+// workspace: the id names the secrets manager token the host resolves its pool with, the slug is for logs.
 export interface AutomationTarget {
   id: string;
   name: string;
   token: string;
+  workspace_id: string;
   workspace: string;
 }
 
-// A secrets manager this host holds a token for in one workspace; manager is named by its reference scheme ("op").
+// A secrets manager this host holds a token for in one workspace, by its id; manager is named by its reference scheme ("op").
 export interface ManagerReport {
-  workspace: string;
+  workspace_id: string;
   manager: string;
   state: ManagerState;
 }

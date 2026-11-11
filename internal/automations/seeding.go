@@ -39,6 +39,14 @@ type Seeder struct {
 	home        string
 	log         *slog.Logger
 	now         func() time.Time
+	// hosts says whether a new default may run on the instance host; nil until SetHosts wires it.
+	hosts *HostsService
+}
+
+// SetHosts wires the automations hosts, so a default is created switched off on an instance host that holds another
+// workspace's token.
+func (s *Seeder) SetHosts(h *HostsService) {
+	s.hosts = h
 }
 
 // NewSeeder wires seeding; the home workspace's defaults keep the definitions' ids, others' get the workspace suffix.
@@ -114,6 +122,10 @@ func (s *Seeder) create(ctx context.Context, def DefaultDefinition, id, workspac
 	if err != nil {
 		return nil, fmt.Errorf("mint token for default automation %s: %w", id, err)
 	}
+	enabled, err := s.mayRun(ctx, def, id, workspaceID)
+	if err != nil {
+		return nil, err
+	}
 	now := s.now().UTC()
 	a := &Automation{
 		ID:          id,
@@ -121,7 +133,7 @@ func (s *Seeder) create(ctx context.Context, def DefaultDefinition, id, workspac
 		Name:        def.Name,
 		Description: def.Description,
 		Kind:        KindDefault,
-		Enabled:     def.Enabled,
+		Enabled:     enabled,
 		Scopes:      scopes,
 		TokenHash:   hash,
 		TokenPrefix: prefix,
@@ -136,4 +148,21 @@ func (s *Seeder) create(ctx context.Context, def DefaultDefinition, id, workspac
 	}
 	s.log.Info("automations: created default automation", "automation_id", a.ID, "name", a.Name)
 	return a, nil
+}
+
+// mayRun is whether a new default starts on: as its definition says, unless the instance host holds another
+// workspace's token, when it starts off and switching it on is refused with the reason until that token goes.
+func (s *Seeder) mayRun(ctx context.Context, def DefaultDefinition, id, workspaceID string) (bool, error) {
+	if !def.Enabled || s.hosts == nil {
+		return def.Enabled, nil
+	}
+	err := s.hosts.requirePlaceable(ctx, nil, workspaceID)
+	if errors.Is(err, apperrs.ErrConflict) {
+		s.log.Warn("automations: default automation created switched off", "automation_id", id, "workspace_id", workspaceID, "reason", err.Error())
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("default automation %s: %w", id, err)
+	}
+	return true, nil
 }
