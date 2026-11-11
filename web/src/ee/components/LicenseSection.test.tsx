@@ -96,7 +96,8 @@ describe("LicenseSection", () => {
     expect(await screen.findByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("Single sign-on")).toBeInTheDocument();
     expect(screen.getByText("Branding")).toBeInTheDocument();
-    expect(screen.getAllByText("Unlocked")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Open Branding" })).toHaveAttribute("href", "/settings/instance#branding");
+    expect(screen.getByRole("link", { name: "Open Single sign-on" })).toHaveAttribute("href", "/settings/sign-in#single-sign-on");
     expect(screen.getByText(/11 Nov 2027|Nov 11, 2027/)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(mocks.toast.success).toHaveBeenCalledWith("License key saved");

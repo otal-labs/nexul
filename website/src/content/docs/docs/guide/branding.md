@@ -12,7 +12,7 @@ Open **Settings → Instance**. The **Branding** card sits under **License**. On
 ## Name and logo
 
 - **Product name** replaces "Nexul" in the sidebar, on the sign-in page and the invitation page, in the browser tab and in the title of every phone notification the instance sends. It can be 40 characters.
-- **Logo** replaces the Nexul mark in the sidebar and on sign-in, and is the browser tab's icon. Use a PNG, JPEG, WebP or SVG up to 512 KB; a square image fits best. A logo saves as soon as you choose it.
+- **Logo** replaces the Nexul mark in the sidebar and on sign-in, and is the browser tab's icon. Use a PNG, JPEG, WebP or SVG up to 512 KB; a square image fits best. A logo saves as soon as you choose it; one that isn't close to square is shown at the size of the mark first, so you can see how small its lettering gets and choose another.
 
 An instance with a product name drops Nexul's own pitch from its signed-out home page and keeps one small **Runs on Nexul** line on the sign-in pages.
 
@@ -20,7 +20,7 @@ The phone app keeps its own name and icon, since they are fixed when the app is 
 
 ## Accent
 
-The accent is the one colour for actions, the current page and selection. Pick it with the colour field and save. If it would be hard to read, as text or as a button label, Nexul moves its lightness a little and keeps its hue. **Use the default** goes back to Nexul's.
+The accent is the one colour for actions, the current page and selection. Pick it with the colour field and save. If it would be hard to read, as text or as a button label, Nexul moves its lightness a little and keeps its hue. The swatch after the arrow shows what light mode paints from it, since a bright colour is darkened there. **Use the default** goes back to Nexul's; while an imported theme is in place, the field reads **From theme** and the theme's own accent shows.
 
 A person who has picked a colour theme of their own under **Settings → Appearance** keeps that theme's accent.
 
@@ -34,7 +34,7 @@ A theme file that includes another file is refused: upload one that holds its ow
 
 ## Without a key
 
-When the key expires, is removed, or stops fitting the instance's address, the instance shows Nexul's own name, logo and colours again. What you saved stays, and shows again as soon as a key that includes Branding is in place. While the key is missing, the card keeps your settings but won't change them. **Remove branding** deletes them for good.
+When the key expires, is removed, or stops fitting the instance's address, the instance shows Nexul's own name, logo and colours again. What you saved stays, and shows again as soon as a key that includes Branding is in place. While the key is missing, the card keeps your settings but won't change them; only **Remove** on the logo and **Remove branding** still work. **Remove branding** deletes everything for good.
 
 ## From an agent
 

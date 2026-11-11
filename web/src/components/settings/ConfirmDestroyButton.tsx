@@ -23,8 +23,8 @@ interface ConfirmDestroyButtonProps {
   gate?: ActionGate;
 }
 
-// A worded one is muted until hovered like the other row actions, and pulled out by its padding so its word ends on the row's edge.
-const labelledClass = "-mr-3 text-muted-foreground";
+// A worded one rests in full ink beside the card's other buttons and turns red on hover, pulled out by its padding so its word ends on the row's edge.
+const labelledClass = "-mr-3 text-foreground";
 
 // Arms into confirm/cancel instead of firing on first click; auto-reverts so it can't linger as a trap.
 export const ConfirmDestroyButton = ({

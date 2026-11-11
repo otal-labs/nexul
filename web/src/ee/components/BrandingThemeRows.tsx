@@ -9,9 +9,9 @@ import { Appearance, themeFor, type Branding, type BrandingTheme } from "@/ee/mo
 const MAX_THEME_BYTES = 1024 * 1024;
 
 const Swatches = ({ theme }: { theme: BrandingTheme }) => (
-  <span className="flex shrink-0 items-center" aria-hidden>
+  <span className="flex shrink-0 items-center gap-1" aria-hidden>
     {[theme.canvas, theme.text, theme.accent].map((color, i) => (
-      <span key={i} className="-ml-1 size-4 rounded-full ring-2 ring-card first:ml-0" style={{ backgroundColor: color }} />
+      <span key={i} className="size-4 rounded-full border border-input" style={{ backgroundColor: color }} />
     ))}
   </span>
 );
@@ -51,7 +51,7 @@ const ThemeRow = ({ mode, branding }: ThemeRowProps) => {
         <div className="flex flex-wrap gap-x-1 gap-y-4">
           <BrandingFileButton label={theme ? "Replace" : "Import"} accept=".json,.jsonc,application/json" verb="import a theme" disabled={locked} busy={update.isPending} onFile={(f) => void choose(f)} />
           {theme && (
-            <ActionButton type="button" permission="instance:write" verb="remove the theme" size="sm" variant="ghost" onClick={() => update.mutate({ remove_theme: mode })}>
+            <ActionButton type="button" permission="instance:write" verb="remove the theme" size="sm" variant="ghost" className="disabled:opacity-50" disabled={locked} onClick={() => update.mutate({ remove_theme: mode })}>
               Remove
             </ActionButton>
           )}

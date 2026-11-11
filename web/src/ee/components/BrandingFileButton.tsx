@@ -22,7 +22,7 @@ export const BrandingFileButton = ({ label, accept, verb, disabled = false, vari
   };
   return (
     <>
-      <ActionButton type="button" permission="instance:write" verb={verb} size="sm" variant={variant} disabled={disabled} loading={busy} onClick={() => input.current?.click()}>
+      <ActionButton type="button" permission="instance:write" verb={verb} size="sm" variant={variant} className="disabled:opacity-50" disabled={disabled} loading={busy} onClick={() => input.current?.click()}>
         {label}
       </ActionButton>
       <input ref={input} type="file" accept={accept} aria-label={label} hidden onChange={onChange} />

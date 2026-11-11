@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +35,7 @@ const renderCard = () => {
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
+        <ContextAwareConfirmation.ConfirmationRoot />
         <BrandingSection />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -61,6 +63,28 @@ describe("BrandingSection", () => {
     expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
     expect(screen.getAllByRole("button", { name: "Import" })[0]).toBeDisabled();
     expect(screen.queryByRole("img", { name: "Current logo" })).not.toBeInTheDocument();
+    expect(screen.getByText("Saved, shows once licensed.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use the default" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
+  });
+
+  it("shows how a wide logo will look and sends nothing until it is accepted", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 240, height: 60, close: vi.fn() }));
+    URL.createObjectURL = () => "blob:wide";
+    URL.revokeObjectURL = vi.fn();
+    mocks.put.mockResolvedValue({ data: saved({ logo: { content_type: "image/png", size: 1, version: "v1" } }) });
+    renderCard();
+
+    const wide = file("wordmark.png", "image/png");
+    await userEvent.upload((await screen.findByLabelText("Upload")) as HTMLInputElement, wide);
+    expect(await screen.findByText("This logo isn't square")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Choose another" }));
+    expect(mocks.put).not.toHaveBeenCalled();
+
+    await userEvent.upload(screen.getByLabelText("Upload"), wide);
+    await userEvent.click(await screen.findByRole("button", { name: "Use it anyway" }));
+    await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/instance/branding/logo", wide, { headers: { "Content-Type": "image/png" } }));
+    vi.unstubAllGlobals();
   });
 
   it("saves the name and the accent together, and shows the refusal when the server says no", async () => {

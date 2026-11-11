@@ -43,21 +43,20 @@ const BrandingBody = ({ branding }: { branding: Branding }) => {
             saving={form.formState.isSubmitting}
             saved={saved}
             onDiscard={() => form.reset()}
-            hint="The logo and themes save when chosen."
           />
         </>
       }
     >
       {!branding.unlocked && (
         <InlineNotice title="Branding needs a license key" tone="warning" className="mb-4">
-          What is saved here stays, and shows again once <a href="#license" className="underline underline-offset-4">License</a> holds a key that includes Branding.
+          What is saved here stays, and shows again once <a href="#license" className="text-brand underline-offset-4 hover:underline">License</a> holds a key that includes Branding. Until then you can only remove the logo or all of it.
         </InlineNotice>
       )}
       <form id={FORM_ID} key={branding.product_name + branding.accent} onSubmit={onSubmit}>
         <SettingsRows>
           <BrandingNameRow control={form.control} disabled={disabled} />
           <BrandingLogoRow branding={branding} />
-          <BrandingAccentRow control={form.control} disabled={disabled} />
+          <BrandingAccentRow control={form.control} disabled={disabled} fromTheme={!!branding.light_theme || !!branding.dark_theme} />
           <BrandingThemeRows branding={branding} />
         </SettingsRows>
       </form>

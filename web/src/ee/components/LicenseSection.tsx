@@ -1,4 +1,5 @@
 import { KeyRound, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -11,7 +12,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { LicenseKeyDialog } from "@/ee/components/LicenseKeyDialog";
 import { useLicense, useRemoveLicense } from "@/ee/hooks/LicenseHooks";
-import { featureDescription, featureLabel, formatExpiry, LicenseState, type License } from "@/ee/models/License";
+import { featureDescription, featureLabel, featureLink, formatExpiry, LicenseState, type License } from "@/ee/models/License";
 import { daysUntil } from "@/utils/TimeUtility";
 
 const statusOf = (license: License): { headline: string; tone: SettingsStatusTone } => {
@@ -43,11 +44,21 @@ const LicenseFacts = ({ license }: { license: License }) => (
   </dl>
 );
 
-const FeatureRow = ({ feature, on }: { feature: string; on: boolean }) => (
-  <SettingsRow label={featureLabel(feature)} description={featureDescription(feature)}>
-    <SettingsStatus tone={on ? "success" : "muted"}>{on ? "Unlocked" : "Off"}</SettingsStatus>
-  </SettingsRow>
-);
+// A feature's own card holds its status; a key that includes it points there, so the same word isn't shown twice.
+const FeatureRow = ({ feature, on }: { feature: string; on: boolean }) => {
+  const to = featureLink(feature);
+  return (
+    <SettingsRow label={featureLabel(feature)} description={featureDescription(feature)}>
+      {on && to && (
+        <Link to={to} aria-label={`Open ${featureLabel(feature)}`} className="hit-area text-sm text-brand underline-offset-4 hover:underline">
+          Open
+        </Link>
+      )}
+      {on && !to && <SettingsStatus tone="success">Unlocked</SettingsStatus>}
+      {!on && <SettingsStatus tone="muted">Off</SettingsStatus>}
+    </SettingsRow>
+  );
+};
 
 // What this key unlocks, one row per feature, so a feature's own card says the same thing as its row here.
 const LicenseFeatures = ({ license }: { license: License }) => (

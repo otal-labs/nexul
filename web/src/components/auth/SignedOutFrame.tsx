@@ -19,7 +19,7 @@ interface SignedOutFrameProps {
 // Setup sits at one height on every step, so a step or tab that grows never moves the header or the control just pressed.
 export const SignedOutFrame = ({ live = false, quiet = false, exit, card = false, children }: SignedOutFrameProps) => (
   <ShowcaseSurface live={live} quiet={quiet} fullScreen className="[scrollbar-gutter:stable_both-edges]">
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
       <div className="flex items-center justify-between gap-4 px-6 pt-6 lg:px-8">
         <span className="flex min-w-0 items-center gap-2">
           <Logo className="size-5 rounded-sm [&_svg]:size-3.5" />
@@ -30,7 +30,7 @@ export const SignedOutFrame = ({ live = false, quiet = false, exit, card = false
       <div className={cn("flex flex-1 justify-center px-6 py-5", card ? "items-center" : "items-start pt-[max(1.25rem,6vh)]")}>
         <div className={cn("w-full max-w-md", card && "panel-frosted px-8 py-5 [--panel-opacity:72%]")}>{children}</div>
       </div>
-      <RunsOnNexul className="px-6 pb-5 text-center lg:px-8" />
+      <RunsOnNexul className="absolute inset-x-0 bottom-0 px-6 pb-1 text-center lg:px-8" />
     </div>
   </ShowcaseSurface>
 );

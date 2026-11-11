@@ -272,8 +272,8 @@ func (t Theme) Roles(accent string) (map[string]string, Notes) {
 		"secondary": st.secondary.css(), "muted": st.muted.css(), "border": st.border.css(), "input": st.input.css(),
 		"foreground": ink.css(), "card-foreground": ink.css(), "popover-foreground": ink.css(), "secondary-foreground": ink.css(),
 		"muted-foreground": muted.css(), "accent-foreground": ink.css(),
-		"accent":  inkOverlay(t.Appearance),
-		"primary": fitted.css(), "primary-foreground": label.css(), "brand": fitted.css(), "brand-foreground": label.css(),
+		"accent": inkOverlay(t.Appearance),
+		"brand":  fitted.css(), "brand-foreground": label.css(),
 		"ring": fitted.css(), "destructive": destructive.css(),
 	}
 	if t.Appearance == Dark && st.background.L < 0.06 {
