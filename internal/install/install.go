@@ -50,6 +50,8 @@ func Run(ctx context.Context, cmd string, args []string) error {
 		return h.runUninstall(ctx, args)
 	case "runner":
 		return h.runRunner(ctx, args)
+	case "server":
+		return h.runServer(ctx, args)
 	case "run":
 		if len(args) == 0 || args[0] != kindComputer {
 			return errors.New("usage: nexul run computer")
@@ -71,6 +73,8 @@ type Options struct {
 	Port    int
 	Version string
 	Yes     bool
+	// OnePasswordToken is the 1Password service account token the server starts with, if it has one.
+	OnePasswordToken string
 }
 
 func (h *Host) runInstall(ctx context.Context, args []string) error {
@@ -86,16 +90,25 @@ func (h *Host) runInstall(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	fs.SetOutput(h.Out)
 	var o Options
+	var tokenFile string
 	fs.StringVar(&o.Dir, "dir", "", "install directory (default "+h.defaultDir()+")")
 	fs.IntVar(&o.Port, "port", 0, "port the web UI and API listen on (default 5123)")
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
 	fs.BoolVar(&o.Yes, "yes", false, "accept the defaults without asking")
 	fs.BoolVar(&o.Yes, "y", false, "shorthand for --yes")
+	fs.StringVar(&tokenFile, "1password-token-file", "", "a file holding a 1Password service account token for the server")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
+	if tokenFile != "" {
+		token, err := readTokenFile(tokenFile)
+		if err != nil {
+			return err
+		}
+		o.OnePasswordToken = token
 	}
 	return h.Install(ctx, o)
 }
@@ -334,6 +347,9 @@ func serverEnv(dir string, port int, settings map[string]string, local bool) map
 	}
 	if local {
 		env["NEXUL_LOCAL"] = "1"
+	}
+	if settings[opTokenEnv] != "" {
+		env[opTokenEnv] = settings[opTokenEnv]
 	}
 	return env
 }

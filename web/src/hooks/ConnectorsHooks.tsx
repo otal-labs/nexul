@@ -6,7 +6,7 @@ import { isReferenceRefusal } from "@nexul/client-core/secretReference";
 
 import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import { api, errorMessage } from "@/api/client";
-import type { AppConfigStatus, ConnectorStatus, CredentialStatus } from "@/models/Connectors";
+import type { AppConfigStatus, ConnectorStatus, CredentialStatus, SecretManagers } from "@/models/Connectors";
 
 const getConnectorsKey = "connectors";
 const getConnectorAppConfigKey = "connector-app-config";
@@ -22,6 +22,13 @@ export const useFetchConnectors = () =>
   useQuery({
     queryKey: [getConnectorsKey],
     queryFn: async () => (await api.get<ConnectorStatus[]>("/api/connectors")).data,
+  });
+
+// The secrets managers the server holds a token for, each with its state; readable by anyone who can read a connector.
+export const useFetchSecretManagers = () =>
+  useQuery({
+    queryKey: [getConnectorsKey, "managers"],
+    queryFn: async () => (await api.get<SecretManagers>("/api/connectors/managers")).data.managers,
   });
 
 // Selects one connector's status from the shared list query, so callers never own credential state themselves.

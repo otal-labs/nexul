@@ -20,6 +20,17 @@ func TestLoad_AuthSecret(t *testing.T) {
 		assert.NoFileExists(t, filepath.Join(dir, "auth-secret"))
 	})
 
+	t.Run("the 1Password token is read, then gone from the environment", func(t *testing.T) {
+		t.Setenv("NEXUL_DB_PATH", filepath.Join(t.TempDir(), "d.db"))
+		t.Setenv("NEXUL_AUTH_SECRET", "s")
+		t.Setenv("OP_SERVICE_ACCOUNT_TOKEN", "ops_acme-token")
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.Equal(t, "ops_acme-token", cfg.OnePasswordToken)
+		_, inherited := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
+		assert.False(t, inherited, "a child process the server starts must not inherit the token")
+	})
+
 	t.Run("generated once next to the db and reused on the next load", func(t *testing.T) {
 		dir := t.TempDir()
 		t.Setenv("NEXUL_DB_PATH", filepath.Join(dir, "data", "d.db"))
@@ -36,6 +47,32 @@ func TestLoad_AuthSecret(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, first.AuthSecret, second.AuthSecret)
 	})
+}
+
+func TestLoad_AuthSecretThatIsASecretReference_IsRefusedAtStart(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  string
+		wantErr bool
+	}{
+		{"a reference", "op://vault/item/field", true},
+		{"a malformed reference", "op://vault/item", true},
+		{"a URL that is not a manager's scheme is a literal", "postgres://user:pw@host/db", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("NEXUL_DB_PATH", filepath.Join(t.TempDir(), "d.db"))
+			t.Setenv("NEXUL_AUTH_SECRET", tt.secret)
+			_, err := Load()
+			if !tt.wantErr {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, "must stay a local value")
+			assert.ErrorContains(t, err, "ADR 0183")
+			assert.NotContains(t, err.Error(), tt.secret, "the value never appears in the message")
+		})
+	}
 }
 
 func TestLoad_LogsURL(t *testing.T) {

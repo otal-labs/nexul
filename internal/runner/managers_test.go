@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,61 +22,6 @@ import (
 
 func opens(res secretref.Resolver, err error) func(context.Context) (secretref.Resolver, error) {
 	return func(context.Context) (secretref.Resolver, error) { return res, err }
-}
-
-func startManagers(t *testing.T, setups ...ManagerSetup) *Managers {
-	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	m := NewManagers(testLogger(), setups...)
-	m.base, m.max = time.Millisecond, 5*time.Millisecond
-	m.Start(ctx, &wg)
-	t.Cleanup(func() { cancel(); wg.Wait() })
-	return m
-}
-
-func TestManagers_StateAfterStart(t *testing.T) {
-	tests := []struct {
-		name  string
-		setup []ManagerSetup
-		want  []ManagerState
-	}{
-		{"a token the manager accepts is ready", []ManagerSetup{{Scheme: "op", Open: opens(&secretreftest.Fake{}, nil)}},
-			[]ManagerState{{Manager: "op", State: ManagerReady}}},
-		{"any failure that is not unreachable is a rejected token", []ManagerSetup{{Scheme: "op", Open: opens(nil, errors.New("invalid service account token"))}},
-			[]ManagerState{{Manager: "op", State: ManagerTokenRejected}}},
-		{"no token reports no manager", nil, []ManagerState{}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, startManagers(t, tt.setup...).States())
-		})
-	}
-}
-
-func TestManagers_UnreachableAtStartIsRetriedUntilItOpens_ARejectedTokenIsNot(t *testing.T) {
-	var attempts atomic.Int32
-	m := startManagers(t, ManagerSetup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
-		if attempts.Add(1) < 3 {
-			return nil, secretref.ErrUnreachable
-		}
-		return &secretreftest.Fake{}, nil
-	}})
-	assert.Equal(t, []ManagerState{{Manager: "op", State: ManagerUnreachable}}, m.States())
-
-	eventually(t, 2*time.Second, func() bool { return m.States()[0].State == ManagerReady })
-	res, err := m.Registry().For("op://v/i/f")
-	require.NoError(t, err)
-	assert.Equal(t, "op", res.Scheme())
-
-	var rejects atomic.Int32
-	rejected := startManagers(t, ManagerSetup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
-		rejects.Add(1)
-		return nil, errors.New("rejected")
-	}})
-	time.Sleep(30 * time.Millisecond)
-	assert.Equal(t, []ManagerState{{Manager: "op", State: ManagerTokenRejected}}, rejected.States())
-	assert.EqualValues(t, 1, rejects.Load(), "a rejected token is not retried")
 }
 
 func TestParseManagers_DropsWhatIsNotAKnownState(t *testing.T) {
@@ -106,13 +50,13 @@ func TestClient_ReportsItsManagersOnEveryConnect_AndReconnectsWhenOneChanges(t *
 
 	var attempts atomic.Int32
 	c := newTestClient(wsURL(srv), &fakeExecutor{})
-	c.cfg.Managers = NewManagers(testLogger(), ManagerSetup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
+	c.cfg.Managers = secretref.NewManagers(testLogger(), secretref.Setup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
 		if attempts.Add(1) == 1 {
 			return nil, secretref.ErrUnreachable
 		}
 		return &secretreftest.Fake{}, nil
 	}})
-	c.cfg.Managers.base, c.cfg.Managers.max = 20*time.Millisecond, 20*time.Millisecond
+	c.cfg.Managers.SetRetry(20*time.Millisecond, 20*time.Millisecond)
 	cancel, done := runClient(t, c)
 
 	assert.JSONEq(t, `[{"manager":"op","state":"unreachable"}]`, <-reports)
@@ -123,7 +67,7 @@ func TestClient_ReportsItsManagersOnEveryConnect_AndReconnectsWhenOneChanges(t *
 
 func TestClient_APersonalRunnerNeverReportsManagers(t *testing.T) {
 	c := newTestClient("ws://server/ws/runner", &fakeExecutor{})
-	c.cfg.Managers = NewManagers(testLogger(), ManagerSetup{Scheme: "op", Open: opens(&secretreftest.Fake{}, nil)})
+	c.cfg.Managers = secretref.NewManagers(testLogger(), secretref.Setup{Scheme: "op", Open: opens(&secretreftest.Fake{}, nil)})
 	c.cfg.Managers.Start(context.Background(), &sync.WaitGroup{})
 
 	u, err := url.Parse(c.wsURL())

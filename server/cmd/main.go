@@ -99,6 +99,7 @@ func serve() {
 		fail(fmt.Errorf("write setup code: %w", err))
 	}
 
+	startSecretManagers(ctx, svc.secretManagers)
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
 	wireIntegrationFanout(ctx, bus, store, svc, logger)
 	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger, logRelay)

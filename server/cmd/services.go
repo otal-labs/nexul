@@ -36,6 +36,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/presence"
@@ -82,6 +83,7 @@ type coreServices struct {
 	invitationSvc     *tenancy.InvitationService
 	invitationHandler *tenancy.InvitationHandler
 
+	secretManagers    *secretref.Managers
 	connectorsSvc     *connectors.Service
 	connectorsHandler *connectors.Handler
 
@@ -147,6 +149,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Projects:    mentionProjectSource{repo: store.Projects},
 		TicketTypes: mentionTicketTypeSource{repo: store.TicketTypes},
 	})
+	secretManagers := secretref.NewManagers(logger, serverManagerSetups(cfg)...)
 	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
 	connectorsRegistry := connectors.Registry()
 	wireConnectorOAuth(connectorsRegistry, store)
@@ -156,6 +159,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Gate:           accessSvc,
 		Settings:       dnsSettingsAdapter{store.Settings},
 		Registry:       connectorsRegistry,
+		Managers:       secretManagers,
 	})
 	connectorsHandler := connectors.NewHandler(connectorsSvc)
 	// One App for both routers, so an installation token minted for a webhook serves the next scan too.
@@ -426,6 +430,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		invitationSvc:     invitationSvc,
 		invitationHandler: invitationHandler,
 
+		secretManagers:    secretManagers,
 		connectorsSvc:     connectorsSvc,
 		connectorsHandler: connectorsHandler,
 
