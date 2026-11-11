@@ -3,6 +3,7 @@ package secretref_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -39,7 +40,7 @@ func TestManagers_StateAfterStart(t *testing.T) {
 	}{
 		{"a token the manager accepts is ready", []secretref.Setup{{Scheme: "op", Open: opens(&secretreftest.Fake{}, nil)}},
 			[]secretref.ManagerState{{Manager: "op", State: secretref.ManagerReady}}},
-		{"any failure that is not unreachable is a rejected token", []secretref.Setup{{Scheme: "op", Open: opens(nil, errors.New("invalid service account token"))}},
+		{"a refused token is rejected", []secretref.Setup{{Scheme: "op", Open: opens(nil, fmt.Errorf("open: %w", secretref.ErrTokenRejected))}},
 			[]secretref.ManagerState{{Manager: "op", State: secretref.ManagerTokenRejected}}},
 		{"no token reports no manager", nil, []secretref.ManagerState{}},
 	}
@@ -50,11 +51,11 @@ func TestManagers_StateAfterStart(t *testing.T) {
 	}
 }
 
-func TestManagers_UnreachableAtStartIsRetriedUntilItOpens_ARejectedTokenIsNot(t *testing.T) {
+func TestManagers_AnyOtherFailureAtStartIsRetriedUntilItOpens_ARejectedTokenIsNot(t *testing.T) {
 	var attempts atomic.Int32
 	m := startManagers(t, secretref.Setup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
 		if attempts.Add(1) < 3 {
-			return nil, secretref.ErrUnreachable
+			return nil, errors.New("503 service unavailable")
 		}
 		return &secretreftest.Fake{}, nil
 	}})
@@ -68,7 +69,7 @@ func TestManagers_UnreachableAtStartIsRetriedUntilItOpens_ARejectedTokenIsNot(t 
 	var rejects atomic.Int32
 	rejected := startManagers(t, secretref.Setup{Scheme: "op", Open: func(context.Context) (secretref.Resolver, error) {
 		rejects.Add(1)
-		return nil, errors.New("rejected")
+		return nil, secretref.ErrTokenRejected
 	}})
 	time.Sleep(30 * time.Millisecond)
 	assert.Equal(t, []secretref.ManagerState{{Manager: "op", State: secretref.ManagerTokenRejected}}, rejected.States())
@@ -83,12 +84,12 @@ func TestManagers_OnRejectedFiresOnceWhenAStateTurnsTokenRejected(t *testing.T) 
 		fired int32
 	}{
 		{"a token the manager accepts", opens(&secretreftest.Fake{}, nil), 0},
-		{"a token refused at once", opens(nil, errors.New("rejected")), 1},
+		{"a token refused at once", opens(nil, secretref.ErrTokenRejected), 1},
 		{"unreachable, then refused when it answers", func(context.Context) (secretref.Resolver, error) {
 			if attempts.Add(1) < 3 {
 				return nil, secretref.ErrUnreachable
 			}
-			return nil, errors.New("rejected")
+			return nil, secretref.ErrTokenRejected
 		}, 1},
 	}
 	for _, tt := range tests {

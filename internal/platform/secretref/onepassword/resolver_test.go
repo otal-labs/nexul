@@ -79,3 +79,30 @@ func TestResolveAll_ClassifiesACallFailure(t *testing.T) {
 		})
 	}
 }
+
+// The same messages and states are tested for the automations host in automations/test/managers.test.ts.
+func TestClassifyOpen_OnlyARefusedTokenIsRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		msg      string
+		rejected bool
+	}{
+		{"malformed token", "invalid user input: encountered the following errors: service account token had invalid format", true},
+		{"refused token", "invalid service account token, please make sure you provide a valid service account token", true},
+		{"unauthorized", "server returned 401 Unauthorized", true},
+		{"forbidden", "403 Forbidden", true},
+		{"undecodable token", "failed to deserialize service account token", true},
+		{"dial failure", "dial tcp: lookup my.1password.com: no such host", false},
+		{"rate limited", "429 too many requests", false},
+		{"server error", "503 service unavailable", false},
+		{"tls failure", "x509: certificate signed by unknown authority", false},
+		{"unrecognised", "something else broke", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := classifyOpen(t.Context(), errors.New(tt.msg))
+
+			assert.Equal(t, tt.rejected, errors.Is(err, secretref.ErrTokenRejected))
+		})
+	}
+}

@@ -24,7 +24,7 @@ function deps(result: Awaited<ReturnType<AutomationsApi["fetchAssignments"]>>) {
         reportManagers: async () => {},
       },
       managers: {
-        reportOnce: async () => {
+        report: async () => {
           reports.push("reported");
         },
       },

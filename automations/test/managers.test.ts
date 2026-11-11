@@ -1,8 +1,10 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { AutomationsApi, ManagerReport } from "../src/automations-api.ts";
 import { FakeResolver } from "../src/fake-resolver.ts";
-import { WorkspaceManagers } from "../src/managers.ts";
+import { pollOnce } from "../src/host.ts";
+import { WorkspaceManagers, type ManagerTimers } from "../src/managers.ts";
 import { OnePasswordResolver } from "../src/onepassword-resolver.ts";
+import type { ManagerState, ResolveResult, Resolver } from "../src/resolver.ts";
 import { TOKEN_ENV_PREFIX, takeWorkspaceTokens } from "../src/workspace-tokens.ts";
 import { threadWorkerFactory } from "../src/worker.ts";
 
@@ -85,20 +87,49 @@ describe("WorkspaceManagers", () => {
     };
   }
 
+  // Time stands still until a test releases a delay by its length; no jitter, so a retry wait is exactly its base.
+  function fakeTimers() {
+    const pending: { ms: number; release: () => void }[] = [];
+    const timers: ManagerTimers = {
+      delay: (ms) => new Promise<void>((release) => pending.push({ ms, release })),
+      random: () => 0,
+    };
+    const release = async (ms: number): Promise<void> => {
+      const i = pending.findIndex((p) => p.ms === ms);
+      expect(i).toBeGreaterThanOrEqual(0);
+      pending.splice(i, 1)[0]?.release();
+      await drain();
+    };
+    return { timers, pending, release };
+  }
+  const drain = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+  class Scripted implements Resolver {
+    readonly scheme = "op";
+    calls = 0;
+    constructor(private readonly script: (call: number) => Promise<ManagerState>) {}
+    check(): Promise<ManagerState> {
+      return this.script(++this.calls);
+    }
+    async resolveAll(): Promise<Map<string, ResolveResult>> {
+      return new Map();
+    }
+  }
+  const tokens = (...workspaces: string[]) => new Map(workspaces.map((w) => [w, `ops_${w}`]));
+
   test("opens one client per token and reports each workspace's state", async () => {
     const opened: string[] = [];
     const states = { "ops_acme": "ready", "ops_globex": "token rejected" } as const;
     const managers = new WorkspaceManagers(
-      new Map([
-        ["acme", "ops_acme"],
-        ["globex", "ops_globex"],
-      ]),
+      tokens("acme", "globex"),
       (token) => (opened.push(token), new FakeResolver("op", {}, states[token as keyof typeof states])),
+      fakeTimers().timers,
     );
     const sent: ManagerReport[][] = [];
 
-    await managers.start();
-    await managers.reportOnce(api(sent), "http://server", "nxa_1");
+    managers.start();
+    await drain();
+    await managers.report(api(sent), "http://server", "nxa_1");
 
     expect(opened).toEqual(["ops_acme", "ops_globex"]);
     expect(sent).toEqual([
@@ -111,20 +142,76 @@ describe("WorkspaceManagers", () => {
   });
 
   test("with no token it still reports an empty list once, so a removed token clears, and a failed report is retried", async () => {
-    const managers = new WorkspaceManagers(new Map(), () => new FakeResolver("op", {}));
+    const managers = new WorkspaceManagers(new Map(), () => new FakeResolver("op", {}), fakeTimers().timers);
     const sent: ManagerReport[][] = [];
     const server = api(sent, 1);
 
-    await managers.start();
-    await managers.reportOnce(server, "http://server", "nxa_1");
+    managers.start();
+    await managers.report(server, "http://server", "nxa_1");
     expect(sent).toEqual([]);
 
-    await managers.reportOnce(server, "http://server", "nxa_1");
-    await managers.reportOnce(server, "http://server", "nxa_1");
+    await managers.report(server, "http://server", "nxa_1");
+    await managers.report(server, "http://server", "nxa_1");
     expect(sent).toEqual([[]]);
+  });
+
+  test("an unreachable manager is retried with doubling backoff up to the cap, and the recovery is reported again", async () => {
+    const { timers, release } = fakeTimers();
+    const resolver = new Scripted(async (call) => (call <= 8 ? "unreachable" : "ready"));
+    const managers = new WorkspaceManagers(tokens("acme"), () => resolver, timers);
+    const sent: ManagerReport[][] = [];
+    const server = api(sent);
+
+    managers.start();
+    await drain();
+    await managers.report(server, "http://server", "nxa_1");
+    await managers.report(server, "http://server", "nxa_1");
+    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "unreachable" }]]);
+
+    for (const wait of [5_000, 10_000, 20_000, 40_000, 80_000, 160_000, 300_000, 300_000]) await release(wait);
+    await managers.report(server, "http://server", "nxa_1");
+
+    expect(resolver.calls).toBe(9);
+    expect(sent.at(-1)).toEqual([{ workspace: "acme", manager: "op", state: "ready" }]);
+    expect(sent).toHaveLength(2);
+  });
+
+  test("a rejected token is reported once and never tried again", async () => {
+    const { timers, pending } = fakeTimers();
+    const resolver = new Scripted(async () => "token rejected");
+    const managers = new WorkspaceManagers(tokens("acme"), () => resolver, timers);
+    const sent: ManagerReport[][] = [];
+
+    managers.start();
+    await drain();
+    await managers.report(api(sent), "http://server", "nxa_1");
+
+    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "token rejected" }]]);
+    expect(pending.filter((p) => p.ms !== 30_000)).toEqual([]);
+    expect(resolver.calls).toBe(1);
+  });
+
+  test("polling does not wait on a check that hangs; once its time limit passes the manager reads unreachable", async () => {
+    const { timers, release } = fakeTimers();
+    const hung = new Scripted(() => new Promise<ManagerState>(() => {}));
+    const managers = new WorkspaceManagers(tokens("acme"), () => hung, timers);
+    const sent: ManagerReport[][] = [];
+    const server = api(sent);
+    const poll = { api: server, supervisor: { reconcile: async () => {} }, managers, serverUrl: "http://server", credential: "nxa_1" };
+
+    managers.start();
+    const polled = await pollOnce(poll);
+    expect(polled).toBe("running");
+    expect(sent).toEqual([]);
+
+    await release(30_000);
+    await pollOnce(poll);
+
+    expect(sent).toEqual([[{ workspace: "acme", manager: "op", state: "unreachable" }]]);
   });
 });
 
+// The same messages and states are tested for the runner and server in internal/platform/secretref/onepassword.
 describe("OnePasswordResolver.check", () => {
   const failing = (message: string) =>
     new OnePasswordResolver("ops_secret", async () => {
@@ -134,8 +221,14 @@ describe("OnePasswordResolver.check", () => {
   test.each([
     ["a malformed token", "invalid user input: encountered the following errors: service account token had invalid format", "token rejected"],
     ["a token the account refuses", "invalid service account token, please make sure you provide a valid service account token", "token rejected"],
+    ["a 401", "request failed: 401 Unauthorized", "token rejected"],
+    ["a 403", "request failed: 403 Forbidden", "token rejected"],
+    ["a token that cannot be decoded", "failed to deserialize service account token", "token rejected"],
     ["a manager that cannot be reached", "dial tcp: lookup my.1password.com: no such host", "unreachable"],
-    ["a failure that is not the network", "something else broke", "token rejected"],
+    ["a rate limit", "429 too many requests", "unreachable"],
+    ["a server error", "503 service unavailable", "unreachable"],
+    ["a TLS failure", "x509: certificate signed by unknown authority", "unreachable"],
+    ["a failure nobody recognises", "something else broke", "unreachable"],
   ] as const)("%s is %s", async (_name, message, state) => {
     expect(await failing(message).check()).toBe(state);
   });

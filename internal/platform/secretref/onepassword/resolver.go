@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 
 	sdk "github.com/1password/onepassword-sdk-go"
@@ -21,14 +22,15 @@ type Resolver struct {
 	secrets sdk.SecretsAPI
 }
 
-// New creates the client with a service account token. A failure with no network is ErrUnreachable.
+// New creates the client with a service account token. A failure that reads as the token being refused is
+// ErrTokenRejected; any other, a network failure included, is not, so the caller tries again.
 func New(ctx context.Context, token, version string) (*Resolver, error) {
 	client, err := sdk.NewClient(ctx,
 		sdk.WithServiceAccountToken(token),
 		sdk.WithIntegrationInfo(integrationName, version),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create 1password client: %w", classify(ctx, err))
+		return nil, fmt.Errorf("create 1password client: %w", classifyOpen(ctx, err))
 	}
 	return &Resolver{secrets: client.Secrets()}, nil
 }
@@ -82,4 +84,18 @@ func classify(ctx context.Context, err error) error {
 		return fmt.Errorf("%w: %w", secretref.ErrUnreachable, err)
 	}
 	return err
+}
+
+// tokenRefused matches the SDK's plain-text wording for a malformed or refused token. Keep it equal to the host's in
+// automations/src/onepassword-resolver.ts, whose tests run the same messages.
+var tokenRefused = regexp.MustCompile(`(?i)invalid.*token|token.*invalid|unauthori[sz]ed|forbidden|deserializ|\b40[13]\b`)
+
+// classifyOpen marks a failure to create the client: ErrTokenRejected only when the wording says the token was
+// refused; a transport failure or anything unrecognised is left for the caller to retry.
+func classifyOpen(ctx context.Context, err error) error {
+	err = classify(ctx, err)
+	if ctx.Err() != nil || errors.Is(err, secretref.ErrUnreachable) || !tokenRefused.MatchString(err.Error()) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", secretref.ErrTokenRejected, err)
 }

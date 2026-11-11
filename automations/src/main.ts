@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     heartbeatTimeoutMs: cfg.heartbeatTimeoutMs,
     memoryMb: cfg.memoryMb,
   });
-  await managers.start();
+  managers.start();
   const deps = { api: httpAutomationsApi, supervisor, managers, serverUrl: cfg.serverUrl, credential };
 
   let interval: ReturnType<typeof setInterval> | undefined;
