@@ -49,9 +49,16 @@ func startSecretManagers(ctx context.Context, managers *secretref.Managers, warm
 	}()
 }
 
-// warmConnectorSecrets is the warm step for startSecretManagers: it logs each connector whose references did not resolve.
-func warmConnectorSecrets(svc *connectors.Service, logger *slog.Logger) func(context.Context) {
+// signInSecrets is the sign-in client secrets the warm step reads along with the connectors'.
+type signInSecrets interface {
+	SignInSecrets(ctx context.Context) []string
+}
+
+// warmSecrets is the warm step for startSecretManagers: it reads every stored reference, connectors' and sign-in
+// providers' alike, in one call per manager, then logs each connector whose references did not resolve.
+func warmSecrets(cache *secretref.Cache, svc *connectors.Service, signIn signInSecrets, logger *slog.Logger) func(context.Context) {
 	return func(ctx context.Context) {
+		cache.Warm(ctx, append(svc.StoredSecrets(ctx), signIn.SignInSecrets(ctx)...))
 		for id, p := range svc.Warm(ctx) {
 			logger.Warn("connector secret not resolved", "connector", id, "manager", p.Manager, "state", p.State, "error", p.Error)
 		}

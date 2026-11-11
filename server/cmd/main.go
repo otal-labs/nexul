@@ -100,7 +100,7 @@ func serve() {
 	}
 
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
-	startSecretManagers(ctx, svc.secretManagers, warmConnectorSecrets(svc.connectorsSvc, logger))
+	startSecretManagers(ctx, svc.secretManagers, warmSecrets(svc.secretCache, svc.connectorsSvc, svc.authSvc, logger))
 	wireIntegrationFanout(ctx, bus, store, svc, logger)
 	wsHandler, runnerSvc, runnerHTTP, automationsDialin := startBackgroundWorkers(ctx, cfg, store, bus, svc, logger, logRelay)
 	// runner is constructed above, after deploy (wireCoreServices); closing the machine-import cycle here

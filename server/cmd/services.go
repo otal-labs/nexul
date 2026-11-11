@@ -84,6 +84,7 @@ type coreServices struct {
 	invitationHandler *tenancy.InvitationHandler
 
 	secretManagers    *secretref.Managers
+	secretCache       *secretref.Cache
 	connectorsSvc     *connectors.Service
 	connectorsHandler *connectors.Handler
 
@@ -443,6 +444,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		invitationHandler: invitationHandler,
 
 		secretManagers:    secretManagers,
+		secretCache:       secretCache,
 		connectorsSvc:     connectorsSvc,
 		connectorsHandler: connectorsHandler,
 

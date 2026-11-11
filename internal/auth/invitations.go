@@ -80,11 +80,11 @@ func (s *Service) CompleteInvitationOAuth(ctx context.Context, provider Provider
 	if err != nil {
 		return "", err
 	}
-	accessToken, err := client.Exchange(ctx, code)
+	grant, err := s.exchangeCode(ctx, provider, client, code)
 	if err != nil {
 		return "", err
 	}
-	providerUser, err := client.FetchUser(ctx, accessToken)
+	providerUser, err := client.FetchUser(ctx, grant.AccessToken)
 	if err != nil {
 		return "", err
 	}

@@ -104,7 +104,7 @@ func resolveBatch(ctx context.Context, reg secretref.Registry, scheme string, en
 	}
 	if err != nil {
 		for _, k := range keys {
-			failed[k] = reason(name, err)
+			failed[k] = secretref.Reason(name, err)
 		}
 		return nil, failed
 	}
@@ -112,27 +112,12 @@ func resolveBatch(ctx context.Context, reg secretref.Registry, scheme string, en
 	for _, k := range keys {
 		r := results[index[env[k]]]
 		if r.Err != nil {
-			failed[k] = reason(name, r.Err)
+			failed[k] = secretref.Reason(name, r.Err)
 			continue
 		}
 		values[k] = r.Value
 	}
 	return values, failed
-}
-
-// reason is the plain words for one failure; it never carries the error's own text, which could name a reference.
-func reason(manager string, err error) string {
-	switch {
-	case errors.Is(err, secretref.ErrFieldMissing):
-		return "field not found"
-	case errors.Is(err, secretref.ErrNotFound):
-		return "not found"
-	case errors.Is(err, secretref.ErrNoAccess):
-		return "no access"
-	case errors.Is(err, secretref.ErrUnreachable):
-		return manager + " unreachable"
-	}
-	return "could not be resolved"
 }
 
 func resolveError(failed map[string]string) error {

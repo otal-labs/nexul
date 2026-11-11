@@ -34,6 +34,24 @@ type Resolver interface {
 	ResolveAll(ctx context.Context, refs []string) ([]Result, error)
 }
 
+// Reason is the plain words for one failure of a manager's reference; it never carries the error's own text, which
+// could name a reference.
+func Reason(manager string, err error) string {
+	switch {
+	case errors.Is(err, ErrFieldMissing):
+		return "field not found"
+	case errors.Is(err, ErrNotFound):
+		return "not found"
+	case errors.Is(err, ErrNoAccess):
+		return "no access"
+	case errors.Is(err, ErrUnreachable):
+		return manager + " unreachable"
+	case errors.Is(err, ErrTokenRejected):
+		return manager + " token rejected"
+	}
+	return "could not be resolved"
+}
+
 // Registry picks a resolver by a reference's scheme.
 type Registry map[string]Resolver
 

@@ -602,6 +602,12 @@ func (r resolvedSecrets) Value(_ context.Context, stored string) (string, error)
 	return "", errors.New("unresolved")
 }
 
+func (r resolvedSecrets) Read(ctx context.Context, stored string) (string, error) {
+	return r.Value(ctx, stored)
+}
+
+func (resolvedSecrets) Refresh(context.Context, string) (string, bool) { return "", false }
+
 func TestProviderClient_ASignInSecretThatIsAReferenceIsResolvedAndAnOutageFailsOnlyThatProvider(t *testing.T) {
 	ctx := context.Background()
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
