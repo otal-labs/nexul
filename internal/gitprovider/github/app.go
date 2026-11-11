@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -23,11 +24,14 @@ const tokenRefreshMargin = 5 * time.Minute
 // App reads GitHub as the GitHub App: a JWT signed with its private key mints a token per installation (ADR 0144).
 type App struct {
 	clientID string
-	key      *rsa.PrivateKey
 	opts     []Option
 	now      func() time.Time
+	// reresolve answers a rejected key with its fresh PEM when its secret manager has one.
+	reresolve func(ctx context.Context, stale string) (string, bool)
 
 	mu     sync.Mutex
+	key    *rsa.PrivateKey
+	pem    string
 	tokens map[int64]appToken
 	owners map[string]appInstallation
 }
@@ -51,8 +55,43 @@ func NewApp(clientID string, key *rsa.PrivateKey, now func() time.Time, opts ...
 	return &App{clientID: clientID, key: key, opts: opts, now: now, tokens: map[int64]appToken{}, owners: map[string]appInstallation{}}
 }
 
+// asApp runs fn with a client signed as the App. A rejected key asks reresolve for its fresh value once, and fn runs
+// again signed with it.
+func (a *App) asApp(ctx context.Context, fn func(gh *githubapi.Client) error) error {
+	err := a.runAsApp(fn)
+	if !errors.Is(err, apperrors.ErrUnauthorized) || a.reresolve == nil {
+		return err
+	}
+	a.mu.Lock()
+	stale := a.pem
+	a.mu.Unlock()
+	fresh, ok := a.reresolve(ctx, stale)
+	if !ok {
+		return err
+	}
+	key, perr := githubapp.ParsePrivateKey(fresh)
+	if perr != nil {
+		return err
+	}
+	a.mu.Lock()
+	a.key, a.pem = key, fresh
+	a.mu.Unlock()
+	return a.runAsApp(fn)
+}
+
+func (a *App) runAsApp(fn func(gh *githubapi.Client) error) error {
+	gh, err := a.appClient()
+	if err != nil {
+		return err
+	}
+	return fn(gh)
+}
+
 func (a *App) appClient() (*githubapi.Client, error) {
-	jwt, err := githubapp.SignJWT(a.clientID, a.key, a.now())
+	a.mu.Lock()
+	key := a.key
+	a.mu.Unlock()
+	jwt, err := githubapp.SignJWT(a.clientID, key, a.now())
 	if err != nil {
 		return nil, err
 	}
@@ -79,18 +118,19 @@ func (a *App) InstallationToken(ctx context.Context, id int64) (string, error) {
 }
 
 func (a *App) mint(ctx context.Context, id int64, opts *githubapi.InstallationTokenOptions) (*githubapi.InstallationToken, error) {
-	gh, err := a.appClient()
-	if err != nil {
-		return nil, err
-	}
-	tok, _, err := gh.Apps.CreateInstallationToken(ctx, id, opts)
-	if err != nil {
-		return nil, fmt.Errorf("mint a token for installation %d: %w", id, mapErr(err))
-	}
-	if tok.GetToken() == "" {
-		return nil, fmt.Errorf("%w: GitHub returned no installation token", apperrors.ErrUnauthorized)
-	}
-	return tok, nil
+	var tok *githubapi.InstallationToken
+	err := a.asApp(ctx, func(gh *githubapi.Client) error {
+		t, _, err := gh.Apps.CreateInstallationToken(ctx, id, opts)
+		if err != nil {
+			return fmt.Errorf("mint a token for installation %d: %w", id, mapErr(err))
+		}
+		if t.GetToken() == "" {
+			return fmt.Errorf("%w: GitHub returned no installation token", apperrors.ErrUnauthorized)
+		}
+		tok = t
+		return nil
+	})
+	return tok, err
 }
 
 // CloneToken mints a token that reads only owner/name's contents, what a runner clones with; it is never cached, so
@@ -153,15 +193,18 @@ func (a *App) installationFor(ctx context.Context, owner, name string) (appInsta
 	if ok {
 		return cached, nil
 	}
-	gh, err := a.appClient()
+	var found appInstallation
+	err := a.asApp(ctx, func(gh *githubapi.Client) error {
+		inst, _, err := gh.Apps.FindRepositoryInstallation(ctx, owner, name)
+		if err != nil {
+			return fmt.Errorf("find the App's installation on %s/%s: %w", owner, name, mapErr(err))
+		}
+		found = appInstallation{id: inst.GetID(), accountID: inst.GetAccount().GetID()}
+		return nil
+	})
 	if err != nil {
 		return appInstallation{}, err
 	}
-	inst, _, err := gh.Apps.FindRepositoryInstallation(ctx, owner, name)
-	if err != nil {
-		return appInstallation{}, fmt.Errorf("find the App's installation on %s/%s: %w", owner, name, mapErr(err))
-	}
-	found := appInstallation{id: inst.GetID(), accountID: inst.GetAccount().GetID()}
 	a.mu.Lock()
 	a.owners[key] = found
 	a.mu.Unlock()
@@ -170,24 +213,22 @@ func (a *App) installationFor(ctx context.Context, owner, name string) (appInsta
 
 // eachInstallation walks every installation of the App, a page of 100 at a time.
 func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installation)) error {
-	gh, err := a.appClient()
-	if err != nil {
-		return err
-	}
-	opts := &githubapi.ListOptions{PerPage: 100}
-	for {
-		installs, resp, err := gh.Apps.ListInstallations(ctx, opts)
-		if err != nil {
-			return fmt.Errorf("list the App's installations: %w", mapErr(err))
+	return a.asApp(ctx, func(gh *githubapi.Client) error {
+		opts := &githubapi.ListOptions{PerPage: 100}
+		for {
+			installs, resp, err := gh.Apps.ListInstallations(ctx, opts)
+			if err != nil {
+				return fmt.Errorf("list the App's installations: %w", mapErr(err))
+			}
+			for _, inst := range installs {
+				fn(inst)
+			}
+			if resp == nil || resp.NextPage == 0 {
+				return nil
+			}
+			opts.Page = resp.NextPage
 		}
-		for _, inst := range installs {
-			fn(inst)
-		}
-		if resp == nil || resp.NextPage == 0 {
-			return nil
-		}
-		opts.Page = resp.NextPage
-	}
+	})
 }
 
 // InstallationAccounts lists every installation of the App with its account, one request per hundred.
@@ -204,6 +245,9 @@ func (a *App) InstallationAccounts(ctx context.Context) ([]*gitprovider.Installa
 
 // AppCache keeps one App per key, client ID and server, so its tokens outlive the request that minted them.
 type AppCache struct {
+	// Reresolve answers a rejected private key with its fresh PEM when its secret manager has one.
+	Reresolve func(ctx context.Context, stale string) (string, bool)
+
 	mu  sync.Mutex
 	fp  [sha256.Size]byte
 	app *App
@@ -230,5 +274,6 @@ func (c *AppCache) Get(clientID, privateKey, baseURL string) (*App, error) {
 		opts = append(opts, WithBaseURL(u))
 	}
 	c.app, c.fp = NewApp(clientID, key, nil, opts...), fp
+	c.app.pem, c.app.reresolve = privateKey, c.Reresolve
 	return c.app, nil
 }

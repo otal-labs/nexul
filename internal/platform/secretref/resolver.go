@@ -12,6 +12,8 @@ var (
 	ErrFieldMissing = errors.New("field missing")
 	ErrNoAccess     = errors.New("no access")
 	ErrUnreachable  = errors.New("secrets manager unreachable")
+	// ErrTokenRejected means the process's token for the manager was refused, so nothing it holds resolves.
+	ErrTokenRejected = errors.New("secrets manager token rejected")
 	// ErrFailed is any other failure for one reference.
 	ErrFailed = errors.New("secret could not be resolved")
 	// ErrNoResolver means no manager is configured for a reference's scheme.

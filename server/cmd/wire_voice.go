@@ -44,7 +44,8 @@ func (v voiceConversations) MembersOnly(ctx context.Context, conversationID stri
 
 // voiceCredentials adapts ManualCredentials to voice's CredentialSource seam; built fresh per call, never cached.
 type voiceCredentials struct {
-	svc *connectors.Service
+	svc       *connectors.Service
+	reresolve func(ctx context.Context, stale string) (string, bool)
 }
 
 func (v voiceCredentials) LiveKit(ctx context.Context) (livekit.Client, error) {
@@ -52,7 +53,7 @@ func (v voiceCredentials) LiveKit(ctx context.Context) (livekit.Client, error) {
 	if err != nil {
 		return livekit.Client{}, err
 	}
-	return livekit.Client{WSURL: fields["ws_url"], APIKey: fields["api_key"], APISecret: fields["api_secret"]}, nil
+	return livekit.Client{WSURL: fields["ws_url"], APIKey: fields["api_key"], APISecret: fields["api_secret"], Reresolve: v.reresolve}, nil
 }
 
 // voiceUserNames adapts auth users to voice's UserNames seam: manual profile name, then provider name, then login.

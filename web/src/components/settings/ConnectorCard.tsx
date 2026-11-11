@@ -2,6 +2,7 @@ import { Blocks, Cloud, Mic } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
+import { secretManagerName } from "@nexul/client-core/secretReference";
 
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
@@ -70,6 +71,11 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
         {/* The tab already says connected or not, so line two keeps only who connected it and the one state the tab does not. */}
         {status.configured && connectedDetail && <p className="truncate text-xs text-muted-foreground">{connectedDetail}</p>}
         {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
+        {status.secret && (
+          <SettingsStatus tone={status.secret.state === "unreachable" ? "warning" : "destructive"} detail={status.secret.error}>
+            {status.secret.state ? `${secretManagerName(status.secret.manager)} ${status.secret.state}` : "Secret not resolved"}
+          </SettingsStatus>
+        )}
         <SettingsHint className="line-clamp-2">{connector.description}</SettingsHint>
       </div>
       {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}

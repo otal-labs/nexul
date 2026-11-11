@@ -117,4 +117,6 @@ type CredentialStatus struct {
 	ConnectedBy string    `json:"connected_by,omitempty"`
 	ConnectedAt time.Time `json:"connected_at,omitempty"`
 	ExpiresAt   time.Time `json:"expires_at,omitempty"`
+	// Secret is set when a stored reference cannot be resolved now, so the connector cannot be used until it can.
+	Secret *SecretProblem `json:"secret,omitempty"`
 }

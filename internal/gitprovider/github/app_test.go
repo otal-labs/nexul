@@ -1,12 +1,15 @@
 package github
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -78,4 +81,47 @@ func TestApp_InstallationToken_ExchangesAJWTAndReusesTheTokenUntilNearExpiry(t *
 	now = now.Add(time.Hour)
 	_, err = app.InstallationToken(t.Context(), 42)
 	require.Error(t, err, "an empty App credential must never create an anonymous client")
+}
+
+func jwtSignedBy(r *http.Request, key *rsa.PublicKey) bool {
+	parts := strings.Split(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), ".")
+	if len(parts) != 3 {
+		return false
+	}
+	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
+	sum := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+	return err == nil && rsa.VerifyPKCS1v15(key, crypto.SHA256, sum[:], sig) == nil
+}
+
+func pemOf(key *rsa.PrivateKey) string {
+	return string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+}
+
+func TestApp_RejectedKey_IsReplacedByItsFreshValueAndTheCallSentOnceMore(t *testing.T) {
+	oldKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	newKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		if !jwtSignedBy(r, &newKey.PublicKey) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = fmt.Fprint(w, `{"message":"A JSON web token could not be decoded"}`)
+			return
+		}
+		_, _ = fmt.Fprint(w, `{"token":"ghs_new","expires_at":"2099-01-01T00:00:00Z"}`)
+	}))
+	t.Cleanup(srv.Close)
+	cache := &AppCache{Reresolve: func(_ context.Context, stale string) (string, bool) {
+		return pemOf(newKey), stale == pemOf(oldKey)
+	}}
+	app, err := cache.Get("Iv1.acme", pemOf(oldKey), srv.URL)
+	require.NoError(t, err)
+
+	tok, err := app.InstallationToken(t.Context(), 42)
+
+	require.NoError(t, err)
+	assert.Equal(t, "ghs_new", tok)
+	assert.Equal(t, int32(2), attempts.Load())
 }

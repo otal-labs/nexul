@@ -150,9 +150,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		TicketTypes: mentionTicketTypeSource{repo: store.TicketTypes},
 	})
 	secretManagers := secretref.NewManagers(logger, serverManagerSetups(cfg)...)
+	secretCache := secretref.NewCache(secretManagers, nil)
+	// Consumers read app configs with references resolved; the connectors service keeps the raw store and never writes a resolved value.
+	appConfigs := connectors.ResolvedAppConfigs{AppConfigStore: store.ConnectorAppConfig, Secrets: secretCache}
 	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
 	connectorsRegistry := connectors.Registry()
-	wireConnectorOAuth(connectorsRegistry, store)
+	wireConnectorOAuth(connectorsRegistry, store, appConfigs)
 	connectorsSvc := connectors.NewService(connectors.Config{
 		Store:          store.Connectors,
 		AppConfigStore: store.ConnectorAppConfig,
@@ -160,13 +163,14 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Settings:       dnsSettingsAdapter{store.Settings},
 		Registry:       connectorsRegistry,
 		Managers:       secretManagers,
+		Secrets:        secretCache,
 	})
 	connectorsHandler := connectors.NewHandler(connectorsSvc)
 	// One App for both routers, so an installation token minted for a webhook serves the next scan too.
-	githubApps := &github.AppCache{}
-	githubScope := &githubInstallationScope{appConfigs: store.ConnectorAppConfig, projects: store.Projects}
+	githubApps := &github.AppCache{Reresolve: secretCache.Refresh}
+	githubScope := &githubInstallationScope{appConfigs: appConfigs, projects: store.Projects}
 	repoHooks := repoWebhooks{
-		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope},
+		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: appConfigs, apps: githubApps, scope: githubScope},
 		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 		secret:      githubWebhookSecret(cfg.AuthSecret),
 		openPRs:     store.Tickets.ListOpenPRNumbers,
@@ -214,6 +218,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Permissions:         accessSvc,
 		GitHubLinks:         store.GitHubUserLinks,
 		Passkeys:            store.Passkeys,
+		Secrets:             secretCache,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
@@ -222,13 +227,13 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	dnsSvc := dns.NewService(dns.Config{
 		Repo: store.DNS,
 		NewProvider: func(_ context.Context, token string) (dns.DNSProvider, error) {
-			return cloudflare.New(token), nil
+			return cloudflare.New(token, cloudflare.WithReresolve(secretCache.Refresh)), nil
 		},
 		NewTunnelProvider: func(_ context.Context, token, accountID string) (dns.TunnelProvider, error) {
-			return cloudflare.New(token, cloudflare.WithAccountID(accountID)), nil
+			return cloudflare.New(token, cloudflare.WithAccountID(accountID), cloudflare.WithReresolve(secretCache.Refresh)), nil
 		},
 		NewAccessProvider: func(_ context.Context, token, accountID string) (dns.AccessProvider, error) {
-			return cloudflare.New(token, cloudflare.WithAccountID(accountID)), nil
+			return cloudflare.New(token, cloudflare.WithAccountID(accountID), cloudflare.WithReresolve(secretCache.Refresh)), nil
 		},
 		Tokens:         dnsCloudflareTokenAdapter{connectors: connectorsSvc},
 		EncryptionKey:  encKey,
@@ -286,12 +291,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// voice never imports chat or connectors directly (ADR 0017); ephemeral occupancy publishes onto bus, not the outbox.
 	voiceSvc := voice.NewService(voice.Config{
 		Conversations: voiceConversations{svc: chatSvc},
-		Credentials:   voiceCredentials{svc: connectorsSvc},
+		Credentials:   voiceCredentials{svc: connectorsSvc, reresolve: secretCache.Refresh},
 		Users:         voiceUserNames{users: store.Users},
 		Bus:           bus,
 	})
 	voiceHandler := voice.NewHandler(voiceSvc)
-	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
+	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc, reresolve: secretCache.Refresh}, logger)
 	playsSvc := plays.NewService(store.Plays, accessSvc)
 	playsSvc.SetComputers(accessSvc)
 	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, accessSvc, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder, roles: rolesSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
@@ -354,16 +359,16 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetCrashTickets(crashTicketDesk{tickets: ticketsSvc, chat: chatSvc, statuses: store.Statuses, types: store.TicketTypes, projects: store.Projects, users: store.Users}, store.CrashTickets)
 	deploySvc.SetCrashNotices(crashNoticeDesk{chat: chatSvc, bots: botwebhookSvc, tickets: ticketsSvc, projects: store.Projects, workspaces: store.Workspaces, users: store.Users, instance: dnsSettingsAdapter{store.Settings}})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
-	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope}
+	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: appConfigs, apps: githubApps, scope: githubScope}
 	computers.tokens = cloneTokens{repos: workspaceSvc, access: accessSvc, git: gitRouter}
-	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
+	repoScanner := newRepositoryScanner(gitRouter, appConfigs)
 	crashIntakeSvc := crashintake.NewService(
 		crashIntakeDesk{tickets: ticketsSvc, statuses: store.Statuses, types: store.TicketTypes},
 		crashIntakeNotes{tickets: ticketsSvc, chat: chatSvc, projects: store.Projects, users: store.Users},
 		gitRouter, logger)
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,
-		People:        newGitHubPeople(authSvc, store.ConnectorAppConfig),
+		People:        newGitHubPeople(authSvc, appConfigs),
 		Installations: repoScanner,
 		Accounts:      repoScanner,
 		Store:         store.GitHubInstallations,
@@ -481,13 +486,13 @@ func harnessRegistry(opts t3rpc.Options, moved func(ctx context.Context, s harne
 }
 
 // wireConnectorOAuth attaches OAuth clients/verifiers to registry entries that need one; others keep the nil default.
-func wireConnectorOAuth(registry []connectors.Connector, store *storage.Store) {
+func wireConnectorOAuth(registry []connectors.Connector, store *storage.Store, appConfigs connectors.AppConfigStore) {
 	for i, c := range registry {
 		if c.ID == "github" {
-			registry[i].OAuth = githuboauth.New("github", store.ConnectorAppConfig, dnsSettingsAdapter{store.Settings}, nil)
+			registry[i].OAuth = githuboauth.New("github", appConfigs, dnsSettingsAdapter{store.Settings}, nil)
 		}
 		if c.ID == "cloudflare" {
-			registry[i].OAuth = cfoauth.New("cloudflare", store.ConnectorAppConfig, dnsSettingsAdapter{store.Settings}, nil)
+			registry[i].OAuth = cfoauth.New("cloudflare", appConfigs, dnsSettingsAdapter{store.Settings}, nil)
 			registry[i].Verify = cfoauth.NewTokenVerifier(nil)
 		}
 		if c.ID == "livekit" {

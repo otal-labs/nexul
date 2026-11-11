@@ -43,6 +43,8 @@ export interface CredentialStatus {
   connected_by?: string;
   connected_at?: string;
   expires_at?: string;
+  // Set when a stored secret reference cannot be resolved now: state names a manager outage or rejected token, error anything else.
+  secret?: { manager: string; state?: SecretManagerState; error?: string };
 }
 
 export interface ConnectorStatus {

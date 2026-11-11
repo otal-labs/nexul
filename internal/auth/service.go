@@ -26,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/oauthx"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 const (
@@ -201,6 +202,13 @@ type Config struct {
 	GitHubLinks GitHubLinkStore
 	// Passkeys stores each person's passkeys; nil turns passkeys off.
 	Passkeys PasskeyStore
+	// Secrets resolves a sign-in client secret that is a secret reference; nil takes each stored value as it is.
+	Secrets SecretValues
+}
+
+// SecretValues is the consumer-side view of secret resolution (ADR 0017): a stored secret turned into the value to use.
+type SecretValues interface {
+	Value(ctx context.Context, stored string) (string, error)
 }
 
 // PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds on an instance area, by a
@@ -274,6 +282,13 @@ func (s *Service) providerClient(ctx context.Context, provider Provider) (Provid
 		return nil, err
 	}
 	id, secret := st.OAuthCredentials(provider)
+	if s.cfg.Secrets != nil {
+		resolved, err := s.cfg.Secrets.Value(ctx, secret)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s sign-in client secret: %w", provider, err)
+		}
+		secret = resolved
+	}
 	switch provider {
 	case ProviderGoogle:
 		return NewHTTPGoogleClient(id, secret, callbackFor(st.InstanceURL, provider), s.httpClient), nil
@@ -382,6 +397,9 @@ func (s *Service) SetProviderOAuth(ctx context.Context, userID string, provider 
 			return Settings{}, fmt.Errorf("get settings: %w", err)
 		}
 		_, clientSecret = st.OAuthCredentials(provider)
+	}
+	if err := secretref.Check("client secret", clientSecret); err != nil {
+		return Settings{}, err
 	}
 	if (clientID == "") != (clientSecret == "") {
 		return Settings{}, fmt.Errorf("%w: client ID and client secret must be set together (or both empty to disable %s sign-in)", apperrs.ErrInvalid, provider)

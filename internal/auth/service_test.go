@@ -592,3 +592,39 @@ func TestUpdateProfileOverride_AnnouncesOnlyARealChange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, users.profileEvents, 2, "removing the picture is a change others must see")
 }
+
+type resolvedSecrets map[string]string
+
+func (r resolvedSecrets) Value(_ context.Context, stored string) (string, error) {
+	if v, ok := r[stored]; ok {
+		return v, nil
+	}
+	return "", errors.New("unresolved")
+}
+
+func TestProviderClient_ASignInSecretThatIsAReferenceIsResolvedAndAnOutageFailsOnlyThatProvider(t *testing.T) {
+	ctx := context.Background()
+	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	_, err := settings.SetProviderOAuth(ctx, ProviderGoogle, "g-id", "op://Acme/google/secret")
+	require.NoError(t, err)
+	_, err = settings.SetProviderOAuth(ctx, ProviderDiscord, "d-id", "op://Acme/discord/secret")
+	require.NoError(t, err)
+	s.cfg.Secrets = resolvedSecrets{"op://Acme/google/secret": "real-google-secret"}
+
+	google, err := s.providerClient(ctx, ProviderGoogle)
+	require.NoError(t, err)
+	_, err = s.providerClient(ctx, ProviderDiscord)
+
+	assert.Equal(t, "real-google-secret", google.(*HTTPGoogleClient).clientSecret)
+	assert.Error(t, err)
+}
+
+func TestSetProviderOAuth_MalformedSecretReference_RefusedWithoutEchoingIt(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	seedOwner(t, users, "u1", "1", "owner")
+
+	_, err := s.SetProviderOAuth(context.Background(), "u1", ProviderGoogle, "id", "op://Acme/only-two")
+
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.NotContains(t, err.Error(), "only-two")
+}
