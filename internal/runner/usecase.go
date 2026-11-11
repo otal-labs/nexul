@@ -258,6 +258,34 @@ func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
 	return out, nil
 }
 
+// ManagersOn lists the managers, by scheme, that some deploy runner on the named machine last reported ready or
+// unreachable, online or not. A runner whose token was rejected, or that holds none, adds nothing.
+func (s *Service) ManagersOn(ctx context.Context, machine string) ([]string, error) {
+	if s.machines == nil {
+		return nil, nil
+	}
+	m, err := s.machines.GetByName(ctx, machine)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("machine %s: %w", machine, err)
+	}
+	rs, err := s.repo.ListOn(ctx, []string{m.ID})
+	if err != nil {
+		return nil, fmt.Errorf("runners on %s: %w", machine, err)
+	}
+	var out []string
+	for _, rn := range rs {
+		for _, ms := range rn.Managers {
+			if ms.State == ManagerReady || ms.State == ManagerUnreachable {
+				out = append(out, ms.Manager)
+			}
+		}
+	}
+	return out, nil
+}
+
 func (s *Service) runnersOf(ctx context.Context, r reach) ([]*Runner, error) {
 	if r.all {
 		return s.repo.List(ctx)

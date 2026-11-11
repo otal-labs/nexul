@@ -1,5 +1,6 @@
 import { JobMeta } from "@/components/runner/JobMeta";
 import { JobName } from "@/components/runner/JobName";
+import { RunnerManagerTag } from "@/components/runner/RunnerManagerTag";
 import type { Runner } from "@/models/Runner";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -17,6 +18,7 @@ export const RunnerActivity = ({ runner }: RunnerActivityProps) => {
       {job && <JobMeta at={job.started_at} by={job.triggered_by} />}
       {!job && runner.connected && <span className="text-muted-foreground">idle</span>}
       {!runner.connected && <span className="truncate text-muted-foreground">offline · seen {formatRelativeTime(runner.last_seen)}</span>}
+      {runner.managers?.map((m) => <RunnerManagerTag key={m.manager} manager={m} className="ml-2" />)}
     </span>
   );
 };

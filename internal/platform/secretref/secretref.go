@@ -4,6 +4,7 @@ package secretref
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -68,6 +69,27 @@ func parseOp(scheme, rest string) (Kind, Ref) {
 		ref.Section = parts[2]
 	}
 	return Reference, ref
+}
+
+// ManagerName is how a person reads a manager's scheme, such as 1Password for op; an unknown scheme reads as itself.
+func ManagerName(scheme string) string {
+	if scheme == "op" {
+		return "1Password"
+	}
+	return scheme
+}
+
+// Schemes lists, sorted and without repeats, the managers whose references the values hold.
+func Schemes(values ...map[string]string) []string {
+	seen := map[string]bool{}
+	for _, env := range values {
+		for _, v := range env {
+			if kind, ref := Parse(v); kind == Reference {
+				seen[ref.Scheme] = true
+			}
+		}
+	}
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // Check rejects a malformed reference as ErrInvalid naming what held it; the value never appears in the error.

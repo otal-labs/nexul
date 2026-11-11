@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // Topics the deploy domain publishes onto the bus; shapes mirror the runner's contracts (ADR 0017).
@@ -102,6 +103,8 @@ type DeployRequestedEvent struct {
 	JoinNetworks     []string  `json:"join_networks,omitempty"`
 	TriggeredBy      string    `json:"triggered_by,omitempty" jsonschema:"Who started the deploy; empty when nobody did."`
 	RequestedAt      time.Time `json:"requested_at,omitzero" jsonschema:"When the deploy was created; absent on a deploy requested before this field existed."`
+	// SecretManagers names each manager whose references the stack's env holds, so only a runner ready for each takes the deploy.
+	SecretManagers []string `json:"secret_managers,omitempty" jsonschema:"The secrets managers, named by the scheme of their references, that the deploy's environment holds references to; only a runner ready for each takes the deploy."`
 }
 
 // DeployStatusChangedEvent is the deploy.status_changed payload: a deploy's terminal state, reported by the runner.
@@ -236,6 +239,7 @@ func (r DeployRequest) toEvent(d *Deploy, stack *Stack, gatewayContainer string,
 		JoinNetworks:     joinNetworks,
 		TriggeredBy:      d.TriggeredBy,
 		RequestedAt:      d.CreatedAt,
+		SecretManagers:   secretref.Schemes(stack.Env),
 	}
 	if bs := stack.BuildSource; bs != nil {
 		ev.Repo = bs.RepoOwner + "/" + bs.RepoName

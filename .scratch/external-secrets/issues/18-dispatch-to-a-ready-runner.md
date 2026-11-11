@@ -1,6 +1,6 @@
 # 18 — Send deploys with references only to a ready runner, and show which runners are ready
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 16
 
@@ -25,3 +25,7 @@ States and who hears about them).
 
 Verify: `make lint`, `go test ./internal/runner/... ./internal/deploy/...`, `bun run lint`,
 `typecheck` and `test` in `web/`.
+
+## Comments
+
+Built: `secret_managers` on `deploy.requested` and a dispatch fit that needs a runner ready for each; the refusal in `Service.start`, shared by Deploy, Retry, Rollback, HTTP and MCP; `secretref.Schemes` and `ManagerName` (the runner's failure wording uses it too); the runner list tag; and the stack environment warning. A runner last reported unreachable makes the deploy wait rather than refusing it, since its token is valid. A push-triggered preview refused this way is skipped, as other conflicts are. Checked against a real server: a stack with a reference on a machine with no ready runner gets 409, while one with a ready runner and one with no reference get 201. Screenshots at 768, 1024 and 1440px.

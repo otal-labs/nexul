@@ -17,6 +17,14 @@ export const RunningJobSchema = z.object({
 
 export type RunningJob = z.infer<typeof RunningJobSchema>;
 
+// One secrets manager as a runner last reported it; manager is the scheme of the references it resolves, such as op.
+export const ManagerStateSchema = z.object({
+  manager: z.string(),
+  state: z.enum(["ready", "token rejected", "unreachable"]),
+});
+
+export type ManagerState = z.infer<typeof ManagerStateSchema>;
+
 export const RunnerSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -26,9 +34,11 @@ export const RunnerSchema = z.object({
   version: z.string(),
   // The machine this runner belongs to (issue 05); empty until its first connect resolves one.
   machine: z.string().optional(),
+  // The secrets managers it reported on its last connect; none when it holds no token.
+  managers: z.array(ManagerStateSchema).optional(),
 });
 
-export type Runner = z.infer<typeof RunnerSchema>;
+export type Runner =z.infer<typeof RunnerSchema>;
 
 // A host runners connect from; runners reporting the same machine form a dispatch pool.
 export const MachineSchema = z.object({

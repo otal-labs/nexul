@@ -47,6 +47,7 @@ describe("StackEnvironmentSection", () => {
     mocks.held = ["stacks:write", "deploys:write"];
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/permissions/explain") return { data: { effective: [] } };
+      if (url === "/api/runners") return { data: [] };
       return { data: { role_name: "Member", permissions: [], projects: [{ project_id: "proj-1", actions: mocks.held }] } };
     });
     mocks.patch.mockResolvedValue({ data: stack });

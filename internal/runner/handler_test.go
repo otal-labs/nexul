@@ -280,6 +280,45 @@ func TestHandler_idleConnected_PoolsByMachine(t *testing.T) {
 	assert.Equal(t, "r-2", got.id)
 }
 
+// A deploy that holds references goes only to a runner that reported the manager ready; one without references goes to
+// either, and a deploy whose only ready runner is away waits for it instead of landing on the other.
+func TestHandler_Dispatch_ReferencesReachOnlyAReadyRunner(t *testing.T) {
+	ready := []ManagerState{{Manager: "op", State: ManagerReady}}
+	rejected := []ManagerState{{Manager: "op", State: ManagerTokenRejected}}
+	withRefs := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", Target: "prod", SecretManagers: []string{"op"}}
+
+	t.Run("a deploy with references skips the runner that is not ready", func(t *testing.T) {
+		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		h.conns["r-bad"] = &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
+		h.conns["r-none"] = &runnerConn{id: "r-none", machine: "prod"}
+		h.conns["r-ok"] = &runnerConn{id: "r-ok", machine: "prod", managers: ready}
+		for range 10 {
+			got := h.idleConnected(withRefs)
+			require.NotNil(t, got)
+			assert.Equal(t, "r-ok", got.id)
+		}
+	})
+
+	t.Run("a deploy without references fits every runner of the machine", func(t *testing.T) {
+		bad := &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
+		assert.True(t, DeployRequestedEvent{Target: "prod"}.fits(bad))
+	})
+
+	t.Run("a deploy waits for the ready runner when only the other one is connected", func(t *testing.T) {
+		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		bad := &runnerConn{id: "r-bad", machine: "prod", managers: rejected}
+		h.conns["r-bad"] = bad
+		require.NoError(t, h.handleRequest(t.Context(), eventbus.Event{Payload: mustJSON(t, withRefs)}))
+		require.Len(t, h.Queue(), 1)
+		assert.Nil(t, bad.jobSnapshot())
+
+		_, taken := h.popFitting(bad)
+		assert.False(t, taken, "a runner that is not ready never takes it from the queue")
+		_, taken = h.popFitting(&runnerConn{id: "r-ok", machine: "prod", managers: ready})
+		assert.True(t, taken)
+	})
+}
+
 type fakeGitTokens struct {
 	token         string
 	err           error

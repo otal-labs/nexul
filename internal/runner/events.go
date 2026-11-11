@@ -223,6 +223,8 @@ type DeployRequestedEvent struct {
 	// TriggeredBy is who started the deploy; RequestedAt is when it was created.
 	TriggeredBy string    `json:"triggered_by,omitempty"`
 	RequestedAt time.Time `json:"requested_at,omitzero"`
+	// SecretManagers are the managers whose references the deploy's env holds; only a runner ready for each takes it.
+	SecretManagers []string `json:"secret_managers,omitempty"`
 }
 
 // StackDeletedEvent is the slice of the service.deleted payload the runner acts on.
@@ -249,9 +251,10 @@ func (r DeployRequestedEvent) Queued() QueuedJob {
 }
 
 // fits reports whether r may run on c: a job fits any idle connected deploy runner whose machine name equals the
-// stack's machine (Target); an empty machine still fits any deploy runner, and never a personal one.
+// stack's machine (Target) and is ready for every manager the env holds references to; an empty machine still fits any
+// deploy runner, and never a personal one.
 func (r DeployRequestedEvent) fits(c *runnerConn) bool {
-	return !c.personal && (r.Target == "" || r.Target == c.machine)
+	return !c.personal && (r.Target == "" || r.Target == c.machine) && c.reads(r.SecretManagers)
 }
 
 // toFrame converts the request into an assign frame; env is real values from EnvLookup, never the redacted r.Env.
