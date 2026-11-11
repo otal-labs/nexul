@@ -22,7 +22,7 @@ export const AutomationsPage = () => {
       <PageHeader
         crumbs={[workspaceCrumb]}
         title="Automations"
-        meta="Code that runs when something happens in this workspace. Default ones ship with Nexul, Custom ones are yours."
+        meta="Code that runs when something happens in this workspace."
         actions={<NewAutomationDialog />}
       />
       <PageTabs
@@ -36,7 +36,7 @@ export const AutomationsPage = () => {
         <PageTabsContent value="automations">
           {isPending && <LoadingDisplay />}
           {error && <ErrorDisplay error={error} />}
-          {data && data.length === 0 && <NoDataDisplay icon={Workflow} message="No automations yet" />}
+          {data && data.length === 0 && <NoDataDisplay icon={Workflow} message="No automations yet." />}
           {data && data.length > 0 && <AutomationsFeed automations={data} />}
         </PageTabsContent>
         <PageTabsContent value="hosts">

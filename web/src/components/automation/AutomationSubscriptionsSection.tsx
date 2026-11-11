@@ -10,7 +10,7 @@ interface AutomationSubscriptionsSectionProps {
 export const AutomationSubscriptionsSection = ({ subscriptions }: AutomationSubscriptionsSectionProps) => (
   <section aria-labelledby="reacts-to" className="space-y-2">
     <Microheader id="reacts-to">Reacts to</Microheader>
-    {subscriptions.length === 0 && <EmptyRow flush>Its code declares no events yet.</EmptyRow>}
+    {subscriptions.length === 0 && <EmptyRow flush>Announced when its code first connects.</EmptyRow>}
     {subscriptions.length > 0 && (
       <div className="flex flex-wrap gap-1.5">
         {subscriptions.map((topic) => (

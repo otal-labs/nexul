@@ -21,7 +21,7 @@ import { FormInput } from "@/components/FormInput";
 import { useCreateAutomation, useFetchScopeCatalog } from "@/hooks/AutomationHooks";
 import { CreateAutomationFormSchema, type CreateAutomationFormData } from "@/models/Automation";
 
-// A host runs the automation on credentials of its own, so the token minted with it isn't shown; the Token tab can mint one.
+// A host runs the automation on credentials of its own, so the token minted with it isn't shown; the Settings tab can mint one.
 export const NewAutomationDialog = () => {
   const [open, setOpen] = useState(false);
   const create = useCreateAutomation();
@@ -63,7 +63,7 @@ export const NewAutomationDialog = () => {
           <DialogDescription>Name it and pick what its token may touch.</DialogDescription>
         </DialogHeader>
         {!minted && (
-          <DialogBody>
+          <DialogBody className="scroll-edge">
             <form id="new-automation" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormInput control={form.control} name="name" label="Name" placeholder="e.g. Slack notifier" />
               <Controller

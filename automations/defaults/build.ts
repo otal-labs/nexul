@@ -3,10 +3,14 @@
 // custom one (sdk/bin/cli.ts's cmdPush: Bun.build, target node, esm — one
 // self-contained file, no external imports left to resolve at runtime) and
 // writes the result where internal/automations/defaults.go go:embeds it.
+// Beside each bundle it writes the automation's announced subscriptions and
+// config schema, so a default that is switched off can still be configured.
 // Run this after editing a default's index.ts; go:embed reads the committed
 // output, it does not invoke bun at `go build` time.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import type { Automation } from "../../sdk/src/define-automation.ts";
+import { toJsonSchema } from "../../sdk/src/config-schema.ts";
 
 const OUT_DIR = path.resolve(import.meta.dir, "..", "..", "internal", "automations", "defaults");
 
@@ -32,6 +36,11 @@ async function main(): Promise<void> {
     const outFile = path.join(OUT_DIR, `${def.name}.bundle.js`);
     await Bun.write(outFile, await output.text());
     console.log(`wrote ${outFile}`);
+    const { default: automation } = (await import(def.entry)) as { default: Automation };
+    const surface = { subscriptions: automation.subscriptions, config_schema: toJsonSchema(automation.configSchema), source: await Bun.file(def.entry).text() };
+    const surfaceFile = path.join(OUT_DIR, `${def.name}.surface.json`);
+    await Bun.write(surfaceFile, `${JSON.stringify(surface, null, 2)}\n`);
+    console.log(`wrote ${surfaceFile}`);
   }
 }
 

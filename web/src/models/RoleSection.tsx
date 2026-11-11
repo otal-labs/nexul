@@ -94,7 +94,7 @@ export const readName = (domain: string): string => READ_NAME[domain] ?? "Read";
 export const rungName = (domain: string, rung: number): string => (rung === 1 ? readName(domain) : levelName(rung));
 
 // The short word beside an extra verb's checkbox; its full label is the tooltip.
-export const extraName = (action: string): string => SHORT[action] ?? action.charAt(0).toUpperCase() + action.slice(1);
+export const extraName = (action: string): string => SHORT[action] ?? action.charAt(0).toUpperCase() + action.slice(1).replaceAll("_", " ");
 
 const apart = <T,>(a: T[], b: T[]): number => a.filter((x) => !b.includes(x)).length + b.filter((x) => !a.includes(x)).length;
 

@@ -166,6 +166,15 @@ func (f *fakeVersionsRepo) InsertActive(_ context.Context, v *Version) error {
 	return nil
 }
 
+func (f *fakeVersionsRepo) FillSource(_ context.Context, versionID, source string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if v, ok := f.rows[versionID]; ok && v.Source == "" {
+		v.Source = source
+	}
+	return nil
+}
+
 func (f *fakeVersionsRepo) ReplacePending(_ context.Context, v *Version) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

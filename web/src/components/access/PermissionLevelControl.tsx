@@ -13,7 +13,7 @@ interface PermissionLevelControlProps {
 }
 
 
-// Every rung below the chosen one takes the ember wash and the chosen one its hairline, in four fixed 56px slots, None first, so each level holds one x on every row; a shorter ladder leaves its last slots empty.
+// Rungs below the chosen one take the ember wash and the chosen one its hairline (None an ink hairline: no access is not a selection to point at), in four fixed 56px slots so each level holds one x on every row.
 export const PermissionLevelControl = ({ label, levelCount, level, onLevel, disabled = false, readName = "Read" }: PermissionLevelControlProps) => (
   <span className="col-span-2 flex w-full shrink-0 @md:col-span-1 @md:w-56">
     <ToggleGroup
@@ -34,7 +34,8 @@ export const PermissionLevelControl = ({ label, levelCount, level, onLevel, disa
           className={cn(
             "h-7 flex-1 px-0 text-xs text-muted-foreground transition-colors duration-150 ease-standard @md:w-14 @md:flex-none",
             level !== undefined && rung > 0 && rung < level && "bg-brand/10 text-foreground",
-            "data-[state=on]:bg-brand/10 data-[state=on]:text-brand data-[state=on]:shadow-[inset_0_0_0_1px_var(--brand)]",
+            rung === 0 && "data-[state=on]:bg-transparent data-[state=on]:text-foreground data-[state=on]:shadow-[inset_0_0_0_1px_var(--input)]",
+            rung > 0 && "data-[state=on]:bg-brand/10 data-[state=on]:text-brand data-[state=on]:shadow-[inset_0_0_0_1px_var(--brand)]",
           )}
         >
           {rung === 1 ? readName : levelName(rung)}

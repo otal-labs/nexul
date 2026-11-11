@@ -100,12 +100,6 @@ describe("DeploySidebarNav", () => {
     expect(vi.mocked(api.get).mock.calls.some(([url]) => url === "/api/machines")).toBe(readsMachines);
   });
 
-  it("tags only Automations as work in progress", async () => {
-    await renderNav();
-    expect(screen.getByRole("link", { name: /Automations/ })).toHaveTextContent("WIP");
-    expect(screen.getByRole("link", { name: /Topology/ })).not.toHaveTextContent("WIP");
-  });
-
   it("collapsed rail always shows the icons, with no header to fold", async () => {
     useSidebarStore.setState({ workspaceNavOpen: false });
     await renderNav(true);

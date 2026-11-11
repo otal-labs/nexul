@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationKind, AutomationVersionStatus } from "@/enums/Automation";
 import { AutomationPage } from "@/pages/AutomationPage";
+import { commandLine } from "@/test/commandLine";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -100,14 +101,19 @@ describe("AutomationPage", () => {
     expect(await screen.findByRole("button", { name: /delete automation/i })).toBeInTheDocument();
   });
 
+  const versionBodies = {
+    "/api/automations/a1/versions/1": { version: 1, body: "return 1;" },
+    "/api/automations/a1/versions/2": { version: 2, body: "return 2;" },
+  };
+
   it("links the pending chip under the title to the Versions tab", async () => {
     const user = userEvent.setup();
-    renderPage({ ...baseEndpoints, "/api/automations/a1": { ...automation, pending_version: 2 }, "/api/automations/a1/versions/diff": pendingDiff });
+    renderPage({ ...baseEndpoints, ...versionBodies, "/api/automations/a1": { ...automation, pending_version: 2 }, "/api/automations/a1/versions/diff": pendingDiff });
 
     await user.click(await screen.findByText("#2 pending"));
 
     expect(await screen.findByRole("tab", { name: "Versions", selected: true })).toBeInTheDocument();
-    expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "#2 pending" })).toBeInTheDocument();
   });
 
   it("warns under the title when the pool holds references and its host has no ready manager for the workspace", async () => {
@@ -122,10 +128,66 @@ describe("AutomationPage", () => {
     expect(await screen.findByText("Host can't resolve secret references")).toBeInTheDocument();
   });
 
-  it("opens /versions directly on the pending version's diff", async () => {
-    renderPage({ ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/versions");
+  it("opens /versions on the pending diff, with the active code under it", async () => {
+    renderPage({ ...baseEndpoints, ...versionBodies, "/api/automations/a1/versions/diff": pendingDiff }, "/automations/a1/versions");
 
-    expect(await screen.findByText(/#1 → #2/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "#2 pending" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "#1 active" })).toBeInTheDocument();
+    expect(await screen.findByText("return 1;")).toBeInTheDocument();
+  });
+
+  it("shows a custom automation's active code and how to change it when nothing is pending", async () => {
+    renderPage(
+      {
+        ...baseEndpoints,
+        ...versionBodies,
+        "/api/automations/a1": { ...automation, kind: AutomationKind.Custom },
+        "/api/automations/a1/versions/diff": { active: { ...pendingDiff.active, source: "return 1;" }, pending: null },
+        "/api/auth/settings": { instance_url: "https://nexul.example.com" },
+      },
+      "/automations/a1/versions",
+    );
+
+    expect(await screen.findByText("return 1;")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
+    expect(await screen.findByText(commandLine("bunx nexul pull a1"))).toBeInTheDocument();
+  });
+
+  it("pulls the pending version when it kept a source, so a push builds on it", async () => {
+    renderPage(
+      {
+        ...baseEndpoints,
+        ...versionBodies,
+        "/api/automations/a1": { ...automation, kind: AutomationKind.Custom },
+        "/api/automations/a1/versions/diff": { active: pendingDiff.active, pending: { ...pendingDiff.pending, source: "return 2;" } },
+        "/api/auth/settings": { instance_url: "https://nexul.example.com" },
+      },
+      "/automations/a1/versions",
+    );
+
+    expect(await screen.findByText(commandLine("bunx nexul pull a1 v2"))).toBeInTheDocument();
+  });
+
+  it("offers no pull when no version kept its source", async () => {
+    renderPage(
+      {
+        ...baseEndpoints,
+        ...versionBodies,
+        "/api/automations/a1": { ...automation, kind: AutomationKind.Custom },
+        "/api/automations/a1/versions/diff": { active: pendingDiff.active, pending: null },
+        "/api/auth/settings": { instance_url: "https://nexul.example.com" },
+      },
+      "/automations/a1/versions",
+    );
+
+    expect(await screen.findByText(/No version kept its source/)).toBeInTheDocument();
+    expect(screen.queryByText(/nexul pull/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a shipped default's Delete off, since it comes back at the next start", async () => {
+    renderPage(baseEndpoints, "/automations/a1/settings");
+
+    expect(await screen.findByRole("button", { name: /delete automation/i })).toBeDisabled();
   });
 
   it("opens the version history from the header", async () => {
@@ -138,24 +200,13 @@ describe("AutomationPage", () => {
     expect(await screen.findByText(/One version, saved/)).toBeInTheDocument();
   });
 
-  it("opens the version history from the Versions tab", async () => {
-    const user = userEvent.setup();
-    const only = { id: "v1", version: 1, created_at: "2026-08-01T00:00:00Z", name: "", editor_ids: [], via: "Nexul", current: true, status: "active" };
-    renderPage({ ...baseEndpoints, "/api/automations/a1/history": { versions: [only], changes: [] } }, "/automations/a1/versions");
-
-    await screen.findByText(/Older versions and Roll back/);
-    await user.click(within(screen.getByRole("tabpanel")).getByRole("button", { name: "History" }));
-
-    expect(await screen.findByText(/One version, saved/)).toBeInTheDocument();
-  });
-
-  it("says so on the Versions tab when nothing is pending", async () => {
+  it("says so on the Versions tab when nothing was pushed", async () => {
     const user = userEvent.setup();
     renderPage(baseEndpoints);
 
     await screen.findByText("Ticket finished");
     await user.click(screen.getByRole("tab", { name: "Versions" }));
 
-    expect(await screen.findByText("No pending version")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing pushed yet.")).toBeInTheDocument();
   });
 });

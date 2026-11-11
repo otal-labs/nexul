@@ -141,6 +141,6 @@ describe("AutomationConfigForm", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("This automation has no settings.")).toBeInTheDocument();
+    expect(screen.getByText("Its code declares none.")).toBeInTheDocument();
   });
 });

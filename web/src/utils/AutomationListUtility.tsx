@@ -50,10 +50,10 @@ export const automationGroups = (items: readonly AutomationListItem[]): Automati
 export const automationLastRunText = (automation: Automation): string =>
   automation.last_run ? formatRelativeTime(automation.last_run.started_at) : "never ran";
 
-// The meta column's second part: the last seven days' runs, or null when there is nothing to add to "never ran".
+// The meta column's second part: the last seven days' runs, or null when none ran in them.
 export const automationWeekText = (automation: Automation): string | null => {
   const runs = automation.runs_7d;
-  if (!runs || runs.total === 0) return automation.last_run ? "no runs · 7d" : null;
-  if (runs.failed === 0) return `${runs.total} ${runs.total === 1 ? "run" : "runs"} · 7d`;
-  return `${runs.failed} of ${runs.total} failed · 7d`;
+  if (!runs || runs.total === 0) return null;
+  if (runs.failed === 0) return `${runs.total} ${runs.total === 1 ? "run" : "runs"}`;
+  return `${runs.failed}/${runs.total} failed`;
 };

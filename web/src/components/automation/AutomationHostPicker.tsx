@@ -6,6 +6,7 @@ import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
 import { useFetchMachines } from "@/hooks/RunnerHooks";
 import type { Automation } from "@/models/Automation";
 import { canPlaceOn, InstanceHostName } from "@/models/AutomationHost";
+import { cn } from "@/lib/utils";
 
 interface AutomationHostPickerProps {
   automation: Automation;
@@ -27,18 +28,18 @@ export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) 
     : [];
 
   return (
-    <SettingsCard id="runs-on" title="Runs on" description="The automations host that runs this automation.">
+    <SettingsCard id="runs-on" title="Runs on">
       <Select
         value={automation.host_id ?? instanceValue}
         disabled={setHost.isPending || action.state !== "live"}
         onValueChange={(value) => setHost.mutate(value === instanceValue ? null : value)}
       >
-        <SelectTrigger aria-labelledby="runs-on-title" className="w-full font-mono sm:w-72">
+        <SelectTrigger aria-labelledby="runs-on-title" className={cn("w-full sm:w-72", automation.host_id && "font-mono")}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={instanceValue} className="font-mono">
-            instance (built in)
+          <SelectItem value={instanceValue}>
+            This instance
           </SelectItem>
           {others.map((host) => (
             <SelectItem key={host.id} value={host.id} disabled={!canPlaceOn(host, machines ?? [])} className="font-mono">

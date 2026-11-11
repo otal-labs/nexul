@@ -10,7 +10,6 @@ export interface SidebarNavEntry {
   // Absent for a page every member opens.
   area?: RouteArea;
   end?: boolean;
-  wip?: boolean;
 }
 
 // Sentence case in the sans, quieter than the rows: a label names the group, it is not a row to read.

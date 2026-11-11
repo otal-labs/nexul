@@ -31,10 +31,11 @@ const baseAutomation = (overrides: Partial<Automation> = {}): Automation => ({
 
 describe("parseConfigSchema", () => {
   it("returns no fields for an empty or malformed schema", () => {
-    expect(parseConfigSchema({})).toEqual({ fields: [] });
-    expect(parseConfigSchema(null)).toEqual({ fields: [] });
-    expect(parseConfigSchema("not an object")).toEqual({ fields: [] });
-    expect(parseConfigSchema({ properties: "not an object" })).toEqual({ fields: [] });
+    expect(parseConfigSchema({})).toEqual({ fields: [], announced: false });
+    expect(parseConfigSchema(null)).toEqual({ fields: [], announced: false });
+    expect(parseConfigSchema("not an object")).toEqual({ fields: [], announced: false });
+    expect(parseConfigSchema({ properties: "not an object" })).toEqual({ fields: [], announced: false });
+    expect(parseConfigSchema({ type: "object", properties: {} })).toEqual({ fields: [], announced: true });
   });
 
   it("parses the SDK's JSON Schema wire shape", () => {

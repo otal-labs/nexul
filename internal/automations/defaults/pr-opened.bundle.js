@@ -26,6 +26,21 @@ function defineAutomation(opts) {
   return new Automation(opts);
 }
 
+// automations/defaults/board-statuses.ts
+function statusFields(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  return raw.flatMap((s) => {
+    const { id, kind, position } = s ?? {};
+    return typeof id === "string" && typeof kind === "string" && typeof position === "number" ? [{ id, kind, position }] : [];
+  });
+}
+async function firstStatusOfKind(ctx, projectId, kind) {
+  const raw = await ctx.api.request("GET", `/api/statuses?project_id=${encodeURIComponent(projectId)}`);
+  const matches = statusFields(raw).filter((s) => s.kind === kind);
+  return matches.sort((a, b) => a.position - b.position)[0]?.id;
+}
+
 // automations/defaults/pr-opened/index.ts
 function linkedTicketIDs(pr) {
   const ids = pr?.linked_ticket_ids;
@@ -33,12 +48,13 @@ function linkedTicketIDs(pr) {
     return [];
   return ids.filter((id) => typeof id === "string");
 }
+function projectID(ticket) {
+  const id = ticket?.project_id;
+  return typeof id === "string" && id ? id : undefined;
+}
 var automation = defineAutomation({
   name: "PR opened",
-  description: "Moves a ticket to its workspace's in-review status when a linked pull request opens.",
-  config: {
-    inReviewStatusId: { type: "status", label: "In-review status", required: true }
-  }
+  description: "Moves each linked ticket to its project's In review status when a pull request opens."
 });
 automation.on("git.pr_opened", async (payload, ctx) => {
   const ticketIds = linkedTicketIDs(payload.pr);
@@ -46,16 +62,27 @@ automation.on("git.pr_opened", async (payload, ctx) => {
     ctx.log("no linked tickets on this PR, nothing to move");
     return true;
   }
-  const statusId = ctx.config.inReviewStatusId;
-  if (!statusId) {
-    ctx.log("skipped: no in-review status configured", { ticketIds });
-    return false;
-  }
+  let handled = true;
+  const reviewStatusByProject = new Map;
   for (const id of ticketIds) {
+    const projectId = projectID(await ctx.api.request("GET", `/api/tickets/${id}`));
+    if (!projectId) {
+      ctx.log("skipped: ticket has no project id", { ticketId: id });
+      handled = false;
+      continue;
+    }
+    if (!reviewStatusByProject.has(projectId)) {
+      reviewStatusByProject.set(projectId, await firstStatusOfKind(ctx, projectId, "review"));
+    }
+    const statusId = reviewStatusByProject.get(projectId);
+    if (!statusId) {
+      ctx.log("no review status in the ticket's project, nothing to move", { ticketId: id, projectId });
+      continue;
+    }
     await ctx.api.request("PATCH", `/api/tickets/${id}/status`, { status: statusId });
+    ctx.log("moved ticket to its review status", { ticketId: id, statusId });
   }
-  ctx.log("moved linked tickets to in-review status", { ticketIds, statusId });
-  return true;
+  return handled;
 });
 var pr_opened_default = automation;
 export {

@@ -71,7 +71,7 @@ func TestVersionsService_History_CreditsASeededVersionToNexulNotAPerson(t *testi
 	autoRepo := newFakeRepo()
 	seedAutomation(t, autoRepo, "a1")
 	s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
-	_, err := s.SeedVersion(context.Background(), "a1", "code", "shipped")
+	_, err := s.SeedVersion(context.Background(), "a1", "code", "", "shipped")
 	require.NoError(t, err)
 
 	got, err := s.History(context.Background(), "owner", "a1")

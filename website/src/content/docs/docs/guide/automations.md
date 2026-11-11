@@ -11,18 +11,18 @@ Each automation belongs to one workspace. It hears that workspace's events, plus
 
 ## Which ones need you
 
-The top of the **Automations** page counts the automations that are on, failing and needing attention. An automation is **failing** when it is on and its last run failed or crashed; its row shows that run's error in place of its description. It **needs attention** when it is on and something waits on a person: a required setting is empty, its host is offline, its token was revoked, or a pushed version waits to be merged. The row names the most urgent of these. **All**, **Failing**, **Needs attention** and **Off** above the list narrow it to one kind, and the list keeps the most urgent first: failing, then needs attention, then on, then off. Each row also shows when the automation last ran and how many of its runs in the last seven days failed; hover its mark for the last run's error in full.
+An automation is **failing** when it is on and its last run failed or crashed; its row shows that run's error in place of its description. It **needs attention** when it is on and something waits on a person: a required setting is empty, its host is offline, its token was revoked, or a pushed version waits to be merged. The row names the most urgent of these. **All**, **Failing**, **Needs attention** and **Off** above the list count each kind and narrow the list to it, and the list keeps the most urgent first: failing, then needs attention, then on, then off. Each row also shows when the automation last ran and how many of its runs in the last seven days failed; hover its mark for the last run's error in full.
 
-An automation's own page names the same problems under its title, each one a link to where it is fixed: a failed run to **Runs**, empty settings and a revoked token to **Settings**, a waiting version to **Versions**, an offline host to the **Hosts** tab. **Runs** lists the newest 50 runs by day, and **Failures** there lists the newest 50 failed or crashed ones; runs are kept 30 days. **Settings** holds its configuration, the host it runs on, its token and **Delete automation**.
+An automation's own page names the same problems under its title, each one a link to where it is fixed: a failed run to **Runs**, empty settings and a revoked token to **Settings**, a waiting version to **Versions**, an offline host to the **Hosts** tab. **Runs** lists the newest 50 runs by day, and **Failures** there lists the newest 50 failed or crashed ones; runs are kept 30 days. **Settings** holds its configuration, the host it runs on, its token and **Delete automation**; a shipped default can't be deleted, because it comes back at the next start, so switch it off instead.
 
 ## The defaults
 
 Every workspace comes with its own copy of three. The first two are switched on:
 
-- **Ticket finished** moves a ticket to a status you choose once all its pull requests have merged.
-- **PR opened** moves a ticket to a status you choose when a linked pull request opens.
+- **Ticket finished** moves a ticket to its project's Done status once all its pull requests have merged.
+- **PR opened** moves each linked ticket to its project's In review status when a pull request opens.
 
-Open each one's **Settings** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
+They need no setup. Each one picks the first status of that kind in the ticket's own project, so projects with different boards all work. A project with no status of that kind is left alone, and the run's log says so on its **Runs** tab.
 
 The third, **Crash intake**, starts switched off. It turns crash reports a [bot](/docs/guide/bots/) posts into bug tickets, described below.
 
@@ -30,7 +30,7 @@ The third, **Crash intake**, starts switched off. It turns crash reports a [bot]
 
 Your app reports a crash by posting it through a bot's URL in the crash-report/1 format: the line `Crash fingerprint: <hash>` as the message, and one embed whose fields are Contract (`crash-report/1`), Fingerprint, Kind, Process type, App version, Build commit, OS, Arch, First seen, Signature, Stack, Truncated, and optionally Suppressed duplicates. Any other post is ignored.
 
-Switch it on, then on its **Settings** tab pick the channel the bot posts in and the project its tickets go to. Until you do, it skips every bot post and logs why. The bug type (`bug`) and the high-priority label (`high-priority`) can be changed there too. For each report, it looks for a ticket in that project whose body has the report's fingerprint line:
+Open its **Settings** tab and pick the channel the bot posts in and the project its tickets go to, then switch it on. The bug type (`bug`) and the high-priority label (`high-priority`) can be changed there too. For each report, it looks for a ticket in that project whose body has the report's fingerprint line:
 
 - **None:** it files a bug in the first column, with the fingerprint line, the kind, the first version, the OS, the signature and the stack. Its origin is marked unknown.
 - **An open ticket:** it keeps one **Seen again** note on it, updated in place with the number of reports, the versions and when it was last seen. It never files a second ticket.
@@ -67,10 +67,10 @@ The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisio
    Return `true` for success. A thrown error, a timeout (30 seconds by default), or any other value counts as a failed run. `payload` is typed from the event catalog, and a list in it is always an array, `[]` when empty. `ctx` gives you `ctx.api`, a typed client acting with the automation's token, plus `ctx.config`, `ctx.secrets`, `ctx.log`, and `ctx.runPlay` ([Start a play](#start-a-play)).
 4. Run `bunx nexul dev`, pick a topic, and it fires a sample event at your handler. You see the outcome, the logs, and every API call it would have made. Nothing reaches your instance.
 5. Run `bunx nexul push <automation-id> "message"` to upload the code as a pending version.
-6. On the automation's **Versions** tab, read the diff against the active code and press **Merge**. The automation restarts on the new code.
+6. On the automation's **Versions** tab, read the new code against the active one and press **Merge**. The automation restarts on the new code.
 7. A new automation starts switched off. Switch it on at the top of its page, and its next event runs your code; each run shows on the **Runs** tab with its logs.
 
-Nexul keeps your `src/index.ts` beside the bundle it runs, so the **Versions** diff compares what you wrote, and `bunx nexul pull <automation-id>` writes the active version's `src/index.ts` back. Other files you import go into the bundle only, and a version pushed before an SDK that keeps sources (0.1.2) has nothing to pull; its diff shows the bundled code. Run these commands with `bunx` from the project folder: a bare `nexul` is the command that installs and runs your instance, not the SDK's.
+Nexul keeps your `src/index.ts` beside the bundle it runs, so the **Versions** diff compares what you wrote, and `bunx nexul pull <automation-id>` writes the active version's `src/index.ts` back; `bunx nexul pull <automation-id> <version-id>` writes that version instead. While a version is pending and kept its source, the **Versions** tab names it, so your next push builds on it rather than replacing it with an edit of the active code. Other files you import go into the bundle only, and a version pushed before an SDK that keeps sources (0.1.2) has nothing to pull; its diff shows the bundled code. Run these commands with `bunx` from the project folder: a bare `nexul` is the command that installs and runs your instance, not the SDK's.
 
 For unit tests, `createMockContext` from `@otal-labs/nexul-sdk/testing` gives you the same recording context `nexul dev` uses. It records `ctx.runPlay` as the `POST /api/plays/queue` call it makes and answers with a queued run, unless your test scripts another answer under that key.
 
@@ -78,7 +78,7 @@ Two events mark a moment rather than one change. `ticket.unblocked` fires when a
 
 ## History
 
-**History** at the top of an automation's page lists every version pushed to it, newest first, for anyone who can read the automation. Each version is shown as a diff against the one before it: removed lines in red with a `-`, added lines in green with a `+`, both versions' line numbers beside them, and the changed words of an edited line highlighted. Unchanged code folds down to three lines around each change; press a fold to show the lines it hides. The push message is the version's name. The active version reads **Current** and a waiting push reads **Pending**. Select the pending version and press **Merge** to make it the active code, or select an older one and press **Rollback** (it asks first); the automation restarts on that code. Versions are never deleted, so a rollback only moves the active mark. The **Versions** tab keeps the pending version's diff against the active code.
+**History** at the top of an automation's page lists every version pushed to it, newest first, for anyone who can read the automation. Each version is shown as a diff against the one before it: removed lines in red with a `-`, added lines in green with a `+`, both versions' line numbers beside them, and the changed words of an edited line highlighted. Unchanged code folds down to three lines around each change; press a fold to show the lines it hides. The push message is the version's name. The active version reads **Current** and a waiting push reads **Pending**. Select the pending version and press **Merge** to make it the active code, or select an older one and press **Roll back to #N** (it asks first); the automation restarts on that code. Versions are never deleted, so a rollback only moves the active mark. The **Versions** tab shows the pending version's diff against the active code, the active code in full, and for your own automations the commands that change it.
 
 ## When a service goes down
 
@@ -110,7 +110,7 @@ Code you already pushed keeps the name it was written with. Renaming a play warn
 
 ## Versions
 
-Every push is kept as a version with its author, time, and message, and lands pending: a push never changes running code by itself. **Rollback** on an older version makes it active again.
+Every push is kept as a version with its author, time, and message, and lands pending: a push never changes running code by itself. **Roll back to #N** on an older version makes it active again.
 
 ## Secrets
 

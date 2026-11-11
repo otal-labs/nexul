@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { commandLine } from "@/test/commandLine";
 
 const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
 
@@ -72,7 +73,7 @@ describe("NewAutomationDialog", () => {
       workspace_id: "ws-1",
     });
     expect(await screen.findByText("Slack notifier created")).toBeInTheDocument();
-    expect(screen.getByText(/bunx nexul init --url .* --id a1/)).toBeInTheDocument();
+    expect(screen.getByText(commandLine(/bunx nexul init --url .* --id a1$/))).toBeInTheDocument();
     expect(screen.queryByText(/dep_secret_abc123/)).not.toBeInTheDocument();
   });
 

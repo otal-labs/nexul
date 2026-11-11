@@ -54,6 +54,20 @@ func (q *Queries) DeletePendingAutomationVersion(ctx context.Context, arg Delete
 	return err
 }
 
+const fillAutomationVersionSource = `-- name: FillAutomationVersionSource :exec
+UPDATE automation_versions SET source = ? WHERE id = ? AND source = ''
+`
+
+type FillAutomationVersionSourceParams struct {
+	Source string
+	ID     string
+}
+
+func (q *Queries) FillAutomationVersionSource(ctx context.Context, arg FillAutomationVersionSourceParams) error {
+	_, err := q.db.ExecContext(ctx, fillAutomationVersionSource, arg.Source, arg.ID)
+	return err
+}
+
 const getAutomationVersion = `-- name: GetAutomationVersion :one
 SELECT id, automation_id, sequence, code, pusher_id, message, status, created_at, source FROM automation_versions WHERE id = ? AND automation_id = ?
 `

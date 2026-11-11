@@ -47,6 +47,7 @@ const rest = (url: string) => {
   if (url === "/api/automation-secrets") return [{ name: "API_KEY", created_at: "", updated_at: "" }];
   if (url === "/api/automation-hosts") return [{ id: "h1", name: "builder", machine: "m", version: "1", connected: true, last_seen: "", managers: [] }];
   if (url === "/api/team") return { people: [] };
+  if (url.startsWith("/api/automations/a1/versions/")) return { version: 1, body: "return true;" };
   return [];
 };
 
@@ -75,8 +76,8 @@ const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]
   },
   {
     name: "the pending version",
-    ui: <AutomationVersionDiff automationId="a1" diff={{ active: null, pending: version }} />,
-    controls: [{ role: "button", name: "Merge", reason: reason("merge automation versions") }],
+    ui: <AutomationVersionDiff automationId="a1" pending={version} active={null} />,
+    controls: [{ role: "button", name: /^Merge/, reason: reason("merge automation versions") }],
   },
   {
     name: "the history",
@@ -88,7 +89,7 @@ const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]
         </DialogContent>
       </Dialog>
     ),
-    controls: [{ role: "button", name: /Rollback/, reason: reason("roll back automations") }],
+    controls: [{ role: "button", name: /Roll back/, reason: reason("roll back automations") }],
   },
   {
     name: "the hosts",

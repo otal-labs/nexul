@@ -14,18 +14,20 @@ const chips: Record<AutomationAttention, { icon: LucideIcon; label: (automation:
 interface AutomationAttentionChipProps {
   automation: Automation;
   attention: AutomationAttention | null;
+  /** Muted while a louder state (a failing last run) already leads the row. */
+  muted?: boolean;
   className?: string;
 }
 
-// Amber only while the automation is on, so the amber chips and the Needs attention count name the same set.
-export const AutomationAttentionChip = ({ automation, attention, className }: AutomationAttentionChipProps) => {
+// Amber only while the row is in Needs attention, so the amber chips and that count name the same set.
+export const AutomationAttentionChip = ({ automation, attention, muted = false, className }: AutomationAttentionChipProps) => {
   if (!attention) return null;
   const chip = chips[attention];
   return (
     <NoFillBadge
       icon={chip.icon}
       iconClassName="self-center"
-      color={automation.enabled ? "text-warning" : "text-muted-foreground"}
+      color={automation.enabled && !muted ? "text-warning" : "text-muted-foreground"}
       className={cn("shrink-0 items-baseline leading-5 whitespace-nowrap", chip.mono && "font-mono", className)}
     >
       {chip.label(automation)}

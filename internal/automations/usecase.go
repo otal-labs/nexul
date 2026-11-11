@@ -355,8 +355,13 @@ func (s *Service) UpdateConfigValues(ctx context.Context, actorID, id string, va
 
 // Delete removes an automation permanently, revoking its token so it can never authenticate again.
 func (s *Service) Delete(ctx context.Context, actorID, id string) error {
-	if _, err := s.getChecked(ctx, actorID, id, permissions.AutomationsDelete); err != nil {
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsDelete)
+	if err != nil {
 		return err
+	}
+	// The seeder recreates a missing default at the next start, with its settings, runs and versions gone.
+	if a.Kind == KindDefault {
+		return fmt.Errorf("%w: a shipped default comes back at the next start; switch it off instead", apperrs.ErrConflict)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete automation %s: %w", id, err)

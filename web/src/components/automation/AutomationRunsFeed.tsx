@@ -13,8 +13,9 @@ import { automationRunDays, automationRunsLine } from "@/utils/AutomationRunUtil
 type Show = "all" | "failures";
 
 // What the first run waits for, from the events the automation's code declares.
-const noRunsYet = (subscriptions: readonly string[]) => {
-  if (subscriptions.length === 0) return "No runs yet. It reacts to no events yet.";
+const noRunsYet = (subscriptions: readonly string[], enabled: boolean) => {
+  if (!enabled) return "No runs yet. It's off.";
+  if (subscriptions.length === 0) return "No runs yet.";
   if (subscriptions.length === 1) return `No runs yet. It runs when ${subscriptions[0]} arrives.`;
   return `No runs yet. It runs when one of its ${subscriptions.length} events arrives.`;
 };
@@ -40,7 +41,7 @@ export const AutomationRunsFeed = ({ automation }: AutomationRunsFeedProps) => {
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {runs && runs.length === 0 && !failedOnly && <EmptyRow className="border-y border-border">{noRunsYet(automation.subscriptions)}</EmptyRow>}
+      {runs && runs.length === 0 && !failedOnly && <EmptyRow className="border-y border-border">{noRunsYet(automation.subscriptions, automation.enabled)}</EmptyRow>}
       {runs && runs.length === 0 && failedOnly && <EmptyRow className="border-y border-border">No failures in the last 30 days.</EmptyRow>}
       {runs && runs.length > 0 && (
         <div>

@@ -1300,20 +1300,22 @@ no dismiss; the row goes once a service builds from it.
 Permission rows. Wherever access is set (a role, an automation's scopes) the
 domains sit in one list led by an "Every domain" or "Every area" row on a
 `bg-muted/40` strip that sets them all and selects no rung once the rows
-differ. Each domain row is the name on the left, its extra verbs (Run, Clone,
-Thread) as small outline toggles, then the level as a segmented strip of None,
-Read, Write, Delete in four fixed 56px slots, None first, so each level holds
-one x on every row and a shorter ladder leaves its last slots empty. Every rung
-below the chosen one takes `brand` at 10% with `foreground` text, so it reads
-as "this much access", and the chosen rung is the one selection state in both
-modes: a 1px `brand` hairline, the 10% wash and a `brand` label. The role
+differ. Each domain row is the name on the left, muted at None, with the
+level as a segmented strip of None, Read, Write, Delete in four fixed 56px
+slots, None first, so each level holds one x on every row and a shorter ladder
+leaves its last slots empty. Its extra verbs (Run, Clone, Thread) are
+checkboxes on a second line under the name, hung on a hairline rail and
+disabled until it holds Read (See on plays, whose first rung is named so), so
+they never squeeze the name. Every rung below the chosen one takes `brand` at
+10% with `foreground` text, so it reads as "this much access", and the chosen
+rung is a 1px `brand` hairline, the 10% wash and a `brand` label; a chosen
+None is an `input` hairline with ink text, because no access is not a
+selection, and an ember None on every row of a fresh list ran the accent down
+the whole dialog. One row (`PermissionDomainRow`) serves both lists. The role
 editor (Role dialog, below) puts its lists on one tab per catalog area, its
-rows straight on the dialog with hairlines (no box), each tab led by its own
-bulk row, and sets the extra verbs as checkboxes on a second line under the
-area's name, hung on a hairline rail and disabled until it holds Read (See on
-plays, whose first rung is named so), and leads each tab with its yes-or-no
-permissions as switch rows (the name over a muted line), which the bulk row
-never sets. A viewer who can't change a list sees it disabled.
+rows straight on the dialog with hairlines (no box). Each tab opens with its
+own bulk row, then its yes-or-no permissions as switch rows (the name over a
+muted line), which the bulk row never sets. A viewer who can't change a list sees it disabled.
 `PermissionLevels` and `PermissionLevelControl` in `web/src/components/access/`
 are the reference.
 
@@ -1852,8 +1854,7 @@ their avatar, a group with the people icon, and a private channel's lock
 takes the place of its `#` or speaker. A row with unread messages sets its
 name in medium `foreground` and trails the count as an `UnreadBadge`, mono
 `tabular-nums` in `muted-foreground` with no disc (on the rail a dot
-above the icon's corner over a canvas cut-out, the count in its tooltip). The Automations "WIP" tag
-is a microheader in `muted-foreground`, no hue. Rows are `nav-row`s: muted at rest, the
+above the icon's corner over a canvas cut-out, the count in its tooltip). Rows are `nav-row`s: muted at rest, the
 `bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
 full-width row scaling from its centre shifts its text). The scroll fades
 out over its last 40px under the account row (`scroll-edge`) instead of

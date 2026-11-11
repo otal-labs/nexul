@@ -64,9 +64,9 @@ describe("automationGroups", () => {
 describe("automationLastRunText and automationWeekText", () => {
   it.each([
     { runs_7d: undefined, last_run: null, want: ["never ran", null] },
-    { runs_7d: { total: 0, failed: 0 }, last_run: failedRun, want: ["just now", "no runs · 7d"] },
-    { runs_7d: { total: 1, failed: 0 }, last_run: failedRun, want: ["just now", "1 run · 7d"] },
-    { runs_7d: { total: 38, failed: 7 }, last_run: failedRun, want: ["just now", "7 of 38 failed · 7d"] },
+    { runs_7d: { total: 0, failed: 0 }, last_run: failedRun, want: ["just now", null] },
+    { runs_7d: { total: 1, failed: 0 }, last_run: failedRun, want: ["just now", "1 run"] },
+    { runs_7d: { total: 38, failed: 7 }, last_run: failedRun, want: ["just now", "7/38 failed"] },
   ])("$want", ({ runs_7d, last_run, want }) => {
     const a = automation("x", { last_run, ...(runs_7d ? { runs_7d } : {}) });
     expect([automationLastRunText(a), automationWeekText(a)]).toEqual(want);

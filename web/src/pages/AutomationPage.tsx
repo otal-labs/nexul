@@ -11,6 +11,7 @@ import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { AutomationKind } from "@/enums/Automation";
 import { useFetchAutomation } from "@/hooks/AutomationHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -45,11 +46,11 @@ export const AutomationPage = () => {
               <AutomationVersionsFeed automation={automation} />
             </PageTabsContent>
             <PageTabsContent value="settings">
-              <AutomationConfigForm automation={automation} />
+              <AutomationConfigForm key={JSON.stringify(automation.config_schema)} automation={automation} />
               <AutomationHostPicker automation={automation} />
               <AutomationTokenSection automation={automation} />
               {canDelete && (
-                <AutomationDeleteButton automationId={automation.id} onDeleted={() => navigate(wsPath("/automations"))} />
+                <AutomationDeleteButton automationId={automation.id} shipped={automation.kind === AutomationKind.Default} onDeleted={() => navigate(wsPath("/automations"))} />
               )}
             </PageTabsContent>
           </PageTabs>

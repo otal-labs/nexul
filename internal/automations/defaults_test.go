@@ -21,6 +21,8 @@ func TestDefaultDefinitions(t *testing.T) {
 		assert.NotEmpty(t, def.Code, "bundle must be embedded, run automations/defaults/build.ts if empty")
 		assert.Contains(t, def.Code, "export {")
 		assert.NotEmpty(t, def.Scopes)
+		assert.NotEmpty(t, def.Subscriptions, "surface JSON must be embedded, run automations/defaults/build.ts")
+		assert.NotEmpty(t, def.ConfigSchema)
 		assert.Equal(t, def.ID != "default-crash-intake", def.Enabled, "the board pair ships on, crash intake off until configured")
 	}
 }

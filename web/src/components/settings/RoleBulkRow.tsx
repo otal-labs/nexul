@@ -12,10 +12,7 @@ export const RoleBulkRow = ({ label, areas }: RoleBulkRowProps) => {
   const { actions, setActions } = useRoleDraft();
   return (
     <li className="flex items-center gap-3 bg-muted/40 px-6 py-2 dark:bg-muted/80">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{label}</span>
-        <span className="block truncate text-xs text-muted-foreground">Sets every row below at once</span>
-      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
       <PermissionLevelControl
         label={`${label} access`}
         levelCount={Math.max(0, ...areas.map((domain) => domain.levels.length))}

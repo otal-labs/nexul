@@ -13,7 +13,7 @@ interface SidebarNavLinkProps {
   children?: ReactNode;
 }
 
-// children trail the label (a WIP tag, a count) and hide with it on the collapsed rail.
+// children trail the label (a count) and hide with it on the collapsed rail.
 export const SidebarNavLink = ({ to, label, icon: Icon, collapsed, end = false, children }: SidebarNavLinkProps) => (
   <RailTooltip label={label} collapsed={collapsed}>
     <NavLink to={to} end={end} aria-label={collapsed ? label : undefined} className={navLinkClass}>

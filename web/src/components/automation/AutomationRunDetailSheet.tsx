@@ -26,18 +26,17 @@ export const AutomationRunDetailSheet = ({ automationId, runId, onOpenChange }: 
       <SheetContent className="w-full gap-2 overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="font-mono text-base break-all">{run?.event_topic ?? "Run"}</SheetTitle>
-          <SheetDescription className="font-mono text-xs break-all">{runId}</SheetDescription>
+          <SheetDescription className="flex flex-wrap items-center gap-3 text-sm">
+            {run && <AutomationRunOutcomeBadge outcome={run.outcome} />}
+            {run && <span className="font-mono text-xs tabular-nums">{formatDurationMs(run.duration_ms)}</span>}
+            {run && <span className="font-mono text-xs">{formatVersionTime(run.started_at)}</span>}
+          </SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-4">
           {isPending && <LoadingDisplay />}
           {error && <ErrorDisplay error={error} />}
           {run && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <AutomationRunOutcomeBadge outcome={run.outcome} />
-                <span className="font-mono text-xs text-muted-foreground tabular-nums">{formatDurationMs(run.duration_ms)}</span>
-                <span className="font-mono text-xs text-muted-foreground">{formatVersionTime(run.started_at)}</span>
-              </div>
               {run.error && (
                 <p className="rounded-r-md border-l-2 border-destructive bg-destructive/5 px-3 py-2 font-mono text-xs whitespace-pre-wrap break-words">{run.error}</p>
               )}

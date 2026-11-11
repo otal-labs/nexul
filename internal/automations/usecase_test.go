@@ -204,6 +204,20 @@ func TestService_Delete(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 }
 
+func TestService_Delete_RefusesAShippedDefault(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, allowAll("owner"))
+	require.NoError(t, repo.Create(context.Background(), &Automation{
+		ID: "default-ticket-finished", WorkspaceID: "ws-1", Name: "Ticket finished", Kind: KindDefault, Scopes: []string{"tickets:write"},
+		TokenHash: "h", CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}))
+
+	err := s.Delete(context.Background(), "owner", "default-ticket-finished")
+	assert.ErrorIs(t, err, apperrs.ErrConflict)
+	_, err = s.Get(context.Background(), "owner", "default-ticket-finished")
+	assert.NoError(t, err)
+}
+
 func TestService_TokenLifecycle(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))

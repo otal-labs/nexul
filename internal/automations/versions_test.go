@@ -218,7 +218,7 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		seedAutomation(t, autoRepo, "default-1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
 
-		v, err := s.SeedVersion(context.Background(), "default-1", "code v1", "seed")
+		v, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
 		require.NoError(t, err)
 		require.NotNil(t, v)
 		assert.Equal(t, VersionActive, v.Status)
@@ -230,9 +230,9 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		seedAutomation(t, autoRepo, "default-1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
 
-		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "seed")
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
 		require.NoError(t, err)
-		v, err := s.SeedVersion(context.Background(), "default-1", "code v1", "seed")
+		v, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
 		require.NoError(t, err)
 		assert.Nil(t, v, "unchanged code lands nothing")
 
@@ -241,14 +241,49 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		assert.Len(t, list, 1, "no duplicate version created")
 	})
 
+	t.Run("unchanged code fills the source an older seed lacked, and lands nothing", func(t *testing.T) {
+		autoRepo := newFakeRepo()
+		seedAutomation(t, autoRepo, "default-1")
+		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
+
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
+		require.NoError(t, err)
+		v, err := s.SeedVersion(context.Background(), "default-1", "code v1", "source v1", "seed")
+		require.NoError(t, err)
+		assert.Nil(t, v)
+
+		activeVersion, pending, err := s.Diff(context.Background(), "owner", "default-1")
+		require.NoError(t, err)
+		assert.Nil(t, pending)
+		assert.Equal(t, "source v1", activeVersion.Source)
+	})
+
+	t.Run("seeding the same upgrade again keeps its pending version and number", func(t *testing.T) {
+		autoRepo := newFakeRepo()
+		seedAutomation(t, autoRepo, "default-1")
+		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
+
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
+		require.NoError(t, err)
+		first, err := s.SeedVersion(context.Background(), "default-1", "code v2", "src v2", "upgrade")
+		require.NoError(t, err)
+		again, err := s.SeedVersion(context.Background(), "default-1", "code v2", "src v2", "upgrade")
+		require.NoError(t, err)
+		assert.Nil(t, again)
+
+		_, pending, err := s.Diff(context.Background(), "owner", "default-1")
+		require.NoError(t, err)
+		assert.Equal(t, first.Sequence, pending.Sequence)
+	})
+
 	t.Run("an upgrade with changed code lands as pending, never silently active", func(t *testing.T) {
 		autoRepo := newFakeRepo()
 		seedAutomation(t, autoRepo, "default-1")
 		s := newTestVersionsService(autoRepo, newFakeVersionsRepo(), allowAll("owner"))
 
-		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "seed")
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
 		require.NoError(t, err)
-		v2, err := s.SeedVersion(context.Background(), "default-1", "code v2", "upgrade")
+		v2, err := s.SeedVersion(context.Background(), "default-1", "code v2", "", "upgrade")
 		require.NoError(t, err)
 		require.NotNil(t, v2)
 		assert.Equal(t, VersionPending, v2.Status)
@@ -267,8 +302,28 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		repo := newErroringVersionsRepo()
 		repo.activeErr = errBoom
 		s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-		_, err := s.SeedVersion(context.Background(), "default-1", "code", "seed")
+		_, err := s.SeedVersion(context.Background(), "default-1", "code", "", "seed")
 		require.ErrorIs(t, err, errBoom)
+	})
+
+	t.Run("a failed pending lookup on an upgrade is returned, and the pending version is left alone", func(t *testing.T) {
+		autoRepo := newFakeRepo()
+		seedAutomation(t, autoRepo, "default-1")
+		repo := newErroringVersionsRepo()
+		s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
+		require.NoError(t, err)
+		first, err := s.SeedVersion(context.Background(), "default-1", "code v2", "", "upgrade")
+		require.NoError(t, err)
+
+		repo.pendingErr = errBoom
+		_, err = s.SeedVersion(context.Background(), "default-1", "code v3", "", "upgrade")
+		require.ErrorIs(t, err, errBoom)
+
+		repo.pendingErr = nil
+		pending, err := repo.Pending(context.Background(), "default-1")
+		require.NoError(t, err)
+		assert.Equal(t, first.Sequence, pending.Sequence)
 	})
 
 	t.Run("InsertActive failing on the very first seed is wrapped", func(t *testing.T) {
@@ -277,7 +332,7 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		repo := newErroringVersionsRepo()
 		repo.insertActiveErr = errBoom
 		s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-		_, err := s.SeedVersion(context.Background(), "default-1", "code", "seed")
+		_, err := s.SeedVersion(context.Background(), "default-1", "code", "", "seed")
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -286,10 +341,10 @@ func TestVersionsService_SeedVersion(t *testing.T) {
 		seedAutomation(t, autoRepo, "default-1")
 		repo := newErroringVersionsRepo()
 		s := newTestVersionsService(autoRepo, repo, allowAll("owner"))
-		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "seed")
+		_, err := s.SeedVersion(context.Background(), "default-1", "code v1", "", "seed")
 		require.NoError(t, err)
 		repo.replacePendingErr = errBoom
-		_, err = s.SeedVersion(context.Background(), "default-1", "code v2", "upgrade")
+		_, err = s.SeedVersion(context.Background(), "default-1", "code v2", "", "upgrade")
 		require.ErrorIs(t, err, errBoom)
 	})
 }

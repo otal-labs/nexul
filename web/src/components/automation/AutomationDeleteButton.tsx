@@ -5,10 +5,12 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 
 interface AutomationDeleteButtonProps {
   automationId: string;
+  /** A shipped default comes back at the next start, so it is switched off, not deleted. */
+  shipped?: boolean;
   onDeleted: () => void;
 }
 
-export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDeleteButtonProps) => {
+export const AutomationDeleteButton = ({ automationId, shipped = false, onDeleted }: AutomationDeleteButtonProps) => {
   const deleteAutomation = useDeleteAutomation();
   const { open: confirm } = useConfirmationDialog();
 
@@ -28,13 +30,14 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
     <DangerZone>
       <DangerAction
         title="Delete automation"
-        consequence="Removes its config, token, runs, and versions for good. Its token stops working at once."
+        consequence={shipped ? "Shipped with Nexul, so it comes back at the next start. Switch it off instead." : "Removes its config, token, runs, and versions for good. Its token stops working at once."}
         action={
           <ActionButton
             permission="automations:delete"
             variant="outline"
             size="sm"
-            liveClassName={dangerButtonClass}
+            liveClassName={shipped ? "" : dangerButtonClass}
+            disabled={shipped}
             onClick={() => void onClick()}
             loading={deleteAutomation.isPending}
           >

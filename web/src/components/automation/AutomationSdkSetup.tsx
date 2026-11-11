@@ -1,27 +1,37 @@
+import { CommandBlock } from "@/components/pairing/CommandBlock";
 import { useFetchSettings } from "@/hooks/AuthHooks";
+import type { AutomationVersionDiff } from "@/models/AutomationVersion";
 
 interface AutomationSdkSetupProps {
   automationId: string;
+  /** The automation's pending and active versions; absent right after it is created. */
+  versions?: AutomationVersionDiff | undefined;
 }
 
-// The commands that take an empty folder to this automation's first pending version; init asks for a personal access token.
-export const AutomationSdkSetup = ({ automationId }: AutomationSdkSetupProps) => {
+// pull starts from the pending version's source so a push builds on it, else the active one's; init asks for a token.
+export const AutomationSdkSetup = ({ automationId, versions }: AutomationSdkSetupProps) => {
   const { data: settings } = useFetchSettings();
-  const instanceUrl = settings?.instance_url || "https://your-instance.example.com";
+  const instanceUrl = settings?.instance_url || window.location.origin;
+  const existing = !!(versions?.pending || versions?.active);
+  const from = [versions?.pending, versions?.active].find((version) => version?.source);
+  const lead = existing && !from ? "No version kept its source, so put your own copy in " : "Edit ";
+  const where = versions ? "here" : "on Versions";
+  const tail = existing ? ", then push and merge it here." : `, push, then merge it ${where} and switch it on.`;
+  const getLines = [
+    "bun add @otal-labs/nexul-sdk",
+    `bunx nexul init --url ${instanceUrl} --id ${automationId}`,
+    ...(from ? [`bunx nexul pull ${automationId}${from === versions?.pending ? ` ${from.id}` : ""}`] : []),
+  ];
 
   return (
-    <div className="terminal-window">
-      <div className="terminal-window__bar">
-        <span className="terminal-window__dot" aria-hidden />
-        <span className="terminal-window__dot" aria-hidden />
-        <span className="terminal-window__dot" aria-hidden />
-        <span className="terminal-window__title">Write its code, in an empty folder</span>
-      </div>
-      <pre className="terminal-window__body whitespace-pre-wrap break-all">
-        bun add @otal-labs/nexul-sdk
-        {"\n"}bunx nexul init --url {instanceUrl} --id {automationId}
-        {"\n"}bunx nexul push {automationId} &quot;First version&quot;
-      </pre>
+    <div className="space-y-3">
+      <CommandBlock shell="Get the code" lines={getLines} />
+      <p className="text-sm text-muted-foreground">
+        {lead}
+        <code className="font-mono text-xs">src/index.ts</code>
+        {tail}
+      </p>
+      <CommandBlock shell="Push" lines={[`bunx nexul push ${automationId} "${existing ? "<what changed>" : "First version"}"`]} />
     </div>
   );
 };

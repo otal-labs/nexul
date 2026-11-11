@@ -12,7 +12,7 @@ export const AutomationDescription = ({ description }: AutomationDescriptionProp
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-1.5 max-w-3xl text-sm text-muted-foreground">
-      <div ref={markClamped} className={cn("peer overflow-hidden data-clamped:title-clamp-fade", !open && "max-h-[2lh]")}>
+      <div ref={markClamped} className={cn("peer overflow-hidden", !open && "max-h-[2lh]")}>
         <p className="text-pretty">{description}</p>
       </div>
       <button

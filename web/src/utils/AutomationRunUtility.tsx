@@ -27,5 +27,38 @@ export const automationRunsLine = (runs: readonly AutomationRun[], failedOnly: b
   const shown = runs.length >= RUNS_PAGE ? `Newest ${runs.length}` : `${runs.length}`;
   if (failedOnly) return `${shown} ${runs.length === 1 ? "failure" : "failures"}`;
   const failed = runs.filter((run) => run.outcome !== AutomationRunOutcome.Success).length;
-  return `${shown} ${runs.length === 1 ? "run" : "runs"} · ${failed} failed`;
+  const total = `${shown} ${runs.length === 1 ? "run" : "runs"}`;
+  return failed === 0 ? total : `${total} · ${failed} failed`;
+};
+
+export interface AutomationLogLine {
+  time?: string | undefined;
+  level?: string | undefined;
+  message: string;
+  fields: string;
+}
+
+const textOf = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
+
+// The SDK writes one JSON object per line ({ts, level, message, ...fields}); anything else stays a raw message.
+export const automationLogLine = (raw: string): AutomationLogLine => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { message: raw, fields: "" };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { message: raw, fields: "" };
+  const { ts, level, message, msg, ...rest } = parsed as Record<string, unknown>;
+  const text = message ?? msg;
+  if (typeof text !== "string") return { message: raw, fields: "" };
+  const date = typeof ts === "string" ? new Date(ts) : undefined;
+  return {
+    time: date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString([], { hourCycle: "h23" }) : undefined,
+    level: typeof level === "string" ? level : undefined,
+    message: text,
+    fields: Object.entries(rest)
+      .map(([key, value]) => `${key}=${textOf(value)}`)
+      .join(" "),
+  };
 };

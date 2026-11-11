@@ -5,89 +5,82 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationVersionDiff } from "@/components/automation/AutomationVersionDiff";
 import { AutomationVersionStatus } from "@/enums/Automation";
-import type { AutomationVersionDiff as VersionDiffData } from "@/models/AutomationVersion";
+import type { AutomationVersion } from "@/models/AutomationVersion";
 
-const mocks = vi.hoisted(() => ({ post: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
-  api: { post: mocks.post },
+  api: { get: mocks.get, post: mocks.post },
   errorMessage: () => "error",
 }));
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const diffData = (): VersionDiffData => ({
-  active: {
-    id: "v1",
-    automation_id: "a1",
-    sequence: 1,
-    code: "return true;",
-    pusher_id: "u1",
-    status: AutomationVersionStatus.Active,
-    created_at: "2026-08-01T00:00:00Z",
-  },
-  pending: {
-    id: "v2",
-    automation_id: "a1",
-    sequence: 2,
-    code: "return false;",
-    pusher_id: "u1",
-    status: AutomationVersionStatus.Pending,
-    created_at: "2026-08-02T00:00:00Z",
-  },
+const version = (sequence: number, status: AutomationVersionStatus): AutomationVersion => ({
+  id: `v${sequence}`,
+  automation_id: "a1",
+  sequence,
+  code: "",
+  pusher_id: "u1",
+  message: `Change ${sequence}`,
+  status,
+  created_at: "2026-08-01T00:00:00Z",
 });
 
-const renderDiff = (diff: VersionDiffData) => {
+const bodies: Record<string, string> = {
+  "/api/automations/a1/versions/1": "const a = 1;\nreturn true;",
+  "/api/automations/a1/versions/2": "const a = 1;\nreturn false;",
+};
+
+const renderDiff = (active: AutomationVersion | null) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <AutomationVersionDiff automationId="a1" diff={diff} />
+      <AutomationVersionDiff automationId="a1" pending={version(2, AutomationVersionStatus.Pending)} active={active} />
     </QueryClientProvider>,
   );
 };
 
 describe("AutomationVersionDiff", () => {
   beforeEach(() => {
+    mocks.get.mockReset();
     mocks.post.mockReset();
+    mocks.get.mockImplementation(async (url: string) => ({ data: { version: Number(url.split("/").at(-1)), body: bodies[url] } }));
   });
 
-  it("renders removed and added lines for the pending vs active code", () => {
-    renderDiff(diffData());
+  it("diffs the pending version against the active one", async () => {
+    renderDiff(version(1, AutomationVersionStatus.Active));
 
-    expect(screen.getByText("return true;")).toBeInTheDocument();
-    expect(screen.getByText("return false;")).toBeInTheDocument();
+    expect(await screen.findByText("true;")).toBeInTheDocument();
+    expect(screen.getByText("false;")).toBeInTheDocument();
+    expect(screen.getByText("Change 2")).toBeInTheDocument();
   });
 
-  it("compares the sources when both versions kept one, so the inlined SDK stays out of the diff", () => {
-    const { active, pending } = diffData();
-    renderDiff({ active: { ...active!, source: "log(1)" }, pending: { ...pending!, source: "log(2)" } });
+  it("shows the whole pending file when nothing is active yet", async () => {
+    renderDiff(null);
 
-    expect(screen.getByText("log(1)")).toBeInTheDocument();
-    expect(screen.getByText("log(2)")).toBeInTheDocument();
-    expect(screen.queryByText("return true;")).not.toBeInTheDocument();
+    expect(await screen.findByText("return false;")).toBeInTheDocument();
+    expect(mocks.get).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to the bundles, and says so, when the active version kept no source", () => {
-    const { active, pending } = diffData();
-    renderDiff({ active: active!, pending: { ...pending!, source: "log(2)" } });
+  it("shows the whole pending file when only it kept a source, rather than diff a source against a bundle", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <AutomationVersionDiff automationId="a1" pending={{ ...version(2, AutomationVersionStatus.Pending), source: "return false;" }} active={version(1, AutomationVersionStatus.Active)} />
+      </QueryClientProvider>,
+    );
 
-    expect(screen.getByText("return false;")).toBeInTheDocument();
-    expect(screen.getByText(/bundled code/)).toBeInTheDocument();
+    expect(await screen.findByText("return false;")).toBeInTheDocument();
+    expect(mocks.get).toHaveBeenCalledTimes(1);
   });
 
-  it("shows no pending version message and no merge button when nothing is pending", () => {
-    renderDiff({ active: diffData().active, pending: null });
-    expect(screen.getByText("No pending version")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
-  });
-
-  it("merges the pending version via POST on click", async () => {
-    mocks.post.mockResolvedValue({ data: diffData().pending });
+  it("merges the pending version", async () => {
+    mocks.post.mockResolvedValue({ data: version(2, AutomationVersionStatus.Active) });
     const user = userEvent.setup();
-    renderDiff(diffData());
+    renderDiff(version(1, AutomationVersionStatus.Active));
 
-    await user.click(screen.getByRole("button", { name: "Merge" }));
+    await user.click(screen.getByRole("button", { name: "Merge #2" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/automations/a1/versions/v2/merge");
   });

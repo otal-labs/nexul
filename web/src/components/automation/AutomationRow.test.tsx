@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +41,7 @@ const renderRow = (a: Automation) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter>
         <AutomationRow item={automationListItems([a], new Set())[0]!} />
       </MemoryRouter>
@@ -69,7 +71,6 @@ describe("AutomationRow", () => {
   it("puts the last error in place of the description while its last run failed", () => {
     renderRow(automation({ last_run: { outcome: AutomationRunOutcome.Crash, started_at: "2026-08-01T00:00:00Z", error: "handler exceeded the 30 second limit" } }));
 
-    expect(screen.getByText(/Crashed/)).toBeInTheDocument();
     expect(screen.getByText(/handler exceeded the 30 second limit/)).toBeInTheDocument();
     expect(screen.queryByText(/Moves a ticket to done/)).not.toBeInTheDocument();
   });
@@ -82,5 +83,33 @@ describe("AutomationRow", () => {
     await user.click(screen.getByRole("switch"));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/automations/a1/enabled", { enabled: false });
+  });
+});
+
+describe("AutomationRow switching on with a required setting empty", () => {
+  beforeEach(() => {
+    mocks.patch.mockReset();
+  });
+
+  it("asks first, and a cancel leaves it off", async () => {
+    const user = userEvent.setup();
+    renderRow(automation({ enabled: false }));
+
+    await user.click(screen.getByRole("switch", { name: "Enable Ticket finished" }));
+    expect(await screen.findByText(/Target status is empty/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("switches on once confirmed", async () => {
+    mocks.patch.mockResolvedValue({ data: automation() });
+    const user = userEvent.setup();
+    renderRow(automation({ enabled: false }));
+
+    await user.click(screen.getByRole("switch", { name: "Enable Ticket finished" }));
+    await user.click(await screen.findByRole("button", { name: "Switch on" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/automations/a1/enabled", { enabled: true });
   });
 });

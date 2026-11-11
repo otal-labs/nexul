@@ -1,10 +1,12 @@
-import { useState } from "react";
-
-import { AutomationHistoryDialog } from "@/components/automation/AutomationHistoryDialog";
+import { AutomationSdkSetup } from "@/components/automation/AutomationSdkSetup";
 import { AutomationSubscriptionsSection } from "@/components/automation/AutomationSubscriptionsSection";
+import { AutomationVersionCode } from "@/components/automation/AutomationVersionCode";
 import { AutomationVersionDiff } from "@/components/automation/AutomationVersionDiff";
+import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SettingsCard } from "@/components/settings/SettingsCard";
+import { AutomationKind } from "@/enums/Automation";
 import { useFetchAutomationVersionDiff } from "@/hooks/AutomationVersionHooks";
 import type { Automation } from "@/models/Automation";
 
@@ -12,25 +14,24 @@ interface AutomationVersionsFeedProps {
   automation: Automation;
 }
 
-// The pending-vs-active diff is where a developer catches what they missed; every older version is in the History dialog.
+// The pending diff, how to change the code, and the code that runs now; older versions are in the History dialog.
 export const AutomationVersionsFeed = ({ automation }: AutomationVersionsFeedProps) => {
-  const diff = useFetchAutomationVersionDiff(automation.id);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const { data: diff, error, isPending } = useFetchAutomationVersionDiff(automation.id);
+  const custom = automation.kind === AutomationKind.Custom;
 
   return (
     <div className="space-y-6">
       <AutomationSubscriptionsSection subscriptions={automation.subscriptions} />
-      {diff.isPending && <LoadingDisplay />}
-      {diff.error && <ErrorDisplay error={diff.error} />}
-      {diff.data && <AutomationVersionDiff automationId={automation.id} diff={diff.data} />}
-      <p className="text-sm text-muted-foreground">
-        Older versions and Roll back are in{" "}
-        <button type="button" onClick={() => setHistoryOpen(true)} className="font-medium text-foreground underline-offset-4 hover:underline">
-          History
-        </button>
-        .
-      </p>
-      {historyOpen && <AutomationHistoryDialog automationId={automation.id} name={automation.name} onClose={() => setHistoryOpen(false)} />}
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
+      {diff?.pending && <AutomationVersionDiff automationId={automation.id} pending={diff.pending} active={diff.active} />}
+      {diff && custom && <AutomationSdkSetup automationId={automation.id} versions={diff} />}
+      {diff?.active && (
+        <SettingsCard id="active-version" title={`#${diff.active.sequence} active`} description={diff.active.source ? diff.active.message : "Built bundle"}>
+          <AutomationVersionCode automationId={automation.id} sequence={diff.active.sequence} />
+        </SettingsCard>
+      )}
+      {diff && !custom && !diff.active && !diff.pending && <EmptyRow className="border-y border-border">Nothing pushed yet.</EmptyRow>}
     </div>
   );
 };

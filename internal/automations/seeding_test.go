@@ -185,3 +185,57 @@ func TestSeeder_Seed(t *testing.T) {
 		require.ErrorIs(t, s.Seed(context.Background()), errBoom)
 	})
 }
+
+func TestSeeder_SeedsAnnouncedSurface(t *testing.T) {
+	def := DefaultDefinition{
+		ID:            "default-needs-config",
+		Name:          "Needs config",
+		Description:   "Needs a channel.",
+		Code:          "export default { on: () => {} }",
+		Scopes:        []string{"tickets:write"},
+		ConfigSchema:  []byte(`{"type":"object","properties":{"channel":{"type":"string","format":"channel"}}}`),
+		Subscriptions: []string{"chat.bot_message.posted"},
+	}
+	dialedIn := []byte(`{"type":"object","properties":{"other":{"type":"string"}}}`)
+
+	tests := []struct {
+		name          string
+		stored        *Automation
+		wantSchema    string
+		wantSubscribe []string
+	}{
+		{name: "a fresh create gets the schema and subscriptions", wantSchema: string(def.ConfigSchema), wantSubscribe: def.Subscriptions},
+		{
+			name:          "an existing automation with empty announced fields is filled",
+			stored:        &Automation{ConfigSchema: []byte(`{}`)},
+			wantSchema:    string(def.ConfigSchema),
+			wantSubscribe: def.Subscriptions,
+		},
+		{
+			name:          "an existing automation keeps what a dial-in announced",
+			stored:        &Automation{ConfigSchema: dialedIn, Subscriptions: []string{"ticket.created"}},
+			wantSchema:    string(dialedIn),
+			wantSubscribe: []string{"ticket.created"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			autoRepo := newFakeRepo()
+			s := newTestSeeder(autoRepo, newFakeVersionsRepo(), []DefaultDefinition{def})
+			if tc.stored != nil {
+				require.NoError(t, s.Seed(context.Background()))
+				a, err := autoRepo.Get(context.Background(), def.ID)
+				require.NoError(t, err)
+				a.ConfigSchema = tc.stored.ConfigSchema
+				a.Subscriptions = tc.stored.Subscriptions
+				require.NoError(t, autoRepo.Update(context.Background(), a))
+			}
+			require.NoError(t, s.Seed(context.Background()))
+
+			a, err := autoRepo.Get(context.Background(), def.ID)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.wantSchema, string(a.ConfigSchema))
+			assert.Equal(t, tc.wantSubscribe, a.Subscriptions)
+		})
+	}
+}

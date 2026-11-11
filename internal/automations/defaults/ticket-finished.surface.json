@@ -1,0 +1,10 @@
+{
+  "subscriptions": [
+    "ticket.finished"
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {}
+  },
+  "source": "import { defineAutomation } from \"@otal-labs/nexul-sdk/automation\";\nimport { firstStatusOfKind } from \"../board-statuses.ts\";\n\n// Narrows the fields this automation reads instead of trusting the whole payload.\nfunction ticketRef(ticket: unknown): { id?: string; projectId?: string } {\n  const { id, project_id } = (ticket ?? {}) as { id?: unknown; project_id?: unknown };\n  return {\n    ...(typeof id === \"string\" && id ? { id } : {}),\n    ...(typeof project_id === \"string\" && project_id ? { projectId: project_id } : {}),\n  };\n}\n\nconst automation = defineAutomation({\n  name: \"Ticket finished\",\n  description: \"Moves a ticket to its project's Done status once every linked PR has merged.\",\n});\n\nautomation.on(\"ticket.finished\", async (payload, ctx) => {\n  const { id, projectId } = ticketRef(payload.ticket);\n  if (!id || !projectId) {\n    ctx.log(\"skipped: missing ticket id or project id\", { ticketId: id, projectId });\n    return false;\n  }\n  const statusId = await firstStatusOfKind(ctx, projectId, \"done\");\n  if (!statusId) {\n    ctx.log(\"no done status in the ticket's project, nothing to move\", { ticketId: id, projectId });\n    return true;\n  }\n  await ctx.api.request(\"PATCH\", `/api/tickets/${id}/status`, { status: statusId });\n  ctx.log(\"moved ticket to its done status\", { ticketId: id, statusId });\n  return true;\n});\n\nexport default automation;\n"
+}
