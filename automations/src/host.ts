@@ -1,11 +1,13 @@
 import { spawnSync } from "node:child_process";
 import type { AutomationsApi } from "./automations-api.ts";
 import { log } from "./log.ts";
+import type { WorkspaceManagers } from "./managers.ts";
 import type { Supervisor } from "./supervisor.ts";
 
 export interface PollDeps {
   api: AutomationsApi;
   supervisor: Pick<Supervisor, "reconcile">;
+  managers: Pick<WorkspaceManagers, "reportOnce">;
   serverUrl: string;
   credential: string;
 }
@@ -14,6 +16,7 @@ export interface PollDeps {
 export async function pollOnce(deps: PollDeps): Promise<"running" | "removed"> {
   const result = await deps.api.fetchAssignments(deps.serverUrl, deps.credential);
   if (result.removed) return "removed";
+  await deps.managers.reportOnce(deps.api, deps.serverUrl, deps.credential);
   await deps.supervisor.reconcile(result.automations);
   return "running";
 }

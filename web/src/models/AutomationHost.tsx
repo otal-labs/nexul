@@ -1,11 +1,29 @@
 import { z } from "zod";
 
 import { hasPermission } from "@nexul/client-core/permissions";
+import { secretManagerName } from "@nexul/client-core/secretReference";
 
 import type { Machine } from "@/models/Runner";
 
 // The bundled host every unplaced automation runs on.
 export const InstanceHostName = "instance";
+
+export const ManagerStateSchema = z.enum(["ready", "token rejected", "unreachable"]);
+
+export type ManagerState = z.infer<typeof ManagerStateSchema>;
+
+// A secrets manager the host holds a token for in one workspace; manager is the scheme of the references it resolves.
+export const AutomationHostManagerSchema = z.object({
+  workspace: z.string(),
+  manager: z.string(),
+  state: ManagerStateSchema,
+});
+
+export type AutomationHostManager = z.infer<typeof AutomationHostManagerSchema>;
+
+// The manager's name, then how its token fared when that is not fine.
+export const managerLabel = ({ manager, state }: AutomationHostManager): string =>
+  `${secretManagerName(manager)}${state === "ready" ? "" : ` ${state}`}`;
 
 export const AutomationHostSchema = z.object({
   id: z.string().min(1),
@@ -17,9 +35,10 @@ export const AutomationHostSchema = z.object({
   // true when the host polled for its automations within the last minute.
   connected: z.boolean(),
   last_seen: z.string(),
+  managers: z.array(AutomationHostManagerSchema),
 });
 
-export type AutomationHost = z.infer<typeof AutomationHostSchema>;
+export type AutomationHost= z.infer<typeof AutomationHostSchema>;
 
 // The machine card a host answers to, or undefined for a host on a machine Nexul doesn't know, which only the instance Owner sees.
 export const machineOfHost = (host: AutomationHost, machines: readonly Machine[] | undefined): Machine | undefined =>

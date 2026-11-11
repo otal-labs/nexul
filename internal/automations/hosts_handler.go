@@ -38,6 +38,7 @@ func (h *HostsHandler) PublicRoutes() http.Handler {
 	mux.HandleFunc("POST /api/automation-hosts/self/remove", h.removeSelf)
 	mux.HandleFunc("GET /api/automation-hosts/self/assignments", h.assignments)
 	mux.HandleFunc("POST /api/automation-hosts/self/logs", h.logs)
+	mux.HandleFunc("POST /api/automation-hosts/self/managers", h.managers)
 	return mux
 }
 
@@ -113,6 +114,20 @@ func (h *HostsHandler) assignments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, a)
+}
+
+func (h *HostsHandler) managers(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxLogsBody)
+	var body HostManagersReport
+	if err := httpx.DecodeJSON(r, &body); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.ReportManagers(r.Context(), bearerToken(r), body.Managers); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // maxLogsBody caps a log request like the browser's: a batch is at most logging.MaxBatchBytes of records.

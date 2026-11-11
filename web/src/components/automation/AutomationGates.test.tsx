@@ -45,7 +45,7 @@ const history = { version: 1, created_at: "", name: "", editor_ids: [], via: "",
 
 const rest = (url: string) => {
   if (url === "/api/automation-secrets") return [{ name: "API_KEY", created_at: "", updated_at: "" }];
-  if (url === "/api/automation-hosts") return [{ id: "h1", name: "builder", machine: "m", version: "1", connected: true, last_seen: "" }];
+  if (url === "/api/automation-hosts") return [{ id: "h1", name: "builder", machine: "m", version: "1", connected: true, last_seen: "", managers: [] }];
   if (url === "/api/team") return { people: [] };
   return [];
 };

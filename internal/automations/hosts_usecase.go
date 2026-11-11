@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 const (
@@ -208,7 +209,7 @@ func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
 	for _, host := range hosts {
 		out = append(out, HostView{
 			ID: host.ID, Name: host.Name, Machine: host.Machine, OS: host.OS, Arch: host.Arch, Version: host.Version,
-			Connected: now.Sub(host.LastSeen) < hostOnlineWindow, LastSeen: host.LastSeen,
+			Connected: now.Sub(host.LastSeen) < hostOnlineWindow, LastSeen: host.LastSeen, Managers: host.Managers,
 		})
 	}
 	return out, nil
@@ -376,9 +377,49 @@ func (h *HostsService) Assignments(ctx context.Context, credential, version stri
 		if !a.Runs() {
 			continue
 		}
-		out.Automations = append(out.Automations, Assignment{ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash)})
+		out.Automations = append(out.Automations, Assignment{ID: a.ID, Name: a.Name, Token: hostToken(h.key, a.ID, cred.Hash, a.TokenHash), Workspace: a.WorkspaceSlug})
 	}
 	return out, nil
+}
+
+// ReportManagers stores the managers a host holds tokens for and how each token fared, replacing what it reported
+// before. A removed host gets errHostRemoved.
+func (h *HostsService) ReportManagers(ctx context.Context, credential string, managers []HostManager) error {
+	cred, err := h.authenticate(ctx, credential)
+	if err != nil {
+		return err
+	}
+	if cred.Revoked {
+		return errHostRemoved
+	}
+	if err := validateManagers(managers); err != nil {
+		return err
+	}
+	if err := h.repo.SetHostManagers(ctx, cred.HostID, managers); err != nil {
+		return fmt.Errorf("set automations host %s managers: %w", cred.HostID, err)
+	}
+	return nil
+}
+
+// maxHostManagers bounds a report: a host holds a few tokens, one per workspace.
+const maxHostManagers = 256
+
+func validateManagers(managers []HostManager) error {
+	if len(managers) > maxHostManagers {
+		return fmt.Errorf("%w: a host reports at most %d managers", apperrs.ErrInvalid, maxHostManagers)
+	}
+	seen := map[[2]string]bool{}
+	for _, m := range managers {
+		key := [2]string{m.Workspace, m.Manager}
+		if m.Workspace == "" || len(m.Workspace) > 64 || !secretref.KnownScheme(m.Manager) || seen[key] {
+			return fmt.Errorf("%w: each manager names a workspace and a known scheme once", apperrs.ErrInvalid)
+		}
+		seen[key] = true
+		if m.State != ManagerReady && m.State != ManagerTokenRejected && m.State != ManagerUnreachable {
+			return fmt.Errorf("%w: a manager's state is ready, token rejected or unreachable", apperrs.ErrInvalid)
+		}
+	}
+	return nil
 }
 
 // RelayLogs writes a host's own log records to the log store, stamped with the host its credential names; nothing in

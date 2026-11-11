@@ -1,4 +1,4 @@
-import { failed, type ResolveErrorKind, type ResolveResult, type Resolver } from "./resolver.ts";
+import { failed, type ManagerState, type ResolveErrorKind, type ResolveResult, type Resolver } from "./resolver.ts";
 
 // An in-memory resolver for tests: a configured string is the value, a configured kind is that error, and a reference
 // nobody configured is not found.
@@ -8,7 +8,12 @@ export class FakeResolver implements Resolver {
   constructor(
     readonly scheme: string,
     private readonly entries: Record<string, string | { error: ResolveErrorKind }>,
+    private readonly state: ManagerState = "ready",
   ) {}
+
+  async check(): Promise<ManagerState> {
+    return this.state;
+  }
 
   async resolveAll(refs: string[]): Promise<Map<string, ResolveResult>> {
     this.calls.push(refs);

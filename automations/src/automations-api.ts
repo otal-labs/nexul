@@ -1,10 +1,20 @@
+import type { ManagerState } from "./resolver.ts";
 import { hostVersion } from "./version.ts";
 
-// AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with.
+// AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with and the
+// slug of its workspace, which names the secrets manager token the host resolves its pool with.
 export interface AutomationTarget {
   id: string;
   name: string;
   token: string;
+  workspace: string;
+}
+
+// A secrets manager this host holds a token for in one workspace; manager is named by its reference scheme ("op").
+export interface ManagerReport {
+  workspace: string;
+  manager: string;
+  state: ManagerState;
 }
 
 export interface RemoteState {
@@ -21,6 +31,8 @@ export type AssignmentsResult = { removed: true } | { removed: false; automation
 export interface AutomationsApi {
   fetchAssignments(serverUrl: string, credential: string): Promise<AssignmentsResult>;
   fetchState(target: AutomationTarget, serverUrl: string): Promise<RemoteState>;
+  // Replaces what the server holds about this host's secrets managers.
+  reportManagers(serverUrl: string, credential: string, managers: ManagerReport[]): Promise<void>;
 }
 
 interface AutomationResponse {
@@ -44,6 +56,16 @@ export const httpAutomationsApi: AutomationsApi = {
     if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`);
     const body = (await res.json()) as AssignmentsResponse;
     return { removed: false, automations: body.automations };
+  },
+
+  async reportManagers(serverUrl, credential, managers) {
+    const url = `${serverUrl}/api/automation-hosts/self/managers`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ managers }),
+    });
+    if (!res.ok) throw new Error(`POST ${url} failed: ${res.status}`);
   },
 
   // The worker's own token reads its automation: a self-read needs no scope (CONTEXT.md, Self-read).

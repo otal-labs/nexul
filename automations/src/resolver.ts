@@ -5,8 +5,13 @@ export type ResolveErrorKind = "not_found" | "field_missing" | "no_access" | "un
 // A failure carries only its kind: a reference or a value never rides in an error.
 export type ResolveResult = { ok: true; value: string } | { ok: false; error: ResolveErrorKind };
 
+// Whether a token works: its client opened, the manager refused the token, or the manager could not be reached.
+export type ManagerState = "ready" | "token rejected" | "unreachable";
+
 export interface Resolver {
   readonly scheme: string;
+  // Opens the manager's client with the token and reports how that went; it reads no secret and does not throw.
+  check(): Promise<ManagerState>;
   // Returns one result per reference given; it does not throw for a failed reference or an unreachable manager.
   resolveAll(refs: string[]): Promise<Map<string, ResolveResult>>;
 }

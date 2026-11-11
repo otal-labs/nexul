@@ -11,7 +11,8 @@ SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspac
 FROM automations a WHERE a.token_hash = ?;
 
 -- name: ListAutomations :many
-SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived,
+  CAST(COALESCE((SELECT w.slug FROM workspaces w WHERE w.id = a.workspace_id), '') AS TEXT) AS workspace_slug
 FROM automations a ORDER BY a.created_at;
 
 -- name: UpdateAutomation :execrows
