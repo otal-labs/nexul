@@ -250,13 +250,19 @@ export interface HistoryRun {
 }
 
 // One change is one run of adjacent blocks with the same mark, so the stepper's count is the number of bars on screen; a changed title is change 1 and the runs count on from firstChange.
-export const groupRuns = (rows: HistoryRow[], firstChange = 1): HistoryRun[] => {
+// Joined, adjacent changed blocks of any mark are one edited run, the way a code diff reads one hunk.
+export const groupRuns = (rows: HistoryRow[], firstChange = 1, joinChanges = false): HistoryRun[] => {
   const runs: HistoryRun[] = [];
   let changes = firstChange - 1;
   for (const row of rows) {
     const last = runs[runs.length - 1];
     if (last?.mark === row.mark) {
       last.rows.push(row);
+      continue;
+    }
+    if (joinChanges && last && last.mark !== "same" && row.mark !== "same") {
+      last.rows.push(row);
+      last.mark = "edited";
       continue;
     }
     if (row.mark !== "same") changes++;

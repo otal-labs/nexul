@@ -41,8 +41,8 @@ export const useHistoryCompare = (
   const runs = useMemo(() => {
     if (!afterBlocks) return undefined;
     if (!compare) return groupRuns(afterBlocks.map(plainRow));
-    return beforeBlocks && groupRuns(diffBlocks(beforeBlocks, afterBlocks), titleChanged ? 2 : 1);
-  }, [afterBlocks, beforeBlocks, compare, titleChanged]);
+    return beforeBlocks && groupRuns(diffBlocks(beforeBlocks, afterBlocks), titleChanged ? 2 : 1, bodyKind === "code");
+  }, [afterBlocks, beforeBlocks, compare, titleChanged, bodyKind]);
 
   return {
     runs,

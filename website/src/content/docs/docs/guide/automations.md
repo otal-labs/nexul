@@ -78,7 +78,7 @@ Two events mark a moment rather than one change. `ticket.unblocked` fires when a
 
 ## History
 
-**History** at the top of an automation's page lists every version pushed to it, newest first, for anyone who can read the automation. Each version is compared line by line with the one before it, and the push message is its name. The active version reads **Current** and a waiting push reads **Pending**. Select the pending version and press **Merge** to make it the active code, or select an older one and press **Rollback** (it asks first); the automation restarts on that code. Versions are never deleted, so a rollback only moves the active mark. The **Versions** tab keeps the pending version's diff against the active code.
+**History** at the top of an automation's page lists every version pushed to it, newest first, for anyone who can read the automation. Each version is shown as a diff against the one before it: removed lines in red with a `-`, added lines in green with a `+`, both versions' line numbers beside them, and the changed words of an edited line highlighted. Unchanged code folds down to three lines around each change; press a fold to show the lines it hides. The push message is the version's name. The active version reads **Current** and a waiting push reads **Pending**. Select the pending version and press **Merge** to make it the active code, or select an older one and press **Rollback** (it asks first); the automation restarts on that code. Versions are never deleted, so a rollback only moves the active mark. The **Versions** tab keeps the pending version's diff against the active code.
 
 ## When a service goes down
 

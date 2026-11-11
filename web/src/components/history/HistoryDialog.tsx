@@ -76,7 +76,7 @@ export const HistoryDialog = ({ historyUrl, versionUrl, name, restore, footer, b
         {versions && current && single && <HistoryOneVersion version={current} footer={footer?.(current)} />}
         {versions && current && !single && (
           <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto] border-t border-border">
-            <HistoryCompare ref={scroller} picked={current} restored={restoredLabel(current, versions)} previous={previous} compare={compare} view={view} onView={changeView} step={stepper.step} onHop={stepper.hop} />
+            <HistoryCompare ref={scroller} picked={current} restored={restoredLabel(current, versions)} previous={previous} compare={compare} view={view} onView={changeView} step={stepper.step} onHop={stepper.hop} bodyKind={bodyKind} />
             <HistoryVersionList versions={versions} changes={changes} selected={current.version} retention={retention} onSelect={pick} />
           </div>
         )}
