@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AutomationTarget, AutomationsApi, RemoteState } from "../src/automations-api.ts";
 import { loadConfig } from "../src/config.ts";
-import { FakeResolver } from "../src/fake-resolver.ts";
+import { FakeResolver } from "./fake-resolver.ts";
 import { WorkspaceManagers } from "../src/managers.ts";
 import { PoolResolution } from "../src/pool-resolution.ts";
 import { parseCheckInterval, SecretCheck, type Clock } from "../src/secret-check.ts";

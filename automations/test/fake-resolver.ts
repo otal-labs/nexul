@@ -1,4 +1,4 @@
-import { failed, type ManagerState, type ResolveErrorKind, type ResolveResult, type Resolver } from "./resolver.ts";
+import { failed, type ManagerState, type ResolveErrorKind, type ResolveResult, type Resolver } from "../src/resolver.ts";
 
 // An in-memory resolver for tests: a configured string is the value, a configured kind is that error, and a reference
 // nobody configured is not found.

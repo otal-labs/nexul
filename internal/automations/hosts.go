@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // InstanceHostName names the automations host bundled with the instance; an automation with no host runs there.
@@ -28,9 +29,9 @@ type Host struct {
 
 // Manager states a host reports for a token: it opened a client, the manager refused the token, or could not be reached.
 const (
-	ManagerReady         = "ready"
-	ManagerTokenRejected = "token rejected"
-	ManagerUnreachable   = "unreachable"
+	ManagerReady         = secretref.ManagerReady
+	ManagerTokenRejected = secretref.ManagerTokenRejected
+	ManagerUnreachable   = secretref.ManagerUnreachable
 )
 
 // HostManager is one secrets manager a host holds a token for in one workspace, and whether that token works. The

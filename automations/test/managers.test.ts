@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { AutomationsApi, ManagerReport } from "../src/automations-api.ts";
-import { FakeResolver } from "../src/fake-resolver.ts";
+import { FakeResolver } from "./fake-resolver.ts";
 import { pollOnce } from "../src/host.ts";
 import { WorkspaceManagers, type ManagerTimers } from "../src/managers.ts";
 import { OnePasswordResolver } from "../src/onepassword-resolver.ts";
