@@ -213,22 +213,29 @@ func (a *App) installationFor(ctx context.Context, owner, name string) (appInsta
 
 // eachInstallation walks every installation of the App, a page of 100 at a time.
 func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installation)) error {
-	return a.asApp(ctx, func(gh *githubapi.Client) error {
+	var all []*githubapi.Installation
+	err := a.asApp(ctx, func(gh *githubapi.Client) error {
+		all = nil // a retry after a rejected key lists again from the first page
 		opts := &githubapi.ListOptions{PerPage: 100}
 		for {
 			installs, resp, err := gh.Apps.ListInstallations(ctx, opts)
 			if err != nil {
 				return fmt.Errorf("list the App's installations: %w", mapErr(err))
 			}
-			for _, inst := range installs {
-				fn(inst)
-			}
+			all = append(all, installs...)
 			if resp == nil || resp.NextPage == 0 {
 				return nil
 			}
 			opts.Page = resp.NextPage
 		}
 	})
+	if err != nil {
+		return err
+	}
+	for _, inst := range all {
+		fn(inst)
+	}
+	return nil
 }
 
 // InstallationAccounts lists every installation of the App with its account, one request per hundred.

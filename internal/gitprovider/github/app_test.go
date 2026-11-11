@@ -97,6 +97,39 @@ func pemOf(key *rsa.PrivateKey) string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
 }
 
+func TestApp_InstallationAccounts_ListedAgainAfterARejectedKeyNamesEachInstallationOnce(t *testing.T) {
+	oldKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	newKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		if page == "2" && !jwtSignedBy(r, &newKey.PublicKey) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = fmt.Fprint(w, `{"message":"A JSON web token could not be decoded"}`)
+			return
+		}
+		if page == "2" {
+			_, _ = fmt.Fprint(w, `[{"id":2,"account":{"id":22,"login":"globex"}}]`)
+			return
+		}
+		w.Header().Set("Link", fmt.Sprintf(`<%s/app/installations?page=2>; rel="next"`, srv.URL))
+		_, _ = fmt.Fprint(w, `[{"id":1,"account":{"id":11,"login":"acme"}}]`)
+	}))
+	t.Cleanup(srv.Close)
+	cache := &AppCache{Reresolve: func(context.Context, string) (string, bool) { return pemOf(newKey), true }}
+	app, err := cache.Get("Iv1.acme", pemOf(oldKey), srv.URL)
+	require.NoError(t, err)
+
+	got, err := app.InstallationAccounts(t.Context())
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, int64(1), got[0].ID)
+	assert.Equal(t, int64(2), got[1].ID)
+}
+
 func TestApp_RejectedKey_IsReplacedByItsFreshValueAndTheCallSentOnceMore(t *testing.T) {
 	oldKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
