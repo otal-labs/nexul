@@ -57,6 +57,23 @@ func TestRunnersRepo_SetVersion_UpdatesVersion(t *testing.T) {
 	assert.Equal(t, "v0.1.6", got.Version)
 }
 
+func TestRunnersRepo_SetManagers_RoundTrips_AndARunnerThatNeverReportedHasNone(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
+
+	got, err := s.Runners.GetByID(context.Background(), "r-1")
+	require.NoError(t, err)
+	assert.Equal(t, []runner.ManagerState{}, got.Managers)
+
+	want := []runner.ManagerState{{Manager: "op", State: runner.ManagerReady}}
+	require.NoError(t, s.Runners.SetManagers(context.Background(), "r-1", want))
+
+	got, err = s.Runners.GetByID(context.Background(), "r-1")
+	require.NoError(t, err)
+	assert.Equal(t, want, got.Managers)
+}
+
 func TestRunnersRepo_List_ReturnsAll(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

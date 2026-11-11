@@ -13,6 +13,9 @@ SELECT * FROM runners WHERE owner_user_id = '' AND machine_id IN (SELECT value F
 -- name: SetRunnerVersion :execrows
 UPDATE runners SET version = ? WHERE id = ?;
 
+-- name: SetRunnerManagers :execrows
+UPDATE runners SET managers = ? WHERE id = ?;
+
 -- name: UpdateRunnerHeartbeat :execrows
 UPDATE runners SET last_seen = ?, connected = ? WHERE id = ?;
 

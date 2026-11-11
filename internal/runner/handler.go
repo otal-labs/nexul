@@ -129,7 +129,9 @@ type runnerConn struct {
 	// changes reach only its owner.
 	personal bool
 	// version is the build the runner reported when it connected.
-	version       string
+	version string
+	// managers is the secrets managers' states it reported on connect; none for a personal runner.
+	managers      []ManagerState
 	record        *Runner
 	ws            *websocket.Conn
 	ctx           context.Context
@@ -226,7 +228,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn.SetReadLimit(h.cfg.ReadLimit)
 	q := r.URL.Query()
 	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), version: q.Get("version"), record: rn, ws: conn}
-	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch")})
+	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch"), managers: parseManagers(q.Get("managers"))})
 }
 
 // admit resolves the bearer credential to its runner and machine, writing the refusal itself when it fails: a
@@ -277,12 +279,17 @@ func bearerToken(r *http.Request) string {
 // connectInfo is what a runner reports about its build in its connection URL.
 type connectInfo struct {
 	version, os, arch string
+	managers          []ManagerState
 }
 
 func (h *Handler) handleConn(ctx context.Context, c *runnerConn, info connectInfo) {
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx, c.cancel = ctx, cancel
 	c.touchHeartbeat()
+	if c.personal {
+		info.managers = nil
+	}
+	c.managers = info.managers
 
 	h.mu.Lock()
 	if old, ok := h.conns[c.id]; ok {
@@ -293,7 +300,7 @@ func (h *Handler) handleConn(ctx context.Context, c *runnerConn, info connectInf
 	h.mu.Unlock()
 
 	h.log.Info("runner connected", "runner_id", c.id, "name", c.name, "version", info.version, "machine", c.machine)
-	if err := h.registerRunner(ctx, c.id, info.version); err != nil {
+	if err := h.registerRunner(ctx, c, info); err != nil {
 		h.log.Warn("runner repo register failed", "runner_id", c.id, "error", err)
 	}
 	h.sendUpdateIfNeeded(ctx, c, c.id, info.version, info.os, info.arch)
@@ -353,12 +360,18 @@ func (h *Handler) updateChecksum(ctx context.Context, rel *release.Client, runne
 	return sums[assetName]
 }
 
-// registerRunner marks the enrolled runner connected and records the build version it reported on this connect.
-func (h *Handler) registerRunner(ctx context.Context, id, version string) error {
-	if err := h.repo.SetVersion(ctx, id, version); err != nil {
+// registerRunner marks the enrolled runner connected and records the build version and managers it reported on this
+// connect; a personal runner's managers are never stored.
+func (h *Handler) registerRunner(ctx context.Context, c *runnerConn, info connectInfo) error {
+	if err := h.repo.SetVersion(ctx, c.id, info.version); err != nil {
 		return err
 	}
-	return h.repo.SetConnected(ctx, id, true)
+	if !c.personal {
+		if err := h.repo.SetManagers(ctx, c.id, info.managers); err != nil {
+			return err
+		}
+	}
+	return h.repo.SetConnected(ctx, c.id, true)
 }
 
 // handleRequest is the deploy.requested consumer; a malformed payload is fatal (dead-lettered).
@@ -786,7 +799,7 @@ func (h *Handler) publishPresence(ctx context.Context, c *runnerConn, connected 
 		return
 	}
 	if connected {
-		h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name, EnrolledBy: c.record.EnrolledBy, MachineID: c.machineID})
+		h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name, EnrolledBy: c.record.EnrolledBy, MachineID: c.machineID, Managers: c.managers})
 		return
 	}
 	h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected", EnrolledBy: c.record.EnrolledBy, MachineID: c.machineID})

@@ -34,6 +34,7 @@ INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token
 	require.NoError(t, err)
 
 	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
+	withRunnerManagers(t, db)
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	devPerms, devSteps := storedRole(t, db, "role-dev")

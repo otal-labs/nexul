@@ -56,6 +56,8 @@ type runnerResult struct {
 	Connected  bool       `json:"connected"`
 	LastSeen   time.Time  `json:"last_seen"`
 	RunningJob *jobResult `json:"running_job"`
+	// Managers is each secrets manager the runner can name, with its state ("ready", "token rejected" or "unreachable").
+	Managers []ManagerState `json:"managers"`
 }
 
 type jobResult struct {
@@ -173,7 +175,10 @@ func groupAutomationsHosts(machines []machineResult, hosts []AutomationsHost) ([
 }
 
 func toRunnerResult(r RunnerView) runnerResult {
-	out := runnerResult{ID: r.ID, Name: r.Name, Version: r.Version, Connected: r.Connected, LastSeen: r.LastSeen}
+	out := runnerResult{ID: r.ID, Name: r.Name, Version: r.Version, Connected: r.Connected, LastSeen: r.LastSeen, Managers: r.Managers}
+	if out.Managers == nil {
+		out.Managers = []ManagerState{}
+	}
 	if j := r.RunningJob; j != nil {
 		out.RunningJob = &jobResult{ID: j.ID, Kind: j.Kind, Stack: j.Service, TriggeredBy: j.TriggeredBy, StartedAt: timePtr(j.StartedAt)}
 	}

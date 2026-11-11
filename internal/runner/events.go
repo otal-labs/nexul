@@ -109,10 +109,11 @@ const (
 
 // RunnerConnectedEvent is published when a runner authenticates and connects.
 type RunnerConnectedEvent struct {
-	RunnerID   string `json:"runner_id"`
-	Name       string `json:"name,omitempty"`
-	EnrolledBy string `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
-	MachineID  string `json:"machine_id,omitempty" jsonschema:"The machine the runner belongs to; the frame reaches only people who see that machine."`
+	RunnerID   string         `json:"runner_id"`
+	Name       string         `json:"name,omitempty"`
+	EnrolledBy string         `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
+	MachineID  string         `json:"machine_id,omitempty" jsonschema:"The machine the runner belongs to; the frame reaches only people who see that machine."`
+	Managers   []ManagerState `json:"managers" jsonschema:"The secrets managers the runner reported on this connect, each with its state; empty when it holds no token."`
 }
 
 // RunnerDisconnectedEvent is published when a runner disconnects or is dropped for a heartbeat timeout.

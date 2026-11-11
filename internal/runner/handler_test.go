@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -551,6 +552,37 @@ func TestHandler_ServeHTTP_RecordsRunnerVersion(t *testing.T) {
 		r, err := repo.GetByID(context.Background(), "r-1")
 		return err == nil && r.Version == "v0.1.7"
 	})
+}
+
+func TestHandler_ServeHTTP_StoresAndPublishesTheManagersARunnerReports_NeverAPersonalRunners(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	bus := newFakeBus()
+	h := newTestHandler(bus, repo)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	report := "?managers=" + url.QueryEscape(`[{"manager":"op","state":"token rejected"}]`)
+	want := []ManagerState{{Manager: "op", State: ManagerTokenRejected}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "box", "prod"), report)
+	require.NoError(t, err)
+	defer func() { _ = conn.CloseNow() }() // closed by the server at cleanup; a second close errors
+	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicRunnerConnected)) == 1 })
+
+	got, err := repo.GetByID(ctx, "r-1")
+	require.NoError(t, err)
+	assert.Equal(t, want, got.Managers)
+	assert.Equal(t, want, decodeEvent[RunnerConnectedEvent](t, bus.topicEvents(TopicRunnerConnected)[0]).Managers)
+
+	pconn, _, err := dialRunner(ctx, srv, repo.personal("p-1", "u-1", "c-1"), report)
+	require.NoError(t, err)
+	defer func() { _ = pconn.CloseNow() }() // closed by the server at cleanup; a second close errors
+	eventually(t, 2*time.Second, func() bool { return len(h.Runners()) == 2 })
+
+	personal, err := repo.GetByID(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Empty(t, personal.Managers)
 }
 
 func TestHandler_dispatchFrame_JoinNetworksResultDoesNotError(t *testing.T) {

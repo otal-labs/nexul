@@ -74,7 +74,7 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	require.NoError(t, machines.Create(ctx, &Machine{ID: "m-1", Name: "prod", StackRoot: "/data/nexul", LastSeen: now}))
 	require.NoError(t, machines.Create(ctx, &Machine{ID: "m-2", Name: "edge", LastSeen: now}))
 	runners := newFakeRunnerRepo()
-	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-1", Name: "alpha", Version: "v0.1.6", Connected: true, MachineID: "m-1"}))
+	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-1", Name: "alpha", Version: "v0.1.6", Connected: true, MachineID: "m-1", Managers: []ManagerState{{Manager: "op", State: ManagerTokenRejected}}}))
 	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-new", Name: "fresh"}))
 	dispatch := &fakeDispatch{
 		runners: []RunnerStatus{{RunnerID: "r-1", RunningJob: &RunningJob{ID: "d-1", Kind: RequestDeploy, Service: "api", TriggeredBy: "user-1", StartedAt: now}}},
@@ -92,6 +92,8 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	}
 	require.Len(t, byName["prod"].Runners, 1)
 	assert.Equal(t, "v0.1.6", byName["prod"].Runners[0].Version)
+	assert.Equal(t, []ManagerState{{Manager: "op", State: ManagerTokenRejected}}, byName["prod"].Runners[0].Managers)
+	assert.Equal(t, []ManagerState{}, list.UnassignedRunners[0].Managers, "a runner with no token lists an empty array, never null")
 	assert.Equal(t, &jobResult{ID: "d-1", Kind: RequestDeploy, Stack: "api", TriggeredBy: "user-1", StartedAt: &now}, byName["prod"].Runners[0].RunningJob)
 	assert.Empty(t, byName["edge"].Runners)
 	require.Len(t, list.UnassignedRunners, 1)

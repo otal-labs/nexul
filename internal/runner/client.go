@@ -59,6 +59,9 @@ type ClientConfig struct {
 	// Logs queues this runner's own log records for the server to relay to the log store; only a machine's runner
 	// sets it, and a personal runner never ships even when it is set.
 	Logs *logging.Queue
+	// Managers is the secrets managers this runner holds a token for, opened at start and reported on every connect; nil
+	// for none, and a personal runner never reports any.
+	Managers *Managers
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -139,6 +142,9 @@ func (c *Client) Run(ctx context.Context) error {
 	if c.cfg.Personal {
 		c.streams.Go(func() { c.t3.run(ctx) })
 	}
+	if c.managers() != nil {
+		c.cfg.Managers.Start(ctx, &c.streams)
+	}
 	backoff := NewBackoff(c.cfg.BackoffBase, c.cfg.BackoffMax,
 		rand.New(rand.NewSource(time.Now().UnixNano())))
 	attempt := 0
@@ -166,6 +172,8 @@ func (c *Client) Run(ctx context.Context) error {
 // runOnce maintains one connection: heartbeats on a ticker, assigns run in goroutines, cancels abort the job.
 // connected reports whether the dial succeeded, whatever ended the connection afterwards.
 func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
+	// Taken before the report is read, so a state that changes in between still ends this connection.
+	managersChanged := c.managersChanged()
 	dialCtx, cancel := context.WithTimeout(ctx, c.cfg.ConnectTimeout)
 	conn, resp, dialErr := websocket.Dial(dialCtx, c.wsURL(), &websocket.DialOptions{
 		HTTPHeader: http.Header{"Authorization": {"Bearer " + c.cfg.Credential}},
@@ -192,6 +200,14 @@ func (c *Client) runOnce(ctx context.Context) (connected bool, err error) {
 	defer cancel()
 	defer c.cancelJob("")
 
+	loops.Go(func() {
+		select {
+		case <-managersChanged:
+			c.log.Info("secrets manager state changed; reconnecting to report it", "runner", c.cfg.Name)
+			cancel()
+		case <-ctx.Done():
+		}
+	})
 	loops.Go(func() { c.heartbeatLoop(ctx, conn) })
 	loops.Go(func() { c.pingLoop(ctx, conn) })
 	if c.cfg.Personal {
@@ -479,7 +495,28 @@ func (c *Client) wsURL() string {
 	}
 	q.Set("os", runtime.GOOS)
 	q.Set("arch", runtime.GOARCH)
+	if m := c.managers(); m != nil {
+		if raw := encodeManagers(m.States()); raw != "" {
+			q.Set("managers", raw)
+		}
+	}
 	return c.cfg.URL + "?" + q.Encode()
+}
+
+// managers is the secrets managers this runner reports; none from a personal runner.
+func (c *Client) managers() *Managers {
+	if c.cfg.Personal {
+		return nil
+	}
+	return c.cfg.Managers
+}
+
+// managersChanged is closed when a reported state next changes; never for a runner with no managers.
+func (c *Client) managersChanged() <-chan struct{} {
+	if m := c.managers(); m != nil {
+		return m.Changed()
+	}
+	return nil
 }
 
 // refusedAsRemoved reports whether a failed handshake was the server saying this runner was removed.
