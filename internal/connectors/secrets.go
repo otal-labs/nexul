@@ -23,7 +23,7 @@ type SecretProblem struct {
 	Manager string `json:"manager"`
 	// State is set when the manager is the cause: "unreachable" or "token rejected".
 	State string `json:"state,omitempty"`
-	// Error is the failure when the manager is not the cause, such as a missing item.
+	// Error is a fixed reason when the manager is not the cause, such as "not found"; never the manager's own text.
 	Error string `json:"error,omitempty"`
 }
 
@@ -57,18 +57,39 @@ func resolveApp(ctx context.Context, resolve func(context.Context, string) (stri
 	return cfg, nil
 }
 
+// managerError tags a failed secret with its manager's name, so a refusal can say whose it was.
+type managerError struct {
+	manager string
+	err     error
+}
+
+func (e *managerError) Error() string { return e.err.Error() }
+func (e *managerError) Unwrap() error { return e.err }
+
+func tagged(stored string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if kind, ref := secretref.Parse(stored); kind == secretref.Reference {
+		return &managerError{manager: secretref.ManagerName(ref.Scheme), err: err}
+	}
+	return err
+}
+
 func (s *Service) value(ctx context.Context, stored string) (string, error) {
 	if s.secrets == nil {
 		return stored, nil
 	}
-	return s.secrets.Value(ctx, stored)
+	v, err := s.secrets.Value(ctx, stored)
+	return v, tagged(stored, err)
 }
 
 func (s *Service) read(ctx context.Context, stored string) (string, error) {
 	if s.secrets == nil {
 		return stored, nil
 	}
-	return s.secrets.Read(ctx, stored)
+	v, err := s.secrets.Read(ctx, stored)
+	return v, tagged(stored, err)
 }
 
 // problem describes why stored cannot be used now, or nil when it is a literal or resolves.
@@ -87,7 +108,7 @@ func (s *Service) problem(ctx context.Context, stored string) *SecretProblem {
 	if errors.Is(err, secretref.ErrTokenRejected) {
 		return &SecretProblem{Manager: ref.Scheme, State: secretref.ManagerTokenRejected}
 	}
-	return &SecretProblem{Manager: ref.Scheme, Error: err.Error()}
+	return &SecretProblem{Manager: ref.Scheme, Error: secretref.Reason(secretref.ManagerName(ref.Scheme), err)}
 }
 
 // firstProblem is the first stored value that cannot be resolved.
@@ -102,21 +123,28 @@ func (s *Service) firstProblem(ctx context.Context, stored ...string) *SecretPro
 
 // refuse is a save's answer for a secret that did not resolve, naming the field and why.
 func refuse(label string, err error) error {
-	return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, label, secretReason(err))
-}
-
-func secretReason(err error) string {
-	switch {
-	case errors.Is(err, secretref.ErrUnreachable):
-		return "1Password unreachable"
-	case errors.Is(err, secretref.ErrTokenRejected):
-		return "1Password token rejected"
+	manager := "secrets manager"
+	var tag *managerError
+	if errors.As(err, &tag) {
+		manager = tag.manager
 	}
-	return err.Error()
+	return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, label, secretref.Reason(manager, err))
 }
 
-// Warm resolves every stored reference now, so a value is in memory before the first call needs it, and returns what
-// could not be resolved by connector.
+// StoredSecrets is every secret the connectors hold, so one warm read can cover them with the other consumers'.
+func (s *Service) StoredSecrets(ctx context.Context) []string {
+	var stored []string
+	for id, c := range s.registry {
+		cred, err := s.store.GetCredentials(ctx, id)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			continue
+		}
+		stored = append(stored, s.storedSecrets(ctx, c, cred)...)
+	}
+	return stored
+}
+
+// Warm returns what could not be resolved by connector; a warm read of StoredSecrets before it puts the values in memory.
 func (s *Service) Warm(ctx context.Context) map[string]*SecretProblem {
 	problems := map[string]*SecretProblem{}
 	for id, c := range s.registry {

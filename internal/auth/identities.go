@@ -169,7 +169,7 @@ func (s *Service) CompleteIdentityLink(ctx context.Context, provider Provider, s
 	if err != nil {
 		return err
 	}
-	grant, err := exchange(ctx, client, code)
+	grant, err := s.exchangeCode(ctx, provider, client, code)
 	if err != nil {
 		return err
 	}

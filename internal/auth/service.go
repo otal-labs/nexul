@@ -50,6 +50,14 @@ func oauthNotConfigured(provider string) error {
 	return fmt.Errorf("%w for %s", errOAuthNotConfigured, provider)
 }
 
+// errClientRejected marks a token exchange the provider refused for its client credentials, the one case a
+// re-resolved client secret may fix.
+var errClientRejected = errors.New("client credentials rejected")
+
+func clientRejected(status int, code string) bool {
+	return status == http.StatusUnauthorized || code == "invalid_client" || code == "incorrect_client_credentials"
+}
+
 // ProviderClient is the slice of an OAuth provider's API the service calls, fakeable in tests.
 type ProviderClient interface {
 	Exchange(ctx context.Context, code string) (string, error)
@@ -108,7 +116,11 @@ func (c *HTTPGitHubClient) grant(ctx context.Context, form url.Values) (GitHubGr
 		RefreshTokenExpiresIn int64  `json:"refresh_token_expires_in"`
 		Error                 string `json:"error"`
 	}
-	if _, err := oauthx.PostForm(ctx, c.client, c.tokenURL, form, "", "", "application/json", &body); err != nil {
+	status, err := oauthx.PostForm(ctx, c.client, c.tokenURL, form, "", "", "application/json", &body)
+	if clientRejected(status, body.Error) {
+		return GitHubGrant{}, fmt.Errorf("%w: %w: github: %s", apperrs.ErrUnauthorized, errClientRejected, body.Error)
+	}
+	if err != nil {
 		return GitHubGrant{}, fmt.Errorf("github token: %w", apperrs.Retryable(err))
 	}
 	if body.Error != "" {
@@ -209,6 +221,10 @@ type Config struct {
 // SecretValues is the consumer-side view of secret resolution (ADR 0017): a stored secret turned into the value to use.
 type SecretValues interface {
 	Value(ctx context.Context, stored string) (string, error)
+	// Read always asks the manager, for a save to verify what it is about to store.
+	Read(ctx context.Context, stored string) (string, error)
+	// Refresh reads the reference behind a value the provider rejected again, at most every 5 minutes.
+	Refresh(ctx context.Context, stale string) (string, bool)
 }
 
 // PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds on an instance area, by a
@@ -289,13 +305,58 @@ func (s *Service) providerClient(ctx context.Context, provider Provider) (Provid
 		}
 		secret = resolved
 	}
+	return s.newProviderClient(provider, st, id, secret), nil
+}
+
+func (s *Service) newProviderClient(provider Provider, st Settings, id, secret string) ProviderClient {
 	switch provider {
 	case ProviderGoogle:
-		return NewHTTPGoogleClient(id, secret, callbackFor(st.InstanceURL, provider), s.httpClient), nil
+		return NewHTTPGoogleClient(id, secret, callbackFor(st.InstanceURL, provider), s.httpClient)
 	case ProviderDiscord:
-		return NewHTTPDiscordClient(id, secret, callbackFor(st.InstanceURL, provider), s.httpClient), nil
+		return NewHTTPDiscordClient(id, secret, callbackFor(st.InstanceURL, provider), s.httpClient)
 	}
-	return NewHTTPGitHubClient(id, secret, s.httpClient), nil
+	return NewHTTPGitHubClient(id, secret, s.httpClient)
+}
+
+// exchangeCode is exchange for a provider sign-in: when the provider rejects the client and its secret is a reference,
+// the secret is read again (at most every 5 minutes) and the exchange retried once with the new value.
+func (s *Service) exchangeCode(ctx context.Context, provider Provider, client ProviderClient, code string) (GitHubGrant, error) {
+	grant, err := exchange(ctx, client, code)
+	if !errors.Is(err, errClientRejected) || s.cfg.Secrets == nil {
+		return grant, err
+	}
+	st, serr := s.providerSettings(ctx, provider)
+	if serr != nil {
+		return grant, err
+	}
+	id, stored := st.OAuthCredentials(provider)
+	stale, serr := s.cfg.Secrets.Value(ctx, stored)
+	if serr != nil {
+		return grant, err
+	}
+	fresh, ok := s.cfg.Secrets.Refresh(ctx, stale)
+	if !ok {
+		return grant, err
+	}
+	return exchange(ctx, s.newProviderClient(provider, st, id, fresh), code)
+}
+
+// SignInSecrets is the client secret stored for each sign-in provider, so one warm read can cover them.
+func (s *Service) SignInSecrets(ctx context.Context) []string {
+	if s.cfg.Settings == nil {
+		return nil
+	}
+	st, err := s.cfg.Settings.Get(ctx)
+	if err != nil {
+		return nil
+	}
+	var stored []string
+	for p := range signInProviders {
+		if _, secret := st.OAuthCredentials(p); secret != "" {
+			stored = append(stored, secret)
+		}
+	}
+	return stored
 }
 
 // providerSpec is what differs per provider at the authorize step.
@@ -404,7 +465,23 @@ func (s *Service) SetProviderOAuth(ctx context.Context, userID string, provider 
 	if (clientID == "") != (clientSecret == "") {
 		return Settings{}, fmt.Errorf("%w: client ID and client secret must be set together (or both empty to disable %s sign-in)", apperrs.ErrInvalid, provider)
 	}
+	if _, err := s.readSecret(ctx, clientSecret); err != nil {
+		return Settings{}, err
+	}
 	return s.cfg.Settings.SetProviderOAuth(ctx, provider, clientID, clientSecret)
+}
+
+// readSecret asks the manager for a reference being saved and refuses one that does not resolve, naming only why.
+func (s *Service) readSecret(ctx context.Context, stored string) (string, error) {
+	kind, ref := secretref.Parse(stored)
+	if s.cfg.Secrets == nil || kind != secretref.Reference {
+		return stored, nil
+	}
+	v, err := s.cfg.Secrets.Read(ctx, stored)
+	if err != nil {
+		return "", fmt.Errorf("%w: client secret: %s", apperrs.ErrInvalid, secretref.Reason(secretref.ManagerName(ref.Scheme), err))
+	}
+	return v, nil
 }
 
 // DevLoginEnabled reports whether the GitHub-free dev session endpoint is wired, gating /auth/dev-login registration.
@@ -465,7 +542,7 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 	if err != nil {
 		return "", err
 	}
-	grant, err := exchange(ctx, client, code)
+	grant, err := s.exchangeCode(ctx, provider, client, code)
 	if err != nil {
 		return "", err
 	}

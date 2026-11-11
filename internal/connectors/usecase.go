@@ -581,8 +581,8 @@ func (s *Service) liveFields(ctx context.Context, c Connector, fields map[string
 	return live, nil
 }
 
-// connectorProblem is the first reference of c's stored credential or app registration that cannot be resolved now.
-func (s *Service) connectorProblem(ctx context.Context, c Connector, cred Credentials) *SecretProblem {
+// storedSecrets is every secret c's stored credential and app registration hold, references or literals.
+func (s *Service) storedSecrets(ctx context.Context, c Connector, cred Credentials) []string {
 	stored := []string{cred.ManualFields[manualTokenField]}
 	for _, f := range c.Manual {
 		if f.Secret {
@@ -594,5 +594,10 @@ func (s *Service) connectorProblem(ctx context.Context, c Connector, cred Creden
 			stored = append(stored, app.ClientSecret, app.PrivateKey)
 		}
 	}
-	return s.firstProblem(ctx, stored...)
+	return stored
+}
+
+// connectorProblem is the first reference of c's stored credential or app registration that cannot be resolved now.
+func (s *Service) connectorProblem(ctx context.Context, c Connector, cred Credentials) *SecretProblem {
+	return s.firstProblem(ctx, s.storedSecrets(ctx, c, cred)...)
 }

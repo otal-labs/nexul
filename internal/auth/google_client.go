@@ -62,7 +62,11 @@ func exchangeCode(ctx context.Context, hc *http.Client, name, tokenURL, clientID
 		AccessToken string `json:"access_token"`
 		Error       string `json:"error"`
 	}
-	if _, err := oauthx.PostForm(ctx, hc, tokenURL, form, "", "", "application/json", &body); err != nil {
+	status, err := oauthx.PostForm(ctx, hc, tokenURL, form, "", "", "application/json", &body)
+	if clientRejected(status, body.Error) {
+		return "", fmt.Errorf("%w: %w: %s: %s", apperrs.ErrUnauthorized, errClientRejected, name, body.Error)
+	}
+	if err != nil {
 		return "", fmt.Errorf("exchange code: %w", apperrs.Retryable(err))
 	}
 	if body.Error != "" {
