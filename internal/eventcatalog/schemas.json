@@ -4587,6 +4587,44 @@
       "changed_at"
     ]
   },
+  "instance.sso_changed": {
+    "type": "object",
+    "properties": {
+      "display_name": {
+        "type": "string",
+        "description": "The provider's name on the sign-in button; empty when the settings were removed."
+      },
+      "issuer_url": {
+        "type": "string",
+        "description": "The provider's issuer URL; empty when the settings were removed."
+      },
+      "only": {
+        "type": "boolean",
+        "description": "True while single sign-on is the only way in besides the instance Owner's passkey."
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "True when the settings were removed and the instance holds none."
+      },
+      "changed_by": {
+        "type": "string",
+        "description": "The account that saved or removed the settings."
+      },
+      "changed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "display_name",
+      "issuer_url",
+      "only",
+      "removed",
+      "changed_by",
+      "changed_at"
+    ]
+  },
   "instance.upgrade_changed": {
     "type": "object",
     "properties": {

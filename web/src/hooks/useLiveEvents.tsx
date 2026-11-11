@@ -18,6 +18,7 @@ import { docFolderFollower } from "@/hooks/DocFolderHooks";
 import { docFollower } from "@/hooks/DocHooks";
 import { instanceUpgradeFollower } from "@/hooks/InstanceUpgradeHooks";
 import { licenseFollower } from "@/ee/hooks/LicenseHooks";
+import { ssoFollower } from "@/ee/hooks/SsoHooks";
 import { interviewSourceFollower } from "@/hooks/InterviewSourceHooks";
 import { machineFollower } from "@/hooks/MachineHooks";
 import { memoryFollower } from "@/hooks/MemoryHooks";
@@ -91,6 +92,7 @@ const followers: LiveFollower[] = [
   docFollower,
   instanceUpgradeFollower,
   licenseFollower,
+  ssoFollower,
   interviewSourceFollower,
   machineFollower,
   memoryFollower,

@@ -164,6 +164,11 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("GET /api/instance/license", licenseRoutes)
 	apiMux.Handle("PUT /api/instance/license", licenseRoutes)
 	apiMux.Handle("DELETE /api/instance/license", licenseRoutes)
+	ssoRoutes := svc.ssoHandler.Routes()
+	apiMux.Handle("GET /api/instance/sso", ssoRoutes)
+	apiMux.Handle("PUT /api/instance/sso", ssoRoutes)
+	apiMux.Handle("DELETE /api/instance/sso", ssoRoutes)
+	apiMux.Handle("POST /api/instance/sso/verify", ssoRoutes)
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -185,6 +190,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Repository:    svc.repositorySvc,
 		Runner:        runnerSvc,
 		License:       svc.licenseSvc,
+		SSO:           svc.ssoSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -214,6 +220,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux := httpx.NewServeMux()
 	mountGateway(httpMux, "/auth", svc.authHandler.Routes())
 	httpMux.Handle("/auth/connectors/", svc.connectorsHandler.PublicRoutes())
+	ssoPublic := svc.ssoHandler.PublicRoutes()
+	httpMux.Handle("GET /auth/oidc", ssoPublic)
+	httpMux.Handle("GET /auth/oidc/callback", ssoPublic)
+	httpMux.Handle("GET /api/auth/sso", ssoPublic)
 	// A machine holds no session: these authenticate with an enrollment code or the runner's own credential.
 	runnerPublic := runnerHTTP.PublicRoutes()
 	httpMux.Handle("GET /api/runners/download/{target}", runnerPublic)
@@ -315,6 +325,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("events", "Published event-schema catalog")
 	spec.SetTagDescription("audit", "Audit log")
 	spec.SetTagDescription("logs", "The instance's logs: the browser log relay into the server's sinks, and reading them back")
+	spec.SetTagDescription("sso", "Sign in through the instance's one OIDC identity provider, an enterprise feature")
 	spec.SetTagDescription("license", "The instance's enterprise license key, checked offline against the key built into the binary")
 	spec.SetTagDescription("version", "Build version, channel, and update check")
 	spec.SetTagDescription("templates", "Instance templates, and cloning or resetting a template at any layer")
@@ -328,6 +339,11 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/instance/logs", "Needs logs:read: the instance's own logs, newest first, filtered by ?source, ?level, ?since, ?until, ?trace_id, ?name and ?text; ?limit (1 to 500, default 100) and ?offset page them, and the until a page returns pins the next one", "logs")
 	spec.Register("GET", "/api/instance/license", "Needs instance:read: the enterprise license key's state, who it is for, what it unlocks and when it expires", "license")
 	spec.Register("PUT", "/api/instance/license", "Needs instance:write: paste a license key; one for another instance address, with a bad signature or already expired is refused with the reason", "license")
+	spec.Register("GET", "/api/instance/sso", "Needs instance:read: the single sign-on provider's settings, whether the license unlocks it and whether its button shows; the client secret is never returned", "sso")
+	spec.Register("PUT", "/api/instance/sso", "Needs instance:write and a license key unlocking sso: save the provider; a provider that cannot be reached, a secret reference that does not resolve or only_sso with no Owner passkey is refused with the reason", "sso")
+	spec.Register("DELETE", "/api/instance/sso", "Needs instance:write: remove the provider; its button goes and the other sign-in methods come back", "sso")
+	spec.Register("POST", "/api/instance/sso/verify", "Needs instance:write and a license key unlocking sso: run one check of the form, issuer or secret; stores nothing", "sso")
+	spec.Register("GET", "/api/auth/sso", "Public: whether the sign-in page shows the single sign-on button, its name, and whether it is the only sign-in", "sso")
 	spec.Register("DELETE", "/api/instance/license", "Needs instance:write: remove the license key; the enterprise features stop and their data stays", "license")
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")

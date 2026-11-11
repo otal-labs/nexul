@@ -455,6 +455,7 @@ const (
 	signInProviderError      = "provider_error"
 	signInStateMismatch      = "state_mismatch"
 	signInNotConfigured      = "not_configured"
+	signInSSOOnly            = "sso_only"
 	signInFailedCode         = "sign_in_failed"
 )
 
@@ -470,6 +471,9 @@ func signInErrorCode(err error) string {
 	}
 	if errors.Is(err, errOAuthNotConfigured) {
 		return signInNotConfigured
+	}
+	if errors.Is(err, errSSOOnly) {
+		return signInSSOOnly
 	}
 	return signInFailedCode
 }

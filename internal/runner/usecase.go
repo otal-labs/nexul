@@ -76,6 +76,8 @@ type Service struct {
 	logs LogReader
 	// license reads the enterprise license instance_get shows; nil on a build that wires none.
 	license func(context.Context) (any, error)
+	// sso reads the single sign-on settings instance_get includes; nil on a build that wires none.
+	sso func(context.Context) (any, error)
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time

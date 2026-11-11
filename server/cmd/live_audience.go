@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/otal-labs/nexul/ee/license"
+	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -208,6 +209,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicMachineDeleted:         recipientFrame,
 	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
 	license.TopicChanged:               anywhere(permissions.InstanceRead),
+	sso.TopicChanged:                   anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
 	dns.TopicTunnelChanged:             anywhere(permissions.DNSRead),

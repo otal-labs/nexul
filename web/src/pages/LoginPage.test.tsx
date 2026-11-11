@@ -208,4 +208,53 @@ describe("LoginPage passkey sign-in", () => {
 
     expect(await screen.findByText("that passkey isn't recognised here")).toBeInTheDocument();
   });
+
+  describe("single sign-on", () => {
+    const withSso = (sso: { active: boolean; name: string; only: boolean }) =>
+      mocks.get.mockImplementation((url: string) =>
+        Promise.resolve({ data: url === "/api/auth/sso" ? sso : { configured: true, google_configured: true, passkeys: true } }),
+      );
+
+    it("shows the company's button first and leaves the other methods", async () => {
+      withSso({ active: true, name: "Acme SSO", only: false });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", { configurable: true, value: { assign: assignMock } });
+      const user = (await import("@testing-library/user-event")).default.setup();
+      renderPage();
+
+      await user.click(await screen.findByRole("button", { name: "Sign in with Acme SSO" }));
+
+      expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/oidc");
+      expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+    });
+
+    it("hides every other method while it is the only sign-in, behind a link to the Owner's passkey", async () => {
+      withSso({ active: true, name: "Acme SSO", only: true });
+      renderPage(["/login?error=sso_only"]);
+
+      await screen.findByRole("button", { name: "Sign in with Acme SSO" });
+      expect(await screen.findByRole("link", { name: "Instance Owner? Use your passkey" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /continue with/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Sign in with a passkey" })).not.toBeInTheDocument();
+      expect(screen.getByText(/signs in through single sign-on only/i)).toBeInTheDocument();
+    });
+
+    it("offers the Owner's passkey once they follow the link", async () => {
+      withSso({ active: true, name: "Acme SSO", only: true });
+      renderPage(["/login?owner"]);
+
+      expect(await screen.findByRole("button", { name: "Sign in with a passkey" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /continue with/i })).not.toBeInTheDocument();
+    });
+
+    it("shows nothing of it while the license is off, whatever was saved", async () => {
+      withSso({ active: false, name: "", only: false });
+      renderPage();
+
+      expect(await screen.findByRole("button", { name: "Sign in with a passkey" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Sign in with (?!a passkey)/ })).not.toBeInTheDocument();
+    });
+  });
 });

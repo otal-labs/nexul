@@ -35,6 +35,12 @@ func (s *Service) InstanceLogs(ctx context.Context, p logstore.Params) (logstore
 	return s.logs.Read(ctx, q)
 }
 
+// WithSSO attaches the read of the single sign-on settings instance_get includes, so runner never imports ee.
+func (s *Service) WithSSO(read func(context.Context) (any, error)) *Service {
+	s.sso = read
+	return s
+}
+
 // WithLicense attaches the read of the enterprise license instance_get includes, so runner never imports ee.
 func (s *Service) WithLicense(read func(context.Context) (any, error)) *Service {
 	s.license = read

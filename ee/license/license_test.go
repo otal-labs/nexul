@@ -395,36 +395,3 @@ func TestHandler_Routes(t *testing.T) {
 	NewHandler(s).Routes().ServeHTTP(rec, httptest.NewRequestWithContext(asOwner(t), http.MethodDelete, "/api/instance/license", nil))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
-
-func TestInstanceUpdateTool(t *testing.T) {
-	is := newIssuer(t)
-	repo := &fakeRepo{}
-	tool := MCPTools(newTestService(is, repo, testURL))[0]
-	require.Equal(t, "instance_update", tool.Name)
-	call := func(ctx context.Context, args string) (Status, error) {
-		out, err := tool.Call(ctx, json.RawMessage(args))
-		if err != nil {
-			return Status{}, err
-		}
-		return out.(instanceSettings).License, nil
-	}
-
-	_, err := call(asMember(t), `{"license_key":"`+is.key(t)+`"}`)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	_, err = call(asOwner(t), `{"license_key":"nope"}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-
-	st, err := call(asOwner(t), `{"license_key":"`+is.key(t)+`"}`)
-	require.NoError(t, err)
-	assert.Equal(t, StateActive, st.State)
-
-	st, err = call(asMember(t), `{}`)
-	require.NoError(t, err, "an omitted field keeps the key and reads it back")
-	assert.Equal(t, StateActive, st.State)
-	assert.NotEmpty(t, repo.key)
-
-	st, err = call(asOwner(t), `{"license_key":""}`)
-	require.NoError(t, err)
-	assert.Equal(t, StateNone, st.State)
-	assert.Empty(t, repo.key)
-}

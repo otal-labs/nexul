@@ -49,7 +49,7 @@ var scopeRules = map[string]scopeRule{
 	"computer.pair_failed": instanceScope, "computer.move_requested": instanceScope, "computer.grant_changed": instanceScope,
 	"computer.placement_changed": instanceScope, "computer.presence_changed": instanceScope,
 	"computer.removed": instanceScope, "github_link.changed": instanceScope, "welcome.progress_changed": instanceScope,
-	"secret_manager.token_rejected": instanceScope, "instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope, "instance.license_changed": instanceScope,
+	"secret_manager.token_rejected": instanceScope, "instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope, "instance.license_changed": instanceScope, "instance.sso_changed": instanceScope,
 	"topology.updated": workspaceScope, "notification.created": notificationScope,
 	"dns.record_changed": instanceScope, "dns.tunnel_changed": instanceScope, "dns.gateway_changed": instanceScope,
 	"dns.exposure_changed": instanceScope, "instance_template.updated": instanceScope,

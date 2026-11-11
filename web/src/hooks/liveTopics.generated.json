@@ -68,6 +68,7 @@
   "doc.updated",
   "doc.watchers.changed",
   "instance.license_changed",
+  "instance.sso_changed",
   "instance.upgrade_changed",
   "instance_template.updated",
   "interview_answer.cleared",

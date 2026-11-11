@@ -101,7 +101,6 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Desktop app | ✅ | An Electron shell that imports connection tokens, keeps a list of instances, and loads the one you pick. |
 | Instance upgrade | ✅ | Settings shows the running and newest versions. One click (or the `instance_upgrade` tool) upgrades every Nexul service on the server. |
 | Call notes | ⬜ | A speech-to-text model takes notes on a voice call and writes the summary into the doc. |
-| SSO | ⬜ | OIDC and SAML sign-in (Google, Microsoft Entra, Okta) with just-in-time user provisioning. |
 | External secrets | ✅ | Read secrets from 1Password instead of storing them in Nexul: a value `op://vault/item/field` is read by the runner, automations host or server that uses it, with a token that stays on its machine. A changed value shows on the stack with Redeploy beside it. Vault and the cloud managers are not built yet. |
 
 ## Contributing
@@ -138,6 +137,6 @@ What the subscription will include.
 | Cloud hosting | ⬜ | A managed control plane we run. Your runners and servers stay yours. |
 | Priority support | ⬜ | A response-time SLA and a direct channel. |
 | License key | ✅ | One signed key per instance unlocks every enterprise feature, checked offline. |
-| Single sign-on | ⬜ | Sign in through your company's identity provider (OIDC), with an SSO-only switch. |
+| Single sign-on | ✅ | Sign in through your company's identity provider (OIDC), with an SSO-only switch. |
 | Branding | ⬜ | Your name, logo, accent colour and an imported theme across the instance. |
 | Many instances in one place | ⬜ | Planned: one console for a partner to see and upgrade every instance they host. |

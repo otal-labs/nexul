@@ -1336,13 +1336,25 @@ its setup is un-confirmed or it is removed; a saved transcript shows any
 personal access token as `[redacted token]`.
 
 **Sign-in identity**:
-One provider account attached to a user: GitHub, Google or Discord, keyed by
+One provider account attached to a user: GitHub, Google, Discord or the instance's Single sign-on provider, keyed by
 the provider's own id, with the login it yields. A user holds one per
 provider at most and signs in through any of them; the first one created is
 the one their login, name and picture follow. Linked from Profile while
 signed in, unlinked from there too, never down to none.
 _Avoid_: Account (that is the user), login method, connected account (a
 Connector is the instance's credential, not a person's)
+
+**Single sign-on**:
+An Enterprise feature: the instance's one OpenID Connect provider (Okta, Entra, Google Workspace, Keycloak), set by the
+instance Owner, that people sign in through from the button "Sign in with <name>". A verified email links to the account
+that has it from a Google or Discord sign-in; otherwise the first sign-in makes an account in the default workspace with
+the role the Owner chose. Without a License key that unlocks it the button is off and the saved settings stay.
+_Avoid_: SSO provider, SAML, IdP login
+
+**SSO-only**:
+Single sign-on's switch that hides every other sign-in method and refuses it on the server. The instance Owner's
+passkey still works, and the switch turns on only while an instance Owner holds one.
+_Avoid_: Enforce SSO, SSO required
 
 **Passkey**:
 A WebAuthn credential a person makes on their own device and signs in with

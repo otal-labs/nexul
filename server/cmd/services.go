@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/ee/license"
+	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -116,6 +117,8 @@ type coreServices struct {
 	workspaceSvc *workspace.Service
 	templatesSvc *templates.Service
 	licenseSvc   *license.Service
+	ssoSvc       *sso.Service
+	ssoHandler   *sso.Handler
 
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
@@ -418,6 +421,13 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	welcomeSvc := newWelcomeService(store, authSvc)
 	authSvc.SetWelcome(welcomeProgress{svc: welcomeSvc})
 	tenancySvc.SetTeamProgress(teamProgress{welcome: welcomeSvc, invitations: store.Invitations})
+	licenseSvc := license.NewService(store.License, dnsSettingsAdapter{store.Settings}.GetInstanceURL).WithGate(accessSvc)
+	ssoSvc := sso.NewService(sso.Config{
+		Repo: store.SSO, Accounts: store.SSO, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
+		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL, OwnerHasPasskey: authSvc.InstanceOwnerHasPasskey,
+		Secret: []byte(cfg.AuthSecret),
+	})
+	authSvc.SetSSOOnly(ssoSvc.OnlySSO)
 	return &coreServices{
 		welcomeSvc:     welcomeSvc,
 		accessSvc:      accessSvc,
@@ -475,7 +485,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		tenancySvc:   tenancySvc,
 		workspaceSvc: workspaceSvc,
 		templatesSvc: templatesSvc,
-		licenseSvc:   license.NewService(store.License, dnsSettingsAdapter{store.Settings}.GetInstanceURL).WithGate(accessSvc),
+		licenseSvc:   licenseSvc,
+		ssoSvc:       ssoSvc,
+		ssoHandler:   sso.NewHandler(ssoSvc, authHandler),
 
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,
