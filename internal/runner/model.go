@@ -20,6 +20,21 @@ type Runner struct {
 	ComputerID  string
 	// EnrolledBy is who made the install command a deploy runner enrolled with; empty from before, and for instance.
 	EnrolledBy string
+	// Managers is each secrets manager's state as the runner last reported it on connect; empty when it holds no token.
+	Managers []ManagerState
+}
+
+// Secrets manager states a runner reports (ADR 0181).
+const (
+	ManagerReady         = "ready"
+	ManagerTokenRejected = "token rejected"
+	ManagerUnreachable   = "unreachable"
+)
+
+// ManagerState is one secrets manager's state on a runner; Manager is the scheme of the references it resolves.
+type ManagerState struct {
+	Manager string `json:"manager" jsonschema:"The secrets manager, named by the scheme of the references it resolves, such as op."`
+	State   string `json:"state" jsonschema:"Whether the runner can resolve this manager's references." enum:"ready,token rejected,unreachable"`
 }
 
 // Personal reports whether the runner belongs to a person's computer, which never takes deploy work.
@@ -37,6 +52,8 @@ type RunnerView struct {
 	RunningJob *RunningJob `json:"running_job"`
 	// Machine is the name of the machine this runner belongs to (issue 05); empty if unresolved.
 	Machine string `json:"machine,omitempty"`
+	// Managers is the secrets managers the runner reported, each with its state; empty when it holds no token.
+	Managers []ManagerState `json:"managers"`
 }
 
 // RunningJob is the job a runner is executing right now, or nil when idle.

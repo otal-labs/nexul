@@ -1,6 +1,6 @@
 # 16 — A runner checks its token at start and reports its managers' states
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 13, 15
 
@@ -23,3 +23,7 @@ The seam for a second manager).
 - [ ] Personal runners never report one.
 
 Verify: `make lint`, `make event-schemas`, `go test ./internal/runner/... ./server/...`.
+
+## Comments
+
+Built: `internal/runner/managers.go` (one resolver per manager, opened at start; a rejected token is tried once, an unreachable one retried with backoff from 5s to 5m), the `managers` connect parameter, migration 0148 (`runners.managers`), and the list on `runner.connected`, `GET /api/runners` and `machine_list`. The runner unsets `OP_SERVICE_ACCOUNT_TOKEN` once read, so nothing it starts inherits it. Checked against a real server: a runner with no token reports `[]`, one with a bogus token `token rejected`.

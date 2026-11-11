@@ -6880,11 +6880,38 @@
       "machine_id": {
         "type": "string",
         "description": "The machine the runner belongs to; the frame reaches only people who see that machine."
+      },
+      "managers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "manager": {
+              "type": "string",
+              "description": "The secrets manager, named by the scheme of the references it resolves, such as op."
+            },
+            "state": {
+              "type": "string",
+              "description": "Whether the runner can resolve this manager's references.",
+              "enum": [
+                "ready",
+                "token rejected",
+                "unreachable"
+              ]
+            }
+          },
+          "required": [
+            "manager",
+            "state"
+          ]
+        },
+        "description": "The secrets managers the runner reported on this connect, each with its state; empty when it holds no token."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
-      "runner_id"
+      "runner_id",
+      "managers"
     ]
   },
   "runner.disconnected": {

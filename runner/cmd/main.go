@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
+	"github.com/otal-labs/nexul/internal/platform/secretref/onepassword"
 	"github.com/otal-labs/nexul/internal/platform/version"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -65,11 +67,37 @@ func main() {
 		RunnerLog:         runnerLog,
 		Containers:        runner.HostContainerWatch(),
 		Logs:              logs,
+		Managers:          openManagers(cfg, logger),
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)
 		os.Exit(1)
 	}
+}
+
+// opTokenEnv is the 1Password service account token `nexul runner 1password` puts in the runner's unit.
+const opTokenEnv = "OP_SERVICE_ACCOUNT_TOKEN"
+
+// openManagers sets up the managers this runner holds a token for. The token leaves the environment once read, so
+// no container or command the runner starts inherits it; a personal runner takes none.
+func openManagers(cfg *runner.RunnerConfig, logger *slog.Logger) *runner.Managers {
+	token := os.Getenv(opTokenEnv)
+	if err := os.Unsetenv(opTokenEnv); err != nil {
+		logger.Warn("clear the 1password token from the environment", "error", err)
+	}
+	if token == "" || cfg.Mode == runner.ModePersonal {
+		return nil
+	}
+	return runner.NewManagers(logger, runner.ManagerSetup{
+		Scheme: "op",
+		Open: func(ctx context.Context) (secretref.Resolver, error) {
+			res, err := onepassword.New(ctx, token, version.Version)
+			if err != nil {
+				return nil, err
+			}
+			return res, nil
+		},
+	})
 }
 
 // newLogger is the stderr logger. A machine's runner also queues its records for the server to relay; a personal

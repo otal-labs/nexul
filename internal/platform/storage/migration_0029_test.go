@@ -56,6 +56,15 @@ func withArchivedAt(t *testing.T, db *sql.DB) {
 	require.NoError(t, err)
 }
 
+// withRunnerManagers adds runners.managers to a database a test stopped short of, for repo reads that select it.
+func withRunnerManagers(t *testing.T, db *sql.DB) {
+	t.Helper()
+	script, err := migrationFS.ReadFile("migrations/0148_runner_managers.sql")
+	require.NoError(t, err)
+	_, err = db.Exec(string(script))
+	require.NoError(t, err)
+}
+
 // withRoleDescription adds roles.description to a database a test stopped short of, for repo reads that select it.
 func withRoleDescription(t *testing.T, db *sql.DB) {
 	t.Helper()

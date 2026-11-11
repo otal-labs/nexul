@@ -29,6 +29,8 @@ type RunnerStore interface {
 	SetConnected(ctx context.Context, id string, connected bool) error
 	// SetVersion records the runner's stamped build version, reported on each connect.
 	SetVersion(ctx context.Context, id string, version string) error
+	// SetManagers records the secrets managers' states the runner reported on its latest connect.
+	SetManagers(ctx context.Context, id string, managers []ManagerState) error
 }
 
 // CredentialStore persists enrollment codes and runner credentials, both by hash only.

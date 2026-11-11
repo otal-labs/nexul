@@ -1091,6 +1091,7 @@ type Runner struct {
 	OwnerUserID string
 	ComputerID  string
 	EnrolledBy  string
+	Managers    string
 }
 
 type RunnerCredential struct {

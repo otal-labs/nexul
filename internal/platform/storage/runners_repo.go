@@ -123,6 +123,23 @@ func (r *RunnersRepo) SetVersion(ctx context.Context, id string, version string)
 	})
 }
 
+func (r *RunnersRepo) SetManagers(ctx context.Context, id string, managers []runner.ManagerState) error {
+	raw, err := json.Marshal(managers)
+	if err != nil {
+		return fmt.Errorf("encode runner %s managers: %w", id, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetRunnerManagers(ctx, sqlcgen.SetRunnerManagersParams{Managers: string(raw), ID: id})
+		if err != nil {
+			return fmt.Errorf("set runner %s managers: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set runner %s managers: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *RunnersRepo) update(ctx context.Context, id string, lastSeen int64, connected bool) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRunnerHeartbeat(ctx, sqlcgen.UpdateRunnerHeartbeatParams{
@@ -332,5 +349,15 @@ func toRunner(row sqlcgen.Runner) *runner.Runner {
 		OwnerUserID: row.OwnerUserID,
 		ComputerID:  row.ComputerID,
 		EnrolledBy:  row.EnrolledBy,
+		Managers:    decodeManagers(row.Managers),
 	}
+}
+
+// decodeManagers reads the stored list; a value that does not parse reads as no managers, never an error a list fails on.
+func decodeManagers(raw string) []runner.ManagerState {
+	managers := []runner.ManagerState{}
+	if err := json.Unmarshal([]byte(raw), &managers); err != nil || managers == nil {
+		return []runner.ManagerState{}
+	}
+	return managers
 }

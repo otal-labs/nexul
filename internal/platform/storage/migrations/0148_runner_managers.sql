@@ -1,0 +1,1 @@
+ALTER TABLE runners ADD COLUMN managers TEXT NOT NULL DEFAULT '[]';

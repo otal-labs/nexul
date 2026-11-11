@@ -354,6 +354,17 @@ func (f *fakeRunnerRepo) SetVersion(_ context.Context, id string, version string
 	return nil
 }
 
+func (f *fakeRunnerRepo) SetManagers(_ context.Context, id string, managers []ManagerState) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	r, ok := f.runners[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	r.Managers = managers
+	return nil
+}
+
 func (f *fakeRunnerRepo) connectedCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

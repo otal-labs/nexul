@@ -229,7 +229,7 @@ func (q *Queries) GetLatestInstanceUpgrade(ctx context.Context) (InstanceUpgrade
 }
 
 const getRunner = `-- name: GetRunner :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE id = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE id = ?
 `
 
 func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
@@ -246,12 +246,13 @@ func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
 		&i.OwnerUserID,
 		&i.ComputerID,
 		&i.EnrolledBy,
+		&i.Managers,
 	)
 	return i, err
 }
 
 const getRunnerByComputer = `-- name: GetRunnerByComputer :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1
 `
 
 func (q *Queries) GetRunnerByComputer(ctx context.Context, computerID string) (Runner, error) {
@@ -268,12 +269,13 @@ func (q *Queries) GetRunnerByComputer(ctx context.Context, computerID string) (R
 		&i.OwnerUserID,
 		&i.ComputerID,
 		&i.EnrolledBy,
+		&i.Managers,
 	)
 	return i, err
 }
 
 const getRunnerByName = `-- name: GetRunnerByName :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE name = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE name = ?
 `
 
 func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, error) {
@@ -290,6 +292,7 @@ func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, err
 		&i.OwnerUserID,
 		&i.ComputerID,
 		&i.EnrolledBy,
+		&i.Managers,
 	)
 	return i, err
 }
@@ -409,7 +412,7 @@ func (q *Queries) ListRunnerEnrollmentCodes(ctx context.Context, arg ListRunnerE
 }
 
 const listRunners = `-- name: ListRunners :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = '' ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE owner_user_id = '' ORDER BY created_at
 `
 
 func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
@@ -432,6 +435,7 @@ func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 			&i.OwnerUserID,
 			&i.ComputerID,
 			&i.EnrolledBy,
+			&i.Managers,
 		); err != nil {
 			return nil, err
 		}
@@ -447,7 +451,7 @@ func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 }
 
 const listRunnersByOwner = `-- name: ListRunnersByOwner :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at
 `
 
 func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([]Runner, error) {
@@ -470,6 +474,7 @@ func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([
 			&i.OwnerUserID,
 			&i.ComputerID,
 			&i.EnrolledBy,
+			&i.Managers,
 		); err != nil {
 			return nil, err
 		}
@@ -485,7 +490,7 @@ func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([
 }
 
 const listRunnersOn = `-- name: ListRunnersOn :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = '' AND machine_id IN (SELECT value FROM json_each(?1)) ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by, managers FROM runners WHERE owner_user_id = '' AND machine_id IN (SELECT value FROM json_each(?1)) ORDER BY created_at
 `
 
 func (q *Queries) ListRunnersOn(ctx context.Context, machineIds interface{}) ([]Runner, error) {
@@ -508,6 +513,7 @@ func (q *Queries) ListRunnersOn(ctx context.Context, machineIds interface{}) ([]
 			&i.OwnerUserID,
 			&i.ComputerID,
 			&i.EnrolledBy,
+			&i.Managers,
 		); err != nil {
 			return nil, err
 		}
@@ -628,6 +634,23 @@ func (q *Queries) SetInstanceUpgradeStatus(ctx context.Context, arg SetInstanceU
 		arg.UpdatedAt,
 		arg.ID,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setRunnerManagers = `-- name: SetRunnerManagers :execrows
+UPDATE runners SET managers = ? WHERE id = ?
+`
+
+type SetRunnerManagersParams struct {
+	Managers string
+	ID       string
+}
+
+func (q *Queries) SetRunnerManagers(ctx context.Context, arg SetRunnerManagersParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setRunnerManagers, arg.Managers, arg.ID)
 	if err != nil {
 		return 0, err
 	}

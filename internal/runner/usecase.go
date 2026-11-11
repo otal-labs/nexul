@@ -252,6 +252,7 @@ func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
 			LastSeen:   rn.LastSeen,
 			RunningJob: running[rn.ID],
 			Machine:    machineNames[rn.MachineID],
+			Managers:   rn.Managers,
 		})
 	}
 	return out, nil
