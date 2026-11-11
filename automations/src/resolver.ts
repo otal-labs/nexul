@@ -1,6 +1,6 @@
 import { parseSecretReference } from "./secret-reference.ts";
 
-export type ResolveErrorKind = "not_found" | "field_missing" | "no_access" | "unreachable" | "other";
+export type ResolveErrorKind = "not_found" | "field_missing" | "no_access" | "unreachable" | "no_token" | "other";
 
 // A failure carries only its kind: a reference or a value never rides in an error.
 export type ResolveResult = { ok: true; value: string } | { ok: false; error: ResolveErrorKind };

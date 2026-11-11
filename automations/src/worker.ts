@@ -10,6 +10,8 @@ export interface SpawnOptions {
   timeoutMs: number;
   heartbeatTimeoutMs: number;
   memoryMb: number;
+  // Answers the thread's request to resolve pool references, for this automation's workspace only.
+  resolvePool: (entries: unknown) => Promise<Record<string, string>>;
 }
 
 export interface WorkerHandle {
@@ -27,7 +29,9 @@ export interface WorkerFactory {
 const WORKER_ENTRY = new URL(import.meta.url.endsWith(".ts") ? "./worker-entry.ts" : "./worker-entry.js", import.meta.url);
 
 interface WorkerMessage {
-  type: "log" | "heartbeat";
+  type: "log" | "heartbeat" | "resolve";
+  id?: number;
+  entries?: unknown;
   level?: "info" | "warn" | "error";
   message?: string;
   meta?: Record<string, unknown>;
@@ -69,6 +73,13 @@ export const threadWorkerFactory: WorkerFactory = {
     worker.on("message", (msg: WorkerMessage) => {
       if (msg.type === "heartbeat") {
         lastHeartbeat = Date.now();
+        return;
+      }
+      if (msg.type === "resolve") {
+        void opts
+          .resolvePool(msg.entries)
+          .catch(() => ({}))
+          .then((values) => worker.postMessage({ type: "resolved", id: msg.id, values }));
         return;
       }
       logScript(msg.level ?? "info", msg.message ?? "", { automationId: opts.automationId, automationName: opts.automationName, ...msg.meta });

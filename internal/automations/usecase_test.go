@@ -106,6 +106,30 @@ func TestService_ListAndGet(t *testing.T) {
 	})
 }
 
+func TestService_Get_SaysWhetherThePoolHoldsReferencesWithoutNamingThem(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	s := newTestService(repo, allowAll("owner"))
+	pool := NewSecretsService(newFakeSecretsRepo(), allowAll("owner"))
+	s.SetSecrets(pool)
+	created, _, err := s.Create(ctx, "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	require.NoError(t, pool.Set(ctx, "owner", "ws-1", "DATABASE_URL", "postgres://db.example.com/app"))
+
+	got, err := s.Get(ctx, "owner", created.ID)
+	require.NoError(t, err)
+	assert.False(t, got.PoolHasReferences, "a URL is a literal, not a reference")
+
+	require.NoError(t, pool.Set(ctx, "owner", "ws-1", "DB_PASSWORD", "op://Acme/db/password"))
+	got, err = s.Get(ctx, "owner", created.ID)
+	require.NoError(t, err)
+	assert.True(t, got.PoolHasReferences)
+	body, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(body), "op://")
+	assert.NotContains(t, string(body), "DB_PASSWORD")
+}
+
 func TestService_ListAndGet_CarryHealth(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))

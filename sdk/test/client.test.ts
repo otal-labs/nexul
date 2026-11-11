@@ -97,6 +97,49 @@ describe("DialinClient protocol", () => {
     client.stop();
   });
 
+  it("holds the first event until resolveSecrets has answered, then runs with what it returned", async () => {
+    let answer: (secrets: Record<string, string>) => void = () => {};
+    const resolveSecrets = () => new Promise<Record<string, string>>((resolve) => (answer = resolve));
+    let seen: Record<string, string> | undefined;
+    const automation = defineAutomation({ name: "x", description: "y" });
+    automation.on("ticket.created", async (_payload, ctx) => {
+      seen = ctx.secrets;
+      return true;
+    });
+    const client = new DialinClient(automation, { url: "http://instance", token: "dat_x", resolveSecrets });
+    const { ws } = await connect(client);
+
+    ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
+    await Promise.resolve();
+    expect(ws.sent.some((f) => f.type === "run_started")).toBe(false);
+
+    answer({ API_KEY: "resolved" });
+    await ws.sentFrame("run_finished", "run_crashed");
+
+    expect(seen).toEqual({ API_KEY: "resolved" });
+    client.stop();
+  });
+
+  it("runs with no secrets, never the pool as it came, when resolveSecrets fails", async () => {
+    let seen: Record<string, string> | undefined;
+    const automation = defineAutomation({ name: "x", description: "y" });
+    automation.on("ticket.created", async (_payload, ctx) => {
+      seen = ctx.secrets;
+      return true;
+    });
+    const resolveSecrets = async () => {
+      throw new Error("supervisor gone");
+    };
+    const client = new DialinClient(automation, { url: "http://instance", token: "dat_x", resolveSecrets, logger: () => {} });
+    const { ws } = await connect(client);
+
+    ws.emit({ type: "event", run_id: "r1", event_id: "e1", topic: "ticket.created", payload: {} });
+    await ws.sentFrame("run_finished", "run_crashed");
+
+    expect(seen).toEqual({});
+    client.stop();
+  });
+
   it("reports a falsy return as a failed run, not a crash", async () => {
     const automation = defineAutomation({ name: "x", description: "y" });
     automation.on("ticket.created", async () => false);

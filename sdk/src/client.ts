@@ -15,6 +15,9 @@ export interface DialinOptions {
   token: string;
   timeoutMs?: number;
   logger?: LogFn;
+  // Turns the hello's pool into what ctx.secrets holds, once per connection and before the first event; a host uses it
+  // to swap references for values. Without it the pool is handed in as it came.
+  resolveSecrets?: (pool: Record<string, string>) => Promise<Record<string, string>>;
 }
 
 class TimeoutError extends Error {}
@@ -72,6 +75,7 @@ export class DialinClient<S extends ConfigSchema> {
   private readonly log: LogFn;
   private config: ConfigValues<S>;
   private secrets: Record<string, string> = {};
+  private secretsReady: Promise<void> = Promise.resolve();
   private ws: WebSocket | undefined;
   private stopped = false;
 
@@ -142,11 +146,25 @@ export class DialinClient<S extends ConfigSchema> {
   private async handleFrame(frame: Frame, ws: WebSocket): Promise<void> {
     if (frame.type === "hello") {
       this.config = (frame.config_values as ConfigValues<S>) ?? defaultConfigValues(this.automation.configSchema);
-      this.secrets = frame.secrets ?? {};
-      return;
+      this.secretsReady = this.openSecrets(frame.secrets ?? {});
+      return this.secretsReady;
     }
     if (frame.type === "event") {
       await this.runHandler(frame, ws);
+    }
+  }
+
+  // A failed resolution leaves the automation with no secrets, never with the pool as it came.
+  private async openSecrets(pool: Record<string, string>): Promise<void> {
+    if (!this.opts.resolveSecrets) {
+      this.secrets = pool;
+      return;
+    }
+    try {
+      this.secrets = await this.opts.resolveSecrets(pool);
+    } catch (err) {
+      this.secrets = {};
+      this.log("error", "secrets could not be resolved", { error: err instanceof Error ? err.name : "unknown" });
     }
   }
 
@@ -154,6 +172,7 @@ export class DialinClient<S extends ConfigSchema> {
     const runId = frame.run_id;
     const topic = frame.topic;
     if (!runId || !topic) return;
+    await this.secretsReady;
     ws.send(JSON.stringify(runStartedFrame(runId)));
 
     const handler = this.automation.getHandler(topic);

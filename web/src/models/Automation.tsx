@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationKind } from "@/enums/Automation";
+import { InstanceHostName, type AutomationHost } from "@/models/AutomationHost";
 
 // Name/description/subscriptions/config_schema are code-declared and overwritten by the SDK on every dial-in.
 export interface Automation {
@@ -25,6 +26,8 @@ export interface Automation {
   last_run?: AutomationLastRun | null;
   runs_7d?: AutomationRunCounts;
   pending_version?: number | null;
+  // Read with the record only: whether the workspace's pool holds a secret reference, which only a host with a ready manager delivers.
+  pool_has_references?: boolean;
 }
 
 export interface AutomationLastRun {
@@ -77,6 +80,13 @@ export const automationState = (automation: Automation, offlineHostIds: Readonly
   if (automationLastRunFailed(automation)) return AutomationState.Failing;
   if (automationAttention(automation, offlineHostIds)) return AutomationState.Attention;
   return AutomationState.On;
+};
+
+// Whether the pool's references cannot be delivered: its host, known and listed, has no ready secrets manager for the workspace.
+export const automationPoolUnresolvable = (automation: Automation, hosts: readonly AutomationHost[] | undefined): boolean => {
+  if (!automation.pool_has_references) return false;
+  const host = hosts?.find((h) => (automation.host_id ? h.id === automation.host_id : h.name === InstanceHostName));
+  return !!host && !host.managers.some((m) => m.workspace_id === automation.workspace_id && m.state === "ready");
 };
 
 export const automationLastRunFailed = (automation: Automation): boolean =>

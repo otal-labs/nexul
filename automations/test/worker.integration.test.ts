@@ -1,4 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import { FakeResolver } from "../src/fake-resolver.ts";
+import { WorkspaceManagers } from "../src/managers.ts";
+import { PoolResolution } from "../src/pool-resolution.ts";
 import { threadWorkerFactory } from "../src/worker.ts";
 
 // Real worker_thread smoke test (the one piece the fake-based supervisor
@@ -39,6 +42,7 @@ describe("threadWorkerFactory (real worker_thread)", () => {
           timeoutMs: 30_000,
           heartbeatTimeoutMs: 60_000,
           memoryMb: 64,
+          resolvePool: async () => ({}),
         },
         () => {
           stale = true;
@@ -73,6 +77,7 @@ describe("threadWorkerFactory (real worker_thread)", () => {
             timeoutMs: 30_000,
             heartbeatTimeoutMs: 60_000,
             memoryMb: 64,
+            resolvePool: async () => ({}),
           },
           resolve,
         );
@@ -83,5 +88,64 @@ describe("threadWorkerFactory (real worker_thread)", () => {
     }
 
     expect(lines.some((l) => l.includes("automation worker exited on its own"))).toBe(true);
+  });
+
+  test("a thread's hello pool reaches its handler with references resolved by the supervisor and a failed one left out", async () => {
+    const op = new FakeResolver("op", { "op://acme/db/password": "hunter2" });
+    const managers = new WorkspaceManagers(new Map([["acme", "ops_acme"]]), () => op);
+    await managers.start();
+    const pool = new PoolResolution(managers, 0);
+    const bundle = `export default {
+      name: "pool-probe", description: "d", configSchema: {}, subscriptions: ["ticket.created"],
+      getHandler: () => async (_payload, ctx) => {
+        ctx.log("seen:" + JSON.stringify(Object.fromEntries(Object.entries(ctx.secrets).map(([k, v]) => [k, v.length]))));
+        return true;
+      },
+    };`;
+    let runLog: (log: string) => void = () => {};
+    const seen = new Promise<string>((resolve) => {
+      runLog = resolve;
+    });
+    const server = Bun.serve({
+      port: 0,
+      fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("no", { status: 400 })),
+      websocket: {
+        message(ws, data) {
+          const frame = JSON.parse(String(data)) as { type: string; log?: string };
+          if (frame.type === "announce") {
+            ws.send(JSON.stringify({ type: "hello", config_values: {}, secrets: { LIT: "plain", DB: "op://acme/db/password", GONE: "op://acme/db/missing" } }));
+            ws.send(JSON.stringify({ type: "event", run_id: "r1", topic: "ticket.created", payload: {} }));
+          }
+          if (frame.type === "run_log") runLog(frame.log ?? "");
+        },
+      },
+    });
+    const logSpy = spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const handle = threadWorkerFactory.spawn(
+        {
+          automationId: "pool-1",
+          automationName: "pool-probe",
+          code: bundle,
+          url: `http://127.0.0.1:${server.port}`,
+          token: "dat_pool",
+          timeoutMs: 30_000,
+          heartbeatTimeoutMs: 60_000,
+          memoryMb: 64,
+          resolvePool: (entries) => pool.resolve({ workspaceId: "acme", automationId: "pool-1", automationName: "pool-probe" }, entries),
+        },
+        () => {},
+      );
+      const line = await seen;
+      await handle.terminate();
+      expect((JSON.parse(line) as { message: string }).message).toBe('seen:{"LIT":5,"DB":7}');
+      expect(line).not.toContain("hunter2");
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+      await server.stop(true);
+    }
   });
 });

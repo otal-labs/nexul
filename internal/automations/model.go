@@ -46,6 +46,9 @@ type Automation struct {
 	WorkspaceArchived bool `json:"-"`
 	// WorkspaceSlug is read by List only, for the host's assignments.
 	WorkspaceSlug string `json:"-"`
+	// PoolHasReferences is read by Get only: whether the workspace's pool holds a secret reference, which only a host
+	// with a ready manager can deliver. It never says which entry, and the pool stays write-only (ADR 0047).
+	PoolHasReferences bool `json:"pool_has_references"`
 	Health
 }
 

@@ -1,13 +1,13 @@
-import { Skull, XCircle } from "lucide-react";
+import { KeyRound, Skull, XCircle } from "lucide-react";
 import { Link } from "react-router";
 
 import { AutomationAttentionChip } from "@/components/automation/AutomationAttentionChip";
 import { NoFillBadge } from "@/components/ui/badge";
 import { AutomationRunOutcome } from "@/enums/Automation";
-import { useOfflineAutomationHostIds } from "@/hooks/AutomationHostHooks";
+import { useFetchAutomationHosts, useOfflineAutomationHostIds } from "@/hooks/AutomationHostHooks";
 import { useTabPath } from "@/hooks/useTabPath";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { AutomationAttention, automationAttentions, automationLastRunFailed, type Automation } from "@/models/Automation";
+import { AutomationAttention, automationAttentions, automationLastRunFailed, automationPoolUnresolvable, type Automation } from "@/models/Automation";
 
 const chipLinkClass = "group inline-flex rounded-sm";
 // Ink and a dotted underline set a problem apart from the plain facts before it, and say it can be followed.
@@ -20,6 +20,7 @@ interface AutomationProblemChipsProps {
 // Every open problem on the meta line, each a link to where it is fixed.
 export const AutomationProblemChips = ({ automation }: AutomationProblemChipsProps) => {
   const offlineHostIds = useOfflineAutomationHostIds();
+  const { data: hosts } = useFetchAutomationHosts();
   const { tabPath } = useTabPath();
   const wsPath = useWorkspacePath();
   const fixedAt: Record<AutomationAttention, string> = {
@@ -36,6 +37,13 @@ export const AutomationProblemChips = ({ automation }: AutomationProblemChipsPro
         <Link to={tabPath()} className={chipLinkClass}>
           <NoFillBadge icon={crashed ? Skull : XCircle} color="text-destructive" className={`whitespace-nowrap ${chipClass}`}>
             {crashed ? "Last run crashed" : "Last run failed"}
+          </NoFillBadge>
+        </Link>
+      )}
+      {automation.enabled && automationPoolUnresolvable(automation, hosts) && (
+        <Link to={wsPath("/automations/hosts")} className={chipLinkClass}>
+          <NoFillBadge icon={KeyRound} color="text-warning" className={`whitespace-nowrap ${chipClass}`}>
+            Host can&apos;t resolve secret references
           </NoFillBadge>
         </Link>
       )}
