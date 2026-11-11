@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from "react";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DocsListPane } from "@/components/doc/DocsListPane";
 import type { DocFolderGroup } from "@/components/doc/docGroups";
@@ -65,6 +65,13 @@ const pick = async (item: "Last edited" | "Created" | "Show archived") => {
 const listed = () => screen.getAllByRole("listitem").map((li) => li.textContent);
 
 describe("DocsListPane", () => {
+  // The file's first open of the menu pays for its code's first run, which under a loaded run pushed the first case past 5s; paying it here keeps each case's budget for its own clicks.
+  beforeAll(async () => {
+    render(<Pane docs={docs} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+    await pick("Created");
+    cleanup();
+  }, 60_000);
+
   beforeEach(() => {
     useDocSortStore.setState({ sortBy: "created_at" });
     useDocArchiveStore.setState({ showArchived: false });
