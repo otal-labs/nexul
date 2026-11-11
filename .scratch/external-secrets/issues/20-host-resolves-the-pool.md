@@ -23,3 +23,7 @@ Read first: `practices/typescript.md`, ADRs 0046, 0047, 0182, the spec (Automati
 
 Verify: `bun run typecheck` and `bun run test` in `automations/`, `sdk/` and `web/`;
 `go test ./internal/automations/...`.
+
+## Comments
+
+Until a host holds tokens for one workspace only (ADR 0182, as amended), the pool refuses a reference on save and `nexul automations 1password` refuses to store a token (`--remove` still works). Lifting both, and their two tests, is part of this ticket.

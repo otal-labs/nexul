@@ -58,16 +58,17 @@ func TestAutomationsToken_Upgrade_KeepsEveryWorkspaceToken(t *testing.T) {
 	assert.Contains(t, env, "NEXUL_OP_TOKEN_GLOBEX="+testOPTokenNew)
 }
 
-func TestRunAutomations_ReadsTheTokenFromStdin(t *testing.T) {
+func TestRunAutomations_RefusesANewTokenButStillRemovesOne(t *testing.T) {
 	th := newTestHost(t)
 	th.hostInstalled(t, kindAutomations, "edge")
 	th.feedStdin(testOPToken + "\n")
 
-	require.NoError(t, th.runAutomations(t.Context(), []string{"1password", "edge", "--workspace", "acme"}))
+	require.ErrorContains(t, th.runAutomations(t.Context(), []string{"1password", "edge", "--workspace", "acme"}), "can't hold a 1Password token yet")
 	u, err := th.loadUnit("nexul-automations-edge")
 	require.NoError(t, err)
-	assert.Equal(t, testOPToken, u.Env["NEXUL_OP_TOKEN_ACME"])
+	assert.NotContains(t, u.Env, "NEXUL_OP_TOKEN_ACME")
 
+	require.NoError(t, th.SetAutomationsToken(t.Context(), "edge", "acme", testOPToken))
 	require.NoError(t, th.runAutomations(t.Context(), []string{"1password", "edge", "--workspace", "acme", "--remove"}))
 	u, err = th.loadUnit("nexul-automations-edge")
 	require.NoError(t, err)
