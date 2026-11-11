@@ -109,6 +109,7 @@ type AutomationHost struct {
 	Version   string
 	LastSeen  int64
 	CreatedAt int64
+	Managers  string
 }
 
 type AutomationHostCredential struct {

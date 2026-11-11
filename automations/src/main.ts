@@ -4,13 +4,17 @@ import { loadCredential } from "./enroll.ts";
 import { pollOnce, uninstallSelf } from "./host.ts";
 import { log, LogQueue, shipLogsTo } from "./log.ts";
 import { httpPostLogs, LogShipper } from "./log-shipper.ts";
+import { WorkspaceManagers } from "./managers.ts";
+import { OnePasswordResolver } from "./onepassword-resolver.ts";
 import { Supervisor } from "./supervisor.ts";
+import { takeWorkspaceTokens } from "./workspace-tokens.ts";
 import { threadWorkerFactory } from "./worker.ts";
 
 async function main(): Promise<void> {
   const logQueue = new LogQueue();
   shipLogsTo(logQueue);
   const cfg = loadConfig();
+  const managers = new WorkspaceManagers(takeWorkspaceTokens(), (token) => new OnePasswordResolver(token));
   const credential = await loadCredential(cfg);
   const shipper = new LogShipper(logQueue, httpPostLogs(cfg.serverUrl, credential));
   shipper.start();
@@ -22,7 +26,8 @@ async function main(): Promise<void> {
     heartbeatTimeoutMs: cfg.heartbeatTimeoutMs,
     memoryMb: cfg.memoryMb,
   });
-  const deps = { api: httpAutomationsApi, supervisor, serverUrl: cfg.serverUrl, credential };
+  await managers.start();
+  const deps = { api: httpAutomationsApi, supervisor, managers, serverUrl: cfg.serverUrl, credential };
 
   let interval: ReturnType<typeof setInterval> | undefined;
   let removing = false;

@@ -44,6 +44,8 @@ type Automation struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	// WorkspaceArchived is read with the automation: an archived workspace's automations run nothing until it is restored.
 	WorkspaceArchived bool `json:"-"`
+	// WorkspaceSlug is read by List only, for the host's assignments.
+	WorkspaceSlug string `json:"-"`
 	Health
 }
 

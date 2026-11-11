@@ -4,6 +4,7 @@ package secretref
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -32,6 +33,11 @@ type Ref struct {
 
 // schemes is the closed list of managers; a later manager adds its prefix here.
 var schemes = []string{"op://"}
+
+// KnownScheme reports whether scheme, written without "://", is in the closed list.
+func KnownScheme(scheme string) bool {
+	return slices.Contains(schemes, scheme+"://")
+}
 
 // Parse reports whether value is a literal, a reference or a malformed reference. A reference is the whole
 // value, so a scheme anywhere but the start leaves it a literal.

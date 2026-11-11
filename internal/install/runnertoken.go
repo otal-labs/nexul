@@ -38,21 +38,26 @@ func (h *Host) runRunner(ctx context.Context, args []string) error {
 	if err := h.checkUser(); err != nil {
 		return err
 	}
-	if _, err := h.runnerUnit(name); err != nil {
+	if _, err := h.hostUnit(kindRunner, name); err != nil {
 		return err
 	}
+	token, err := h.readStdinToken()
+	if err != nil {
+		return err
+	}
+	return h.SetRunnerToken(ctx, name, token)
+}
+
+// readStdinToken reads the token one line of standard input holds, prompting first when a person is typing.
+func (h *Host) readStdinToken() (string, error) {
 	if h.Interactive {
 		h.printf("Paste the 1Password service account token, then press Enter.\n")
 	}
 	line, err := h.In.ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("read the token: %w", err)
+		return "", fmt.Errorf("read the token: %w", err)
 	}
-	token, err := cleanToken(line)
-	if err != nil {
-		return err
-	}
-	return h.SetRunnerToken(ctx, name, token)
+	return cleanToken(line)
 }
 
 // cleanToken trims a token read from stdin or a file and refuses one that could not sit on one env line.
@@ -86,23 +91,29 @@ func (h *Host) SetRunnerToken(ctx context.Context, name, token string) error {
 	if err := h.checkUser(); err != nil {
 		return err
 	}
-	u, err := h.runnerUnit(name)
+	u, err := h.hostUnit(kindRunner, name)
 	if err != nil {
 		return err
 	}
-	_, had := u.Env[opTokenEnv]
+	return h.setUnitToken(ctx, u, opTokenEnv, "the runner "+name, token)
+}
+
+// setUnitToken sets, or with an empty token removes, the env variable key of u and restarts the unit to pick it up;
+// subject names the holder in the messages.
+func (h *Host) setUnitToken(ctx context.Context, u *Unit, key, subject, token string) error {
+	_, had := u.Env[key]
 	if token == "" && !had {
-		h.printf("The runner %s has no 1Password token.\n", name)
+		h.printf("%s has no 1Password token.\n", strings.ToUpper(subject[:1])+subject[1:])
 		return nil
 	}
 	if u.Env == nil {
 		u.Env = map[string]string{}
 	}
 	if token == "" {
-		delete(u.Env, opTokenEnv)
+		delete(u.Env, key)
 	}
 	if token != "" {
-		u.Env[opTokenEnv] = token
+		u.Env[key] = token
 	}
 	if err := h.saveUnit(*u); err != nil {
 		return err
@@ -111,20 +122,20 @@ func (h *Host) SetRunnerToken(ctx context.Context, name, token string) error {
 		return err
 	}
 	if token == "" {
-		h.printf("Removed the 1Password token from the runner %s and restarted it.\n", name)
+		h.printf("Removed the 1Password token from %s and restarted it.\n", subject)
 		return nil
 	}
-	h.printf("Stored the 1Password token for the runner %s and restarted it.\n", name)
+	h.printf("Stored the 1Password token for %s and restarted it.\n", subject)
 	return nil
 }
 
-// runnerUnit is the installed runner unit called name, or the error that says there is none.
-func (h *Host) runnerUnit(name string) (*Unit, error) {
-	missing := fmt.Errorf("no runner named %q is installed on this machine; nexul status lists what is", name)
+// hostUnit is the installed runner or automations host unit called name, or the error that says there is none.
+func (h *Host) hostUnit(kind, name string) (*Unit, error) {
+	missing := fmt.Errorf("no %s named %q is installed on this machine; nexul status lists what is", kind, name)
 	if !hostNamePattern.MatchString(name) {
 		return nil, missing
 	}
-	u, err := h.loadUnit(unitName(kindRunner, name))
+	u, err := h.loadUnit(unitName(kind, name))
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +145,11 @@ func (h *Host) runnerUnit(name string) (*Unit, error) {
 	return u, nil
 }
 
-// tokenNote is the status column that says whether a runner holds a 1Password token, never the token.
+// tokenNote is the status column that says whether a runner or automations host holds 1Password tokens, never a token.
 func (u Unit) tokenNote() string {
+	if u.Kind == kindAutomations {
+		return u.workspaceTokenNote()
+	}
 	if u.Kind != kindRunner {
 		return ""
 	}

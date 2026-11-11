@@ -21,6 +21,7 @@ const host = {
   version: "v0.3.0",
   connected: true,
   last_seen: "2026-08-12T12:00:00Z",
+  managers: [],
 };
 
 const renderButton = (connected: boolean, actions: string[] = ["machines:see", "machines:write"]) =>

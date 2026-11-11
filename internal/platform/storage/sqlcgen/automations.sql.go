@@ -203,13 +203,15 @@ func (q *Queries) ListAutomationHealth(ctx context.Context, arg ListAutomationHe
 }
 
 const listAutomations = `-- name: ListAutomations :many
-SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived,
+  CAST(COALESCE((SELECT w.slug FROM workspaces w WHERE w.id = a.workspace_id), '') AS TEXT) AS workspace_slug
 FROM automations a ORDER BY a.created_at
 `
 
 type ListAutomationsRow struct {
 	Automation        Automation
 	WorkspaceArchived bool
+	WorkspaceSlug     string
 }
 
 func (q *Queries) ListAutomations(ctx context.Context) ([]ListAutomationsRow, error) {
@@ -240,6 +242,7 @@ func (q *Queries) ListAutomations(ctx context.Context) ([]ListAutomationsRow, er
 			&i.Automation.HostID,
 			&i.Automation.WorkspaceID,
 			&i.WorkspaceArchived,
+			&i.WorkspaceSlug,
 		); err != nil {
 			return nil, err
 		}

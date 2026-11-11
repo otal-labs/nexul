@@ -123,6 +123,7 @@
   "POST /api/automation-hosts/enroll": ["none"],
   "POST /api/automation-hosts/enrollments": ["machines:write"],
   "POST /api/automation-hosts/self/logs": ["none"],
+  "POST /api/automation-hosts/self/managers": ["none"],
   "POST /api/automation-hosts/self/remove": ["none"],
   "POST /api/automations": ["automations:write"],
   "POST /api/automations/{id}/token": ["automations:write"],

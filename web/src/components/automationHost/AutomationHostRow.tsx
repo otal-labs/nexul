@@ -1,3 +1,4 @@
+import { AutomationHostManagers } from "@/components/automationHost/AutomationHostManagers";
 import { RemoveAutomationHostButton } from "@/components/automationHost/RemoveAutomationHostButton";
 import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import type { AutomationHost } from "@/models/AutomationHost";
@@ -21,6 +22,7 @@ export const AutomationHostRow = ({ host, machine }: AutomationHostRowProps) => 
       <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
         {host.machine} · {host.version || "unknown version"} · seen {formatRelativeTime(host.last_seen)}
       </p>
+      <AutomationHostManagers managers={host.managers} />
     </div>
     <span className={cn("text-sm leading-5", host.connected ? "text-success" : "text-muted-foreground")}>
       {host.connected ? "online" : "offline"}

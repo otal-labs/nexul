@@ -102,7 +102,7 @@ describe("AutomationsPage", () => {
   it("lists automations, and the automations hosts on the Hosts tab", async () => {
     const host = {
       id: "h1", name: "jobs-1", machine: "prod", os: "linux", arch: "amd64", version: "v0.3.0",
-      connected: true, last_seen: "2026-08-01T00:00:00Z",
+      connected: true, last_seen: "2026-08-01T00:00:00Z", managers: [],
     };
     mocks.get.mockImplementation(async (url: string) =>
       url === "/api/automation-hosts"

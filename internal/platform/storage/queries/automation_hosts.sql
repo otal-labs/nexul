@@ -19,6 +19,9 @@ INSERT INTO automation_hosts (id, name, machine, os, arch, version, last_seen, c
 -- name: TouchAutomationHost :execrows
 UPDATE automation_hosts SET last_seen = ?, version = ? WHERE id = ?;
 
+-- name: SetAutomationHostManagers :execrows
+UPDATE automation_hosts SET managers = ? WHERE id = ?;
+
 -- name: DeleteAutomationHost :execrows
 DELETE FROM automation_hosts WHERE id = ?;
 

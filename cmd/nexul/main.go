@@ -55,6 +55,8 @@ Commands:
   run computer             Run this computer's runner and T3 Code in the foreground, on a host with no systemd
   runner 1password <name>  Set a runner's 1Password token, read from stdin (--remove removes it)
   server 1password         Set the server's 1Password token, read from stdin (--remove removes it)
+  automations 1password <host> --workspace <slug>
+                           Set an automations host's 1Password token for a workspace, read from stdin (--remove removes it)
   upgrade                  Upgrade every Nexul service on this machine to the newest release, or to --version
   status                   List every Nexul service on this machine with its state and version
   uninstall                Remove every Nexul service on this machine; --purge also deletes the data

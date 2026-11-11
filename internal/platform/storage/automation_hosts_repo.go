@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -67,6 +68,26 @@ func (r *AutomationHostsRepo) TouchHost(ctx context.Context, id string, at time.
 		}
 		if n == 0 {
 			return fmt.Errorf("touch automations host %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+func (r *AutomationHostsRepo) SetHostManagers(ctx context.Context, id string, managers []automations.HostManager) error {
+	if managers == nil {
+		managers = []automations.HostManager{}
+	}
+	raw, err := json.Marshal(managers)
+	if err != nil {
+		return fmt.Errorf("encode automations host %s managers: %w", id, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetAutomationHostManagers(ctx, sqlcgen.SetAutomationHostManagersParams{Managers: string(raw), ID: id})
+		if err != nil {
+			return fmt.Errorf("set automations host %s managers: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set automations host %s managers: %w", id, apperrs.ErrNotFound)
 		}
 		return nil
 	})
@@ -163,9 +184,11 @@ func (r *AutomationHostsRepo) RemoveHost(ctx context.Context, id string, at time
 }
 
 func toHost(row sqlcgen.AutomationHost) *automations.Host {
+	managers := []automations.HostManager{}
+	_ = json.Unmarshal([]byte(row.Managers), &managers) // only SetHostManagers writes the column, always valid JSON
 	return &automations.Host{
 		ID: row.ID, Name: row.Name, Machine: row.Machine, OS: row.Os, Arch: row.Arch, Version: row.Version,
-		LastSeen: time.Unix(row.LastSeen, 0).UTC(), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		LastSeen: time.Unix(row.LastSeen, 0).UTC(), CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), Managers: managers,
 	}
 }
 

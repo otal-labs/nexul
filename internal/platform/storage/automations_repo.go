@@ -83,6 +83,7 @@ func (r *AutomationsRepo) List(ctx context.Context) ([]automations.Automation, e
 		if err != nil {
 			return nil, fmt.Errorf("scan automation: %w", err)
 		}
+		a.WorkspaceSlug = row.WorkspaceSlug
 		out = append(out, *a)
 	}
 	return out, nil

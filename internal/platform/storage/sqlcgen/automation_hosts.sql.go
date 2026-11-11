@@ -115,7 +115,7 @@ func (q *Queries) DeleteAutomationHost(ctx context.Context, id string) (int64, e
 }
 
 const getAutomationHost = `-- name: GetAutomationHost :one
-SELECT id, name, machine, os, arch, version, last_seen, created_at FROM automation_hosts WHERE id = ?
+SELECT id, name, machine, os, arch, version, last_seen, created_at, managers FROM automation_hosts WHERE id = ?
 `
 
 func (q *Queries) GetAutomationHost(ctx context.Context, id string) (AutomationHost, error) {
@@ -130,12 +130,13 @@ func (q *Queries) GetAutomationHost(ctx context.Context, id string) (AutomationH
 		&i.Version,
 		&i.LastSeen,
 		&i.CreatedAt,
+		&i.Managers,
 	)
 	return i, err
 }
 
 const getAutomationHostByName = `-- name: GetAutomationHostByName :one
-SELECT id, name, machine, os, arch, version, last_seen, created_at FROM automation_hosts WHERE name = ?
+SELECT id, name, machine, os, arch, version, last_seen, created_at, managers FROM automation_hosts WHERE name = ?
 `
 
 func (q *Queries) GetAutomationHostByName(ctx context.Context, name string) (AutomationHost, error) {
@@ -150,6 +151,7 @@ func (q *Queries) GetAutomationHostByName(ctx context.Context, name string) (Aut
 		&i.Version,
 		&i.LastSeen,
 		&i.CreatedAt,
+		&i.Managers,
 	)
 	return i, err
 }
@@ -212,7 +214,7 @@ func (q *Queries) GetLiveAutomationHostCredential(ctx context.Context, hostID st
 }
 
 const listAutomationHosts = `-- name: ListAutomationHosts :many
-SELECT id, name, machine, os, arch, version, last_seen, created_at FROM automation_hosts ORDER BY created_at, id
+SELECT id, name, machine, os, arch, version, last_seen, created_at, managers FROM automation_hosts ORDER BY created_at, id
 `
 
 func (q *Queries) ListAutomationHosts(ctx context.Context) ([]AutomationHost, error) {
@@ -233,6 +235,7 @@ func (q *Queries) ListAutomationHosts(ctx context.Context) ([]AutomationHost, er
 			&i.Version,
 			&i.LastSeen,
 			&i.CreatedAt,
+			&i.Managers,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +251,7 @@ func (q *Queries) ListAutomationHosts(ctx context.Context) ([]AutomationHost, er
 }
 
 const listAutomationHostsOn = `-- name: ListAutomationHostsOn :many
-SELECT h.id, h.name, h.machine, h.os, h.arch, h.version, h.last_seen, h.created_at FROM automation_hosts h
+SELECT h.id, h.name, h.machine, h.os, h.arch, h.version, h.last_seen, h.created_at, h.managers FROM automation_hosts h
 JOIN machines m ON m.name = h.machine
 WHERE m.id IN (SELECT value FROM json_each(?1))
 ORDER BY h.created_at, h.id
@@ -272,6 +275,7 @@ func (q *Queries) ListAutomationHostsOn(ctx context.Context, machineIds interfac
 			&i.Version,
 			&i.LastSeen,
 			&i.CreatedAt,
+			&i.Managers,
 		); err != nil {
 			return nil, err
 		}
@@ -307,6 +311,23 @@ type RevokeAutomationHostCredentialsParams struct {
 func (q *Queries) RevokeAutomationHostCredentials(ctx context.Context, arg RevokeAutomationHostCredentialsParams) error {
 	_, err := q.db.ExecContext(ctx, revokeAutomationHostCredentials, arg.RevokedAt, arg.HostID)
 	return err
+}
+
+const setAutomationHostManagers = `-- name: SetAutomationHostManagers :execrows
+UPDATE automation_hosts SET managers = ? WHERE id = ?
+`
+
+type SetAutomationHostManagersParams struct {
+	Managers string
+	ID       string
+}
+
+func (q *Queries) SetAutomationHostManagers(ctx context.Context, arg SetAutomationHostManagersParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setAutomationHostManagers, arg.Managers, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const touchAutomationHost = `-- name: TouchAutomationHost :execrows

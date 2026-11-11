@@ -3,6 +3,7 @@ package automations_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -90,6 +91,7 @@ func (l *loggedRecords) snapshot() []map[string]any {
 
 type hostsFixture struct {
 	logs      *loggedRecords
+	db        *sql.DB
 	store     *storage.Store
 	svc       *automations.Service
 	hosts     *automations.HostsService
@@ -117,7 +119,7 @@ func (allowAnywhere) IsInstanceOwner(context.Context, string) (bool, error) { re
 // dial-in socket over a real, migrated SQLite database, the way the composition root mounts them.
 func newHostsFixture(t *testing.T) *hostsFixture {
 	t.Helper()
-	_, store := newTestStore(t)
+	db, store := newTestStore(t)
 	svc := automations.NewService(store.Automations, allowAllPerm{})
 	svc.SetGateway(func(string, string, []string) bool { return false }, nil)
 	enrollDir := filepath.Join(t.TempDir(), "enroll")
@@ -146,6 +148,7 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	mux.Handle("POST /api/automation-hosts/self/remove", public)
 	mux.Handle("GET /api/automation-hosts/self/assignments", public)
 	mux.Handle("POST /api/automation-hosts/self/logs", public)
+	mux.Handle("POST /api/automation-hosts/self/managers", public)
 	mux.Handle("/api/automation-hosts", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("/api/automation-hosts/", asAdmin(hostsHTTP.Routes()))
 	mux.Handle("PATCH /api/automations/{id}/host", asAdmin(automationsHTTP))
@@ -153,7 +156,7 @@ func newHostsFixture(t *testing.T) *hostsFixture {
 	mux.Handle("/ws/automations", dial)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &hostsFixture{logs: logs, store: store, svc: svc, hosts: hosts, conns: conns, srv: srv, enrollDir: enrollDir}
+	return &hostsFixture{logs: logs, db: db, store: store, svc: svc, hosts: hosts, conns: conns, srv: srv, enrollDir: enrollDir}
 }
 
 func (f *hostsFixture) do(t *testing.T, method, path, bearer string, body any) (int, []byte) {
@@ -347,7 +350,7 @@ func TestHostEnroll_RendersCommandsAndFilesUnderMachine(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, automations.HostView{
-		ID: got.ID, Name: "jobs", Machine: "prod", OS: "linux", Arch: "arm64", Version: "v1", Connected: true, LastSeen: list[0].LastSeen,
+		ID: got.ID, Name: "jobs", Machine: "prod", OS: "linux", Arch: "arm64", Version: "v1", Connected: true, LastSeen: list[0].LastSeen, Managers: []automations.HostManager{},
 	}, list[0])
 }
 
@@ -584,6 +587,93 @@ func TestHostLogs_Refusals(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, status, "a removed host")
 	assert.Equal(t, "automations_host_removed", errorCode(t, body))
 	assert.Empty(t, f.logs.snapshot())
+}
+
+func TestHostAssignments_CarryTheSlugOfTheAutomationsWorkspace(t *testing.T) {
+	f := newHostsFixture(t)
+	_, credential := f.enroll(t, automations.InstanceHostName)
+	_, err := f.db.ExecContext(t.Context(), `INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-1', 'Acme Ops', 'acme-ops', 1, 1)`)
+	require.NoError(t, err)
+	id := f.createAutomation(t, "on instance", true)
+
+	got := f.assignments(t, credential)
+
+	require.Len(t, got, 1)
+	assert.Equal(t, id, got[0].ID)
+	assert.Equal(t, "acme-ops", got[0].Workspace, "the host keys its token by slug, so it is told the slug and not the id")
+}
+
+func TestHostManagers_AReportReplacesTheLastAndBelongsToOneHost(t *testing.T) {
+	f := newHostsFixture(t)
+	jobsID, jobsCredential := f.enroll(t, "jobs")
+	_, otherCredential := f.enroll(t, "other")
+	report := func(credential string, managers ...automations.HostManager) {
+		status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", credential, automations.HostManagersReport{Managers: managers})
+		require.Equal(t, http.StatusNoContent, status, string(body))
+	}
+	managersOf := func() map[string][]automations.HostManager {
+		hosts, err := f.hosts.List(adminCtx())
+		require.NoError(t, err)
+		out := map[string][]automations.HostManager{}
+		for _, h := range hosts {
+			out[h.Name] = h.Managers
+		}
+		return out
+	}
+	ready := automations.HostManager{Workspace: "acme", Manager: "op", State: automations.ManagerReady}
+	rejected := automations.HostManager{Workspace: "globex", Manager: "op", State: automations.ManagerTokenRejected}
+
+	report(jobsCredential, ready, rejected)
+	assert.Equal(t, []automations.HostManager{ready, rejected}, managersOf()["jobs"])
+	assert.Empty(t, managersOf()["other"], "another host's list is its own")
+
+	report(jobsCredential, rejected)
+	assert.Equal(t, []automations.HostManager{rejected}, managersOf()["jobs"], "a token the host no longer holds is gone from its report")
+
+	report(otherCredential, ready)
+	assert.Equal(t, []automations.HostManager{rejected}, managersOf()["jobs"])
+
+	report(jobsCredential)
+	status, body := f.do(t, http.MethodGet, "/api/automation-hosts", "", nil)
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, string(body), `"id":"`+jobsID+`"`)
+	assert.Contains(t, string(body), `"managers":[]`, "a host with no token lists an empty array, never null")
+}
+
+func TestHostManagers_Refusals(t *testing.T) {
+	f := newHostsFixture(t)
+	_, credential := f.enroll(t, "jobs")
+	ready := automations.HostManager{Workspace: "acme", Manager: "op", State: automations.ManagerReady}
+	tests := []struct {
+		name     string
+		managers []automations.HostManager
+	}{
+		{"an unknown manager", []automations.HostManager{{Workspace: "acme", Manager: "vault", State: automations.ManagerReady}}},
+		{"an unknown state", []automations.HostManager{{Workspace: "acme", Manager: "op", State: "fine"}}},
+		{"no workspace", []automations.HostManager{{Manager: "op", State: automations.ManagerReady}}},
+		{"the same workspace twice", []automations.HostManager{ready, ready}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", credential, automations.HostManagersReport{Managers: tt.managers})
+			assert.Equal(t, http.StatusBadRequest, status, string(body))
+		})
+	}
+
+	one := automations.HostManagersReport{Managers: []automations.HostManager{ready}}
+	status, _ := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", "", one)
+	assert.Equal(t, http.StatusUnauthorized, status, "no credential")
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", "nxa_unknown", one)
+	assert.Equal(t, http.StatusUnauthorized, status, "an unknown credential")
+	hosts, err := f.hosts.List(adminCtx())
+	require.NoError(t, err)
+	assert.Empty(t, hosts[0].Managers, "nothing refused was stored")
+
+	status, _ = f.do(t, http.MethodPost, "/api/automation-hosts/self/remove", credential, nil)
+	require.Equal(t, http.StatusNoContent, status)
+	status, body := f.do(t, http.MethodPost, "/api/automation-hosts/self/managers", credential, one)
+	assert.Equal(t, http.StatusUnauthorized, status, "a removed host")
+	assert.Equal(t, "automations_host_removed", errorCode(t, body))
 }
 
 func TestWriteInstanceEnrollment_UntilTheInstanceHostEnrolls(t *testing.T) {
