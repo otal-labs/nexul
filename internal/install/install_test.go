@@ -343,7 +343,7 @@ func TestInstall_Interactive_AsksThenInstalls(t *testing.T) {
 	dir := filepath.Join(th.root, "asked")
 	th.bootedServer(t, dir)
 	th.Interactive = true
-	th.In = bufio.NewReader(strings.NewReader(dir + "\n" + strconv.Itoa(th.webPort(t)) + "\n"))
+	th.In = bufio.NewReader(strings.NewReader(dir + "\n" + strconv.Itoa(th.webPort(t)) + "\n\n\n"))
 
 	require.NoError(t, th.Install(t.Context(), Options{}))
 
@@ -358,7 +358,7 @@ func TestInstall_Interactive_AStrayKeyIsAskedAgain(t *testing.T) {
 	th.bootedServer(t, dir)
 	th.Interactive = true
 	// An arrow key pressed while the installer downloaded arrives as the first answer.
-	th.In = bufio.NewReader(strings.NewReader("\x1b[C\nrelative/dir\n" + dir + "\n" + strconv.Itoa(th.webPort(t)) + "\n"))
+	th.In = bufio.NewReader(strings.NewReader("\x1b[C\nrelative/dir\n" + dir + "\n" + strconv.Itoa(th.webPort(t)) + "\n\n\n"))
 
 	require.NoError(t, th.Install(t.Context(), Options{}))
 

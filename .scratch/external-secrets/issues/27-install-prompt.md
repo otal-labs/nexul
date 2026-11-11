@@ -1,6 +1,6 @@
 # 27 — An interactive install offers to take the 1Password tokens
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 15, 21
 
@@ -18,3 +18,7 @@ An interactive `nexul install` asks once for the server's token and once for the
 - [ ] The pasted token never appears in the install's output or log.
 
 Verify: `make lint`, `go test ./internal/install/...`.
+
+## Comments
+
+Built: `askTokens` after the port question, asking for the server's and the bundled runner's token (Enter skips, an unusable paste is asked again, a server token file skips the server question), no prompt without a terminal, the paste read with echo off through `golang.org/x/sys` (termios on Linux and macOS, console mode on Windows), and a summary line naming the three token commands. Hiding the paste on a real terminal is not exercised by a test; the tests check that echo is restored after each read.
