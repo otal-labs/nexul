@@ -42,6 +42,8 @@ const (
 	TopicContainerStates = "runner.container_states"
 	// TopicRequestCounts carries a machine runner's proxy router counts to the deploy domain, which knows whose they are.
 	TopicRequestCounts = "runner.request_counts"
+	// TopicSecretsChanged carries a machine runner's secret check to the deploy domain, which knows whose stacks they are.
+	TopicSecretsChanged = "runner.secrets_changed"
 )
 
 // Topics returns every topic the runner domain publishes.
@@ -84,6 +86,12 @@ type ContainerStatesEvent struct {
 type RequestCountsEvent struct {
 	Machine string        `json:"machine"`
 	Counts  []RouterCount `json:"counts"`
+}
+
+// SecretsChangedReport is one secret check's finding on a machine: its stacks, by slug, and the variable names that changed.
+type SecretsChangedReport struct {
+	Machine string         `json:"machine"`
+	Changes []SecretChange `json:"changes"`
 }
 
 // Publisher is the narrow bus seam Service needs to announce upgrade state (ADR 0019); Handler's own Bus

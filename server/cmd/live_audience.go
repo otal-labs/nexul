@@ -191,6 +191,7 @@ var liveRules = map[string]liveRule{
 	deploy.TopicStackCreated:           stackFrame,
 	deploy.TopicStackUpdated:           stackFrame,
 	deploy.TopicStackDeleted:           anywhere(permissions.StacksRead),
+	deploy.TopicSecretsChanged:         outageFrame,
 	deploy.TopicContainerStopped:       outageFrame,
 	deploy.TopicContainerRecovered:     outageFrame,
 	deploy.TopicErrorRateCrossed:       outageFrame,
@@ -635,7 +636,7 @@ var stackFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
 	return a.access.RequireStack(ctx, p.Stack.ProjectID, ruled, permissions.StacksRead) == nil
 })
 
-// outageFrame reaches whoever reads the stack an outage or an error-rate episode is on, through the same read the stack's own fetch runs.
+// outageFrame reaches whoever reads the stack an outage, an error-rate episode or a changed secret is on, through the same read the stack's own fetch runs.
 var outageFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
 	StackID string `json:"stack_id"`
 }) bool {

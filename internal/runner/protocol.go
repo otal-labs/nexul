@@ -89,6 +89,10 @@ const (
 	// FrameRequestCounts (runner -> server) carries the requests each proxy router served since the runner's previous
 	// read, every 30 seconds; a frame with no counts still says the read worked, and only a machine's runner sends it.
 	FrameRequestCounts FrameType = "request_counts"
+	// FrameSecretsChanged (runner -> server) is a machine runner's secret check finding that secrets changed in the
+	// secrets manager since a stack's last deploy: the stacks by slug and the variable names, never a value, a
+	// reference or a fingerprint.
+	FrameSecretsChanged FrameType = "secrets_changed"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -214,6 +218,21 @@ type Frame struct {
 	Records []logging.Record `json:"records,omitempty"`
 	// Counts carries a request_counts frame's per-router deltas.
 	Counts []RouterCount `json:"counts,omitempty"`
+	// SecretChanges carries a secrets_changed frame's stacks.
+	SecretChanges []SecretChange `json:"secret_changes,omitempty"`
+}
+
+// The bounds a secrets_changed frame is held to, so a runner cannot make the server hold an unbounded notice.
+const (
+	maxSecretChangeStacks = 1000
+	maxSecretChangeNames  = 500
+	maxSecretNameLen      = 256
+)
+
+// SecretChange is one stack whose variables changed in the secrets manager: its slug on the machine and their names.
+type SecretChange struct {
+	Slug      string   `json:"slug"`
+	Variables []string `json:"variables"`
 }
 
 // ContainerState is one container in a container_states snapshot. State is running, or exited for a container that
@@ -304,6 +323,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameContainerStates:     (*Frame).validateContainerStates,
 	FrameLog:                 (*Frame).validateLog,
 	FrameRequestCounts:       (*Frame).validateRequestCounts,
+	FrameSecretsChanged:      (*Frame).validateSecretsChanged,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -562,6 +582,23 @@ func (f *Frame) validateRequestCounts() error {
 	for _, rc := range f.Counts {
 		if rc.Router == "" || rc.Requests < 0 || rc.Errors < 0 || rc.Errors > rc.Requests {
 			return fmt.Errorf("%w: request_counts entry %q needs a router and 0 <= errors <= requests", apperrs.ErrInvalid, rc.Router)
+		}
+	}
+	return nil
+}
+
+func (f *Frame) validateSecretsChanged() error {
+	if len(f.SecretChanges) == 0 || len(f.SecretChanges) > maxSecretChangeStacks {
+		return fmt.Errorf("%w: secrets_changed requires 1..%d stacks", apperrs.ErrInvalid, maxSecretChangeStacks)
+	}
+	for _, c := range f.SecretChanges {
+		if c.Slug == "" || len(c.Variables) == 0 || len(c.Variables) > maxSecretChangeNames {
+			return fmt.Errorf("%w: secrets_changed entry %q needs a slug and 1..%d variables", apperrs.ErrInvalid, c.Slug, maxSecretChangeNames)
+		}
+		for _, v := range c.Variables {
+			if v == "" || len(v) > maxSecretNameLen {
+				return fmt.Errorf("%w: secrets_changed entry %q has a variable name outside 1..%d characters", apperrs.ErrInvalid, c.Slug, maxSecretNameLen)
+			}
 		}
 	}
 	return nil

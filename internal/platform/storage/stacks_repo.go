@@ -157,6 +157,20 @@ func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...ev
 	})
 }
 
+// SetSecretsChanged keeps the notice apart from Update, so editing a stack never clears or brings one back.
+func (r *StacksRepo) SetSecretsChanged(ctx context.Context, id string, names []string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetStackSecretsChanged(ctx, sqlcgen.SetStackSecretsChangedParams{SecretsChanged: portsJSON(names), ID: id})
+		if err != nil {
+			return fmt.Errorf("set secrets changed on stack %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set secrets changed on stack %s: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueServicesOutbox(ctx, tx, evts)
+	})
+}
+
 func (r *StacksRepo) Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
@@ -225,6 +239,12 @@ func toStack(encKey []byte, row sqlcgen.Stack) (*deploy.Stack, error) {
 	}
 	if err := json.Unmarshal([]byte(env), &stack.Env); err != nil {
 		return nil, fmt.Errorf("unmarshal env for stack %s: %w", stack.ID, err)
+	}
+	if err := json.Unmarshal([]byte(row.SecretsChanged), &stack.SecretsChanged); err != nil {
+		return nil, fmt.Errorf("unmarshal secrets changed for stack %s: %w", stack.ID, err)
+	}
+	if len(stack.SecretsChanged) == 0 {
+		stack.SecretsChanged = nil
 	}
 	if err := json.Unmarshal([]byte(row.Ports), &stack.Ports); err != nil {
 		return nil, fmt.Errorf("unmarshal ports for stack %s: %w", stack.ID, err)

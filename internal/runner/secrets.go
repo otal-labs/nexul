@@ -19,6 +19,8 @@ type resolvedEnv struct {
 	line string
 	// mask hides the resolved values wherever a command might echo them; nil when there are none.
 	mask *strings.Replacer
+	// refs is each resolved variable's reference, for the fingerprints the secret check compares against; nil when none.
+	refs map[string]string
 }
 
 // resolveEnv replaces every secret reference in req.Env with its value, one batch per manager. The result owns its
@@ -57,8 +59,12 @@ func resolveEnv(ctx context.Context, reg secretref.Registry, req DeployRequested
 		return resolvedEnv{}, resolveError(failed)
 	}
 	count := 0
+	refs := map[string]string{}
 	for _, keys := range byScheme {
 		count += len(keys)
+		for _, k := range keys {
+			refs[k] = req.Env[k]
+		}
 	}
 	req.Env = env
 	noun := "references"
@@ -69,6 +75,7 @@ func resolveEnv(ctx context.Context, reg secretref.Registry, req DeployRequested
 		req:  req,
 		line: fmt.Sprintf("Resolved %d secret %s in %.1fs", count, noun, time.Since(start).Seconds()),
 		mask: strings.NewReplacer(pairs...),
+		refs: refs,
 	}, nil
 }
 
@@ -137,18 +144,20 @@ func resolveError(failed map[string]string) error {
 }
 
 // withSecrets resolves req's references and returns the request holding the values with an executor whose commands
-// never echo them, in their output or their errors. The first deploy-log line says how many were resolved.
-func (e *ShellExecutor) withSecrets(ctx context.Context, req DeployRequestedEvent, logs *logStream) (*ShellExecutor, DeployRequestedEvent, error) {
+// never echo them, in their output or their errors. The first deploy-log line says how many were resolved. The
+// returned send also keeps the stack's fingerprints once the deploy reports healthy.
+func (e *ShellExecutor) withSecrets(ctx context.Context, req DeployRequestedEvent, send func(Frame), logs *logStream) (*ShellExecutor, DeployRequestedEvent, func(Frame), error) {
 	var registry secretref.Registry
 	if e.registry != nil {
 		registry = e.registry()
 	}
 	got, err := resolveEnv(ctx, registry, req)
 	if err != nil {
-		return e, req, err
+		return e, req, send, err
 	}
+	send = e.keepOnHealthy(send, got)
 	if got.mask == nil {
-		return e, req, nil
+		return e, req, send, nil
 	}
 	logs.step(LogPhaseDeploy, got.line)
 	logs.flush()
@@ -161,5 +170,41 @@ func (e *ShellExecutor) withSecrets(ctx context.Context, req DeployRequestedEven
 		}
 		return errors.New(got.mask.Replace(err.Error()))
 	}
-	return &cp, got.req, nil
+	return &cp, got.req, send, nil
+}
+
+// keepOnHealthy wraps send so a healthy deploy_result first records what the deploy resolved: the fingerprint of each
+// referenced variable, or nothing for a stack that holds no reference now, which stops it being checked.
+func (e *ShellExecutor) keepOnHealthy(send func(Frame), got resolvedEnv) func(Frame) {
+	slug := got.req.StackSlug
+	if e.fingerprints == nil || slug == "" {
+		return send
+	}
+	return func(f Frame) {
+		if f.Type == FrameDeployResult && f.Status == DeployStatusHealthy {
+			e.keepFingerprints(slug, got)
+		}
+		send(f)
+	}
+}
+
+func (e *ShellExecutor) keepFingerprints(slug string, got resolvedEnv) {
+	if len(got.refs) == 0 {
+		if err := e.fingerprints.remove(slug); err != nil {
+			e.log.Warn("secret check record not removed", "slug", slug, "error", err)
+		}
+		return
+	}
+	rec := stackFingerprints{DeployID: got.req.ID, Vars: make(map[string]trackedVar, len(got.refs))}
+	for name, ref := range got.refs {
+		fp, err := e.fingerprints.print(got.req.Env[name])
+		if err != nil {
+			e.log.Warn("secret check cannot fingerprint", "slug", slug, "error", err)
+			return
+		}
+		rec.Vars[name] = trackedVar{Ref: ref, Print: fp}
+	}
+	if err := e.fingerprints.save(slug, rec); err != nil {
+		e.log.Warn("secret check record not kept", "slug", slug, "error", err)
+	}
 }

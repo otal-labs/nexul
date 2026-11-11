@@ -7524,6 +7524,13 @@
               "min_requests"
             ]
           },
+          "secrets_changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The names of the variables whose secret changed in the secrets manager since the last deploy, so the stack needs a redeploy; names only, never a value or a reference. The next successful deploy, retry or rollback clears it."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -7674,6 +7681,36 @@
     "required": [
       "id",
       "name"
+    ]
+  },
+  "service.secrets_changed": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "description": "The stack's project; empty for an instance stack."
+      },
+      "stack_id": {
+        "type": "string",
+        "description": "The stack whose secrets changed."
+      },
+      "stack_name": {
+        "type": "string",
+        "description": "The stack's name."
+      },
+      "variables": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The names of every variable of the stack whose secret changed since its last deploy, sorted; a redeploy picks the new values up and clears them."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "stack_id",
+      "stack_name",
+      "variables"
     ]
   },
   "service.updated": {
@@ -7839,6 +7876,13 @@
               "minutes",
               "min_requests"
             ]
+          },
+          "secrets_changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The names of the variables whose secret changed in the secrets manager since the last deploy, so the stack needs a redeploy; names only, never a value or a reference. The next successful deploy, retry or rollback clears it."
           },
           "created_at": {
             "type": "string",

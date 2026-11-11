@@ -57,6 +57,8 @@ type StackRepo interface {
 	// ListWithErrorRate lists the stacks whose error-rate rule is switched on.
 	ListWithErrorRate(ctx context.Context) ([]*Stack, error)
 	Update(ctx context.Context, s *Stack, evts ...eventbus.OutboxEvent) error
+	// SetSecretsChanged replaces the stack's changed-secret notice (none clears it) and writes evts in the same transaction.
+	SetSecretsChanged(ctx context.Context, id string, names []string, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 }
 

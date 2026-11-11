@@ -48,6 +48,40 @@ func TestStacksRepo_Create_RoundTrip(t *testing.T) {
 	assert.True(t, got.Managed)
 }
 
+// The changed-secret notice is its own write: a stack edit never clears or restores it, and its event lands with it.
+func TestStacksRepo_SecretsChanged_IsKeptApartFromStackEdits(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Stacks.Create(ctx, newTestStack("svc-1")))
+	got, err := s.Stacks.GetByID(ctx, "svc-1")
+	require.NoError(t, err)
+	assert.Nil(t, got.SecretsChanged)
+
+	evt := eventbus.OutboxEvent{ID: "e1", Topic: deploy.TopicSecretsChanged, Payload: deploy.SecretsChangedEvent{StackID: "svc-1", Variables: []string{"DB_PASSWORD"}}}
+	require.NoError(t, s.Stacks.SetSecretsChanged(ctx, "svc-1", []string{"DB_PASSWORD", "TOKEN"}, evt))
+	got, err = s.Stacks.GetByID(ctx, "svc-1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"DB_PASSWORD", "TOKEN"}, got.SecretsChanged)
+	var topic string
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE id = 'e1'`).Scan(&topic))
+	assert.Equal(t, deploy.TopicSecretsChanged, topic)
+
+	got.SecretsChanged = nil
+	got.Name = "api-renamed"
+	require.NoError(t, s.Stacks.Update(ctx, got))
+	again, err := s.Stacks.GetByID(ctx, "svc-1")
+	require.NoError(t, err)
+	assert.Equal(t, "api-renamed", again.Name)
+	assert.Equal(t, []string{"DB_PASSWORD", "TOKEN"}, again.SecretsChanged, "an edit that sends no notice does not clear it")
+
+	require.NoError(t, s.Stacks.SetSecretsChanged(ctx, "svc-1", nil))
+	cleared, err := s.Stacks.GetByID(ctx, "svc-1")
+	require.NoError(t, err)
+	assert.Nil(t, cleared.SecretsChanged)
+	require.ErrorIs(t, s.Stacks.SetSecretsChanged(ctx, "missing", nil), apperrs.ErrNotFound)
+}
+
 func TestStacksRepo_Create_RunStrategyRoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

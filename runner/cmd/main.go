@@ -48,8 +48,13 @@ func main() {
 
 	managers := openManagers(cfg, logger)
 	execCfg := runner.ExecutorConfig{GitToken: cfg.GitToken, StackRoot: cfg.StackRoot, Ctl: cfg.Ctl}
+	var secretCheck *runner.SecretCheck
+	if cfg.Mode != runner.ModePersonal {
+		execCfg.Fingerprints = runner.NewFingerprints(cfg.StateDir())
+	}
 	if managers != nil {
 		execCfg.Registry = managers.Registry
+		secretCheck = runner.NewSecretCheck(execCfg.Fingerprints, managers.Registry, cfg.SecretCheckInterval, logger)
 	}
 	client := runner.NewClient(runner.ClientConfig{
 		URL:               cfg.WSURL(),
@@ -71,6 +76,7 @@ func main() {
 		Containers:        runner.HostContainerWatch(),
 		Logs:              logs,
 		Managers:          managers,
+		SecretCheck:       secretCheck,
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)

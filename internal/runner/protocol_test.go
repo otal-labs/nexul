@@ -271,6 +271,10 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "request_counts entry without a router", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Requests: 1}}}},
 		{name: "request_counts entry with a negative count", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Router: "r", Requests: -1}}}},
 		{name: "request_counts entry with more errors than requests", f: Frame{Type: FrameRequestCounts, Counts: []RouterCount{{Router: "r", Requests: 1, Errors: 2}}}},
+		{name: "secrets_changed without stacks", f: Frame{Type: FrameSecretsChanged}},
+		{name: "secrets_changed entry without a slug", f: Frame{Type: FrameSecretsChanged, SecretChanges: []SecretChange{{Variables: []string{"A"}}}}},
+		{name: "secrets_changed entry without variables", f: Frame{Type: FrameSecretsChanged, SecretChanges: []SecretChange{{Slug: "api"}}}},
+		{name: "secrets_changed entry with an empty variable name", f: Frame{Type: FrameSecretsChanged, SecretChanges: []SecretChange{{Slug: "api", Variables: []string{""}}}}},
 		{name: "facts missing its report", f: Frame{Type: FrameFacts}},
 		{name: "facts with an unknown T3 Code state", f: Frame{Type: FrameFacts, Facts: &Facts{T3: T3Facts{State: "asleep"}}}},
 	}

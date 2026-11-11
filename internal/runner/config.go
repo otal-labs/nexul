@@ -42,6 +42,8 @@ type RunnerConfig struct {
 	T3Home string
 	// T3Supervised is set by `nexul run computer` (NEXUL_T3_SUPERVISED), which restarts T3 Code itself.
 	T3Supervised bool
+	// SecretCheckInterval is how often the runner re-reads the secrets of its stacks (NEXUL_SECRET_CHECK_INTERVAL); 0 is off.
+	SecretCheckInterval time.Duration
 }
 
 // ModePersonal is NEXUL_RUNNER_MODE for a runner on a person's own computer.
@@ -68,6 +70,11 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		T3Home:            envOrDefault("T3CODE_HOME", defaultT3Home()),
 		T3Supervised:      os.Getenv("NEXUL_T3_SUPERVISED") != "",
 	}
+	interval, err := ParseSecretCheckInterval(os.Getenv("NEXUL_SECRET_CHECK_INTERVAL"))
+	if err != nil {
+		return nil, err
+	}
+	cfg.SecretCheckInterval = interval
 	if cfg.CredentialFile == "" {
 		return cfg, nil
 	}
@@ -142,6 +149,15 @@ func (c *RunnerConfig) T3InstallingFile() string {
 		return ""
 	}
 	return filepath.Join(filepath.Dir(c.CredentialFile), T3InstallingMarker)
+}
+
+// StateDir is the runner's own directory, beside its credential, where it keeps the secret check's files; "" for a
+// runner with no credential file.
+func (c *RunnerConfig) StateDir() string {
+	if c.CredentialFile == "" {
+		return ""
+	}
+	return filepath.Dir(c.CredentialFile)
 }
 
 // defaultT3Home is T3 Code's own default base directory, ~/.t3.

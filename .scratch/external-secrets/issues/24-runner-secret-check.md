@@ -1,6 +1,6 @@
 # 24 — A runner's secret check notices a changed value and Nexul records it
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** 17
 
@@ -24,3 +24,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/testing.m
 - [ ] The event and MCP result never carry a value or a reference; the live-topic guards pass.
 
 Verify: `make lint`, `make event-schemas`, `make live-topics`, `go test ./internal/... ./server/...`.
+
+## Comments
+
+Built: per-stack fingerprints (HMAC-SHA256 with a key made on the machine, 0600 files under the runner's `secret-check/` directory, removed with the stack), the check on `NEXUL_SECRET_CHECK_INTERVAL` (default 1h, refused under 5m, `off`) with one batch per manager across every stack, the `secrets_changed` frame carrying names only, migration 0150 (`stacks.secrets_changed`), `service.secrets_changed` to the stack's viewers, the notice on the stack read and `stack_get`, and clearing on the next healthy deploy. The record keeps each variable's reference beside its fingerprint, since the check must re-read it. Checked end to end with real 1Password on Docker: after rotating the item, the first check put `["SECRET"]` on the stack, and a redeploy delivered the new value and cleared the notice. No log held a value or a reference. This run is what exposed the SDK client lifetime bug fixed in #1281.

@@ -251,6 +251,19 @@ func TestStackGet_CarriesServicesDeploysAndOnlyEnvKeys(t *testing.T) {
 	assert.NotContains(t, out, "postgres://qa")
 }
 
+func TestStackGet_CarriesTheChangedSecretsAsNamesOnly(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	got, err := call(t, s, "stack_get", `{"id":"`+stack.ID+`"}`)
+	require.NoError(t, err)
+	assert.NotContains(t, asJSON(t, got), "secrets_changed", "a stack with no notice carries no field")
+
+	require.NoError(t, s.stacks.SetSecretsChanged(t.Context(), stack.ID, []string{"DB_PASSWORD"}))
+	got, err = call(t, s, "stack_get", `{"id":"`+stack.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"DB_PASSWORD"}, got.(stackDetail).SecretsChanged)
+	assert.Contains(t, asJSON(t, got), `"secrets_changed":["DB_PASSWORD"]`)
+}
+
 func TestStackCreate(t *testing.T) {
 	newService := func() (*Service, *fakeProjects) {
 		projects := newFakeProjects()

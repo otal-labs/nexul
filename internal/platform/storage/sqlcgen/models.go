@@ -1191,6 +1191,7 @@ type Stack struct {
 	ErrorRateMinRequests      int64
 	CrashNoticeConversationID string
 	CrashNoticeBotID          string
+	SecretsChanged            string
 }
 
 type StackCrashTicket struct {

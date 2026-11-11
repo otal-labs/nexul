@@ -888,6 +888,7 @@ type stackResult struct {
 	ErrorRate                 ErrorRateRule      `json:"error_rate"`
 	CrashNoticeConversationID string             `json:"crash_notice_conversation_id,omitempty"`
 	CrashNoticeBotID          string             `json:"crash_notice_bot_id,omitempty"`
+	SecretsChanged            []string           `json:"secrets_changed,omitempty"`
 }
 
 func toStackResult(st *Stack) stackResult {
@@ -909,5 +910,6 @@ func toStackResult(st *Stack) stackResult {
 		ErrorRate:                 st.ErrorRate,
 		CrashNoticeConversationID: st.CrashNoticeConversationID,
 		CrashNoticeBotID:          st.CrashNoticeBotID,
+		SecretsChanged:            st.SecretsChanged,
 	}
 }
