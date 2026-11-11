@@ -7176,6 +7176,42 @@
       "members_only"
     ]
   },
+  "secret_manager.token_rejected": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "description": "What holds the rejected token: a machine runner, an automations host or the server.",
+        "enum": [
+          "runner",
+          "automations_host",
+          "server"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "description": "The runner's or the automations host's name; empty for the server."
+      },
+      "machine": {
+        "type": "string",
+        "description": "The machine the runner or host sits on; the people who manage it are told. Empty for the server, whose Owner is told."
+      },
+      "manager": {
+        "type": "string",
+        "description": "The secrets manager, named by the scheme of the references it resolves, such as op."
+      },
+      "workspace": {
+        "type": "string",
+        "description": "The workspace slug whose token the host holds; empty for a runner and the server."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A secrets manager's state turned token rejected on a runner, an automations host or the server.",
+    "required": [
+      "source",
+      "manager"
+    ]
+  },
   "service.container_recovered": {
     "type": "object",
     "properties": {

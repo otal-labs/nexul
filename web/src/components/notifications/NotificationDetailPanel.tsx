@@ -6,6 +6,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerMoveDetail } from "@/components/notifications/ComputerMoveDetail";
 import { InterviewNoticeDetail } from "@/components/notifications/InterviewNoticeDetail";
 import { MeetingNoticeDetail } from "@/components/notifications/MeetingNoticeDetail";
+import { SecretsManagerNoticeDetail } from "@/components/notifications/SecretsManagerNoticeDetail";
 import { StackNoticeDetail } from "@/components/notifications/StackNoticeDetail";
 import { SweepNoticeDetail } from "@/components/notifications/SweepNoticeDetail";
 import { SubjectType } from "@/models/Notification";
@@ -45,5 +46,6 @@ export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelPro
     {selected && selected.subject_type === SubjectType.Meeting && <MeetingNoticeDetail meetingId={selected.subject_id} />}
     {selected && selected.subject_type === SubjectType.Interview && <InterviewNoticeDetail notification={selected} />}
     {selected && selected.subject_type === SubjectType.Sweep && <SweepNoticeDetail sweepId={selected.subject_id} />}
+    {selected && selected.subject_type === SubjectType.SecretsManager && <SecretsManagerNoticeDetail notification={selected} />}
   </div>
 );

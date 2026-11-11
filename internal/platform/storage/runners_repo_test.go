@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -67,7 +68,7 @@ func TestRunnersRepo_SetManagers_RoundTrips_AndARunnerThatNeverReportedHasNone(t
 	assert.Equal(t, []runner.ManagerState{}, got.Managers)
 
 	want := []runner.ManagerState{{Manager: "op", State: runner.ManagerReady}}
-	require.NoError(t, s.Runners.SetManagers(context.Background(), "r-1", want))
+	require.NoError(t, s.Runners.SetManagers(context.Background(), "r-1", want, nil))
 
 	got, err = s.Runners.GetByID(context.Background(), "r-1")
 	require.NoError(t, err)
@@ -262,4 +263,30 @@ func TestRunnersRepo_Remove_RevokesCredentialAndDeletesRunner(t *testing.T) {
 	assert.True(t, cred.Revoked)
 
 	require.ErrorIs(t, s.Runners.Remove(context.Background(), "r-1", enrollNow), apperrs.ErrNotFound)
+}
+
+func TestRunnersRepo_SetManagers_GivesTheStoredStatesToTheEventsItWritesBesideThem(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Runners.Create(ctx, newTestRunner("r-1")))
+	ready := []runner.ManagerState{{Manager: "op", State: runner.ManagerReady}}
+	rejected := []runner.ManagerState{{Manager: "op", State: runner.ManagerTokenRejected}}
+	var seen [][]runner.ManagerState
+	events := func(id string) func(prev []runner.ManagerState) []eventbus.OutboxEvent {
+		return func(prev []runner.ManagerState) []eventbus.OutboxEvent {
+			seen = append(seen, prev)
+			return []eventbus.OutboxEvent{{ID: id, Topic: "t", Payload: struct{}{}}}
+		}
+	}
+
+	require.NoError(t, s.Runners.SetManagers(ctx, "r-1", ready, events("evt-1")))
+	require.NoError(t, s.Runners.SetManagers(ctx, "r-1", rejected, events("evt-2")))
+
+	assert.Equal(t, [][]runner.ManagerState{{}, ready}, seen)
+	assert.Equal(t, 1, outboxCount(t, s, "evt-1"))
+	assert.Equal(t, 1, outboxCount(t, s, "evt-2"))
+
+	require.Error(t, s.Runners.SetManagers(ctx, "missing", ready, events("evt-3")))
+	assert.Equal(t, 0, outboxCount(t, s, "evt-3"), "a runner that does not exist writes no event")
 }

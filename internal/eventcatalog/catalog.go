@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
@@ -56,6 +57,7 @@ func declared() []eventbus.Topic {
 		tickets.Topics(),
 		deploy.Topics(),
 		runner.Topics(),
+		secretref.Topics(),
 		codereview.Topics(),
 		dns.Topics(),
 		gitprovider.Topics(),

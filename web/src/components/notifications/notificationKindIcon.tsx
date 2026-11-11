@@ -11,6 +11,7 @@ import {
   CircleXIcon,
   FilePenLineIcon,
   FilePlusIcon,
+  KeyRoundIcon,
   LaptopIcon,
   MessageCircleQuestionIcon,
   MessageSquareReplyIcon,
@@ -45,4 +46,5 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.MeetingReminder]: BellRingIcon,
   [NotificationKind.TicketDueSoon]: CalendarClockIcon,
   [NotificationKind.SweepFinished]: MoonStarIcon,
+  [NotificationKind.TokenRejected]: KeyRoundIcon,
 };

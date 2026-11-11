@@ -328,6 +328,33 @@ func (s *Service) MachineViewers(ctx context.Context, machineID string) ([]strin
 	return viewers, nil
 }
 
+// MachineManagers is who holds Manage on the machine called name: the people a notice about its runners and hosts
+// reaches. A name no machine bears has none.
+func (s *Service) MachineManagers(ctx context.Context, name string) ([]string, error) {
+	if s.machines == nil {
+		return nil, nil
+	}
+	machineID, err := s.machines.MachineIDByName(ctx, name)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find machine %q: %w", name, err)
+	}
+	users, err := s.users.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	ctx = s.memoized(ctx)
+	managers := []string{}
+	for _, u := range users {
+		if s.holdsOnMachine(ctx, u.ID, machineID, permissions.MachinesWrite) {
+			managers = append(managers, u.ID)
+		}
+	}
+	return managers, nil
+}
+
 // MachinesSeen is the ids of the machines userID sees, from one read of the rules reaching them however many machines
 // carry any: every machine for the instance Owner. A list filters by it in SQL (ADR 0140).
 func (s *Service) MachinesSeen(ctx context.Context, userID string) ([]string, error) {

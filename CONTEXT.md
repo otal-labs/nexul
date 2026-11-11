@@ -742,6 +742,14 @@ variables changed, never their values or references. A stack then shows that it 
 an automation is restarted.
 _Avoid_: Rotation (that is what the manager's owner does), sync, refresh
 
+**Token rejected notice**:
+The one inbox notification sent when a secrets manager refuses the token a runner, an automations host or the
+server holds. It goes to the people who hold Manage on the runner's or host's machine, or to the instance
+Owner for the server, once each time the state changes into token rejected, and names the command that sets a
+new token, never a token. A reconnect that is still rejected sends none; a recovery followed by a new
+rejection sends another.
+_Avoid_: Alert, warning
+
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with

@@ -153,6 +153,11 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	secretCache := secretref.NewCache(secretManagers, nil)
 	// Consumers read app configs with references resolved; the connectors service keeps the raw store and never writes a resolved value.
 	appConfigs := connectors.ResolvedAppConfigs{AppConfigStore: store.ConnectorAppConfig, Secrets: secretCache}
+	secretManagers.SetOnRejected(func(ctx context.Context, scheme string) {
+		if err := bus.Publish(ctx, secretref.TopicTokenRejected, secretref.TokenRejectedEvent{Source: secretref.SourceServer, Manager: scheme}); err != nil {
+			logger.Warn("bus publish failed", "topic", secretref.TopicTokenRejected, "error", err)
+		}
+	})
 	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
 	connectorsRegistry := connectors.Registry()
 	wireConnectorOAuth(connectorsRegistry, store, appConfigs)
@@ -395,7 +400,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects).
 		WithDocWatchers(docWatchersAdapter{repo: store.Docs}).
-		WithStackUnwatchers(store.StackWatchers)
+		WithStackUnwatchers(store.StackWatchers).
+		WithTokenAudience(accessSvc)
 	notifSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	pushSender := push.New(push.Config{
 		Tokens:     store.Sessions,

@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
@@ -395,10 +397,30 @@ func (h *HostsService) ReportManagers(ctx context.Context, credential string, ma
 	if err := validateManagers(managers); err != nil {
 		return err
 	}
-	if err := h.repo.SetHostManagers(ctx, cred.HostID, managers); err != nil {
+	host, err := h.repo.GetHost(ctx, cred.HostID)
+	if err != nil {
+		return fmt.Errorf("get automations host %s: %w", cred.HostID, err)
+	}
+	if err := h.repo.SetHostManagers(ctx, host.ID, managers, rejectedEvents(host, managers)); err != nil {
 		return fmt.Errorf("set automations host %s managers: %w", cred.HostID, err)
 	}
 	return nil
+}
+
+// rejectedEvents is the outbox event for each manager whose token turned rejected against what the host reported before.
+func rejectedEvents(host *Host, managers []HostManager) func(prev []HostManager) []eventbus.OutboxEvent {
+	return func(prev []HostManager) []eventbus.OutboxEvent {
+		var out []eventbus.OutboxEvent
+		for _, m := range managers {
+			if m.State != ManagerTokenRejected || slices.Contains(prev, m) {
+				continue
+			}
+			out = append(out, eventbus.OutboxEvent{ID: ids.New(), Topic: secretref.TopicTokenRejected, Payload: secretref.TokenRejectedEvent{
+				Source: secretref.SourceHost, Name: host.Name, Machine: host.Machine, Manager: m.Manager, Workspace: m.Workspace,
+			}})
+		}
+		return out
+	}
 }
 
 // maxHostManagers bounds a report: a host holds a few tokens, one per workspace.

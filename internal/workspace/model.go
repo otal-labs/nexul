@@ -289,6 +289,7 @@ const (
 	KindMeetingReminder      Kind = "meeting.reminder"
 	KindTicketDueSoon        Kind = "ticket.due_soon"
 	KindSweepFinished        Kind = "auto_play.sweep_finished"
+	KindTokenRejected        Kind = "secret_manager.token_rejected"
 )
 
 // LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,
@@ -314,6 +315,8 @@ const (
 	SubjectInterview SubjectType = "interview"
 	// SubjectSweep opens a schedule auto play's sweep digest; its id is the sweep's.
 	SubjectSweep SubjectType = "sweep"
+	// SubjectSecretsManager opens where a rejected token is set; its id is "<source>:<name>", the name empty for the server.
+	SubjectSecretsManager SubjectType = "secrets_manager"
 )
 
 // Notification's SubjectTitle is denormalized so the frontend renders the list without extra fetches.

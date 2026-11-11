@@ -128,6 +128,15 @@ type StackUnwatchers interface {
 	ListUnwatcherIDs(ctx context.Context, stackID string) ([]string, error)
 }
 
+// TokenAudience names who hears a rejected secrets manager token, adapted at the composition root onto the access
+// rules (ADR 0017).
+type TokenAudience interface {
+	// MachineManagers is who holds Manage on the machine called name.
+	MachineManagers(ctx context.Context, name string) ([]string, error)
+	// InstanceOwners is who holds the Owner role of the default workspace.
+	InstanceOwners(ctx context.Context) ([]string, error)
+}
+
 // DocWatchers resolves a doc's watchers, adapted at the composition root onto the docs domain (ADR 0017).
 type DocWatchers interface {
 	ListDocWatcherIDs(ctx context.Context, docID string) ([]string, error)

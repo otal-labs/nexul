@@ -44,9 +44,11 @@ type fakeRunnerRepo struct {
 	codes       map[string]*EnrollmentCode
 	credentials map[string]*Credential
 	heartbeats  int
-	createErr   error
-	listErr     error
-	credErr     error
+	// outbox is what SetManagers wrote beside the states.
+	outbox    []eventbus.OutboxEvent
+	createErr error
+	listErr   error
+	credErr   error
 	// machines backs the handler's machine lookups in tests built on this repo.
 	machines *fakeMachineRepo
 	// owners is who each machine an enrollment created was given to, by machine id.
@@ -354,12 +356,15 @@ func (f *fakeRunnerRepo) SetVersion(_ context.Context, id string, version string
 	return nil
 }
 
-func (f *fakeRunnerRepo) SetManagers(_ context.Context, id string, managers []ManagerState) error {
+func (f *fakeRunnerRepo) SetManagers(_ context.Context, id string, managers []ManagerState, events func(prev []ManagerState) []eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r, ok := f.runners[id]
 	if !ok {
 		return apperrs.ErrNotFound
+	}
+	if events != nil {
+		f.outbox = append(f.outbox, events(r.Managers)...)
 	}
 	r.Managers = managers
 	return nil

@@ -3,6 +3,8 @@ package automations
 import (
 	"context"
 	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // InstanceHostName names the automations host bundled with the instance; an automation with no host runs there.
@@ -138,8 +140,9 @@ type HostStore interface {
 	ListHostsOn(ctx context.Context, machineIDs []string) ([]Host, error)
 	// TouchHost records a poll and the version the host reported with it.
 	TouchHost(ctx context.Context, id string, at time.Time, version string) error
-	// SetHostManagers replaces the managers the host reported; an unknown id is apperrs.ErrNotFound.
-	SetHostManagers(ctx context.Context, id string, managers []HostManager) error
+	// SetHostManagers replaces the managers the host reported; an unknown id is apperrs.ErrNotFound. events, when set,
+	// is given the managers stored before and returns the outbox events to write in the same transaction.
+	SetHostManagers(ctx context.Context, id string, managers []HostManager, events func(prev []HostManager) []eventbus.OutboxEvent) error
 }
 
 // HostCredentialStore persists enrollment codes and host credentials, both by hash only.
