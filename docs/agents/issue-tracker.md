@@ -69,7 +69,7 @@ git history, and anything durable it decided is an ADR.
   a chosen-computer auto play's ordered list.
 - `.scratch/external-secrets/` — secret references to 1Password: `spec.md`
   (ready-for-agent, ADRs 0181–0183) from a finished wayfinder map, tickets
-  01–10 resolved. Next: build tickets.
+  01–10 resolved; build tickets 11–28, ready-for-agent.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
