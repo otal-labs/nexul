@@ -62,3 +62,11 @@ WHERE id = ?;
 
 -- name: DeleteStack :execrows
 DELETE FROM stacks WHERE id = ?;
+
+-- name: ListUnsealedStackSecrets :many
+SELECT id, env, branch_deploy_rules FROM stacks
+WHERE (env NOT IN ('{}', '') AND env NOT LIKE 'enc1:%')
+   OR (branch_deploy_rules NOT IN ('[]', '') AND branch_deploy_rules NOT LIKE 'enc1:%');
+
+-- name: SetStackSecrets :exec
+UPDATE stacks SET env = ?, branch_deploy_rules = ? WHERE id = ?;
