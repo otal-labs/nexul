@@ -169,6 +169,27 @@ func TestSaveManualCredentials_VerifyFails_StoresNothing(t *testing.T) {
 	}
 }
 
+// TestSaveManualCredentials_SecretFieldsAreCheckedForReferences proves only a Secret field is parsed: a malformed
+// reference there is refused before the provider is asked, while the same text in a plain field stays a literal.
+func TestSaveManualCredentials_SecretFieldsAreCheckedForReferences(t *testing.T) {
+	verifier := &fakeVerifier{}
+	svc, _ := testServiceWithVerifier(t, verifier, nil)
+
+	fields := map[string]string{"ws_url": "wss://lk.example.com", "api_key": "op://plain", "api_secret": "op://vaultonly"}
+	_, err := svc.SaveManualCredentials(context.Background(), "livekit", "user-1", fields)
+	if !errors.Is(err, apperrs.ErrInvalid) || !strings.Contains(err.Error(), "API secret") || strings.Contains(err.Error(), "vaultonly") {
+		t.Fatalf("SaveManualCredentials (malformed reference) = %v, want ErrInvalid naming API secret without the value", err)
+	}
+	if verifier.calls != 0 {
+		t.Fatalf("verifier.calls = %d, want 0", verifier.calls)
+	}
+
+	fields["api_secret"] = "op://acme/livekit/secret"
+	if _, err := svc.SaveManualCredentials(context.Background(), "livekit", "user-1", fields); err != nil {
+		t.Fatalf("SaveManualCredentials (reference in secret, op:// text in plain field) = %v, want nil", err)
+	}
+}
+
 func TestSaveManualCredentials_MissingField_Rejected(t *testing.T) {
 	verifier := &fakeVerifier{}
 	svc, _ := testServiceWithVerifier(t, verifier, nil)

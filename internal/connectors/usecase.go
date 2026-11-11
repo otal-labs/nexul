@@ -11,6 +11,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // Gate is the permission check connecting and reading connectors passes; each connector is its own instance area, so a
@@ -230,6 +231,11 @@ func (s *Service) checkManual(ctx context.Context, connectorID string, fields ma
 		if v == "" {
 			return nil, fmt.Errorf("%w: %s is required", apperrs.ErrInvalid, f.Label)
 		}
+		if f.Secret {
+			if err := secretref.Check(f.Label, v); err != nil {
+				return nil, err
+			}
+		}
 		clean[f.Key] = v
 	}
 	if c.Verify == nil {
@@ -333,6 +339,9 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 	if s.appConfigStore == nil {
 		return AppConfigStatus{}, fmt.Errorf("%w: app config store is not configured", apperrs.ErrForbidden)
 	}
+	if err := secretref.Check("client_secret", strings.TrimSpace(clientSecret)); err != nil {
+		return AppConfigStatus{}, err
+	}
 	// Editing the slug or client ID keeps the stored secret, which is never sent back to be re-entered.
 	if strings.TrimSpace(clientSecret) == "" {
 		existing, err := s.appConfigStore.GetAppConfig(ctx, connectorID)
@@ -406,6 +415,9 @@ func (s *Service) VerifyPrivateKey(ctx context.Context, userID, connectorID, pri
 	}
 	if strings.TrimSpace(privateKey) == "" {
 		return fmt.Errorf("%w: private_key is required", apperrs.ErrInvalid)
+	}
+	if err := secretref.Check("private_key", strings.TrimSpace(privateKey)); err != nil {
+		return err
 	}
 	if err := v.VerifyKey(ctx, cfg, strings.TrimSpace(privateKey)); err != nil {
 		return asInvalid(err)

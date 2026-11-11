@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
 // secretNamePattern mirrors GitHub Actions' secret naming: an
@@ -57,6 +58,9 @@ func (s *SecretsService) Set(ctx context.Context, actorID, workspaceID, name, va
 	}
 	if value == "" {
 		return fmt.Errorf("%w: secret value is required", apperrs.ErrInvalid)
+	}
+	if err := secretref.Check(name, value); err != nil {
+		return err
 	}
 	if err := s.repo.Set(ctx, workspaceID, name, value, s.now().UTC()); err != nil {
 		return fmt.Errorf("set secret %s: %w", name, err)
