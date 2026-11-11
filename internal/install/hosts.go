@@ -25,20 +25,24 @@ type HostOptions struct {
 	Token     string
 	StackRoot string
 	GitToken  string
-	Version   string
-	Yes       bool
+	// OnePasswordToken is the 1Password service account token a runner starts with, if it has one.
+	OnePasswordToken string
+	Version          string
+	Yes              bool
 }
 
 func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) error {
 	fs := flag.NewFlagSet("install "+kind, flag.ContinueOnError)
 	fs.SetOutput(h.Out)
 	o := HostOptions{Kind: kind}
+	var tokenFile string
 	fs.StringVar(&o.Server, "server", "", "the instance's address, e.g. https://nexul.example.com")
 	fs.StringVar(&o.Name, "name", "", "this "+kind+"'s name: lower case letters, digits and dashes")
 	fs.StringVar(&o.Code, "code", "", "the one-time enrollment code the instance gave you")
 	if kind == kindRunner {
 		fs.StringVar(&o.StackRoot, "stack-root", "", "the stack root; checkouts go in its stacks folder (default: the runner's directory)")
 		fs.StringVar(&o.GitToken, "git-token", "", "a token for cloning private repositories")
+		fs.StringVar(&tokenFile, "1password-token-file", "", "a file holding a 1Password service account token for this runner")
 	}
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
 	fs.BoolVar(&o.Yes, "yes", false, "accepted for scripts; this install never asks")
@@ -48,6 +52,13 @@ func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) e
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
+	}
+	if tokenFile != "" {
+		token, err := readTokenFile(tokenFile)
+		if err != nil {
+			return err
+		}
+		o.OnePasswordToken = token
 	}
 	return h.InstallHost(ctx, o)
 }
@@ -172,6 +183,9 @@ func hostEnv(o HostOptions, server, credFile, ctl string) map[string]string {
 	env["NEXUL_STACK_ROOT"] = o.StackRoot
 	if o.GitToken != "" {
 		env["NEXUL_GIT_TOKEN"] = o.GitToken
+	}
+	if o.OnePasswordToken != "" {
+		env[opTokenEnv] = o.OnePasswordToken
 	}
 	return env
 }
