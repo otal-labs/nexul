@@ -78,6 +78,7 @@ async function main(): Promise<void> {
     token,
     timeoutMs,
     resolveSecrets: resolvePool,
+    onRunState: (running) => parentPort?.postMessage({ type: "run", running }),
     logger: (level, message, meta) => parentPort?.postMessage({ type: "log", level, message, meta }),
   });
   await client.run();

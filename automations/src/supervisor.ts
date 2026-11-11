@@ -1,6 +1,8 @@
 import type { AutomationTarget, AutomationsApi, RemoteState } from "./automations-api.ts";
 import { log } from "./log.ts";
 import type { PoolResolver } from "./pool-resolution.ts";
+import { realClock, type Clock, type SecretReader } from "./secret-check.ts";
+import { Fingerprinter } from "./secret-fingerprints.ts";
 import type { WorkerFactory, WorkerHandle } from "./worker.ts";
 
 export interface SupervisorConfig {
@@ -17,18 +19,38 @@ interface TrackedState {
   running: boolean;
 }
 
+// A run in flight is given this long to end before a changed secret restarts its automation anyway; the cut-off run is
+// delivered again (ADR 0046).
+const MAX_IDLE_WAIT_MS = 5 * 60_000;
+
+// What one worker was handed at its last connection: a keyed hash per reference, never the value.
+interface Held {
+  workspaceId: string;
+  refs: Map<string, string>;
+}
+
+export interface SupervisorDeps {
+  fingerprinter: Fingerprinter;
+  clock: Clock;
+}
+
 // Supervisor is the host's whole job: for each automation placed on this
 // host, ask the server what should be running and reconcile a worker to
 // match. One poll tick, one reconcile pass — no queue, no scheduler.
 export class Supervisor {
   private readonly tracked = new Map<string, TrackedState>();
   private readonly handles = new Map<string, WorkerHandle>();
+  private readonly held = new Map<string, Held>();
+  private readonly specs = new Map<string, { target: AutomationTarget; state: RemoteState }>();
+  private readonly busy = new Set<string>();
+  private readonly waiting = new Map<string, () => void>();
 
   constructor(
     private readonly api: AutomationsApi,
     private readonly workers: WorkerFactory,
     private readonly cfg: SupervisorConfig,
     private readonly pool: PoolResolver,
+    private readonly deps: SupervisorDeps = { fingerprinter: new Fingerprinter(), clock: realClock },
   ) {}
 
   // reconcile stops the workers of automations no longer placed here, then brings each placed one up to date.
@@ -80,7 +102,80 @@ export class Supervisor {
     this.spawn(target, state);
   }
 
+  // Re-reads every held reference, one read per workspace, and restarts each automation whose handed-in value is no
+  // longer the current one. A reference that does not resolve now counts as unchanged. Logs only ids and counts.
+  async checkSecrets(reader: SecretReader): Promise<void> {
+    const refsByWorkspace = new Map<string, Set<string>>();
+    for (const held of this.held.values()) {
+      const refs = refsByWorkspace.get(held.workspaceId) ?? new Set<string>();
+      for (const ref of held.refs.keys()) refs.add(ref);
+      refsByWorkspace.set(held.workspaceId, refs);
+    }
+    const checked = [...this.held].map(([id, held]) => ({ id, held }));
+    const results = new Map<string, Awaited<ReturnType<SecretReader["resolve"]>>>();
+    await Promise.all([...refsByWorkspace].map(async ([workspaceId, refs]) => void results.set(workspaceId, await reader.resolve(workspaceId, [...refs]))));
+    for (const { id, held } of checked) {
+      if (this.held.get(id) !== held) continue;
+      const now = results.get(held.workspaceId);
+      let changed = 0;
+      for (const [ref, fingerprint] of held.refs) {
+        const result = now?.get(ref);
+        if (result?.ok && this.deps.fingerprinter.of(result.value) !== fingerprint) changed++;
+      }
+      if (changed > 0) this.restartWhenIdle(id, changed);
+    }
+  }
+
+  private restartWhenIdle(id: string, changed: number): void {
+    if (this.waiting.has(id)) return;
+    log("info", "automation holds changed secret values; restarting it once idle", { automationId: id, changed });
+    if (!this.busy.has(id)) {
+      void this.restart(id);
+      return;
+    }
+    this.waiting.set(id, this.deps.clock.after(MAX_IDLE_WAIT_MS, () => void this.restart(id)));
+  }
+
+  // The thread reconnects with the spec it last ran and resolves the pool afresh.
+  private async restart(id: string): Promise<void> {
+    const spec = this.specs.get(id);
+    if (!spec) return;
+    await this.stop(id);
+    this.spawn(spec.target, spec.state);
+  }
+
+  private runState(id: string, held: Held, running: boolean): void {
+    if (this.held.get(id) !== held) return;
+    if (running) {
+      this.busy.add(id);
+      return;
+    }
+    this.busy.delete(id);
+    if (this.waiting.has(id)) void this.restart(id);
+  }
+
+  private remember(id: string, held: Held, entries: unknown, values: Record<string, string>): void {
+    if (this.held.get(id) !== held) return;
+    const asked = typeof entries === "object" && entries !== null ? (entries as Record<string, unknown>) : {};
+    held.refs.clear();
+    for (const [name, value] of Object.entries(values)) {
+      const ref = asked[name];
+      if (typeof ref === "string") held.refs.set(ref, this.deps.fingerprinter.of(value));
+    }
+  }
+
+  private forget(id: string): void {
+    this.waiting.get(id)?.();
+    this.waiting.delete(id);
+    this.held.delete(id);
+    this.specs.delete(id);
+    this.busy.delete(id);
+  }
+
   private spawn(target: AutomationTarget, state: RemoteState): void {
+    const held: Held = { workspaceId: target.workspace_id, refs: new Map() };
+    this.held.set(target.id, held);
+    this.specs.set(target.id, { target, state });
     const handle = this.workers.spawn(
       {
         automationId: target.id,
@@ -91,8 +186,12 @@ export class Supervisor {
         timeoutMs: this.cfg.timeoutMs,
         heartbeatTimeoutMs: this.cfg.heartbeatTimeoutMs,
         memoryMb: this.cfg.memoryMb,
-        resolvePool: (entries) =>
-          this.pool.resolve({ workspaceId: target.workspace_id, automationId: target.id, automationName: target.name }, entries),
+        resolvePool: async (entries) => {
+          const values = await this.pool.resolve({ workspaceId: target.workspace_id, automationId: target.id, automationName: target.name }, entries);
+          this.remember(target.id, held, entries, values);
+          return values;
+        },
+        onRunState: (running) => this.runState(target.id, held, running),
       },
       () => this.markStale(target.id),
     );
@@ -104,6 +203,7 @@ export class Supervisor {
   private async stop(id: string): Promise<void> {
     const handle = this.handles.get(id);
     this.handles.delete(id);
+    this.forget(id);
     if (handle) await handle.terminate();
   }
 
@@ -111,6 +211,7 @@ export class Supervisor {
     const prev = this.tracked.get(id);
     if (prev) this.tracked.set(id, { ...prev, running: false });
     this.handles.delete(id);
+    this.forget(id);
   }
 }
 

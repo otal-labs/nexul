@@ -1,3 +1,5 @@
+import { parseCheckInterval } from "./secret-check.ts";
+
 export interface HostConfig {
   serverUrl: string;
   credentialFile: string;
@@ -10,6 +12,8 @@ export interface HostConfig {
   memoryMb: number;
   heartbeatTimeoutMs: number;
   runTimeoutMs: number;
+  // 0 means the secret check is off.
+  secretCheckIntervalMs: number;
 }
 
 function envInt(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
@@ -39,5 +43,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): HostConfig {
     // this is the external backstop that terminates the worker outright.
     heartbeatTimeoutMs: envInt(env, "NEXUL_AUTOMATIONS_HEARTBEAT_TIMEOUT_MS", 90_000),
     runTimeoutMs: envInt(env, "NEXUL_AUTOMATIONS_RUN_TIMEOUT_MS", 30_000),
+    secretCheckIntervalMs: parseCheckInterval(env.NEXUL_SECRET_CHECK_INTERVAL),
   };
 }

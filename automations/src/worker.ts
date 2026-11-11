@@ -12,6 +12,8 @@ export interface SpawnOptions {
   memoryMb: number;
   // Answers the thread's request to resolve pool references, for this automation's workspace only.
   resolvePool: (entries: unknown) => Promise<Record<string, string>>;
+  // Called when the thread starts a run (true) and when it ends one (false).
+  onRunState: (running: boolean) => void;
 }
 
 export interface WorkerHandle {
@@ -29,7 +31,8 @@ export interface WorkerFactory {
 const WORKER_ENTRY = new URL(import.meta.url.endsWith(".ts") ? "./worker-entry.ts" : "./worker-entry.js", import.meta.url);
 
 interface WorkerMessage {
-  type: "log" | "heartbeat" | "resolve";
+  type: "log" | "heartbeat" | "resolve" | "run";
+  running?: boolean;
   id?: number;
   entries?: unknown;
   level?: "info" | "warn" | "error";
@@ -73,6 +76,10 @@ export const threadWorkerFactory: WorkerFactory = {
     worker.on("message", (msg: WorkerMessage) => {
       if (msg.type === "heartbeat") {
         lastHeartbeat = Date.now();
+        return;
+      }
+      if (msg.type === "run") {
+        opts.onRunState(msg.running === true);
         return;
       }
       if (msg.type === "resolve") {

@@ -43,6 +43,7 @@ describe("threadWorkerFactory (real worker_thread)", () => {
           heartbeatTimeoutMs: 60_000,
           memoryMb: 64,
           resolvePool: async () => ({}),
+          onRunState: () => {},
         },
         () => {
           stale = true;
@@ -78,6 +79,7 @@ describe("threadWorkerFactory (real worker_thread)", () => {
             heartbeatTimeoutMs: 60_000,
             memoryMb: 64,
             resolvePool: async () => ({}),
+            onRunState: () => {},
           },
           resolve,
         );
@@ -135,6 +137,7 @@ describe("threadWorkerFactory (real worker_thread)", () => {
           heartbeatTimeoutMs: 60_000,
           memoryMb: 64,
           resolvePool: (entries) => pool.resolve({ workspaceId: "acme", automationId: "pool-1", automationName: "pool-probe" }, entries),
+          onRunState: () => {},
         },
         () => {},
       );
