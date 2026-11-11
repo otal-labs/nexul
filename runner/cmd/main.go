@@ -53,7 +53,7 @@ func main() {
 		execCfg.Fingerprints = runner.NewFingerprints(cfg.StateDir())
 	}
 	if managers != nil {
-		execCfg.Registry = managers.Registry
+		execCfg.Registry = managers.DeployRegistry
 		secretCheck = runner.NewSecretCheck(execCfg.Fingerprints, managers.Registry, cfg.SecretCheckInterval, logger)
 	}
 	client := runner.NewClient(runner.ClientConfig{
