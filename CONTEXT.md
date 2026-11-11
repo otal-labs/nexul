@@ -734,6 +734,13 @@ instead of holding the secret. It is kept as closely as a secret value is. Nexul
 host, or the server) fetches the secret with its own credential at the moment it needs it.
 _Avoid_: Secret link, vault path, external secret (that is the feature, not the value)
 
+**Secret check**:
+A runner's or automations host's regular re-reading of the secret references it has used, to notice a
+value that changed in the secrets manager since the last deploy or connection. It reports which
+variables changed, never their values or references. A stack then shows that it needs a redeploy, and
+an automation is restarted.
+_Avoid_: Rotation (that is what the manager's owner does), sync, refresh
+
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with

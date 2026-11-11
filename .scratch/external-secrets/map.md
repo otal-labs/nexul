@@ -52,8 +52,22 @@ connectors and sign-in providers. The map is done when nothing is left to decide
 - [Connector credentials and the bootstrap secret by reference on the server](issues/06-server-references.md):
   connector and sign-in provider secrets resolve at start and on save with the server's own token; a
   1Password outage degrades only those credentials; a 401/403 re-resolves.
+- [Should Nexul notice a rotated 1Password value and offer a redeploy?](issues/08-rotation-notice.md):
+  yes. Runners and hosts check hourly by default against on-machine fingerprints; a stack shows a
+  notice with Redeploy, and an automation restarts once it is idle.
+- [What the code that resolves references must look like so a second manager slots in](issues/09-provider-seam.md):
+  nothing published names a manager; a `Resolver` interface and registry in Go and TypeScript; a CLI
+  subcommand per manager.
+- [The remaining scope, build and docs calls](issues/10-scope-build-and-docs.md): AGPL; hellos batched
+  per workspace; one guide page; fake-only tests; three ADRs; a rejected token notifies machine
+  managers; an optional install prompt.
+
+**Destination reached 2026-11-12:** [spec.md](spec.md) with ADRs 0181–0183. Next: cut it into build
+tickets.
 
 ## Not yet specified
+
+Nothing left: every area became a ticket and every ticket is resolved.
 
 ## Out of scope
 
