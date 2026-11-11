@@ -27,4 +27,4 @@ own workspace's token, so its reach stays what ADR 0047 accepts. Handing the tok
 was rejected: the automation's own code would hold it, and every thread would load the SDK's 14 MB
 core.
 
-Decided: 2026-11-12. Spec: `.scratch/external-secrets/spec.md`.
+Decided: 2026-11-12. User guide: `website/src/content/docs/docs/guide/external-secrets.md`.

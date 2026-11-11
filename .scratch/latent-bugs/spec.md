@@ -5,6 +5,15 @@
 Small defects seen in passing that have no effort of their own. One heading
 each; delete the heading when it is fixed, delete the file when it is empty.
 
+## An automation on its own SDK client gets pool references unresolved
+
+The automations host's supervisor resolves an automation's pool references
+(ADR 0182), but an automation that runs its own `@otal-labs/nexul-sdk` client
+outside a host has no supervisor, so its `ctx.secrets` holds a reference such
+as `op://vault/item/field` as the literal string. The fix is either to leave
+references out of the hello for a connection that is not a host's, or to say in
+the SDK's docs that references resolve only on a host.
+
 ## A data race shows up intermittently in the DNS tests
 
 One `make coverage` run on 2026-09-29 failed with a `-race` report in the
