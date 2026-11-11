@@ -729,8 +729,8 @@ whoever holds `stacks:write` on the stack is sent them, and anyone else gets the
 _Avoid_: Secrets (no value is marked, all are held back), config, settings
 
 **Secret reference**:
-A value that names where a secret lives in an external secrets manager, such as 1Password, instead of
-holding the secret. Nexul stores the reference; the side that uses the secret (a runner, an automations
+A value that names, in full, where a secret lives in an external secrets manager, such as 1Password,
+instead of holding the secret. It is kept as closely as a secret value is. Nexul stores the reference; the side that uses the secret (a runner, an automations
 host, or the server) fetches the secret with its own credential at the moment it needs it.
 _Avoid_: Secret link, vault path, external secret (that is the feature, not the value)
 
