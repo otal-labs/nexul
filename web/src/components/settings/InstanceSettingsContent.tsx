@@ -8,6 +8,7 @@ import { InstanceAccessSection } from "@/components/settings/InstanceAccessSecti
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
 import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
 import { LicenseSection } from "@/ee/components/LicenseSection";
+import { SsoSection } from "@/ee/components/SsoSection";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
@@ -49,6 +50,7 @@ const SignInPanel = () => {
         </SettingsCard>
       )}
       {settings && <SignInProvidersPanel settings={settings} />}
+      <SsoSection />
     </>
   );
 };

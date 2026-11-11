@@ -1167,6 +1167,18 @@ type SetupCode struct {
 	ExpiresAt int64
 }
 
+type SsoSetting struct {
+	ID           int64
+	IssuerUrl    string
+	ClientID     string
+	ClientSecret string
+	DisplayName  string
+	JoinRoleID   string
+	SsoOnly      int64
+	UpdatedBy    string
+	UpdatedAt    int64
+}
+
 type Stack struct {
 	ID                        string
 	ProjectID                 sql.NullString

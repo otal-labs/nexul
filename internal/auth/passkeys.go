@@ -290,6 +290,9 @@ func (s *Service) FinishPasskeyLogin(ctx context.Context, origin, ceremonyID str
 	if !accountIsActive(owner.user.AccountStatus) {
 		return "", errAccountDisabled
 	}
+	if err := s.requirePasskeyAllowed(ctx, owner.user.ID); err != nil {
+		return "", err
+	}
 	blob, err := json.Marshal(cred)
 	if err != nil {
 		return "", fmt.Errorf("encode passkey: %w", err)

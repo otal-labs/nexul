@@ -39,6 +39,10 @@ tickets have merged and nothing is left to decide for them.
   (ADR 0185); the web settings page lives in `web/src/ee/`.
 - [Can a support workspace give each client only their own conversation](issues/02-a-support-space-on-the-instance.md):
   yes with no code, as one workspace per client (a shared one shows every client's people); setup is NEXUL-123.
+- NEXUL-121 (single sign-on, ADR 0186): `ee/sso`, one OIDC provider; the sign-in routes are `/auth/oidc` and its
+  callback, the settings `/api/instance/sso`, and `instance_update` (now in `internal/mcp/composite`) takes an `sso`
+  object. SSO-only is refused on the server for every method but an instance Owner's passkey, and turns on only while one
+  holds a passkey. A branding ticket reads `license.Service.Enabled(ctx, license.FeatureBranding)` the same way.
 
 ## Not yet specified
 

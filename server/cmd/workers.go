@@ -65,7 +65,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithGate(svc.accessSvc).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc}).
-		WithLicense(func(ctx context.Context) (any, error) { return svc.licenseSvc.Status(ctx) })
+		WithLicense(func(ctx context.Context) (any, error) { return svc.licenseSvc.Status(ctx) }).
+		WithSSO(func(ctx context.Context) (any, error) { return svc.ssoSvc.View(ctx) })
 	if cfg.LogsURL != nil {
 		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
 	}

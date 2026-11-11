@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Nexul's enterprise features, single sign-on and branding, run on an instance that holds a valid **license key**. Everything else in Nexul is free and stays free: a key only ever unlocks features that were built as enterprise features, never one that shipped without a key.
+Nexul's enterprise features, [single sign-on](/docs/guide/single-sign-on/) and branding, run on an instance that holds a valid **license key**. Everything else in Nexul is free and stays free: a key only ever unlocks features that were built as enterprise features, never one that shipped without a key.
 
 A key is a short block of text naming who it is for, the address of the one instance it covers, the features it unlocks and the date it expires. It is signed, and the server checks the signature against a public key built into Nexul. Nothing is sent anywhere to check it, so a key works on an instance with no internet access.
 

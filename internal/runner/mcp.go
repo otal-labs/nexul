@@ -235,7 +235,7 @@ func instanceGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_get", "Get instance",
 		"Returns the instance's running version and release channel, the channel's newest release, whether an upgrade "+
 			"can start now and if not why, the latest upgrade record, and the enterprise license (licensee, features, expiry, "+
-			"state; instance_update changes it). Poll it after instance_upgrade; refresh asks "+
+			"state) and the single sign-on settings (instance_update changes both). Poll it after instance_upgrade; refresh asks "+
 			"GitHub for a release from the last few minutes. Pass logs to also read the instance's own logs (server, "+
 			"browser, runners, automations hosts), newest first, 100 lines by default, at most 500; pass the result's "+
 			"until back with next_offset for the next page. It needs logs:read besides instance:read and never includes a "+
@@ -255,6 +255,11 @@ func instanceGetTool(s *Service) mcptool.Tool {
 					return nil, err
 				}
 			}
+			if s.sso != nil {
+				if detail.SSO, err = s.sso(ctx); err != nil {
+					return nil, err
+				}
+			}
 			if in.Logs == nil {
 				return detail, nil
 			}
@@ -268,6 +273,7 @@ func instanceGetTool(s *Service) mcptool.Tool {
 type instanceDetail struct {
 	UpgradeStatus
 	License any            `json:"license,omitempty"`
+	SSO     any            `json:"sso,omitempty"`
 	Logs    *logstore.Page `json:"logs,omitempty"`
 }
 

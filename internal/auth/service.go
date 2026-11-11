@@ -253,6 +253,8 @@ type Service struct {
 	welcome WelcomeReader
 	// ceremonies holds each passkey ceremony between its start and finish.
 	ceremonies *passkeyCeremonies
+	// ssoOnly is the enterprise single sign-on switch; see SetSSOOnly.
+	ssoOnly func(context.Context) bool
 }
 
 // WelcomeReader reads a person's Welcome wizard progress without auth importing the welcome domain (ADR 0017).
@@ -538,6 +540,9 @@ func (s *Service) Login(ctx context.Context, code string) (string, error) {
 
 // LoginWith exchanges a code for identity, admits only known active users or the first instance user, and mints a session.
 func (s *Service) LoginWith(ctx context.Context, provider Provider, code string) (string, error) {
+	if s.onlySSO(ctx) {
+		return "", errSSOOnly
+	}
 	client, err := s.providerClient(ctx, provider)
 	if err != nil {
 		return "", err

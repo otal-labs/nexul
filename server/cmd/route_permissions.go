@@ -164,6 +164,9 @@ var routePermissions = map[string][]string{
 
 	"DELETE /api/instance/license":                        {"instance:write"},
 	"PUT /api/instance/license":                           {"instance:write"},
+	"DELETE /api/instance/sso":                            {"instance:write"},
+	"PUT /api/instance/sso":                               {"instance:write"},
+	"POST /api/instance/sso/verify":                       {"instance:write"},
 	"POST /api/instance/upgrade":                          {"instance:write"},
 	"POST /api/integrations":                              {"integrations:write"},
 	"DELETE /api/integrations/{id}":                       {"integrations:delete"},
