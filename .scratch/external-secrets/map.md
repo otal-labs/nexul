@@ -42,6 +42,9 @@ instance bootstrap secret. The map is done when nothing is left to decide before
 - [When a runner resolves references, and what a failed resolution does to a deploy](issues/04-deploy-resolution.md):
   every deploy in one batch with no cache, before pull or build; any failure fails the deploy, naming
   variables only; values go into `.env` as today; a rollback uses each reference's value now.
+- [How a runner gets its 1Password token and tells Nexul it can resolve](issues/03-runner-setup.md):
+  an install flag plus `nexul runner 1password <name>`; the token is checked at start and reported as
+  ready or rejected; deploys with references go only to a ready runner; a tag on the runner list.
 
 ## Not yet specified
 
