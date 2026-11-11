@@ -28,7 +28,7 @@ export const useFetchStacks = () => {
   return useQuery({ ...stacksQuery.options(workspaceId), enabled: !!workspaceId });
 };
 
-// The read carries the stack's open outages and error-rate episode, so a service going down or coming back and the error rate crossing or recovering refetch the stack they name.
+// The read carries the stack's open outages and error-rate episode, so a service going down or coming back and the error rate crossing or recovering refetch the stack they name, and so does a change in the value of a secret it references.
 const stackQuery = defineQuery({
   key: getStackKey,
   fetch: (id: string | undefined) => api.get<Stack>(`/api/stacks/${id}`),
@@ -37,6 +37,8 @@ const stackQuery = defineQuery({
     "service.container_recovered": { key: (p) => p.stack_id },
     "stack.error_rate_crossed": { key: (p) => p.stack_id },
     "stack.error_rate_recovered": { key: (p) => p.stack_id },
+    "service.secrets_changed": { key: (p) => p.stack_id },
+    "service.updated": { key: (p) => p.stack.id },
   },
 });
 

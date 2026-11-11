@@ -40,7 +40,7 @@ describe("the stack follower", () => {
     expect([isStale(client, ["getStack", "s-1"]), isStale(client, ["getStack", "s-2"])]).toEqual([true, false]);
   });
 
-  it.each(["service.container_stopped", "service.container_recovered", "stack.error_rate_crossed", "stack.error_rate_recovered"])(
+  it.each(["service.container_stopped", "service.container_recovered", "stack.error_rate_crossed", "stack.error_rate_recovered", "service.secrets_changed"])(
     "refetches only the read of the stack %s names, since that read carries its open outages and error-rate episode",
     async (topic) => {
       const client = seeded([

@@ -11,6 +11,7 @@ import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySe
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
 import { ServicesSection } from "@/components/stack/ServicesSection";
 import { StackEnvironmentSection } from "@/components/stack/StackEnvironmentSection";
+import { StackSecretsChangedNotice } from "@/components/stack/StackSecretsChangedNotice";
 import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
@@ -66,6 +67,7 @@ export const StackPage = ({ tab = "overview" }: StackPageProps) => {
       {stack && (
         <div className="space-y-6">
           <StackHeaderSection stack={stack} latest={latest} lastHealthy={lastHealthy} image={image} hostnames={hostnames} />
+          <StackSecretsChangedNotice stack={stack} image={image} />
           <StackTabs stackId={stack.id} active={tab} showLogs={showLogs} deployCount={deploys?.length} />
           {tab === "overview" && <ServicesSection stackId={stack.id} />}
           {tab === "overview" && <RequestsSection stack={stack} />}

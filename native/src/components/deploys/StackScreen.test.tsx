@@ -22,7 +22,8 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "s-1" }),
 }));
 
-const stack = { id: "s-1", project_id: "p-1", name: "api", machine: "hetzner-1", strategy: "run", managed: true };
+const baseStack = { id: "s-1", project_id: "p-1", name: "api", machine: "hetzner-1", strategy: "run", managed: true };
+let stack: typeof baseStack & { secrets_changed?: string[] };
 
 const web = { id: "c-1", stack_id: "s-1", name: "web", declared: { image: "nginx" }, status: "running" };
 
@@ -48,6 +49,7 @@ const renderWithLatest = (status: string, services: unknown[] = []) => {
 };
 
 beforeEach(() => {
+  stack = baseStack;
   mockPush.mockReset();
   mockAccess.current = true;
   me = { role_name: "Developer", permissions: ["deploys:write"], show_locked_actions: false };
@@ -108,5 +110,35 @@ describe("StackScreen", () => {
     await userEvent.press(await screen.findByRole("button", { name: "Redeploy" }));
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+});
+
+describe("StackScreen changed-secret notice", () => {
+  test("names the changed variables to a viewer who cannot deploy, with no Redeploy", async () => {
+    stack = { ...baseStack, secrets_changed: ["DB_PASSWORD", "API_KEY"] };
+    me = { role_name: "Client", permissions: ["stacks:read"], show_locked_actions: false };
+    await renderWithLatest("healthy");
+
+    expect(await screen.findByText("DB_PASSWORD, API_KEY changed since the last deploy")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Redeploy" })).toBeNull();
+  });
+
+  test("carries the one Redeploy, which opens the sheet, for a viewer who may deploy", async () => {
+    stack = { ...baseStack, secrets_changed: ["DB_PASSWORD"] };
+    await renderWithLatest("healthy");
+
+    expect(await screen.findByText("DB_PASSWORD changed since the last deploy")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Redeploy" })).toHaveLength(1);
+    await userEvent.press(screen.getByRole("button", { name: "Redeploy" }));
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/deploys/redeploy", params: { stackId: "s-1", image: "api:2" } });
+  });
+
+  test.each([[baseStack], [{ ...baseStack, secrets_changed: [] }]])("shows no notice when the stack lists no changed variable (%j)", async (listed) => {
+    stack = listed;
+    await renderWithLatest("healthy");
+
+    expect(await screen.findByText("Deploy history")).toBeTruthy();
+    expect(screen.queryByText(/changed since the last deploy/)).toBeNull();
   });
 });
