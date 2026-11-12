@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ConnectGitHubPrompt } from "@/components/github/ConnectGitHubPrompt";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { RepositoryInstallHint } from "@/components/wizard/RepositoryInstallHint";
@@ -24,13 +25,22 @@ export interface RepositorySearchProps {
   openRow?: { id: number; row: ReactNode } | undefined;
 }
 
+// A search lists this many matches and grows by as many on "Show more".
+const RESULT_WINDOW = 10;
+
 // Nothing loads until enough letters are typed: an installation can grant thousands of repositories.
 export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Search repositories", openRow }: RepositorySearchProps) => {
   const [text, setText] = useState("");
-  const typed = text.trim().length;
+  const [more, setMore] = useState({ q: "", shown: RESULT_WINDOW });
+  const q = text.trim();
+  const typed = q.length;
   const searching = typed >= REPOSITORY_SEARCH_MIN_LENGTH;
   const { data, isFetching, error } = useSearchRepositories(text);
-  const repos = searching ? data?.filter((r) => !exclude?.includes(r.full_name)) : undefined;
+  const matches = searching ? data?.filter((r) => !exclude?.includes(r.full_name)) : undefined;
+  // A new search starts back at one window.
+  const shown = more.q === q ? more.shown : RESULT_WINDOW;
+  const repos = matches?.slice(0, shown);
+  const hidden = (matches?.length ?? 0) - shown;
   // A token GitHub stopped refreshing mid-search asks for a reconnect instead of an error.
   const refusal = searching ? githubLinkRefusal(error) : undefined;
 
@@ -82,6 +92,11 @@ export const RepositorySearchField = ({ onSelect, exclude, busyId, label = "Sear
             />
           ))}
         </ul>
+      )}
+      {hidden > 0 && (
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setMore({ q, shown: shown + RESULT_WINDOW })}>
+          Show {Math.min(hidden, RESULT_WINDOW)} more of <span className="font-mono tabular-nums">{hidden}</span>
+        </Button>
       )}
       {searching && <RepositoryInstallHint />}
     </div>
