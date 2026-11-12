@@ -357,6 +357,11 @@ body {
       height: max(100%, 44px);
       transform: translate(-50%, -50%);
     }
+    /* An input can't hold a ::before, so a text field is drawn at the 44px instead: the input, or the group that borders a borderless one. */
+    [data-slot="input"]:not(.border-0),
+    :has(> [data-slot="input"].border-0) {
+      min-height: 44px;
+    }
     /* A field that inherits its size reads at 16px at least, or iOS zooms the page on focus. */
     :is(input, textarea, select, [contenteditable="true"]) {
       font-size: max(1rem, 1em);

@@ -54,7 +54,7 @@ interface SettingsSectionNavProps {
 
 // A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
-  <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
+  <nav aria-label={ariaLabel} className="lg:sticky lg:top-[4.5rem] lg:w-48 lg:shrink-0">
     <ul
       ref={markScrolled}
       className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none scroll-px-12 pb-1 max-lg:data-more:[mask-image:linear-gradient(to_right,#000_calc(100%-3rem),transparent)] max-lg:data-scrolled:[mask-image:linear-gradient(to_right,transparent,#000_3rem)] max-lg:data-scrolled:data-more:[mask-image:linear-gradient(to_right,transparent,#000_3rem,#000_calc(100%-3rem),transparent)] lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0"

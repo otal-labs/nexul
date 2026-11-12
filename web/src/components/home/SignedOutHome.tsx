@@ -47,7 +47,7 @@ export const SignedOutHome = () => {
       </div>
     </section>
     <footer className="flex items-center justify-between border-t border-border py-6 font-mono text-xs text-muted-foreground">
-      <span>self-hosted · sqlite · no cloud required</span>
+      {!branded && <span>Self-hosted on SQLite, no cloud needed</span>}
       {!branded && (
         <a href="https://nexul.io" target="_blank" rel="noreferrer" className="hover:text-foreground">
           nexul.io
