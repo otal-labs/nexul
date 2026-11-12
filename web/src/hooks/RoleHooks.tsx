@@ -5,6 +5,7 @@ import type { WelcomeStep } from "@nexul/client-core/welcome";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { getAccessGridKey } from "@/hooks/AccessGridHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { domainsOf } from "@/models/PermissionLevel";
@@ -50,7 +51,11 @@ export const useCreateWorkspaceRole = (workspaceId: string) => {
   return useMutation({
     mutationFn: requires("roles:write", async (input: RoleInput) => (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, input)).data),
     onSuccess: async (role) => {
-      await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
+      // A new role sends no frame, so the access grid's role columns refetch here.
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] }),
+        client.invalidateQueries({ queryKey: [getAccessGridKey, workspaceId], exact: true }),
+      ]);
       toast.success(`${role.name} created`);
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -100,7 +105,10 @@ export const useCloneWorkspaceRole = () => {
       (await api.post<Role>(`/api/workspaces/${role.workspace_id}/roles/${role.id}/clone`, { workspace_id: target.id }))
         .data),
     onSuccess: async (clone, { role, target }) => {
-      await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, target.id] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, target.id] }),
+        client.invalidateQueries({ queryKey: [getAccessGridKey, target.id], exact: true }),
+      ]);
       const renamed = clone.name !== role.name ? ` as ${clone.name}` : "";
       toast.success(`Cloned ${role.name} to ${target.name}${renamed}`);
     },

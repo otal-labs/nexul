@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { getAccessGridKey } from "@/hooks/AccessGridHooks";
 import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, TicketCounts, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
@@ -119,8 +120,12 @@ export const useRenameProject = () => {
     // icon omitted keeps the current one ("no change" server-side); "" explicitly clears it.
     mutationFn: requires("projects:write", async ({ id, name, icon }: { id: string; name: string; icon?: string }) =>
       (await api.patch<Project>(`/api/projects/${id}`, icon === undefined ? { name } : { name, icon })).data),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getProjectsKey] });
+    onSuccess: async (_project, { id }) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getProjectsKey] }),
+        client.invalidateQueries({ queryKey: [getProjectKey, id], exact: true }),
+        client.invalidateQueries({ queryKey: [getAccessGridKey] }),
+      ]);
       toast.success("Project renamed");
     },
     onError: (error) => toast.error(errorMessage(error)),

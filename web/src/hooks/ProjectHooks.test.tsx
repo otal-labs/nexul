@@ -94,6 +94,20 @@ describe("useRenameProject", () => {
     await result.current.mutateAsync({ id: "p-1", name: "Backend", icon: "Rocket" });
     expect(api.patch).toHaveBeenCalledWith("/api/projects/p-1", { name: "Backend", icon: "Rocket" });
   });
+
+  it("refetches the project's own read and the access grid, which show its name", async () => {
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...project, name: "New" } });
+    const client = seeded([
+      [["getProject", "p-1"], project],
+      [["getProject", "p-2"], project],
+      [["getAccessGrid", "ws-1"], {}],
+    ]);
+    const { result } = renderHook(() => useRenameProject(), {
+      wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+    await result.current.mutateAsync({ id: "p-1", name: "New" });
+    expect([isStale(client, ["getProject", "p-1"]), isStale(client, ["getProject", "p-2"]), isStale(client, ["getAccessGrid", "ws-1"])]).toEqual([true, false, true]);
+  });
 });
 
 describe("useDeleteProject", () => {
