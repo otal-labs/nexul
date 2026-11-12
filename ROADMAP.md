@@ -408,6 +408,17 @@ holds no secret, and a changed value shows on the stack with Redeploy beside
 it. Vault and the cloud managers come later behind the same shape. ADRs 0181
 to 0183.
 
+### Enterprise edition
+
+A license key pasted into Settings unlocks enterprise features on one
+instance. It is a signed file naming the licensee, the instance's address,
+its features and its expiry, checked offline against a key built into the
+binary. Only new capabilities become enterprise features. The first two are
+sign-in through a company's own OIDC provider, with an SSO-only switch that an
+instance Owner's passkey outlasts, and branding: the instance's own name,
+logo, accent and an imported VS Code theme. When a key expires the features
+stop and their data stays. ADRs 0184 to 0187.
+
 ---
 
 ## Now — improving what's built
@@ -477,6 +488,11 @@ without changing the core architecture.
   in-chat approvals instead of today's auto-decline, per-user memories and
   multiple named agents, and on the voice side DM and group calls, `@Agent` in
   a call, and recordings for standups.
+- **Enterprise depth** — keys issued automatically after payment once
+  there is a second buyer; one console for a partner to see and upgrade every
+  instance they host; a longer audit-log retention and streaming the log
+  out; SAML beside OIDC; and a managed control plane, once the first
+  partners show what they would hand over.
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list
   has no manual ordering; MCP tools for automation versions and
