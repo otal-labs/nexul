@@ -464,6 +464,7 @@ Touch. A tablet or a phone browser gets the same layout, with what a finger
 needs, and it is all keyed to `pointer: coarse`, never to width. Every control
 keeps its drawn size but takes a 44px hit area through an invisible `::before`
 (the `ui/` controls by their `data-slot`, a hand-built one by `hit-area`).
+A text field can't hold a `::before`, so it is drawn 44px tall instead.
 A field set under 16px reads at 16px, or iOS zooms the page on focus. There
 is no grey tap flash and no double-tap zoom, the page never bounces, and the
 shell keeps clear of the notch (`safe-area`). The status bar takes the
