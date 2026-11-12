@@ -151,6 +151,19 @@ func TestHandleNotificationPushRequested_OnePhone_PostsTheAgreedPayload(t *testi
 	assert.Empty(t, tokens.cleared)
 }
 
+func TestHandleNotificationPushRequested_TitleIsTheInstancesOwnName(t *testing.T) {
+	expo := &fakeExpo{}
+	tokens := &fakeTokens{targets: []Target{{SessionID: "s1", UserID: "u1", Token: "tok"}}}
+	s := newSender(t, expo, tokens, &fakeNamer{names: map[string]string{"ws-1": "Acme"}})
+	s.cfg.ProductName = func(context.Context) string { return "Acme Hub" }
+
+	require.NoError(t, s.HandleNotificationPushRequested(t.Context(), event(t, pushItem{ID: "evt:u1", UserID: "u1", WorkspaceID: "ws-1"})))
+
+	sent := expo.sent()
+	require.Len(t, sent, 1)
+	assert.Equal(t, "Acme Hub", sent[0].Title, "a notification carries the product name the instance shows, not Nexul")
+}
+
 func TestHandleNotificationPushRequested_NoWorkspace_SaysYourWorkspace(t *testing.T) {
 	expo := &fakeExpo{}
 	tokens := &fakeTokens{targets: []Target{{SessionID: "s1", UserID: "u1", Token: "tok"}}}

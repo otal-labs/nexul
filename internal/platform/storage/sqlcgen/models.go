@@ -512,6 +512,19 @@ type GithubUserLink struct {
 	ConnectedAt      int64
 }
 
+type InstanceBranding struct {
+	ID          int64
+	ProductName string
+	Accent      string
+	LightTheme  string
+	DarkTheme   string
+	Logo        []byte
+	LogoType    string
+	LogoVersion string
+	UpdatedBy   string
+	UpdatedAt   int64
+}
+
 type InstanceSetting struct {
 	ID                       int64
 	InstanceUrl              string

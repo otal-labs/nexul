@@ -4,6 +4,7 @@ import { errorMessage } from "@/api/client";
 import { microheaderClass } from "@/components/Microheader";
 import { NotFoundIllustration } from "@/components/NotFoundIllustration";
 import { displayTitleClass } from "@/components/PageHeader";
+import { useProductName } from "@/ee/hooks/useProductName";
 import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,13 +16,14 @@ interface ErrorScreenProps {
 
 export const ErrorScreen = ({ error }: ErrorScreenProps) => {
   const navigate = useNavigate();
+  const name = useProductName();
   const isCrash = error != null;
 
   return (
     <ShowcaseSurface quiet>
       <div className="flex min-h-full flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
         <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
-          <p className={microheaderClass}>Nexul</p>
+          <p className={microheaderClass}>{name}</p>
           <h1 className={cn(displayTitleClass, "text-[clamp(2.75rem,6vw,4rem)]")}>
             {isCrash && "Something went wrong"}
             {!isCrash && "Page not found"}

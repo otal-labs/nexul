@@ -575,12 +575,38 @@ const withBrand = (overrides: ThemeRoleOverrides | undefined): ThemeRoleOverride
   return { brand: overrides.primary, "brand-foreground": "var(--primary-foreground)", ...overrides };
 };
 
+// The instance's own look, set once the server says an enterprise license lets it show (ee/hooks/BrandingHooks).
+export interface InstanceRoles {
+  themed: boolean;
+  roles: Readonly<Record<string, string>>;
+}
+
+let instanceRoles: Readonly<Record<"light" | "dark", InstanceRoles>> | null = null;
+
+export const setInstanceRoles = (roles: typeof instanceRoles): void => {
+  instanceRoles = roles;
+};
+
+/** True when the instance's imported theme paints this mode, so a person's own palette does not. */
+export const instanceThemes = (mode: "light" | "dark"): boolean => instanceRoles?.[mode].themed === true;
+
+// An imported theme replaces a person's palette in its mode. A lone accent only changes the default palette's brand: a
+// person who picked a palette of their own keeps that palette's accent.
+const rolesFor = (id: ThemeIdType, mode: "light" | "dark", definition: ThemeDefinition): ThemeRoleOverrides => {
+  const instance = instanceRoles?.[mode];
+  if (instance?.themed) return { ...instance.roles };
+  const own = withBrand(definition.colors?.[mode]);
+  if (!instance || id !== ThemeId.Console) return own;
+  return { ...own, ...instance.roles };
+};
+
 /** Paints (or clears, for the default) a theme's CSS variable overrides onto the root. */
 export const applyThemePalette = (id: ThemeIdType, mode: "light" | "dark"): void => {
   const root = document.documentElement;
   const definition = getThemeDefinition(id);
-  root.dataset.themeId = id === ThemeId.Console ? "" : id;
-  const overrides = withBrand(definition.colors?.[mode]);
+  const imported = instanceThemes(mode);
+  root.dataset.themeId = id === ThemeId.Console || imported ? "" : id;
+  const overrides = rolesFor(id, mode, definition);
   for (const role of Object.keys(ROLE_CSS_VAR) as Role[]) {
     const cssVar = ROLE_CSS_VAR[role];
     const value = overrides[role];
@@ -590,7 +616,7 @@ export const applyThemePalette = (id: ThemeIdType, mode: "light" | "dark"): void
     }
     root.style.setProperty(cssVar, value);
   }
-  const radius = definition.radius;
+  const radius = imported ? undefined : definition.radius;
   for (const step of Object.keys(RADIUS_CSS_VAR) as (keyof typeof RADIUS_CSS_VAR)[]) {
     const cssVar = RADIUS_CSS_VAR[step];
     const value = radius?.[step];

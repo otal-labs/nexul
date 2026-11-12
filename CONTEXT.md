@@ -115,6 +115,15 @@ new capabilities become enterprise features; nothing that has shipped free
 ever moves behind the key.
 _Avoid_: Premium, pro, paid tier
 
+**Branding**:
+The instance Owner's own look for the instance: a product name and logo that
+replace Nexul's, an accent colour that changes the `brand` token's value, and
+a VS Code color theme imported for the whole instance. An enterprise feature:
+without a key that includes it the instance shows the default look and what
+was saved stays. The imported theme is the one exception to one design
+language (ADR 0187).
+_Avoid_: White label, skin, custom theme (a person's own palette is a theme)
+
 **License key**:
 The signed file that unlocks enterprise features on one instance. It names
 its licensee, the instance's public URL, the features it unlocks, and when it

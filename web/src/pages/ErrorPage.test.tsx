@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ErrorPage } from "@/pages/ErrorPage";
 
+vi.mock("@/ee/hooks/useProductName", () => ({ useProductName: () => "Nexul" }));
+
 const mockNavigate = vi.fn();
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");

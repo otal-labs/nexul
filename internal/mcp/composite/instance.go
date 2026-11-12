@@ -2,10 +2,14 @@ package composite
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"strings"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -23,15 +27,34 @@ type SSOSettings interface {
 	Remove(ctx context.Context) (sso.View, error)
 }
 
+// BrandingSettings is the slice of the branding use-cases instance_update calls.
+type BrandingSettings interface {
+	Get(ctx context.Context) (branding.Settings, error)
+	Update(ctx context.Context, p branding.Patch) (branding.Settings, error)
+	SetLogo(ctx context.Context, data []byte) (branding.Settings, error)
+	RemoveLogo(ctx context.Context) (branding.Settings, error)
+	Clear(ctx context.Context) (branding.Settings, error)
+}
+
 // InstanceTools is instance_update, the one tool that changes the instance's own settings (ADR 0185): the enterprise
-// license key, and the single sign-on provider that key unlocks.
-func InstanceTools(l LicenseKeeper, s SSOSettings) []mcptool.Tool {
-	return []mcptool.Tool{instanceUpdateTool(l, s)}
+// license key, and the single sign-on provider and branding that key unlocks.
+func InstanceTools(l LicenseKeeper, s SSOSettings, b BrandingSettings) []mcptool.Tool {
+	return []mcptool.Tool{instanceUpdateTool(l, s, b)}
 }
 
 type instanceUpdateIn struct {
-	LicenseKey *string `json:"license_key,omitempty" jsonschema:"A license key's text; an empty string removes the key."`
-	SSO        *ssoIn  `json:"sso,omitempty" jsonschema:"The single sign-on provider; needs a key unlocking sso."`
+	LicenseKey *string     `json:"license_key,omitempty" jsonschema:"A license key's text; an empty string removes the key."`
+	SSO        *ssoIn      `json:"sso,omitempty" jsonschema:"The single sign-on provider; needs a key unlocking sso."`
+	Branding   *brandingIn `json:"branding,omitempty" jsonschema:"The instance's own look; needs a key unlocking branding."`
+}
+
+type brandingIn struct {
+	ProductName *string `json:"product_name,omitempty" jsonschema:"Shown instead of Nexul, 40 characters at most; empty goes back."`
+	Accent      *string `json:"accent,omitempty" jsonschema:"The accent as #rrggbb, moved if needed to stay readable; empty goes back."`
+	Logo        *string `json:"logo,omitempty" jsonschema:"A PNG, JPEG, WebP or SVG up to 512 KB as a base64 data URL; empty removes it."`
+	ThemeFile   *string `json:"theme_file,omitempty" jsonschema:"A VS Code color theme file's text, replacing the instance theme of its appearance."`
+	RemoveTheme string  `json:"remove_theme,omitempty" jsonschema:"light, dark or all: removes that theme."`
+	Clear       bool    `json:"clear,omitempty" jsonschema:"True removes all branding."`
 }
 
 type ssoIn struct {
@@ -46,16 +69,18 @@ type ssoIn struct {
 
 // instanceSettings is instance_update's answer, keyed so later instance settings sit beside these.
 type instanceSettings struct {
-	License license.Status `json:"license"`
-	SSO     sso.View       `json:"sso"`
+	License  license.Status    `json:"license"`
+	SSO      sso.View          `json:"sso"`
+	Branding branding.Settings `json:"branding"`
 }
 
-func instanceUpdateTool(l LicenseKeeper, s SSOSettings) mcptool.Tool {
+func instanceUpdateTool(l LicenseKeeper, s SSOSettings, b BrandingSettings) mcptool.Tool {
 	return mcptool.New("instance_update", "Update instance",
-		"Changes the instance's own settings: its enterprise license key and its single sign-on provider. license_key replaces "+
+		"Changes the instance's own settings: its enterprise license key, single sign-on provider and branding. license_key replaces "+
 			"the key, or removes it when empty (the features stop, what they made stays); a key for another address, with a bad "+
 			"signature or expired is refused. sso saves the OIDC provider people sign in through, which needs a key unlocking sso; "+
-			"the provider is reached before anything is stored. Returns the license and sso as instance_get shows them.",
+			"the provider is reached before anything is stored. branding sets the product name, logo, accent and an imported VS Code "+
+			"theme shown instead of Nexul's, which needs a key unlocking branding. Returns all three as instance_get shows them.",
 		mcptool.Hints{Idempotent: true, Local: false},
 		func(ctx context.Context, in instanceUpdateIn) (any, error) {
 			var out instanceSettings
@@ -83,15 +108,21 @@ func instanceUpdateTool(l LicenseKeeper, s SSOSettings) mcptool.Tool {
 					return err
 				}})
 			}
+			if in.Branding != nil {
+				steps = append(steps, step{field: "branding", run: func(ctx context.Context) (err error) {
+					out.Branding, err = changeBranding(ctx, b, in.Branding)
+					return err
+				}})
+			}
 			if _, err := runSteps(ctx, steps); err != nil {
 				return nil, err
 			}
-			return readBack(ctx, l, s, in, out)
+			return readBack(ctx, l, s, b, in, out)
 		})
 }
 
 // readBack fills what the call did not change, so every answer carries both settings.
-func readBack(ctx context.Context, l LicenseKeeper, s SSOSettings, in instanceUpdateIn, out instanceSettings) (any, error) {
+func readBack(ctx context.Context, l LicenseKeeper, s SSOSettings, b BrandingSettings, in instanceUpdateIn, out instanceSettings) (any, error) {
 	var err error
 	if in.LicenseKey == nil {
 		if out.License, err = l.Status(ctx); err != nil {
@@ -103,5 +134,49 @@ func readBack(ctx context.Context, l LicenseKeeper, s SSOSettings, in instanceUp
 			return nil, fmt.Errorf("read single sign-on: %w", err)
 		}
 	}
+	if in.Branding == nil {
+		if out.Branding, err = b.Get(ctx); err != nil {
+			return nil, fmt.Errorf("read branding: %w", err)
+		}
+	}
 	return out, nil
+}
+
+// changeBranding applies one branding patch: clear alone, else the name, accent and themes, then the logo.
+func changeBranding(ctx context.Context, b BrandingSettings, in *brandingIn) (branding.Settings, error) {
+	if in.Clear {
+		return b.Clear(ctx)
+	}
+	var out branding.Settings
+	patch := branding.Patch{ProductName: in.ProductName, Accent: in.Accent, Theme: in.ThemeFile, RemoveTheme: in.RemoveTheme}
+	if patch != (branding.Patch{}) {
+		var err error
+		if out, err = b.Update(ctx, patch); err != nil {
+			return out, err
+		}
+	}
+	if in.Logo == nil {
+		return out, nil
+	}
+	if *in.Logo == "" {
+		return b.RemoveLogo(ctx)
+	}
+	data, err := decodeDataURL(*in.Logo)
+	if err != nil {
+		return out, err
+	}
+	return b.SetLogo(ctx, data)
+}
+
+// decodeDataURL reads the bytes of a base64 data URL; the image type is judged from the bytes, never from the header.
+func decodeDataURL(s string) ([]byte, error) {
+	head, body, ok := strings.Cut(s, ",")
+	if !ok || !strings.HasPrefix(head, "data:") || !strings.HasSuffix(head, ";base64") {
+		return nil, fmt.Errorf("%w: the logo is a base64 data URL, data:image/png;base64 and then the image", apperrs.ErrInvalid)
+	}
+	data, err := base64.StdEncoding.DecodeString(body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: the logo's base64 text is not valid", apperrs.ErrInvalid)
+	}
+	return data, nil
 }

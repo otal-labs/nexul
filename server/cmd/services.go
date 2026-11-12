@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/access"
@@ -119,6 +120,7 @@ type coreServices struct {
 	licenseSvc   *license.Service
 	ssoSvc       *sso.Service
 	ssoHandler   *sso.Handler
+	brandingSvc  *branding.Service
 
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
@@ -411,17 +413,19 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		WithStackUnwatchers(store.StackWatchers).
 		WithTokenAudience(accessSvc)
 	notifSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
+	licenseSvc := license.NewService(store.License, dnsSettingsAdapter{store.Settings}.GetInstanceURL).WithGate(accessSvc)
+	brandingSvc := branding.NewService(store.Branding, licenseSvc).WithGate(accessSvc)
 	pushSender := push.New(push.Config{
-		Tokens:     store.Sessions,
-		Workspaces: pushWorkspaceNamer{workspaces: store.Workspaces},
-		Instance:   dnsSettingsAdapter{store.Settings},
-		Logger:     logger,
+		Tokens:      store.Sessions,
+		Workspaces:  pushWorkspaceNamer{workspaces: store.Workspaces},
+		Instance:    dnsSettingsAdapter{store.Settings},
+		ProductName: brandingSvc.ProductName,
+		Logger:      logger,
 	})
 
 	welcomeSvc := newWelcomeService(store, authSvc)
 	authSvc.SetWelcome(welcomeProgress{svc: welcomeSvc})
 	tenancySvc.SetTeamProgress(teamProgress{welcome: welcomeSvc, invitations: store.Invitations})
-	licenseSvc := license.NewService(store.License, dnsSettingsAdapter{store.Settings}.GetInstanceURL).WithGate(accessSvc)
 	ssoSvc := sso.NewService(sso.Config{
 		Repo: store.SSO, Accounts: store.SSO, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
 		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL, OwnerHasPasskey: authSvc.InstanceOwnerHasPasskey,
@@ -488,6 +492,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		licenseSvc:   licenseSvc,
 		ssoSvc:       ssoSvc,
 		ssoHandler:   sso.NewHandler(ssoSvc, authHandler),
+		brandingSvc:  brandingSvc,
 
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,

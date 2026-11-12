@@ -453,7 +453,12 @@ card and separate it by the ring and shadow. Every palette holds 4.5:1 for its t
 roles, the label on its accent, and a highlighted row's ink on its `accent`
 lift, on each surface they sit on, in both modes
 (`web/src/lib/themeContrast.test.ts`); the default palette's secondary text
-holds 6:1.
+holds 6:1. An instance's imported VS Code theme (ADR 0187, `ee/branding`) is
+the one palette that is not in `themePalettes.ts`: the server derives it from
+the theme's canvas, text, accent and error colours on the same ladder, moves
+any colour that would fail those pairs until it holds, and the web app paints
+it in place of a person's own palette in its mode. An instance accent alone
+changes only `brand` (and the label on it) on the default palette.
 
 Touch. A tablet or a phone browser gets the same layout, with what a finger
 needs, and it is all keyed to `pointer: coarse`, never to width. Every control
@@ -1952,6 +1957,7 @@ The web app's pattern decisions, each with what it was picked over.
 | An empty column is a 72px rail with its name in two lines (2026-10-28) | Against a 160px column with its full header (two of them still took a fifth of the board to say No tickets), a 40px well of mark and count (In progress and Testing could not be told apart), a 40px strip with the name set vertically (the rotated names were the hardest text on the board to read and broke the stages' left-to-right sweep), an empty column at the full width, and narrowing a stage only when every lane is empty: with all five stages on screen, In progress and Testing were two 220px columns of "No tickets" splitting the work into islands, and a stage empty in every lane almost never happens on a real board. Narrowing per lane lets the columns of two lanes sit at different x, which the repeated column headers in each lane make readable |
 | Board lanes as 32px bars and columns that fit the panel (2026-10-28) | Against a lane header ruled off with a 56px done bar and 288px columns capped at five cards: the columns scrolled inside the page, so a lane showed four cards and the fifth stage sat off the right edge at 1440. Flexible columns down to 220px fit all five stages, and the page scroll carries the cards |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
+| An instance's imported theme replaces a person's palette in its mode, and an instance accent repaints only the default palette (2026-11-11) | Against letting both stack: a client's staff do not choose their palette, but a person who picked Ocean chose blue, so a lone accent leaves that choice alone; two palettes mixed would also defeat the contrast check, which holds one palette's pairs at a time. Rejected: forcing the theme's mode on everyone (it takes away light and dark) |
 | The light field is derived from the palette, never a fixed hue | The blue and pink glows of the first field showed in every palette: a cool wash behind the sidebar of Ember, Clay and Grove, a magenta bloom beside a teal or blue brand on sign-in, a taupe stain on Zen from a near-black brand at 30%. Each glow is now a relative colour (the brand's hue and chroma at a fixed lightness, so a grey brand adds nothing) or a lift of `card`, held to 40% alpha or less. Rejected: a per-palette field override (a value to keep in step with every palette) and a mix of the brand with the canvas (a dark brand darkens a light canvas into a stain) |
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
 | The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |

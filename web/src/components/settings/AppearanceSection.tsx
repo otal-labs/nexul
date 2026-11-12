@@ -6,6 +6,7 @@ import { ThemePicker } from "@/components/appearance/ThemePicker";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { Slider } from "@/components/ui/slider";
+import { useLook } from "@/ee/hooks/BrandingHooks";
 import { themePreviewColors } from "@/lib/themePalettes";
 import { MAX_GLASS_OPACITY, MIN_GLASS_OPACITY, useThemeStore } from "@/stores/themeStore";
 
@@ -15,12 +16,23 @@ export const AppearanceSection = () => {
     useShallow((s) => ({ themeId: s.themeId, theme: s.theme, glassOpacity: s.glassOpacity, setGlassOpacity: s.setGlassOpacity })),
   );
 
+  const { data: look } = useLook();
+  const instanceThemed = look?.enabled === true && look[theme].themed;
+
   return (
     <>
       <SettingsCard id="appearance-mode" title="Mode" description="Applies at once, in this browser.">
         <ModePicker />
       </SettingsCard>
-      <SettingsCard id="appearance-theme" title="Theme" description="Recolours the accent, the surfaces and the light behind them.">
+      <SettingsCard
+        id="appearance-theme"
+        title="Theme"
+        description={
+          instanceThemed
+            ? `Your instance sets its own ${theme} theme. This applies in the other mode.`
+            : "Recolours the accent, the surfaces and the light behind them."
+        }
+      >
         <ThemePicker />
       </SettingsCard>
       <SettingsCard id="appearance-backdrop" title="Dialog backdrop">

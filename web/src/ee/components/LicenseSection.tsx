@@ -1,4 +1,5 @@
 import { KeyRound, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -6,11 +7,12 @@ import { Fact } from "@/components/Fact";
 import { InlineNotice } from "@/components/InlineNotice";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { LicenseKeyDialog } from "@/ee/components/LicenseKeyDialog";
 import { useLicense, useRemoveLicense } from "@/ee/hooks/LicenseHooks";
-import { featureLabel, formatExpiry, LicenseState, type License } from "@/ee/models/License";
+import { featureDescription, featureLabel, featureLink, formatExpiry, LicenseState, type License } from "@/ee/models/License";
 import { daysUntil } from "@/utils/TimeUtility";
 
 const statusOf = (license: License): { headline: string; tone: SettingsStatusTone } => {
@@ -33,18 +35,45 @@ const LicenseStatus = () => {
 const LicenseFacts = ({ license }: { license: License }) => (
   <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
     <Fact label="Licensee">{license.licensee}</Fact>
-    <Fact label="Instance">
-      <span className="font-mono break-all">{license.instance_url}</span>
-    </Fact>
-    <Fact label="Unlocks">{license.features.map(featureLabel).join(", ")}</Fact>
     <Fact label="Expires">{license.expires_at && formatExpiry(license.expires_at)}</Fact>
+    <div className="col-span-2">
+      <Fact label="Instance">
+        <span className="font-mono break-all">{license.instance_url}</span>
+      </Fact>
+    </div>
   </dl>
+);
+
+// A feature's own card holds its status; a key that includes it points there, so the same word isn't shown twice.
+const FeatureRow = ({ feature, on }: { feature: string; on: boolean }) => {
+  const to = featureLink(feature);
+  return (
+    <SettingsRow label={featureLabel(feature)} description={featureDescription(feature)}>
+      {on && to && (
+        <Link to={to} aria-label={`Open ${featureLabel(feature)}`} className="hit-area text-sm text-brand underline-offset-4 hover:underline">
+          Open
+        </Link>
+      )}
+      {on && !to && <SettingsStatus tone="success">Unlocked</SettingsStatus>}
+      {!on && <SettingsStatus tone="muted">Off</SettingsStatus>}
+    </SettingsRow>
+  );
+};
+
+// What this key unlocks, one row per feature, so a feature's own card says the same thing as its row here.
+const LicenseFeatures = ({ license }: { license: License }) => (
+  <SettingsRows>
+    {license.features.map((feature) => (
+      <FeatureRow key={feature} feature={feature} on={license.state === LicenseState.Active || license.state === LicenseState.Expiring} />
+    ))}
+  </SettingsRows>
 );
 
 const LicenseBody = ({ license }: { license: License }) => (
   <div className="space-y-4">
     {license.state === LicenseState.None && <EmptyRow flush>This instance runs without enterprise features.</EmptyRow>}
     {license.licensee !== "" && <LicenseFacts license={license} />}
+    {license.licensee !== "" && license.features.length > 0 && <LicenseFeatures license={license} />}
     {license.state === LicenseState.Expired && (
       <InlineNotice title="The enterprise features are off" tone="warning">
         Everything they made is kept. Paste a renewed key to turn them back on.

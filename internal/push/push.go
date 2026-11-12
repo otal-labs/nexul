@@ -53,9 +53,11 @@ type Config struct {
 	Tokens     TokenStore
 	Workspaces WorkspaceNamer
 	Instance   InstanceURLGate
-	Endpoint   string
-	Client     *http.Client
-	Logger     *slog.Logger
+	// ProductName reads what the instance calls itself, for the title of a message; nil keeps Nexul.
+	ProductName func(ctx context.Context) string
+	Endpoint    string
+	Client      *http.Client
+	Logger      *slog.Logger
 }
 
 // Sender consumes notification.push_requested and posts to Expo in batches.
@@ -151,17 +153,25 @@ func (s *Sender) messages(ctx context.Context, items []pushItem) ([]message, err
 		byUser[t.UserID] = append(byUser[t.UserID], t)
 	}
 	host := s.host(ctx)
+	title := s.title(ctx)
 	names := map[string]string{}
 	var msgs []message
 	for _, it := range items {
 		for _, t := range byUser[it.UserID] {
-			m := message{To: t.Token, Title: "Nexul", Body: "New activity in " + s.workspaceName(ctx, names, it.WorkspaceID), target: t}
+			m := message{To: t.Token, Title: title, Body: "New activity in " + s.workspaceName(ctx, names, it.WorkspaceID), target: t}
 			m.Data.NotificationID = it.ID
 			m.Data.Host = host
 			msgs = append(msgs, m)
 		}
 	}
 	return msgs, nil
+}
+
+func (s *Sender) title(ctx context.Context) string {
+	if s.cfg.ProductName == nil {
+		return "Nexul"
+	}
+	return s.cfg.ProductName(ctx)
 }
 
 func (s *Sender) host(ctx context.Context) string {

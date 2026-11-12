@@ -1,10 +1,12 @@
 import { Editor } from "@tiptap/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DiscordTimeLayer } from "@/components/doc/discordTime/DiscordTimeLayer";
 import { buildEditorExtensions } from "@/components/doc/mention/editorExtensions";
+
+vi.mock("@/ee/hooks/useProductName", () => ({ useProductName: () => "Nexul" }));
 
 const UNIX = 1792867165;
 const editors: Editor[] = [];

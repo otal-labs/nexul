@@ -29,6 +29,18 @@ export type LicenseKeyFormData = z.infer<typeof LicenseKeyFormSchema>;
 
 const featureLabels: Record<string, string> = { sso: "Single sign-on", branding: "Branding" };
 
+const featureDescriptions: Record<string, string> = {
+  sso: "Sign in through your own OpenID Connect provider.",
+  branding: "This instance's own name, logo, accent and color theme.",
+};
+
+// Where each feature's own card lives, which says whether it is on; the license row only points there.
+const featureLinks: Record<string, string> = { sso: "/settings/sign-in#single-sign-on", branding: "/settings/instance#branding" };
+
+export const featureLink = (feature: string): string | undefined => featureLinks[feature];
+
+export const featureDescription = (feature: string): string => featureDescriptions[feature] ?? "";
+
 // A feature a newer build added shows by its name until this build learns its label.
 export const featureLabel = (feature: string): string => featureLabels[feature] ?? feature;
 

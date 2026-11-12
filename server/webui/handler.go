@@ -2,6 +2,8 @@
 package webui
 
 import (
+	"bytes"
+	"context"
 	"io/fs"
 	"net/http"
 	"path"
@@ -11,8 +13,12 @@ import (
 // reservedPrefixes are owned by other handlers and must never fall back to the SPA's index.html.
 var reservedPrefixes = []string{"/api", "/ws", "/mcp", "/auth", "/hooks", "/openobserve"}
 
-// Handler serves the embedded SPA with client-side routing fallback, or a 404 build hint when assets is nil.
-func Handler(assets fs.FS) http.Handler {
+// IndexTransform rewrites the SPA's index.html for one request, such as to put an instance's own name in the page head.
+type IndexTransform func(ctx context.Context, index []byte) []byte
+
+// Handler serves the embedded SPA with client-side routing fallback, or a 404 build hint when assets is nil. Each
+// transform rewrites the index the SPA falls back to.
+func Handler(assets fs.FS, transforms ...IndexTransform) http.Handler {
 	if assets == nil {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "web assets not embedded; build with -tags embed", http.StatusNotFound)
@@ -41,6 +47,9 @@ func Handler(assets fs.FS) http.Handler {
 			}
 		}
 		w.Header().Set("Cache-Control", "no-cache")
+		if len(transforms) > 0 && serveTransformed(r.Context(), w, assets, transforms) {
+			return
+		}
 		index := r.Clone(r.Context())
 		index.URL.Path = "/"
 		fileServer.ServeHTTP(w, index)
@@ -54,4 +63,22 @@ func isReserved(p string) bool {
 		}
 	}
 	return false
+}
+
+// serveTransformed writes the index through the transforms; false leaves the plain file to the caller.
+func serveTransformed(ctx context.Context, w http.ResponseWriter, assets fs.FS, transforms []IndexTransform) bool {
+	raw, err := fs.ReadFile(assets, "index.html")
+	if err != nil {
+		return false
+	}
+	out := raw
+	for _, t := range transforms {
+		out = t(ctx, out)
+	}
+	if bytes.Equal(out, raw) {
+		return false
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(out)
+	return true
 }

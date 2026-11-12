@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
@@ -169,6 +170,12 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("PUT /api/instance/sso", ssoRoutes)
 	apiMux.Handle("DELETE /api/instance/sso", ssoRoutes)
 	apiMux.Handle("POST /api/instance/sso/verify", ssoRoutes)
+	brandingRoutes := branding.NewHandler(svc.brandingSvc).Routes()
+	apiMux.Handle("GET /api/instance/branding", brandingRoutes)
+	apiMux.Handle("PATCH /api/instance/branding", brandingRoutes)
+	apiMux.Handle("DELETE /api/instance/branding", brandingRoutes)
+	apiMux.Handle("PUT /api/instance/branding/logo", brandingRoutes)
+	apiMux.Handle("DELETE /api/instance/branding/logo", brandingRoutes)
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -191,6 +198,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Runner:        runnerSvc,
 		License:       svc.licenseSvc,
 		SSO:           svc.ssoSvc,
+		Branding:      svc.brandingSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -240,6 +248,9 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(viewAs(withIdentity(h))) }
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.HandleFunc("GET /api/about", aboutHandler)
+	brandingPublic := branding.NewHandler(svc.brandingSvc).PublicRoutes()
+	httpMux.Handle("GET /api/branding", brandingPublic)
+	httpMux.Handle("GET /api/branding/logo", brandingPublic)
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/setup/unlock", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/connect-codes/exchange", svc.authHandler.Routes())
@@ -281,7 +292,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	registerOpenAPIRoutes(spec, routes)
 	httpMux.Handle("/openapi.json", spec.Handler())
 	httpMux.Handle("/swagger", spec.Handler())
-	httpMux.Handle("/", webui.Handler(webui.Assets()))
+	httpMux.Handle("/", webui.Handler(webui.Assets(), svc.brandingSvc.Index))
 	return &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux, ReadHeaderTimeout: 10 * time.Second}
 }
 
@@ -326,6 +337,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("audit", "Audit log")
 	spec.SetTagDescription("logs", "The instance's logs: the browser log relay into the server's sinks, and reading them back")
 	spec.SetTagDescription("sso", "Sign in through the instance's one OIDC identity provider, an enterprise feature")
+	spec.SetTagDescription("branding", "The instance's own look: product name, logo, accent and an imported VS Code theme, shown only while a license key unlocks it")
 	spec.SetTagDescription("license", "The instance's enterprise license key, checked offline against the key built into the binary")
 	spec.SetTagDescription("version", "Build version, channel, and update check")
 	spec.SetTagDescription("templates", "Instance templates, and cloning or resetting a template at any layer")
@@ -337,6 +349,13 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/instance/upgrade", "Needs instance:read: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
 	spec.Register("POST", "/api/instance/upgrade", "Needs instance:write: upgrade the instance to the channel's newest release", "version")
 	spec.Register("GET", "/api/instance/logs", "Needs logs:read: the instance's own logs, newest first, filtered by ?source, ?level, ?since, ?until, ?trace_id, ?name and ?text; ?limit (1 to 500, default 100) and ?offset page them, and the until a page returns pins the next one", "logs")
+	spec.Register("GET", "/api/instance/branding", "Needs instance:read: the saved branding and whether the license key lets it show", "branding")
+	spec.Register("PATCH", "/api/instance/branding", "Needs instance:write and a key unlocking branding: product_name, accent (#rrggbb), theme_file (a VS Code color theme's text) or remove_theme; omitted fields keep their value", "branding")
+	spec.Register("DELETE", "/api/instance/branding", "Needs instance:write: remove all branding, the logo included", "branding")
+	spec.Register("PUT", "/api/instance/branding/logo", "Needs instance:write and a key unlocking branding: the request body is the image, PNG, JPEG, WebP or SVG up to 512 KB", "branding")
+	spec.Register("DELETE", "/api/instance/branding/logo", "Needs instance:write: remove the logo", "branding")
+	spec.Register("GET", "/api/branding", "Public: the look the web app paints, empty while no key unlocks branding", "branding")
+	spec.Register("GET", "/api/branding/logo", "Public: the instance's logo, served sandboxed", "branding")
 	spec.Register("GET", "/api/instance/license", "Needs instance:read: the enterprise license key's state, who it is for, what it unlocks and when it expires", "license")
 	spec.Register("PUT", "/api/instance/license", "Needs instance:write: paste a license key; one for another instance address, with a bad signature or already expired is refused with the reason", "license")
 	spec.Register("GET", "/api/instance/sso", "Needs instance:read: the single sign-on provider's settings, whether the license unlocks it and whether its button shows; the client secret is never returned", "sso")
