@@ -67,9 +67,6 @@ git history, and anything durable it decided is an ADR.
   first ready one, runs at once per computer, and the Computers and Projects tabs
   rebuilt around them (ADRs 0165, 0166). Left: 04, clone automatically, and 05,
   a chosen-computer auto play's ordered list.
-- `.scratch/enterprise-edition/` — a license key and the first enterprise features behind it (ADR
-  0184), a wayfinder map that carries execution: decision tickets 01–02 here, build tickets in Nexul
-  under the `ee` label.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
@@ -93,6 +90,10 @@ questions and clarifying a doc.
 Later that day invitations followed, after its walkthrough on a real install:
 role descriptions, the invite page before and after sign-in, and existing
 accounts turned away.
+On 2026-11-12 the enterprise edition map was removed once the license key,
+single sign-on and branding shipped (ADRs 0184 to 0187); its later ideas are
+in `ROADMAP.md` under Enterprise depth, and its follow-ups are Nexul tickets
+under the `ee` label.
 
 Before 2026-08-15 this repo tracked work as `docs/{ws,cus,dr}-XX.md` workstream
 documents with a dashboard in `orchestrator.md`, driven by three GitHub Actions
