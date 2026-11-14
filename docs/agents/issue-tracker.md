@@ -67,6 +67,10 @@ git history, and anything durable it decided is an ADR.
   first ready one, runs at once per computer, and the Computers and Projects tabs
   rebuilt around them (ADRs 0165, 0166). Left: 04, clone automatically, and 05,
   a chosen-computer auto play's ordered list.
+- `.scratch/enterprise-depth/` — SAML beside OIDC (ADR 0189) and audit log
+  retention and streaming (ADR 0190), the two items left under Enterprise depth
+  in `ROADMAP.md` that a security review asks for first. Spec and tickets 01–07
+  written 2026-11-14, `needs-triage`; both ADRs are pending the owner's approval.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
