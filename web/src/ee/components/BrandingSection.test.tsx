@@ -137,6 +137,22 @@ describe("BrandingSection", () => {
     await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/instance/branding", { remove_theme: "dark" }));
   });
 
+  it("shows CSS an agent saves while the card is open, and keeps it when the name is saved afterwards", async () => {
+    mocks.patch.mockResolvedValueOnce({ data: saved({ product_name: "Acme Cloud", css: "a{color:red}" }) });
+    const client = renderCard();
+    await screen.findByLabelText("Custom CSS");
+
+    mocks.get.mockResolvedValue({ data: saved({ css: "a{color:red}" }) });
+    await followFrame(brandingFollower, "instance.branding_changed", {}, client);
+    await waitFor(() => expect(screen.getByLabelText("Custom CSS")).toHaveValue("a{color:red}"));
+
+    const name = screen.getByLabelText("Product name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Acme Cloud");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/instance/branding", { product_name: "Acme Cloud", accent: "", css: "a{color:red}" }));
+  });
+
   it("removes all branding after confirming", async () => {
     mocks.delete.mockResolvedValue({ data: saved({ product_name: "" }) });
     renderCard();

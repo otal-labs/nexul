@@ -54,7 +54,7 @@ type brandingIn struct {
 	Logo        *string `json:"logo,omitempty" jsonschema:"A PNG, JPEG, WebP or SVG up to 512 KB as a base64 data URL; empty removes it."`
 	ThemeFile   *string `json:"theme_file,omitempty" jsonschema:"A VS Code color theme file's text, replacing the instance theme of its appearance."`
 	RemoveTheme string  `json:"remove_theme,omitempty" jsonschema:"light, dark or all: removes that theme."`
-	CSS         *string `json:"css,omitempty" jsonschema:"Style rules added to every page, replacing the saved ones; empty removes them. Nothing may load from another address."`
+	CSS         *string `json:"css,omitempty" jsonschema:"Style rules for every page; empty removes them."`
 	Clear       bool    `json:"clear,omitempty" jsonschema:"True removes all branding."`
 }
 
@@ -81,8 +81,8 @@ func instanceUpdateTool(l LicenseKeeper, s SSOSettings, b BrandingSettings) mcpt
 			"the key, or removes it when empty (the features stop, what they made stays); a key for another address, with a bad "+
 			"signature or expired is refused. sso saves the OIDC provider people sign in through, which needs a key unlocking sso; "+
 			"the provider is reached before anything is stored. branding sets the product name, logo, accent, an imported VS Code "+
-			"theme and custom css shown instead of Nexul's, which needs a key unlocking branding; every open page repaints at once. "+
-			"Read instance_get with styling_guide before writing css. Returns all three as instance_get shows them.",
+			"theme and css shown instead of Nexul's, which needs a key unlocking branding; "+
+			"instance_get with styling_guide explains the css. Returns all three as instance_get shows them.",
 		mcptool.Hints{Idempotent: true, Local: false},
 		func(ctx context.Context, in instanceUpdateIn) (any, error) {
 			var out instanceSettings

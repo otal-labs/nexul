@@ -14,7 +14,9 @@ export const useBrandingForm = (branding: Branding) => {
   const disabled = !writable || !branding.unlocked;
   const form = useForm<BrandingFormData>({
     disabled,
-    defaultValues: { product_name: branding.product_name, accent: branding.accent, css: branding.css },
+    // values, not defaultValues: a change an agent saves while the card is open reaches the fields, so a later save keeps it.
+    values: { product_name: branding.product_name, accent: branding.accent, css: branding.css },
+    resetOptions: { keepDirtyValues: true },
     resolver: zodResolver(BrandingFormSchema),
   });
 

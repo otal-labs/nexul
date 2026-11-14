@@ -53,7 +53,7 @@ const BrandingBody = ({ branding }: { branding: Branding }) => {
           What is saved here stays, and shows again once <a href="#license" className="text-brand underline-offset-4 hover:underline">License</a> holds a key that includes Branding. Until then you can only remove the logo or all of it.
         </InlineNotice>
       )}
-      <form id={FORM_ID} key={branding.product_name + branding.accent + branding.css} onSubmit={onSubmit}>
+      <form id={FORM_ID} key={branding.product_name + branding.accent} onSubmit={onSubmit}>
         <SettingsRows>
           <BrandingNameRow control={form.control} disabled={disabled} />
           <BrandingLogoRow branding={branding} />
