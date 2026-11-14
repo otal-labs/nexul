@@ -107,6 +107,15 @@ describe("useCollabSession", () => {
     await waitFor(() => expect(framesOf(socket, "hello")).toHaveLength(1));
   });
 
+  it("shows a person with no display name to peers by their login, never as You", () => {
+    const { factory } = makeSocket();
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "", "token-1", { wsFactory: factory, login: "lena" }), {
+      wrapper: withClient,
+    });
+    expect(result.current!.user.name).toBe("lena");
+    expect(result.current!.provider.awareness.getLocalState()?.user).toMatchObject({ name: "lena" });
+  });
+
   it("colours a known person's cursor with their avatar fill as hex, the only form the cursor plugin draws a selection from", () => {
     const { factory } = makeSocket();
     const opts = { wsFactory: factory, login: "alice" };
