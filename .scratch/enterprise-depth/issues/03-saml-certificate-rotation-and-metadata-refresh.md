@@ -1,6 +1,6 @@
 # SAML certificate rotation and metadata refresh
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 **Blocked by:** 01 (settings), 02 (a signed response to test with)
 
 Neither side's certificate expiry locks anyone out.

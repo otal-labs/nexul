@@ -1,6 +1,6 @@
 # SAML provider settings and the service provider metadata
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 **Blocked by:** ADR 0189 decided (the library and the one-provider rule)
 
 The Owner can save one SAML provider, and Nexul publishes the metadata the IdP registers. Nobody signs in yet.

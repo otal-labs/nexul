@@ -1,6 +1,6 @@
 # The Audit log card, its guide page and glossary terms
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 **Blocked by:** 05, 06
 
 ## Done looks like

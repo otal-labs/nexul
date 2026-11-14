@@ -33,4 +33,4 @@ escape (ADR 0184, ADR 0186).
   signature-checked in the first version; the https certificate is its protection. Every certificate in it verifies a
   response, so an IdP rotation overlaps; Nexul's own certificate rotates by publishing two until the Owner retires one.
 
-Decided: pending owner approval.
+Decided: 2026-11-14.

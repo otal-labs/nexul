@@ -1,6 +1,6 @@
 # SAML in the Settings card, the sign-in page, the guide and the glossary
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 **Blocked by:** 01, 02 (03 for the rotation controls)
 
 ## Done looks like

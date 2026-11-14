@@ -26,4 +26,4 @@ days and the endpoint stay for every instance (ADR 0184).
   which ADR 0138 rejected, and this change leaves that open.
 - **Dependencies.** None added: the HTTP client, HMAC and queue are in the tree.
 
-Decided: pending owner approval.
+Decided: 2026-11-14.

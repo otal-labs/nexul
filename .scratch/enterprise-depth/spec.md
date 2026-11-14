@@ -9,9 +9,8 @@ feed them to its own log store, has nowhere to put them. Both are listed under E
 are enterprise features under ADR 0184: nothing that is free today moves behind the key, and the 45-day log with
 `GET /api/audit` stays as it is for every instance.
 
-Two ADR drafts carry the decisions that need the owner: ADR 0189 (the SAML library and the one-provider rule) and
-ADR 0190 (the audit stream's destination and delivery). Both end "Decided: pending owner approval", and no ticket below
-starts before its ADR is decided.
+ADR 0189 (the SAML library and the one-provider rule) and ADR 0190 (the audit stream's destination and delivery) carry
+the decisions, both made on 2026-11-14.
 
 ## SAML beside OIDC
 
@@ -130,8 +129,7 @@ high in March and another high in August 2026, patched in 1.6.1). `mattermost/go
 `v0.11.0` was cut on 2026-11-13; it is not a maintained alternative. `zitadel/saml` (71 stars, `v0.4.1` of 2025-10-30)
 is built around being a provider and a server, not a client.
 
-Recommendation, which needs the owner's approval because it adds a dependency (AGENTS.md, "When to ask me"):
-`crewjam/saml` at `v0.6.3` or newer, used through `saml.ServiceProvider` (`MakeAuthenticationRequest`, `ParseResponse`)
+Decided, adding the one dependency: `crewjam/saml` at `v0.6.3` or newer, used through `saml.ServiceProvider` (`MakeAuthenticationRequest`, `ParseResponse`)
 and not its `samlsp` middleware, whose cookie session Nexul does not want. It is the library most Go services use, it
 is under active repair, and the advisories above are a reason to pin and watch it, not to avoid it: all of them are fixed,
 and the other library carries the same signature dependency. `govulncheck` runs in CI (`make vuln`), which is the watch.
@@ -182,8 +180,8 @@ already exports its own logs this way (`logging.NewWithOTLP`, `practices/go.md`,
 that "never blocks or fails the caller", which is the opposite of a delivery that must not lose a row, and sending audit
 rows through the server's own log pipe would mix them with service logs under one set of credentials.
 
-Recommendation for the first version: the HTTPS webhook with an HMAC signature. The others can be added behind the same
-queue later as further destination kinds. It needs the owner's approval as ADR 0190.
+Decided for the first version: the HTTPS webhook with an HMAC signature (ADR 0190). The others can be added behind the
+same queue later as further destination kinds.
 
 The body of one delivery:
 
