@@ -8,12 +8,18 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
+
+// discoveryTTL is how long a provider's discovery document and key set serve sign-ins before they are fetched again; a
+// token signed by a key the set has not seen fetches the keys at once.
+const discoveryTTL = time.Hour
 
 // errClientRejected marks a code exchange the provider refused for its client credentials, the one case a re-read
 // secret reference may fix.
@@ -25,6 +31,8 @@ type ConnectConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
+	// Fresh skips the cached discovery, for a check that must reach the provider now.
+	Fresh bool
 }
 
 // IdP is the slice of the identity provider a sign-in calls, fakeable in tests.
@@ -38,13 +46,13 @@ type IdP interface {
 // Connect reaches the provider, which discovery does through its issuer URL.
 type Connect func(ctx context.Context, c ConnectConfig) (IdP, error)
 
-// dial discovers the provider from its issuer URL. The nonce and the PKCE verifier are derived from the state under the
-// server's secret, so nothing but the state cookie has to survive the round trip.
-// ponytail: discovery and the key set are fetched on every start and callback; cache the provider if its latency shows.
-func dial(hc *http.Client, secret []byte) Connect {
+// dial discovers the provider from its issuer URL, reusing the last discovery of that issuer for discoveryTTL. The nonce
+// and the PKCE verifier are derived from the state under the server's secret, so nothing but the state cookie has to
+// survive the round trip.
+func dial(hc *http.Client, secret []byte, now func() time.Time) Connect {
+	d := &discoveries{hc: hc, now: now}
 	return func(ctx context.Context, c ConnectConfig) (IdP, error) {
-		ctx = oidc.ClientContext(ctx, hc)
-		p, err := oidc.NewProvider(ctx, c.Issuer)
+		p, err := d.provider(ctx, c.Issuer, c.Fresh)
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot reach the provider at %s: %s", apperrs.ErrInvalid, c.Issuer, err)
 		}
@@ -58,6 +66,35 @@ func dial(hc *http.Client, secret []byte) Connect {
 			},
 		}, nil
 	}
+}
+
+// discoveries holds the one issuer's discovered provider, whose key set is fetched once and kept with it; the instance
+// has one provider, so a changed issuer simply replaces it.
+type discoveries struct {
+	hc     *http.Client
+	now    func() time.Time
+	mu     sync.Mutex
+	issuer string
+	p      *oidc.Provider
+	at     time.Time
+}
+
+func (d *discoveries) provider(ctx context.Context, issuer string, fresh bool) (*oidc.Provider, error) {
+	d.mu.Lock()
+	if !fresh && d.p != nil && d.issuer == issuer && d.now().Sub(d.at) < discoveryTTL {
+		p := d.p
+		d.mu.Unlock()
+		return p, nil
+	}
+	d.mu.Unlock()
+	p, err := oidc.NewProvider(oidc.ClientContext(ctx, d.hc), issuer)
+	if err != nil {
+		return nil, err
+	}
+	d.mu.Lock()
+	d.issuer, d.p, d.at = issuer, p, d.now()
+	d.mu.Unlock()
+	return p, nil
 }
 
 type provider struct {

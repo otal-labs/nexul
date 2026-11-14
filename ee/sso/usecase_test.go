@@ -277,7 +277,8 @@ func TestStart_ReadsTheSecretReferenceAndBuildsTheRedirectURI(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://idp.test/authorize?state="+state, target)
 	assert.Len(t, state, 32)
-	assert.Equal(t, ConnectConfig{Issuer: "https://login.example.com", ClientID: "client-1", ClientSecret: "resolved", RedirectURI: "https://nexul.example.com/auth/oidc/callback"}, h.connected[0])
+	assert.Equal(t, ConnectConfig{Issuer: "https://login.example.com", ClientID: "client-1", ClientSecret: "resolved", RedirectURI: "https://nexul.example.com/auth/oidc/callback"}, h.connected[0],
+		"a sign-in may use the cached discovery")
 }
 
 func TestComplete_AProviderThatRejectsTheClient_RetriesOnceWithTheReReadSecret(t *testing.T) {
@@ -469,6 +470,8 @@ func TestCheck_RunsOneNamedCheckAndStoresNothing(t *testing.T) {
 	detail, err := h.svc.Check(asActor(t), "issuer", patch(map[string]any{"issuer_url": "https://idp.example.com"}))
 	require.NoError(t, err)
 	assert.Equal(t, "Found the sign-in endpoints at idp.example.com", detail)
+	require.Len(t, h.connected, 1)
+	assert.True(t, h.connected[0].Fresh, "a check reaches the provider now, never a cached discovery")
 
 	detail, err = h.svc.Check(asActor(t), "secret", patch(map[string]any{"client_secret": "op://vault/item/field"}))
 	require.NoError(t, err)

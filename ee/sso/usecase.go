@@ -69,7 +69,7 @@ func NewService(cfg Config) *Service {
 		cfg.Now = time.Now
 	}
 	if cfg.Connect == nil {
-		cfg.Connect = dial(&http.Client{Timeout: 15 * time.Second}, cfg.Secret)
+		cfg.Connect = dial(&http.Client{Timeout: 15 * time.Second}, cfg.Secret, cfg.Now)
 	}
 	return &Service{cfg: cfg}
 }
@@ -220,7 +220,7 @@ func (s *Service) reach(ctx context.Context, st Settings) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.connect(ctx, st, secret)
+	_, err = s.connect(ctx, st, secret, true)
 	return err
 }
 
@@ -255,7 +255,7 @@ func (s *Service) checkIssuerReaches(ctx context.Context, st Settings) (string, 
 	if err := checkIssuer(st.IssuerURL); err != nil {
 		return "", err
 	}
-	if _, err := s.connect(ctx, st, ""); err != nil {
+	if _, err := s.connect(ctx, st, "", true); err != nil {
 		return "", err
 	}
 	u, _ := url.Parse(st.IssuerURL)
@@ -322,12 +322,13 @@ func (s *Service) active(ctx context.Context) (Settings, error) {
 	return st, nil
 }
 
-func (s *Service) connect(ctx context.Context, st Settings, secret string) (IdP, error) {
+// connect reaches the provider; fresh is for a check, which must not answer from a discovery made earlier.
+func (s *Service) connect(ctx context.Context, st Settings, secret string, fresh bool) (IdP, error) {
 	redirect, err := s.redirectURI(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.cfg.Connect(ctx, ConnectConfig{Issuer: st.IssuerURL, ClientID: st.ClientID, ClientSecret: secret, RedirectURI: redirect})
+	return s.cfg.Connect(ctx, ConnectConfig{Issuer: st.IssuerURL, ClientID: st.ClientID, ClientSecret: secret, RedirectURI: redirect, Fresh: fresh})
 }
 
 func (s *Service) clientSecret(ctx context.Context, stored string) (string, error) {
@@ -351,7 +352,7 @@ func (s *Service) Start(ctx context.Context) (authorizeURL, state string, err er
 	if err != nil {
 		return "", "", err
 	}
-	idp, err := s.connect(ctx, st, secret)
+	idp, err := s.connect(ctx, st, secret, false)
 	if err != nil {
 		return "", "", err
 	}
@@ -390,7 +391,7 @@ func (s *Service) exchange(ctx context.Context, st Settings, state, code string)
 	if err != nil {
 		return Claims{}, err
 	}
-	idp, err := s.connect(ctx, st, secret)
+	idp, err := s.connect(ctx, st, secret, false)
 	if err != nil {
 		return Claims{}, err
 	}
@@ -402,7 +403,7 @@ func (s *Service) exchange(ctx context.Context, st Settings, state, code string)
 	if !ok {
 		return Claims{}, err
 	}
-	idp, rerr := s.connect(ctx, st, fresh)
+	idp, rerr := s.connect(ctx, st, fresh, false)
 	if rerr != nil {
 		return Claims{}, err
 	}
