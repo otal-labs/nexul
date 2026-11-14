@@ -816,8 +816,8 @@ body {
   margin-bottom: 0;
 }
 
-/* The empty line the editor keeps after a closing code block or list shows only while writing, so at rest the body ends at its last real block. */
-.prose-rich .tiptap:not(.ProseMirror-focused) > p:last-child:not(:first-child):has(> br.ProseMirror-trailingBreak:only-child) {
+/* The empty line kept after a closing code block or list shows only while writing; after a closing table it stays, as no click below a table reaches the editor. */
+.prose-rich .tiptap:not(.ProseMirror-focused) > p:last-child:not(:first-child):not([contenteditable="true"] > .tableWrapper + p):has(> br.ProseMirror-trailingBreak:only-child) {
   display: none;
 }
 
