@@ -217,6 +217,7 @@ type ConnectCode struct {
 	UserID    string
 	CreatedAt int64
 	ExpiresAt int64
+	Sso       int64
 }
 
 type ConnectorAppConfig struct {
@@ -1173,6 +1174,7 @@ type Session struct {
 	LastActiveAt int64
 	ExpiresAt    int64
 	PushToken    sql.NullString
+	Sso          int64
 }
 
 type SetupCode struct {

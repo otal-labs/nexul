@@ -10,7 +10,7 @@ import (
 )
 
 const createConnectCode = `-- name: CreateConnectCode :exec
-INSERT INTO connect_codes (code_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)
+INSERT INTO connect_codes (code_hash, user_id, created_at, expires_at, sso) VALUES (?, ?, ?, ?, ?)
 `
 
 type CreateConnectCodeParams struct {
@@ -18,6 +18,7 @@ type CreateConnectCodeParams struct {
 	UserID    string
 	CreatedAt int64
 	ExpiresAt int64
+	Sso       int64
 }
 
 func (q *Queries) CreateConnectCode(ctx context.Context, arg CreateConnectCodeParams) error {
@@ -26,6 +27,7 @@ func (q *Queries) CreateConnectCode(ctx context.Context, arg CreateConnectCodePa
 		arg.UserID,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.Sso,
 	)
 	return err
 }
@@ -48,18 +50,23 @@ func (q *Queries) DeleteConnectCodesByUser(ctx context.Context, userID string) e
 	return err
 }
 
-const getLiveConnectCodeUser = `-- name: GetLiveConnectCodeUser :one
-SELECT user_id FROM connect_codes WHERE code_hash = ? AND expires_at > ?
+const getLiveConnectCode = `-- name: GetLiveConnectCode :one
+SELECT user_id, sso FROM connect_codes WHERE code_hash = ? AND expires_at > ?
 `
 
-type GetLiveConnectCodeUserParams struct {
+type GetLiveConnectCodeParams struct {
 	CodeHash  string
 	ExpiresAt int64
 }
 
-func (q *Queries) GetLiveConnectCodeUser(ctx context.Context, arg GetLiveConnectCodeUserParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getLiveConnectCodeUser, arg.CodeHash, arg.ExpiresAt)
-	var user_id string
-	err := row.Scan(&user_id)
-	return user_id, err
+type GetLiveConnectCodeRow struct {
+	UserID string
+	Sso    int64
+}
+
+func (q *Queries) GetLiveConnectCode(ctx context.Context, arg GetLiveConnectCodeParams) (GetLiveConnectCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, getLiveConnectCode, arg.CodeHash, arg.ExpiresAt)
+	var i GetLiveConnectCodeRow
+	err := row.Scan(&i.UserID, &i.Sso)
+	return i, err
 }

@@ -21,11 +21,19 @@ import (
 type fakeRepo struct {
 	st     Settings
 	events []eventbus.OutboxEvent
+	// kept is the users TurnOnOnly was told to keep signed in; nil until it runs.
+	kept []string
 }
 
 func (r *fakeRepo) Get(context.Context) (Settings, error) { return r.st, nil }
 func (r *fakeRepo) Set(_ context.Context, s Settings, e ...eventbus.OutboxEvent) error {
 	r.st = s
+	r.events = append(r.events, e...)
+	return nil
+}
+func (r *fakeRepo) TurnOnOnly(_ context.Context, s Settings, keepUsers []string, e ...eventbus.OutboxEvent) error {
+	r.st = s
+	r.kept = append([]string{}, keepUsers...)
 	r.events = append(r.events, e...)
 	return nil
 }
@@ -150,6 +158,7 @@ func newHarness(t *testing.T, licensed bool) *harness {
 		Repo: h.repo, Accounts: h.accounts, Licenses: fakeLicenses{on: licensed}, Gate: fakeGate{},
 		InstanceURL:     func(context.Context) (string, error) { return "https://nexul.example.com/", nil },
 		OwnerHasPasskey: func(context.Context) (bool, error) { return true, nil },
+		InstanceOwners:  func(context.Context) ([]string, error) { return []string{"owner-1"}, nil },
 		Connect: func(_ context.Context, c ConnectConfig) (IdP, error) {
 			h.connected = append(h.connected, c)
 			return h.idp, nil
@@ -409,6 +418,38 @@ func TestUpdate_OnlyOn_NeedsTheOwnerPasskeyOnlyWhenTurningItOn(t *testing.T) {
 	v, err := h.svc.Update(asActor(t), patch(map[string]any{"only": false}))
 	require.NoError(t, err)
 	assert.False(t, v.Only)
+}
+
+func TestUpdate_TurningOnlyOn_SignsOutEveryoneButSSOSessionsAndInstanceOwners(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, true)
+
+	_, err := h.svc.Update(asActor(t), patch(map[string]any{"display_name": "Acme"}))
+	require.NoError(t, err)
+	assert.Nil(t, h.repo.kept, "a save that leaves the switch off signs nobody out")
+
+	v, err := h.svc.Update(asActor(t), patch(map[string]any{"only": true}))
+	require.NoError(t, err)
+	assert.True(t, v.Only)
+	assert.Equal(t, []string{"owner-1"}, h.repo.kept)
+
+	h.repo.kept = nil
+	_, err = h.svc.Update(asActor(t), patch(map[string]any{"display_name": "Acme SSO"}))
+	require.NoError(t, err)
+	assert.Nil(t, h.repo.kept, "a save while the switch is already on signs nobody out again")
+}
+
+func TestUpdate_TurningOnlyOn_FailsWithoutSavingWhenTheOwnersCannotBeRead(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, true)
+	saved := h.repo.st
+	h.svc.cfg.InstanceOwners = func(context.Context) ([]string, error) { return nil, errors.New("disk gone") }
+
+	_, err := h.svc.Update(asActor(t), patch(map[string]any{"only": true}))
+
+	require.Error(t, err)
+	assert.Equal(t, saved, h.repo.st)
+	assert.Empty(t, h.repo.events)
 }
 
 func TestRemove_WorksWithoutALicense_SoALapsedKeyNeverTrapsAProvider(t *testing.T) {

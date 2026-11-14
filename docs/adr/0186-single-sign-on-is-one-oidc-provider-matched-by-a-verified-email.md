@@ -18,7 +18,10 @@ SAML, provisioning people from the provider and several providers at once are ou
 - **SSO-only.** The switch hides every other method on the sign-in page and refuses them on the server too: the GitHub,
   Google and Discord callbacks, and passkeys other than an instance Owner's. It can be turned on only while an instance
   Owner holds a passkey, so a provider that breaks never locks the instance out. Invitations keep the provider the person
-  picks to create their account; their later sign-ins go through the provider, matched by email.
+  picks to create their account; their later sign-ins go through the provider, matched by email. Turning it on ends,
+  in the same transaction, every session not started through single sign-on except the instance Owners'; a session
+  records how it started, and a phone's inherits the mark from the session that issued its connect code. Personal
+  access tokens stay, since deactivating the account is what ends them.
 - **Settings over MCP.** `instance_update` gains an `sso` object and `instance_get` reads it back (ADR 0185). The tool
   moves from `ee/license` to `internal/mcp/composite`, which exists for a tool that composes two domains, so the license
   package does not import SSO. It reaches the provider, so it is no longer marked local. The advertised size budget

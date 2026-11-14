@@ -12,8 +12,8 @@ import (
 )
 
 const createSession = `-- name: CreateSession :exec
-INSERT INTO sessions (id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO sessions (id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, sso)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateSessionParams struct {
@@ -27,6 +27,7 @@ type CreateSessionParams struct {
 	CreatedAt    int64
 	LastActiveAt int64
 	ExpiresAt    int64
+	Sso          int64
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) error {
@@ -41,6 +42,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 		arg.CreatedAt,
 		arg.LastActiveAt,
 		arg.ExpiresAt,
+		arg.Sso,
 	)
 	return err
 }
@@ -90,8 +92,27 @@ func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) (i
 	return result.RowsAffected()
 }
 
+const deleteSessionsByID = `-- name: DeleteSessionsByID :exec
+DELETE FROM sessions WHERE id IN (/*SLICE:ids*/?)
+`
+
+func (q *Queries) DeleteSessionsByID(ctx context.Context, ids []string) error {
+	query := deleteSessionsByID
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
+}
+
 const getSessionByHash = `-- name: GetSessionByHash :one
-SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token FROM sessions WHERE token_hash = ?
+SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token, sso FROM sessions WHERE token_hash = ?
 `
 
 func (q *Queries) GetSessionByHash(ctx context.Context, tokenHash string) (Session, error) {
@@ -109,6 +130,7 @@ func (q *Queries) GetSessionByHash(ctx context.Context, tokenHash string) (Sessi
 		&i.LastActiveAt,
 		&i.ExpiresAt,
 		&i.PushToken,
+		&i.Sso,
 	)
 	return i, err
 }
@@ -196,7 +218,7 @@ func (q *Queries) ListSessionLastActive(ctx context.Context) ([]ListSessionLastA
 }
 
 const listSessionsByUser = `-- name: ListSessionsByUser :many
-SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token FROM sessions WHERE user_id = ? ORDER BY last_active_at DESC, id
+SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token, sso FROM sessions WHERE user_id = ? ORDER BY last_active_at DESC, id
 `
 
 func (q *Queries) ListSessionsByUser(ctx context.Context, userID string) ([]Session, error) {
@@ -220,6 +242,47 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID string) ([]Sess
 			&i.LastActiveAt,
 			&i.ExpiresAt,
 			&i.PushToken,
+			&i.Sso,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionsOutsideSSO = `-- name: ListSessionsOutsideSSO :many
+SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token, sso FROM sessions WHERE sso = 0
+`
+
+func (q *Queries) ListSessionsOutsideSSO(ctx context.Context) ([]Session, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionsOutsideSSO)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.TokenHash,
+			&i.Client,
+			&i.Platform,
+			&i.Label,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.LastActiveAt,
+			&i.ExpiresAt,
+			&i.PushToken,
+			&i.Sso,
 		); err != nil {
 			return nil, err
 		}

@@ -38,6 +38,8 @@ The **Only single sign-on** switch hides every other way to sign in. The sign-in
 
 The instance Owner's passkey always still works, so a provider that breaks, or a client secret that expires, never locks everyone out. For that reason the switch turns on only while an instance Owner holds a passkey; otherwise it says to add one under **Profile → Passkeys** first.
 
+Turning the switch on signs out everyone who didn't sign in through single sign-on, on every device, so nobody keeps a way in the switch now refuses. Instance Owners stay signed in. A phone connected from a single sign-on session counts as one. Personal access tokens are not sessions and keep working; deactivate the person under **Team** to stop theirs.
+
 ## When the license lapses
 
 When the key expires, is removed or stops fitting the instance's address, the button and the switch go with it, so the other sign-in methods come back at once and nobody is locked out. The card says it needs a license, keeps what you saved, and still lets you remove it. Paste a renewed key and single sign-on is back as it was.

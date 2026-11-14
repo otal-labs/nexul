@@ -73,7 +73,7 @@ func TestInstanceOwnerHasPasskey(t *testing.T) {
 	assert.True(t, has)
 }
 
-func TestHandler_SessionFor_StartsASessionOnTheDeviceTheRequestCameFrom(t *testing.T) {
+func TestHandler_SSOSessionFor_StartsAnSSOSessionOnTheDeviceTheRequestCameFrom(t *testing.T) {
 	t.Parallel()
 	s, users, _, _ := newTestHarness(&fakeGitHub{token: "at", user: ghUser("42", "onik97")})
 	_, err := s.Login(t.Context(), "good-code")
@@ -82,11 +82,42 @@ func TestHandler_SessionFor_StartsASessionOnTheDeviceTheRequestCameFrom(t *testi
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/oidc/callback", nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0")
 
-	token, err := NewHandler(s).SessionFor(req, userID)
+	token, err := NewHandler(s).SSOSessionFor(req, userID)
 
 	require.NoError(t, err)
 	assert.Equal(t, userID, mustVerify(t, s, token))
 	sessions, err := s.cfg.Sessions.ListSessionsByUser(t.Context(), userID)
 	require.NoError(t, err)
 	assert.Equal(t, "Linux", sessions[len(sessions)-1].Platform)
+	assert.True(t, sessions[len(sessions)-1].SSO)
+	assert.False(t, sessions[0].SSO, "the GitHub sign-in's session")
+}
+
+func TestExchangeConnectCode_WhileSSOIsTheOnlySignIn_LetsInOnlyACodeFromAnSSOSessionOrAnOwner(t *testing.T) {
+	t.Parallel()
+	s, codes, u := newConnectHarness(t)
+	users := s.cfg.Users.(*fakeUserStore)
+	issue := func(t *testing.T, from *Session) string {
+		t.Helper()
+		code, err := s.IssueConnectCode(withPrincipal(t.Context(), &User{ID: u}, from), u, "")
+		require.NoError(t, err)
+		return code.Code
+	}
+	githubCode := issue(t, &Session{ID: "web-github"})
+	require.Len(t, codes.byHash, 1)
+	on := true
+	s.SetSSOOnly(ssoOnly(&on))
+
+	_, err := s.ExchangeConnectCode(t.Context(), "203.0.113.7", githubCode, ConnectDevice{Model: "Pixel 8"})
+	require.ErrorIs(t, err, errSSOOnly, "a code from a session SSO-only now refuses mints no phone session")
+
+	token, err := s.ExchangeConnectCode(t.Context(), "203.0.113.7", issue(t, &Session{ID: "web-sso", SSO: true}), ConnectDevice{Model: "Pixel 8"})
+	require.NoError(t, err)
+	_, ses, err := s.AuthenticateSession(t.Context(), token, "")
+	require.NoError(t, err)
+	assert.True(t, ses.SSO, "the phone session counts as single sign-on, so turning the switch on again keeps it")
+
+	users.setOwner(u)
+	_, err = s.ExchangeConnectCode(t.Context(), "203.0.113.7", issue(t, &Session{ID: "web-github"}), ConnectDevice{Model: "Pixel 8"})
+	require.NoError(t, err, "an instance Owner signs in outside single sign-on, so their phone does too")
 }

@@ -19,28 +19,32 @@ func TestConnectCodesRepo(t *testing.T) {
 		hash    string
 		at      time.Time
 		want    string
+		wantSSO bool
 		wantErr error
 	}{
-		{"unknown hash is not found", func(*testing.T, *Store) {}, "h1", now, "", apperrs.ErrNotFound},
+		{"unknown hash is not found", func(*testing.T, *Store) {}, "h1", now, "", false, apperrs.ErrNotFound},
 		{"stored hash names its user before expiry", func(t *testing.T, s *Store) {
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now.Add(2*time.Minute)))
-		}, "h1", now, "u1", nil},
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now.Add(2*time.Minute)))
+		}, "h1", now, "u1", false, nil},
+		{"a code issued from a single sign-on session keeps its mark", func(t *testing.T, s *Store) {
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", true, now, now.Add(2*time.Minute)))
+		}, "h1", now, "u1", true, nil},
 		{"expired hash is not found", func(t *testing.T, s *Store) {
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now.Add(2*time.Minute)))
-		}, "h1", now.Add(2 * time.Minute), "", apperrs.ErrNotFound},
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now.Add(2*time.Minute)))
+		}, "h1", now.Add(2 * time.Minute), "", false, apperrs.ErrNotFound},
 		{"a newer code replaces the user's earlier one", func(t *testing.T, s *Store) {
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now.Add(2*time.Minute)))
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h2", now, now.Add(2*time.Minute)))
-		}, "h1", now, "", apperrs.ErrNotFound},
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now.Add(2*time.Minute)))
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h2", false, now, now.Add(2*time.Minute)))
+		}, "h1", now, "", false, apperrs.ErrNotFound},
 		{"another user's code survives a replace", func(t *testing.T, s *Store) {
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u2", "h2", now, now.Add(2*time.Minute)))
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now.Add(2*time.Minute)))
-		}, "h2", now, "u2", nil},
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u2", "h2", false, now, now.Add(2*time.Minute)))
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now.Add(2*time.Minute)))
+		}, "h2", now, "u2", false, nil},
 		{"consuming is single use", func(t *testing.T, s *Store) {
-			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now.Add(2*time.Minute)))
-			_, err := s.ConnectCodes.ConsumeConnectCode(t.Context(), "h1", now)
+			require.NoError(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now.Add(2*time.Minute)))
+			_, _, err := s.ConnectCodes.ConsumeConnectCode(t.Context(), "h1", now)
 			require.NoError(t, err)
-		}, "h1", now, "", apperrs.ErrNotFound},
+		}, "h1", now, "", false, apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -51,13 +55,14 @@ func TestConnectCodesRepo(t *testing.T) {
 			_, _, err = s.Users.UpsertUser(t.Context(), newTestUser("u2", "43", "other"))
 			require.NoError(t, err)
 			tt.setup(t, s)
-			got, err := s.ConnectCodes.ConsumeConnectCode(t.Context(), tt.hash, tt.at)
+			got, sso, err := s.ConnectCodes.ConsumeConnectCode(t.Context(), tt.hash, tt.at)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 				return
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantSSO, sso)
 		})
 	}
 }
@@ -66,11 +71,11 @@ func TestConnectCodesRepo_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	now := time.Now()
-	err := s.ConnectCodes.ReplaceConnectCode(t.Context(), "nobody", "h1", now, now.Add(time.Minute))
+	err := s.ConnectCodes.ReplaceConnectCode(t.Context(), "nobody", "h1", false, now, now.Add(time.Minute))
 	require.Error(t, err, "a code needs a user row")
 
 	require.NoError(t, s.Close())
-	require.Error(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", now, now))
-	_, err = s.ConnectCodes.ConsumeConnectCode(t.Context(), "h1", now)
+	require.Error(t, s.ConnectCodes.ReplaceConnectCode(t.Context(), "u1", "h1", false, now, now))
+	_, _, err = s.ConnectCodes.ConsumeConnectCode(t.Context(), "h1", now)
 	require.Error(t, err)
 }

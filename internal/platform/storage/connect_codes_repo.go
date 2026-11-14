@@ -20,14 +20,14 @@ type ConnectCodesRepo struct {
 }
 
 // ReplaceConnectCode drops the user's earlier code and stores hash, in one transaction.
-func (r *ConnectCodesRepo) ReplaceConnectCode(ctx context.Context, userID, hash string, createdAt, expiresAt time.Time) error {
+func (r *ConnectCodesRepo) ReplaceConnectCode(ctx context.Context, userID, hash string, sso bool, createdAt, expiresAt time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if err := q.DeleteConnectCodesByUser(ctx, userID); err != nil {
 			return fmt.Errorf("delete connect codes of %s: %w", userID, err)
 		}
 		err := q.CreateConnectCode(ctx, sqlcgen.CreateConnectCodeParams{
-			CodeHash: hash, UserID: userID, CreatedAt: createdAt.Unix(), ExpiresAt: expiresAt.Unix(),
+			CodeHash: hash, UserID: userID, CreatedAt: createdAt.Unix(), ExpiresAt: expiresAt.Unix(), Sso: boolToInt(sso),
 		})
 		if err != nil {
 			return fmt.Errorf("insert connect code: %w", classifyWriteErr(err))
@@ -36,13 +36,14 @@ func (r *ConnectCodesRepo) ReplaceConnectCode(ctx context.Context, userID, hash 
 	})
 }
 
-// ConsumeConnectCode deletes the live code named by hash and returns its user; a missing or expired code is ErrNotFound.
-func (r *ConnectCodesRepo) ConsumeConnectCode(ctx context.Context, hash string, now time.Time) (string, error) {
-	var userID string
+// ConsumeConnectCode deletes the live code named by hash and returns its user and sso mark; a missing or expired code is
+// ErrNotFound.
+func (r *ConnectCodesRepo) ConsumeConnectCode(ctx context.Context, hash string, now time.Time) (string, bool, error) {
+	var row sqlcgen.GetLiveConnectCodeRow
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		var err error
-		userID, err = q.GetLiveConnectCodeUser(ctx, sqlcgen.GetLiveConnectCodeUserParams{CodeHash: hash, ExpiresAt: now.Unix()})
+		row, err = q.GetLiveConnectCode(ctx, sqlcgen.GetLiveConnectCodeParams{CodeHash: hash, ExpiresAt: now.Unix()})
 		if err != nil {
 			return fmt.Errorf("get connect code: %w", notFoundIfNoRows(err))
 		}
@@ -52,7 +53,7 @@ func (r *ConnectCodesRepo) ConsumeConnectCode(ctx context.Context, hash string, 
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return userID, nil
+	return row.UserID, row.Sso != 0, nil
 }

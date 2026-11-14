@@ -56,13 +56,16 @@ func (h *Handler) SecureCookie(r *http.Request) bool {
 	return h.svc.secureCookie(r.Context(), r.TLS != nil)
 }
 
-// SessionFor starts a session for an account another package verified the sign-in of, on the device r came from.
-func (h *Handler) SessionFor(r *http.Request, userID string) (string, error) {
-	return h.svc.CreateSession(WithDevice(r.Context(), DeviceFromRequest(r)), userID)
+// SSOSessionFor starts a single sign-on session for an account the sso package verified, on the device r came from.
+func (h *Handler) SSOSessionFor(r *http.Request, userID string) (string, error) {
+	d := DeviceFromRequest(r)
+	d.SSO = true
+	return h.svc.CreateSession(WithDevice(r.Context(), d), userID)
 }
 
-// requirePasskeyAllowed lets a passkey sign in unless single sign-on is the only way in and it is not an instance Owner's.
-func (s *Service) requirePasskeyAllowed(ctx context.Context, userID string) error {
+// requireOutsideSSOAllowed lets a sign-in that skips single sign-on through unless SSO-only is on and the account is not
+// an instance Owner's.
+func (s *Service) requireOutsideSSOAllowed(ctx context.Context, userID string) error {
 	if !s.onlySSO(ctx) {
 		return nil
 	}

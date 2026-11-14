@@ -34,7 +34,7 @@ const (
 type Browser interface {
 	SPAOrigin(r *http.Request) string
 	SecureCookie(r *http.Request) bool
-	SessionFor(r *http.Request, userID string) (string, error)
+	SSOSessionFor(r *http.Request, userID string) (string, error)
 }
 
 // Handler adapts single sign-on to the HTTP/JSON gateway (ADR 0019): the public sign-in routes and the Owner's settings.
@@ -169,7 +169,7 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		h.failed(w, r, signInCode(err), err)
 		return
 	}
-	token, err := h.browser.SessionFor(r, userID)
+	token, err := h.browser.SSOSessionFor(r, userID)
 	if err != nil {
 		h.failed(w, r, codeFailed, err)
 		return
