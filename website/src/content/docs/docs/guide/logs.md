@@ -12,7 +12,7 @@ sidebar:
 | `source` | What it is |
 | --- | --- |
 | `server` | Every line the server logs. |
-| `web` | Errors and warnings from people's browsers. |
+| `web` | Errors and warnings from people's browsers, and a `main thread stalled for …ms` warning when a tab freezes for 2 seconds or more, sent once it recovers and naming the scripts that ran during the freeze. |
 | `runner` | The log of each runner that serves a [machine](/docs/guide/runners/), the one bundled with the instance included. |
 | `automations` | The log of each [automations host](/docs/guide/automations/), the one bundled with the instance included. A script's own output is not here; it stays with the automation's runs. |
 

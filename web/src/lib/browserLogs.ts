@@ -53,9 +53,55 @@ const enqueue = (level: Level, message: string, attrs?: Record<string, unknown>)
   schedule();
 };
 
-// Captures console.error/warn, uncaught errors, and unhandled rejections and relays them to POST /api/logs,
-// so the browser shows up in OpenObserve next to the server. Call once at boot.
+const STALL_MS = 2_000;
+const MAX_SCRIPTS = 3;
+
+// The fields of a long animation frame entry read here; TypeScript's DOM lib does not declare the type yet.
+interface FrameScript {
+  invoker: string;
+  sourceURL: string;
+  sourceFunctionName: string;
+  sourceCharPosition: number;
+  duration: number;
+  forcedStyleAndLayoutDuration: number;
+}
+interface LongFrame {
+  startTime: number;
+  duration: number;
+  blockingDuration: number;
+  styleAndLayoutStart: number;
+  scripts: FrameScript[];
+}
+
+const scriptLine = (s: FrameScript) =>
+  `${Math.round(s.duration)}ms ${s.invoker} → ${s.sourceFunctionName || "(anonymous)"} ${s.sourceURL}:${s.sourceCharPosition} (forced layout ${Math.round(s.forcedStyleAndLayoutDuration)}ms)`;
+
+// Reports, once the tab recovers, a frame that held the main thread for seconds, with the scripts that ran in it.
+const reportStall = (frame: LongFrame) => {
+  const end = frame.startTime + frame.duration;
+  const scripts = [...frame.scripts].sort((a, b) => b.duration - a.duration).slice(0, MAX_SCRIPTS);
+  enqueue("warn", `main thread stalled for ${Math.round(frame.duration)}ms`, {
+    duration_ms: Math.round(frame.duration),
+    blocking_ms: Math.round(frame.blockingDuration),
+    layout_ms: frame.styleAndLayoutStart > 0 ? Math.round(end - frame.styleAndLayoutStart) : 0,
+    script_ms: Math.round(frame.scripts.reduce((sum, s) => sum + s.duration, 0)),
+    ...Object.fromEntries(scripts.map((s, i) => [`script_${i + 1}`, scriptLine(s)])),
+  });
+};
+
+const observeStalls = () => {
+  if (!PerformanceObserver.supportedEntryTypes?.includes("long-animation-frame")) return;
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries() as unknown as LongFrame[]) {
+      if (entry.duration >= STALL_MS) reportStall(entry);
+    }
+  }).observe({ type: "long-animation-frame", buffered: true });
+};
+
+// Captures console.error/warn, uncaught errors, unhandled rejections, and multi-second main-thread stalls and relays
+// them to POST /api/logs, so the browser shows up in OpenObserve next to the server. Call once at boot.
 export const installBrowserLogs = () => {
+  if (typeof PerformanceObserver !== "undefined") observeStalls();
   window.addEventListener("error", (event) =>
     enqueue("error", event.message, { stack: stackOf(event.error), file: event.filename, line: event.lineno }),
   );
