@@ -56,9 +56,9 @@ const withoutStagedFiles = (stage: FileStage, body: string): string => {
 };
 
 // Uploads the staged files still in the body; returns the body with their stored paths, or null when none landed.
-const attachStagedFiles = async (stage: FileStage, owner: AttachmentOwner, body: string): Promise<string | null> => {
+const attachStagedFiles = async (staged: [string, File][], owner: AttachmentOwner, body: string): Promise<string | null> => {
   const paths = new Map<string, string | null>();
-  for (const [url, file] of stagedIn(stage, body)) {
+  for (const [url, file] of staged) {
     try {
       paths.set(url, attachmentPath((await uploadAttachment(owner, file, uploadName(file))).id));
     } catch (error) {
@@ -70,20 +70,28 @@ const attachStagedFiles = async (stage: FileStage, owner: AttachmentOwner, body:
   return rewriteBody(body, paths);
 };
 
-// Files attach only to an entity that exists: create it without them, upload, then save the body with their paths.
+interface StagedSteps<T> {
+  create: (body: string) => Promise<T>;
+  ownerOf: (created: T) => AttachmentOwner;
+  save: (created: T, body: string) => Promise<unknown>;
+}
+
+const attachAndSave = async <T>(staged: [string, File][], created: T, body: string, steps: StagedSteps<T>) => {
+  const attached = await attachStagedFiles(staged, steps.ownerOf(created), body);
+  // The save's own hook already toasts a failure.
+  if (attached !== null) await steps.save(created, attached).catch(() => undefined);
+};
+
+// Resolves once the entity exists; its files upload and save after, so a slow upload never holds the dialog open.
 export const createWithStagedFiles = async <T>(
   stage: FileStage,
   body: string,
-  steps: {
-    create: (body: string) => Promise<T>;
-    ownerOf: (created: T) => AttachmentOwner;
-    save: (created: T, body: string) => Promise<unknown>;
-  },
+  steps: StagedSteps<T>,
 ): Promise<T> => {
+  const staged = stagedIn(stage, body);
   const created = await steps.create(withoutStagedFiles(stage, body));
-  const attached = await attachStagedFiles(stage, steps.ownerOf(created), body);
+  // Cleared now, not after the upload: with Create more, the next entity's files are staged meanwhile.
   stage.clear();
-  // The save's own hook already toasts a failure; the entity exists, so the dialog must not offer Create again.
-  if (attached !== null) await steps.save(created, attached).catch(() => undefined);
+  void attachAndSave(staged, created, body, steps);
   return created;
 };
