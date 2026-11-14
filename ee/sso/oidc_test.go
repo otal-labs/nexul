@@ -33,13 +33,15 @@ type fakeProvider struct {
 	signWith *rsa.PrivateKey
 	// rejectClient answers the code exchange as an unauthorized client.
 	rejectClient bool
+	// hits counts the requests each path has answered.
+	hits map[string]int
 }
 
 func newFakeProvider(t *testing.T) *fakeProvider {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	p := &fakeProvider{key: key}
+	p := &fakeProvider{key: key, hits: map[string]int{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -54,7 +56,12 @@ func newFakeProvider(t *testing.T) *fakeProvider {
 		}}})
 	})
 	mux.HandleFunc("/token", p.token)
-	p.srv = httptest.NewServer(mux)
+	p.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.mu.Lock()
+		p.hits[r.URL.Path]++
+		p.mu.Unlock()
+		mux.ServeHTTP(w, r)
+	}))
 	t.Cleanup(p.srv.Close)
 	return p
 }
@@ -95,7 +102,7 @@ func sign(key *rsa.PrivateKey, claims map[string]any) string {
 
 func (p *fakeProvider) connect(t *testing.T) IdP {
 	t.Helper()
-	idp, err := dial(http.DefaultClient, []byte("server-secret"))(t.Context(), ConnectConfig{
+	idp, err := dial(http.DefaultClient, []byte("server-secret"), time.Now)(t.Context(), ConnectConfig{
 		Issuer: p.srv.URL, ClientID: "client-1", ClientSecret: "s3cret", RedirectURI: "http://nexul.test/auth/oidc/callback",
 	})
 	require.NoError(t, err)
@@ -186,9 +193,54 @@ func TestProvider_Exchange_EmailVerifiedAsAStringIsRead(t *testing.T) {
 	}
 }
 
+func TestDial_SignInsReuseOneDiscoveryAndKeySet_UntilItAgesOrACheckAsksFresh(t *testing.T) {
+	t.Parallel()
+	fp := newFakeProvider(t)
+	now := time.Now()
+	connect := dial(http.DefaultClient, []byte("server-secret"), func() time.Time { return now })
+	cfg := ConnectConfig{Issuer: fp.srv.URL, ClientID: "client-1", ClientSecret: "s3cret", RedirectURI: "http://nexul.test/auth/oidc/callback"}
+	signIn := func(t *testing.T, state string) {
+		t.Helper()
+		idp, err := connect(t.Context(), cfg)
+		require.NoError(t, err, "the sign-in's start")
+		nonce := nonceOf(t, idp, state)
+		idp, err = connect(t.Context(), cfg)
+		require.NoError(t, err, "its callback")
+		fp.mu.Lock()
+		fp.claims = map[string]any{"nonce": nonce}
+		fp.mu.Unlock()
+		_, err = idp.Exchange(t.Context(), "code", state)
+		require.NoError(t, err)
+	}
+	hits := func() (discovery, keys int) {
+		fp.mu.Lock()
+		defer fp.mu.Unlock()
+		return fp.hits["/.well-known/openid-configuration"], fp.hits["/jwks"]
+	}
+
+	signIn(t, "state-1")
+	signIn(t, "state-2")
+	discovery, keys := hits()
+	assert.Equal(t, 1, discovery, "two sign-ins, four connects, one discovery")
+	assert.Equal(t, 1, keys)
+
+	fresh := cfg
+	fresh.Fresh = true
+	_, err := connect(t.Context(), fresh)
+	require.NoError(t, err)
+	discovery, _ = hits()
+	assert.Equal(t, 2, discovery, "a check reaches the provider now")
+
+	now = now.Add(discoveryTTL)
+	signIn(t, "state-3")
+	discovery, keys = hits()
+	assert.Equal(t, 3, discovery, "an hour-old discovery is fetched again")
+	assert.Equal(t, 2, keys, "with its key set")
+}
+
 func TestDial_UnreachableIssuer_IsRefusedWithTheAddress(t *testing.T) {
 	t.Parallel()
-	_, err := dial(http.DefaultClient, nil)(t.Context(), ConnectConfig{Issuer: "http://127.0.0.1:1"})
+	_, err := dial(http.DefaultClient, nil, time.Now)(t.Context(), ConnectConfig{Issuer: "http://127.0.0.1:1"})
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	assert.Contains(t, err.Error(), "http://127.0.0.1:1")
 }
