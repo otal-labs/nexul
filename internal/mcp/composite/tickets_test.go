@@ -390,6 +390,28 @@ func TestTicketUpdate_IDsTakeOnePageOfTickets(t *testing.T) {
 	assert.Contains(t, err.Error(), "at most 100")
 }
 
+func TestTickets_MeIsTheCaller(t *testing.T) {
+	f := newFixture(t)
+	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_create", `{"project_id":"p-1","title":"Mine","developer":"me","tester":"me"}`)
+	require.NoError(t, err)
+	created := got.(ticketResult)
+	assert.Equal(t, "u-1", created.Developer, "with no account lookup wired the caller's id stands in for their login")
+	assert.Equal(t, "u-1", created.Tester)
+
+	_, err = call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"ids":["REF-1","REF-2"],"developer":"me"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "u-1", f.w.tickets["t-1"].Developer)
+	assert.Equal(t, "u-1", f.w.tickets["t-2"].Developer)
+
+	listed, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_list", `{"developer":"me"}`)
+	require.NoError(t, err)
+	assert.Equal(t, 3, listed.(mcptool.Page[ticketResult]).Total)
+
+	_, err = call(t, t.Context(), f.ticketTools(), "ticket_update", `{"id":"t-1","tester":"me"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "me needs a signed-in person")
+	assert.Empty(t, f.w.tickets["t-1"].Tester)
+}
+
 func TestTicketList_CategoryAndStatusFilters(t *testing.T) {
 	f := newFixture(t)
 	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Retry", Status: "st-todo"})

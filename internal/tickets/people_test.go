@@ -203,6 +203,28 @@ func TestCreate_Reporter(t *testing.T) {
 	}
 }
 
+func TestCallerLogin(t *testing.T) {
+	logins := fakeUserLogins{logins: map[string]string{"u-1": "onik97"}}
+	automation := identity.Actor{ID: "u-9", Automation: &identity.AutomationRef{ID: "a-1", Name: "Triage"}}
+	t.Run("an automation token is no member", func(t *testing.T) {
+		_, err := NewService(newFakeRepo(), fakeStatusStore{}, logins).CallerLogin(identity.WithActor(t.Context(), automation))
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("no actor is no member", func(t *testing.T) {
+		_, err := NewService(newFakeRepo(), fakeStatusStore{}, logins).CallerLogin(t.Context())
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("a failed lookup is an error, never a guess", func(t *testing.T) {
+		_, err := NewService(newFakeRepo(), fakeStatusStore{}, fakeUserLogins{err: errors.New("db down")}).CallerLogin(identity.WithActor(t.Context(), identity.Actor{ID: "u-1"}))
+		require.Error(t, err)
+	})
+	t.Run("a person is their login", func(t *testing.T) {
+		got, err := NewService(newFakeRepo(), fakeStatusStore{}, logins).CallerLogin(identity.WithActor(t.Context(), identity.Actor{ID: "u-1"}))
+		require.NoError(t, err)
+		assert.Equal(t, "onik97", got)
+	})
+}
+
 func TestPeopleAdapters(t *testing.T) {
 	t.Run("HTTP create records the person and both roles", func(t *testing.T) {
 		svc := NewService(newFakeRepo(), fakeStatusStore{}, fakeUserLogins{logins: map[string]string{"u-1": "onik97"}})

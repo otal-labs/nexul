@@ -352,6 +352,25 @@ func (s *Service) reporter(ctx context.Context, viaMCP bool) Reporter {
 	return Reporter{Kind: kind, Login: s.login(ctx, actor.ID)}
 }
 
+// Me is what a developer or tester field takes to name the person the call acts as.
+const Me = "me"
+
+// CallerLogin is the login of the person the call acts as; an automation token acts as no member, so it has none.
+func (s *Service) CallerLogin(ctx context.Context) (string, error) {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.ID == "" || actor.Automation != nil {
+		return "", fmt.Errorf("%w: me names a signed-in person; name the member by login", apperrs.ErrInvalid)
+	}
+	if s.users == nil {
+		return actor.ID, nil
+	}
+	login, err := s.users.LoginForUserID(ctx, actor.ID)
+	if err != nil {
+		return "", fmt.Errorf("find the caller's login: %w", err)
+	}
+	return login, nil
+}
+
 // login falls back to the user id when no lookup is wired or it fails, so a reporter is never lost.
 func (s *Service) login(ctx context.Context, userID string) string {
 	if s.users == nil {

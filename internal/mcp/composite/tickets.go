@@ -32,6 +32,21 @@ const (
 	createHint = "project_list lists the projects; project_get lists a project's ticket types and categories"
 )
 
+// meToLogin swaps me in a people field for the caller's login, so an agent need not look its own login up first.
+func meToLogin(ctx context.Context, t *tickets.Service, logins ...*string) error {
+	for _, login := range logins {
+		if login == nil || *login != tickets.Me {
+			continue
+		}
+		me, err := t.CallerLogin(ctx)
+		if err != nil {
+			return err
+		}
+		*login = me
+	}
+	return nil
+}
+
 // resolveTicket names the tool that finds tickets when the one asked for is missing.
 func resolveTicket(ctx context.Context, t *tickets.Service, workspace, idOrKey string) (*tickets.Ticket, error) {
 	tk, err := t.Resolve(ctx, workspace, idOrKey)
@@ -161,7 +176,7 @@ type ticketListIn struct {
 	DueTo       string  `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD)."`
 	CategoryID  *string `json:"category_id,omitempty" jsonschema:"Only this category's tickets, from project_get; an empty string for uncategorized ones."`
 	StatusID    string  `json:"status_id,omitempty" jsonschema:"Only this status column's tickets, from project_get."`
-	Developer   *string `json:"developer,omitempty" jsonschema:"Only this developer's tickets, by login; empty for unassigned."`
+	Developer   *string `json:"developer,omitempty" jsonschema:"Only this developer's tickets, by login or me; empty for unassigned."`
 	mcptool.PageArgs
 }
 
@@ -174,6 +189,9 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"by due date when a due date filter is given, and by relevance with a query.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketListIn) (any, error) {
+			if err := meToLogin(ctx, t, in.Developer); err != nil {
+				return nil, err
+			}
 			if in.ProjectID != "" {
 				// A mistyped project would otherwise read as a project with no tickets.
 				if _, err := getProject(ctx, w, in.ProjectID); err != nil {
@@ -408,8 +426,8 @@ type ticketCreateIn struct {
 	Body          string `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omit it with a type_id to start from that template."`
 	TypeID        string `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get. Omit for the project's first type."`
 	CategoryID    string `json:"category_id,omitempty" jsonschema:"The category's id, from project_get."`
-	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, such as onik97."`
-	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it, such as lena."`
+	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, or me."`
+	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it, or me."`
 	DocID         string `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list."`
 	OriginID      string `json:"origin_id,omitempty" jsonschema:"For a bug: the id or key of the ticket it was found in, such as REF-98."`
 	OriginUnknown bool   `json:"origin_unknown,omitzero" jsonschema:"For a bug: true when nobody knows which ticket it was found in."`
@@ -424,6 +442,9 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"status, labels, and blockers afterwards with ticket_update.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in ticketCreateIn) (any, error) {
+			if err := meToLogin(ctx, t, &in.Developer, &in.Tester); err != nil {
+				return nil, err
+			}
 			originID, err := originOf(ctx, t, w, in.ProjectID, in.OriginID)
 			if err != nil {
 				return nil, err
@@ -481,8 +502,8 @@ type ticketUpdateIn struct {
 	Position         *int          `json:"position,omitempty" jsonschema:"The ticket's place in its column, 0 for the top."`
 	TypeID           *string       `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get."`
 	CategoryID       *string       `json:"category_id,omitempty" jsonschema:"The category's id, from project_get; an empty string uncategorizes the ticket."`
-	Developer        *string       `json:"developer,omitempty" jsonschema:"The member login who builds it; an empty string clears it."`
-	Tester           *string       `json:"tester,omitempty" jsonschema:"The member login who tests it; an empty string clears it."`
+	Developer        *string       `json:"developer,omitempty" jsonschema:"The member login who builds it, or me; an empty string clears it."`
+	Tester           *string       `json:"tester,omitempty" jsonschema:"The member login who tests it, or me; an empty string clears it."`
 	DueOn            *string       `json:"due_on,omitempty" jsonschema:"The due date, YYYY-MM-DD such as 2026-10-30; an empty string clears it."`
 	DocID            *string       `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list; an empty string clears it."`
 	AddLabels        []string      `json:"add_labels,omitempty" jsonschema:"Labels to attach."`
@@ -542,7 +563,7 @@ type ticketsUpdateResult struct {
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
 		"Changes a ticket's title, body, project, status column and position, type, category, developer "+
-			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. "+
+			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches. "+
 			"The changes apply in the order the fields are listed here and "+
 			"stop at the first failure; with ids, each ticket in turn, returning the keys changed. revert_to_version restores a version, listed by ticket_get. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete.",
@@ -552,6 +573,9 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 				return nil, err
 			}
 			if err := in.checkTargets(); err != nil {
+				return nil, err
+			}
+			if err := meToLogin(ctx, t, in.Developer, in.Tester); err != nil {
 				return nil, err
 			}
 			if len(in.IDs) > 0 {
