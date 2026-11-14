@@ -221,3 +221,158 @@ func TestSSORepo_CanJoinAs_IsARoleOfTheDefaultWorkspaceThatIsNotItsOwner(t *test
 		assert.Equal(t, want, got, roleID)
 	}
 }
+
+func seedSSOSessions(t *testing.T, s *Store) {
+	t.Helper()
+	for _, u := range []string{"alice", "bob"} {
+		_, _, err := s.Users.UpsertUser(t.Context(), newTestUser(u, "gh-"+u, u))
+		require.NoError(t, err)
+	}
+	now := time.Now().UTC()
+	for _, ses := range []auth.Session{
+		{ID: "alice-sso-browser", UserID: "alice", SSO: true},
+		{ID: "alice-sso-phone", UserID: "alice", SSO: true, Client: auth.ClientPhone},
+		{ID: "alice-github", UserID: "alice"},
+		{ID: "bob-sso", UserID: "bob", SSO: true},
+	} {
+		ses.TokenHash, ses.CreatedAt, ses.LastActiveAt, ses.ExpiresAt = ses.ID, now, now, now.Add(time.Hour)
+		if ses.Client == "" {
+			ses.Client = auth.ClientBrowser
+		}
+		require.NoError(t, s.Sessions.CreateSession(t.Context(), &ses))
+	}
+}
+
+func TestSSORepo_Grants_AreSealedAtRestAndRoundTrip(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-secret-1", time.Unix(100, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-secret-2", time.Unix(200, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "bob", "rt-bob", time.Unix(300, 0)))
+
+	var raw string
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT CAST(refresh_token AS TEXT) FROM sso_grants WHERE user_id = 'alice'`).Scan(&raw))
+	assert.NotContains(t, raw, "rt-secret", "the database holds the token sealed")
+
+	got, err := s.SSO.StaleGrants(ctx, time.Unix(250, 0), 50)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "alice", RefreshToken: "rt-secret-2"}}, got, "the latest sign-in wins, and a recent check is not stale")
+
+	got, err = s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 1)
+	require.NoError(t, err)
+	assert.Len(t, got, 1, "the batch is capped")
+}
+
+func TestSSORepo_ConfirmGrant_BumpsTheCheckAndRotatesOnlyWhenAskedTo(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-1", time.Unix(100, 0)))
+
+	require.NoError(t, s.SSO.ConfirmGrant(ctx, "alice", "", time.Unix(200, 0)))
+	got, err := s.SSO.StaleGrants(ctx, time.Unix(300, 0), 50)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "alice", RefreshToken: "rt-1"}}, got)
+	stale, err := s.SSO.StaleGrants(ctx, time.Unix(200, 0), 50)
+	require.NoError(t, err)
+	assert.Empty(t, stale, "checked_at moved to 200")
+
+	require.NoError(t, s.SSO.ConfirmGrant(ctx, "alice", "rt-2", time.Unix(250, 0)))
+	got, err = s.SSO.StaleGrants(ctx, time.Unix(300, 0), 50)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "alice", RefreshToken: "rt-2"}}, got)
+}
+
+func TestSSORepo_RefuseGrant_EndsOnlyThatUsersSSOSessionsAndDeletesTheGrant(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-alice", time.Unix(100, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "bob", "rt-bob", time.Unix(100, 0)))
+
+	ended, err := s.SSO.RefuseGrant(ctx, "alice")
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, ended)
+	left := map[string][]string{}
+	for _, u := range []string{"alice", "bob"} {
+		sessions, err := s.Sessions.ListSessionsByUser(ctx, u)
+		require.NoError(t, err)
+		for _, ses := range sessions {
+			left[u] = append(left[u], ses.ID)
+		}
+	}
+	assert.Equal(t, map[string][]string{"alice": {"alice-github"}, "bob": {"bob-sso"}}, left, "a session not started through SSO and another user's stay")
+	grants, err := s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 50)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "bob", RefreshToken: "rt-bob"}}, grants)
+	pending, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	var revoked string
+	for _, e := range pending {
+		require.Equal(t, auth.TopicSessionRevoked, e.Topic)
+		revoked += string(e.Payload)
+	}
+	assert.Len(t, pending, 2, "one session.revoked per ended session")
+	assert.Contains(t, revoked, `"session_id":"alice-sso-browser"`)
+	assert.Contains(t, revoked, `"session_id":"alice-sso-phone"`)
+}
+
+func TestSSORepo_RefuseGrant_ForAUserWithNoSSOSessions_StillDeletesTheGrant(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.Sessions.DeleteOtherSessions(ctx, "bob", "none"))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "bob", "rt-bob", time.Unix(100, 0)))
+
+	ended, err := s.SSO.RefuseGrant(ctx, "bob")
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, ended)
+	grants, err := s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 50)
+	require.NoError(t, err)
+	assert.Empty(t, grants)
+}
+
+func TestSSORepo_Delete_DropsEveryGrantWithTheSettings(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-alice", time.Unix(100, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "bob", "rt-bob", time.Unix(100, 0)))
+
+	require.NoError(t, s.SSO.Delete(ctx))
+
+	grants, err := s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 50)
+	require.NoError(t, err)
+	assert.Empty(t, grants)
+}
+
+func TestSSORepo_StaleGrants_ACorruptedTokenComesBackEmptyAndDropGrantDeletesIt(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedSSOSessions(t, s)
+	require.NoError(t, s.SSO.SaveGrant(ctx, "alice", "rt-alice", time.Unix(100, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "bob", "rt-bob", time.Unix(200, 0)))
+	_, err := s.db.ExecContext(ctx, `UPDATE sso_grants SET refresh_token = CAST('not-sealed' AS BLOB) WHERE user_id = 'alice'`)
+	require.NoError(t, err)
+
+	got, err := s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 50)
+
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "alice"}, {UserID: "bob", RefreshToken: "rt-bob"}}, got)
+	require.NoError(t, s.SSO.DropGrant(ctx, "alice"))
+	got, err = s.SSO.StaleGrants(ctx, time.Unix(1000, 0), 50)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "bob", RefreshToken: "rt-bob"}}, got)
+	sessions, err := s.Sessions.ListSessionsByUser(ctx, "alice")
+	require.NoError(t, err)
+	assert.Len(t, sessions, 3, "dropping a grant ends no session")
+}

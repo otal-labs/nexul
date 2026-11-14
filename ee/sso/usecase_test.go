@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"testing"
 	"time"
 
@@ -22,7 +24,13 @@ type fakeRepo struct {
 	st     Settings
 	events []eventbus.OutboxEvent
 	// kept is the users TurnOnOnly was told to keep signed in; nil until it runs.
-	kept []string
+	kept   []string
+	grants map[string]StoredGrant
+	// checked is when each grant was last confirmed.
+	checked map[string]time.Time
+	// refused is the users whose grant RefuseGrant was told to end, with the sessions each had.
+	refused  []string
+	sessions map[string]int
 }
 
 func (r *fakeRepo) Get(context.Context) (Settings, error) { return r.st, nil }
@@ -37,8 +45,39 @@ func (r *fakeRepo) TurnOnOnly(_ context.Context, s Settings, keepUsers []string,
 	r.events = append(r.events, e...)
 	return nil
 }
+func (r *fakeRepo) SaveGrant(_ context.Context, userID, token string, at time.Time) error {
+	r.grants[userID] = StoredGrant{UserID: userID, RefreshToken: token}
+	r.checked[userID] = at
+	return nil
+}
+func (r *fakeRepo) StaleGrants(_ context.Context, before time.Time, limit int) ([]StoredGrant, error) {
+	out := []StoredGrant{}
+	for _, id := range slices.Sorted(maps.Keys(r.grants)) {
+		if r.checked[id].Before(before) && len(out) < limit {
+			out = append(out, r.grants[id])
+		}
+	}
+	return out, nil
+}
+func (r *fakeRepo) ConfirmGrant(_ context.Context, userID, token string, at time.Time) error {
+	if token != "" {
+		r.grants[userID] = StoredGrant{UserID: userID, RefreshToken: token}
+	}
+	r.checked[userID] = at
+	return nil
+}
+func (r *fakeRepo) DropGrant(_ context.Context, userID string) error {
+	delete(r.grants, userID)
+	return nil
+}
+func (r *fakeRepo) RefuseGrant(_ context.Context, userID string) (int, error) {
+	delete(r.grants, userID)
+	r.refused = append(r.refused, userID)
+	return r.sessions[userID], nil
+}
 func (r *fakeRepo) Delete(_ context.Context, e ...eventbus.OutboxEvent) error {
 	r.st = Settings{}
+	r.grants = map[string]StoredGrant{}
 	r.events = append(r.events, e...)
 	return nil
 }
@@ -98,19 +137,34 @@ type fakeGate struct{ err error }
 func (g fakeGate) RequireAnywhere(context.Context, permissions.Action) error { return g.err }
 
 type fakeIdP struct {
-	claims  Claims
-	err     error
-	errOnce error
-	calls   int
+	claims       Claims
+	refreshToken string
+	err          error
+	errOnce      error
+	calls        int
+	// refresh answers a Refresh by the token it is given: the new token, or the error; a token not listed returns itself.
+	refresh      map[string]error
+	rotated      map[string]string
+	refreshCalls []string
 }
 
 func (f *fakeIdP) AuthURL(state string) string { return "https://idp.test/authorize?state=" + state }
-func (f *fakeIdP) Exchange(context.Context, string, string) (Claims, error) {
+func (f *fakeIdP) Exchange(context.Context, string, string) (Grant, error) {
 	f.calls++
 	if f.errOnce != nil && f.calls == 1 {
-		return Claims{}, f.errOnce
+		return Grant{}, f.errOnce
 	}
-	return f.claims, f.err
+	return Grant{Claims: f.claims, RefreshToken: f.refreshToken}, f.err
+}
+func (f *fakeIdP) Refresh(_ context.Context, token string) (string, error) {
+	f.refreshCalls = append(f.refreshCalls, token)
+	if err := f.refresh[token]; err != nil {
+		return "", err
+	}
+	if next, ok := f.rotated[token]; ok {
+		return next, nil
+	}
+	return token, nil
 }
 
 type fakeSecrets struct {
@@ -148,7 +202,7 @@ const verifiedSecret = "s3cret"
 func newHarness(t *testing.T, licensed bool) *harness {
 	t.Helper()
 	h := &harness{
-		repo: &fakeRepo{st: Settings{
+		repo: &fakeRepo{grants: map[string]StoredGrant{}, checked: map[string]time.Time{}, sessions: map[string]int{}, st: Settings{
 			IssuerURL: "https://login.example.com", ClientID: "client-1", ClientSecret: verifiedSecret, DisplayName: "Acme SSO", JoinRoleID: "member",
 		}},
 		accounts: newAccounts(),

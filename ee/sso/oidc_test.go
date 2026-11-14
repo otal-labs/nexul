@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -33,6 +34,13 @@ type fakeProvider struct {
 	signWith *rsa.PrivateKey
 	// rejectClient answers the code exchange as an unauthorized client.
 	rejectClient bool
+	// scopes is what discovery advertises as scopes_supported; none when nil.
+	scopes []string
+	// refreshToken is issued beside the access token on every grant.
+	refreshToken string
+	// refreshStatus and refreshError, when set, answer a refresh_token grant as that error response.
+	refreshStatus int
+	refreshError  string
 	// hits counts the requests each path has answered.
 	hits map[string]int
 }
@@ -44,10 +52,16 @@ func newFakeProvider(t *testing.T) *fakeProvider {
 	p := &fakeProvider{key: key, hits: map[string]int{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		doc := map[string]any{
 			"issuer": p.srv.URL, "authorization_endpoint": p.srv.URL + "/authorize", "token_endpoint": p.srv.URL + "/token",
 			"jwks_uri": p.srv.URL + "/jwks", "id_token_signing_alg_values_supported": []string{"RS256"},
-		})
+		}
+		p.mu.Lock()
+		if p.scopes != nil {
+			doc["scopes_supported"] = p.scopes
+		}
+		p.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(doc)
 	})
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]string{{
@@ -76,7 +90,18 @@ func (p *fakeProvider) token(w http.ResponseWriter, r *http.Request) {
 	for k, v := range p.claims {
 		claims[k] = v
 	}
+	refreshToken, refreshStatus, refreshError := p.refreshToken, p.refreshStatus, p.refreshError
 	p.mu.Unlock()
+	if p.form.Get("grant_type") == "refresh_token" {
+		w.Header().Set("Content-Type", "application/json")
+		if refreshStatus != 0 {
+			w.WriteHeader(refreshStatus)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": refreshError})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at2", "token_type": "Bearer", "refresh_token": refreshToken})
+		return
+	}
 	if p.rejectClient {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -88,7 +113,7 @@ func (p *fakeProvider) token(w http.ResponseWriter, r *http.Request) {
 		signer = p.signWith
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at", "token_type": "Bearer", "id_token": sign(signer, claims)})
+	_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at", "token_type": "Bearer", "id_token": sign(signer, claims), "refresh_token": refreshToken})
 }
 
 func sign(key *rsa.PrivateKey, claims map[string]any) string {
@@ -145,13 +170,13 @@ func TestProvider_Exchange_VerifiesTheIDToken(t *testing.T) {
 			idp := p.connect(t)
 			p.signWith = tt.signWith
 			p.claims = tt.claims(nonceOf(t, idp, "state-1"))
-			claims, err := idp.Exchange(t.Context(), "code-1", "state-1")
+			grant, err := idp.Exchange(t.Context(), "code-1", "state-1")
 			if tt.wantErr {
 				require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, Claims{Subject: "sub-1", Email: "alice@example.com", EmailVerified: true, Name: "Alice"}, claims)
+			assert.Equal(t, Claims{Subject: "sub-1", Email: "alice@example.com", EmailVerified: true, Name: "Alice"}, grant.Claims)
 		})
 	}
 }
@@ -187,10 +212,94 @@ func TestProvider_Exchange_EmailVerifiedAsAStringIsRead(t *testing.T) {
 		p := newFakeProvider(t)
 		idp := p.connect(t)
 		p.claims = map[string]any{"nonce": nonceOf(t, idp, "s"), "email_verified": value}
-		claims, err := idp.Exchange(t.Context(), "c", "s")
+		grant, err := idp.Exchange(t.Context(), "c", "s")
 		require.NoError(t, err)
-		assert.Equal(t, want, claims.EmailVerified, "%v", value)
+		assert.Equal(t, want, grant.Claims.EmailVerified, "%v", value)
 	}
+}
+
+func TestProvider_Exchange_RequestsOfflineAccessOnlyWhenTheProviderAdvertisesIt(t *testing.T) {
+	t.Parallel()
+	for name, tt := range map[string]struct {
+		scopes []string
+		want   bool
+	}{
+		"advertised":     {[]string{"openid", "email", "offline_access"}, true},
+		"not advertised": {[]string{"openid", "email"}, false},
+		"no list":        {nil, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			p := newFakeProvider(t)
+			p.scopes = tt.scopes
+			u, err := url.Parse(p.connect(t).AuthURL("state-1"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, strings.Contains(" "+u.Query().Get("scope")+" ", " offline_access "))
+		})
+	}
+}
+
+func TestProvider_Exchange_ReturnsTheRefreshTokenTheProviderIssued(t *testing.T) {
+	t.Parallel()
+	p := newFakeProvider(t)
+	p.refreshToken = "rt-1"
+	idp := p.connect(t)
+	p.claims = map[string]any{"nonce": nonceOf(t, idp, "s")}
+	grant, err := idp.Exchange(t.Context(), "c", "s")
+	require.NoError(t, err)
+	assert.Equal(t, "rt-1", grant.RefreshToken)
+}
+
+func TestProvider_Refresh_MapsTheProvidersAnswerToWhatTheRecheckDoes(t *testing.T) {
+	t.Parallel()
+	for name, tt := range map[string]struct {
+		status  int
+		code    string
+		wantErr error
+	}{
+		"invalid_grant as 400 is refused": {http.StatusBadRequest, "invalid_grant", errGrantRefused},
+		"invalid_grant as 401 is refused": {http.StatusUnauthorized, "invalid_grant", errGrantRefused},
+		"another 400 keeps everything":    {http.StatusBadRequest, "invalid_request", errProviderUnavailable},
+		"a bare 401 keeps everything":     {http.StatusUnauthorized, "", errProviderUnavailable},
+		"invalid_client keeps everything": {http.StatusUnauthorized, "invalid_client", errProviderUnavailable},
+		"invalid_client as 400 keeps":     {http.StatusBadRequest, "invalid_client", errProviderUnavailable},
+		"a 5xx keeps everything":          {http.StatusBadGateway, "", errProviderUnavailable},
+		"a 429 keeps everything":          {http.StatusTooManyRequests, "", errProviderUnavailable},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			p := newFakeProvider(t)
+			p.refreshStatus, p.refreshError = tt.status, tt.code
+			_, err := p.connect(t).Refresh(t.Context(), "rt-1")
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestProvider_Refresh_AnUnreachableProviderKeepsEverything(t *testing.T) {
+	t.Parallel()
+	p := newFakeProvider(t)
+	idp := p.connect(t)
+	p.srv.Close()
+	_, err := idp.Refresh(t.Context(), "rt-1")
+	require.ErrorIs(t, err, errProviderUnavailable)
+}
+
+func TestProvider_Refresh_ReturnsTheRotatedTokenOrTheOldOne(t *testing.T) {
+	t.Parallel()
+	p := newFakeProvider(t)
+	idp := p.connect(t)
+	p.refreshToken = "rt-2"
+	got, err := idp.Refresh(t.Context(), "rt-1")
+	require.NoError(t, err)
+	assert.Equal(t, "rt-2", got)
+	assert.Equal(t, "refresh_token", p.form.Get("grant_type"))
+	assert.Equal(t, "rt-1", p.form.Get("refresh_token"))
+
+	p.refreshToken = ""
+	got, err = idp.Refresh(t.Context(), "rt-1")
+	require.NoError(t, err)
+	assert.Equal(t, "rt-1", got, "a provider that does not rotate leaves the token as it was")
 }
 
 func TestDial_SignInsReuseOneDiscoveryAndKeySet_UntilItAgesOrACheckAsksFresh(t *testing.T) {

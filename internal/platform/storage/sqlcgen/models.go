@@ -1183,6 +1183,12 @@ type SetupCode struct {
 	ExpiresAt int64
 }
 
+type SsoGrant struct {
+	UserID       string
+	RefreshToken []byte
+	CheckedAt    int64
+}
+
 type SsoSetting struct {
 	ID           int64
 	IssuerUrl    string

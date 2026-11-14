@@ -91,9 +91,7 @@ func (r *SSORepo) TurnOnOnly(ctx context.Context, s sso.Settings, keepUsers []st
 				continue
 			}
 			ended = append(ended, row.ID)
-			evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: auth.TopicSessionRevoked, Payload: auth.SessionChangedEvent{
-				SessionID: row.ID, UserID: row.UserID, Client: auth.SessionClient(row.Client), Platform: row.Platform, Label: row.Label,
-			}})
+			evts = append(evts, sessionRevokedEvent(row))
 		}
 		if len(ended) > 0 {
 			if err := q.DeleteSessionsByID(ctx, ended); err != nil {
@@ -102,6 +100,12 @@ func (r *SSORepo) TurnOnOnly(ctx context.Context, s sso.Settings, keepUsers []st
 		}
 		return enqueueWorkspaceOutbox(ctx, tx, evts)
 	})
+}
+
+func sessionRevokedEvent(row sqlcgen.Session) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: auth.TopicSessionRevoked, Payload: auth.SessionChangedEvent{
+		SessionID: row.ID, UserID: row.UserID, Client: auth.SessionClient(row.Client), Platform: row.Platform, Label: row.Label,
+	}}
 }
 
 func (r *SSORepo) settingsParams(s sso.Settings) (sqlcgen.SetSSOSettingsParams, error) {
@@ -115,11 +119,15 @@ func (r *SSORepo) settingsParams(s sso.Settings) (sqlcgen.SetSSOSettingsParams, 
 	}, nil
 }
 
-// Delete removes the settings, with its events in the same transaction.
+// Delete removes the settings and every grant, with its events in the same transaction.
 func (r *SSORepo) Delete(ctx context.Context, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).DeleteSSOSettings(ctx); err != nil {
+		q := r.q.WithTx(tx)
+		if err := q.DeleteSSOSettings(ctx); err != nil {
 			return fmt.Errorf("delete sso settings: %w", err)
+		}
+		if err := q.DeleteSSOGrants(ctx); err != nil {
+			return fmt.Errorf("delete sso grants: %w", err)
 		}
 		return enqueueWorkspaceOutbox(ctx, tx, evts)
 	})
@@ -185,4 +193,95 @@ func (r *SSORepo) CanJoinAs(ctx context.Context, roleID string) (bool, error) {
 		return false, fmt.Errorf("get join role: %w", err)
 	}
 	return isOwner == 0, nil
+}
+
+// SaveGrant stores the person's refresh token sealed, replacing the one an earlier sign-in left.
+func (r *SSORepo) SaveGrant(ctx context.Context, userID, refreshToken string, at time.Time) error {
+	sealed, err := crypto.Encrypt(r.encKey, []byte(refreshToken))
+	if err != nil {
+		return fmt.Errorf("encrypt sso refresh token: %w", err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).UpsertSSOGrant(ctx, sqlcgen.UpsertSSOGrantParams{UserID: userID, RefreshToken: []byte(sealed), CheckedAt: at.Unix()}); err != nil {
+			return fmt.Errorf("save sso grant: %w", err)
+		}
+		return nil
+	})
+}
+
+// StaleGrants returns up to limit grants the provider has not confirmed since before, oldest first; a grant whose sealed
+// token no longer opens (the key changed) comes back with an empty RefreshToken, so one bad row never blocks the rest.
+func (r *SSORepo) StaleGrants(ctx context.Context, before time.Time, limit int) ([]sso.StoredGrant, error) {
+	rows, err := r.q.ListStaleSSOGrants(ctx, sqlcgen.ListStaleSSOGrantsParams{CheckedAt: before.Unix(), Limit: int64(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list stale sso grants: %w", err)
+	}
+	out := make([]sso.StoredGrant, 0, len(rows))
+	for _, row := range rows {
+		token, err := crypto.Decrypt(r.encKey, string(row.RefreshToken))
+		if err != nil {
+			token = nil
+		}
+		out = append(out, sso.StoredGrant{UserID: row.UserID, RefreshToken: string(token)})
+	}
+	return out, nil
+}
+
+// ConfirmGrant records that the provider still honours the grant at at, keeping the refresh token unless a new one came back.
+func (r *SSORepo) ConfirmGrant(ctx context.Context, userID, newRefreshToken string, at time.Time) error {
+	params := sqlcgen.TouchSSOGrantParams{UserID: userID, CheckedAt: at.Unix()}
+	if newRefreshToken != "" {
+		sealed, err := crypto.Encrypt(r.encKey, []byte(newRefreshToken))
+		if err != nil {
+			return fmt.Errorf("encrypt sso refresh token: %w", err)
+		}
+		params.RefreshToken = []byte(sealed)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).TouchSSOGrant(ctx, params); err != nil {
+			return fmt.Errorf("confirm sso grant: %w", err)
+		}
+		return nil
+	})
+}
+
+// DropGrant deletes the person's grant and leaves their sessions alone.
+func (r *SSORepo) DropGrant(ctx context.Context, userID string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteSSOGrant(ctx, userID); err != nil {
+			return fmt.Errorf("drop sso grant: %w", err)
+		}
+		return nil
+	})
+}
+
+// RefuseGrant deletes the person's grant and ends every session of theirs started through single sign-on, each with its
+// session.revoked event, in one transaction; it returns how many sessions ended.
+func (r *SSORepo) RefuseGrant(ctx context.Context, userID string) (int, error) {
+	ended := 0
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		rows, err := q.ListSSOSessionsByUser(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("list sso sessions: %w", err)
+		}
+		if err := q.DeleteSSOGrant(ctx, userID); err != nil {
+			return fmt.Errorf("delete sso grant: %w", err)
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		sessionIDs := make([]string, 0, len(rows))
+		evts := make([]eventbus.OutboxEvent, 0, len(rows))
+		for _, row := range rows {
+			sessionIDs = append(sessionIDs, row.ID)
+			evts = append(evts, sessionRevokedEvent(row))
+		}
+		if err := q.DeleteSessionsByID(ctx, sessionIDs); err != nil {
+			return fmt.Errorf("end sso sessions: %w", err)
+		}
+		ended = len(rows)
+		return enqueueWorkspaceOutbox(ctx, tx, evts)
+	})
+	return ended, err
 }

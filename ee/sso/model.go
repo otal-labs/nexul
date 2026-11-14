@@ -89,6 +89,18 @@ type Claims struct {
 	Picture       string
 }
 
+// Grant is what a code exchange returns: the verified claims and the refresh token, empty when the provider issues none.
+type Grant struct {
+	Claims       Claims
+	RefreshToken string
+}
+
+// StoredGrant is a person's refresh token as the last sign-in left it.
+type StoredGrant struct {
+	UserID       string
+	RefreshToken string
+}
+
 var (
 	errNeedsLicense = fmt.Errorf("%w: single sign-on needs a license key that unlocks it; add one in Settings, Instance", apperrs.ErrForbidden)
 	errUnverified   = fmt.Errorf("%w: the provider sent no verified email", apperrs.ErrUnauthorized)
