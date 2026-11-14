@@ -31,7 +31,7 @@ func (r *SessionsRepo) CreateSession(ctx context.Context, s *auth.Session, evts 
 		err := r.q.WithTx(tx).CreateSession(ctx, sqlcgen.CreateSessionParams{
 			ID: s.ID, UserID: s.UserID, TokenHash: s.TokenHash, Client: string(s.Client),
 			Platform: s.Platform, Label: s.Label, Ip: s.IP,
-			CreatedAt: s.CreatedAt.Unix(), LastActiveAt: s.LastActiveAt.Unix(), ExpiresAt: s.ExpiresAt.Unix(),
+			CreatedAt: s.CreatedAt.Unix(), LastActiveAt: s.LastActiveAt.Unix(), ExpiresAt: s.ExpiresAt.Unix(), Sso: boolToInt(s.SSO),
 		})
 		if err != nil {
 			return fmt.Errorf("insert session %s: %w", s.ID, classifyWriteErr(err))
@@ -165,5 +165,6 @@ func toSession(row sqlcgen.Session) *auth.Session {
 		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
 		LastActiveAt: time.Unix(row.LastActiveAt, 0).UTC(),
 		ExpiresAt:    time.Unix(row.ExpiresAt, 0).UTC(),
+		SSO:          row.Sso != 0,
 	}
 }

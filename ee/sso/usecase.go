@@ -51,6 +51,8 @@ type Config struct {
 	InstanceURL func(context.Context) (string, error)
 	// OwnerHasPasskey reports whether an instance Owner can still sign in with a passkey, which turning SSO-only on needs.
 	OwnerHasPasskey func(context.Context) (bool, error)
+	// InstanceOwners lists the instance Owners, whose sessions turning SSO-only on keeps.
+	InstanceOwners func(context.Context) ([]string, error)
 	// Secret keys the nonce and PKCE verifier each sign-in derives from its state.
 	Secret []byte
 	// Connect reaches the provider; nil dials it over HTTP.
@@ -160,10 +162,23 @@ func (s *Service) Update(ctx context.Context, p Patch) (View, error) {
 	}
 	next.UpdatedBy, next.UpdatedAt = actorID(ctx), s.cfg.Now()
 	evt := s.changed(ChangedEvent{DisplayName: next.DisplayName, IssuerURL: next.IssuerURL, Only: next.Only, ChangedBy: next.UpdatedBy}, next.UpdatedAt)
-	if err := s.cfg.Repo.Set(ctx, next, evt); err != nil {
+	if err := s.save(ctx, cur, next, evt); err != nil {
 		return View{}, err
 	}
 	return s.view(ctx, next)
+}
+
+// save stores next; turning SSO-only on also signs out everyone the switch now refuses: whoever did not sign in through
+// single sign-on and is not an instance Owner.
+func (s *Service) save(ctx context.Context, cur, next Settings, evt eventbus.OutboxEvent) error {
+	if !next.Only || cur.Only {
+		return s.cfg.Repo.Set(ctx, next, evt)
+	}
+	owners, err := s.cfg.InstanceOwners(ctx)
+	if err != nil {
+		return fmt.Errorf("list instance owners: %w", err)
+	}
+	return s.cfg.Repo.TurnOnOnly(ctx, next, owners, evt)
 }
 
 func (s *Service) validate(ctx context.Context, cur, next Settings) error {

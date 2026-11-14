@@ -15,7 +15,7 @@ export const SsoOnlyRow = ({ only }: SsoOnlyRowProps) => {
     <SettingsRow
       label="Only single sign-on"
       htmlFor="sso_only"
-      description="Hides every other way to sign in. The instance Owner's passkey still works, so a broken provider never locks everyone out."
+      description="Hides every other way to sign in and signs out everyone who didn't use single sign-on. Instance Owners stay signed in, and their passkey still works, so a broken provider never locks everyone out."
     >
       <Switch id="sso_only" checked={only} disabled={!writable || setOnly.isPending} onCheckedChange={(next) => setOnly.mutate(next)} />
     </SettingsRow>

@@ -12,6 +12,9 @@ type Repo interface {
 	// Get returns the zero Settings when the instance has none.
 	Get(ctx context.Context) (Settings, error)
 	Set(ctx context.Context, s Settings, evts ...eventbus.OutboxEvent) error
+	// TurnOnOnly saves s with Only on and, in the same transaction, ends every session not started through single
+	// sign-on except keepUsers', each with its session.revoked event.
+	TurnOnOnly(ctx context.Context, s Settings, keepUsers []string, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, evts ...eventbus.OutboxEvent) error
 }
 

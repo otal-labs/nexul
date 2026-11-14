@@ -429,7 +429,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	ssoSvc := sso.NewService(sso.Config{
 		Repo: store.SSO, Accounts: store.SSO, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
 		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL, OwnerHasPasskey: authSvc.InstanceOwnerHasPasskey,
-		Secret: []byte(cfg.AuthSecret),
+		InstanceOwners: accessSvc.InstanceOwners, Secret: []byte(cfg.AuthSecret),
 	})
 	authSvc.SetSSOOnly(ssoSvc.OnlySSO)
 	return &coreServices{

@@ -64,7 +64,7 @@ type ssoIn struct {
 	ClientSecret *string `json:"client_secret,omitempty" jsonschema:"The client secret or a secret reference; never returned."`
 	DisplayName  *string `json:"display_name,omitempty" jsonschema:"The name on the button, Sign in with <name>, up to 40 characters."`
 	JoinRoleID   *string `json:"join_role_id,omitempty" jsonschema:"The default workspace's role a first sign-in gives, any but Owner."`
-	Only         *bool   `json:"only,omitempty" jsonschema:"True hides every other sign-in; the Owner's passkey still works, so an Owner needs one first."`
+	Only         *bool   `json:"only,omitempty" jsonschema:"True hides other sign-ins and ends non-SSO sessions but Owners'; an Owner needs a passkey first."`
 	Remove       *bool   `json:"remove,omitempty" jsonschema:"True deletes the provider and brings the other sign-ins back."`
 }
 

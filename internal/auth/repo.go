@@ -95,9 +95,10 @@ type SetupCodeStore interface {
 
 // ConnectCodeStore keeps connect code hashes; Replace leaves the user exactly one code, Consume deletes it and names its user.
 type ConnectCodeStore interface {
-	ReplaceConnectCode(ctx context.Context, userID, hash string, createdAt, expiresAt time.Time) error
-	// ConsumeConnectCode returns the code's user and deletes it; a missing or expired code is ErrNotFound.
-	ConsumeConnectCode(ctx context.Context, hash string, now time.Time) (string, error)
+	// sso marks a code issued from a single sign-on session, whose phone session counts as one too.
+	ReplaceConnectCode(ctx context.Context, userID, hash string, sso bool, createdAt, expiresAt time.Time) error
+	// ConsumeConnectCode returns the code's user and its sso mark, and deletes it; a missing or expired code is ErrNotFound.
+	ConsumeConnectCode(ctx context.Context, hash string, now time.Time) (string, bool, error)
 }
 
 // PATStore persists PATs; only the hash reaches the store; Revoke is user-scoped, a repeat is ErrNotFound.

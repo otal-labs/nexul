@@ -38,7 +38,9 @@ func (s *Service) IssueConnectCode(ctx context.Context, userID, host string) (Co
 	}
 	now := s.cfg.Now().UTC()
 	expires := now.Add(connectCodeTTL)
-	if err := s.cfg.ConnectCodes.ReplaceConnectCode(ctx, userID, hashToken(raw), now, expires); err != nil {
+	ses := SessionFromCtx(ctx)
+	sso := ses != nil && ses.SSO
+	if err := s.cfg.ConnectCodes.ReplaceConnectCode(ctx, userID, hashToken(raw), sso, now, expires); err != nil {
 		return ConnectCode{}, fmt.Errorf("store connect code: %w", err)
 	}
 	return ConnectCode{Code: formatConnectCode(raw), Host: host, ExpiresAt: expires}, nil
@@ -67,7 +69,7 @@ func (s *Service) ExchangeConnectCode(ctx context.Context, addr, code string, de
 	if s.exchanges.blocked(addr, now) {
 		return "", errExchangeThrottled
 	}
-	userID, err := s.cfg.ConnectCodes.ConsumeConnectCode(ctx, hashToken(normalizeConnectCode(code)), now)
+	userID, sso, err := s.cfg.ConnectCodes.ConsumeConnectCode(ctx, hashToken(normalizeConnectCode(code)), now)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		s.exchanges.fail(addr, now)
 		return "", errInvalidConnectCode
@@ -75,9 +77,14 @@ func (s *Service) ExchangeConnectCode(ctx context.Context, addr, code string, de
 	if err != nil {
 		return "", fmt.Errorf("consume connect code: %w", err)
 	}
+	if !sso {
+		if err := s.requireOutsideSSOAllowed(ctx, userID); err != nil {
+			return "", err
+		}
+	}
 	label := phoneLabel(dev.Model)
 	logging.FromCtx(ctx).Info("phone connected", "user_id", userID, "model", label, "os", dev.OS, "app_version", dev.AppVersion)
-	return s.CreateSession(WithDevice(ctx, Device{Client: ClientPhone, Platform: phonePlatform(dev.OS), Label: label, IP: addr}), userID)
+	return s.CreateSession(WithDevice(ctx, Device{Client: ClientPhone, Platform: phonePlatform(dev.OS), Label: label, IP: addr, SSO: sso}), userID)
 }
 
 // phonePlatform names the phone's system from the OS it reports; only an iPhone says iOS.

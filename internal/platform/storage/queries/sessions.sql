@@ -1,6 +1,6 @@
 -- name: CreateSession :exec
-INSERT INTO sessions (id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO sessions (id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, sso)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetSessionByHash :one
 SELECT * FROM sessions WHERE token_hash = ?;
@@ -29,3 +29,9 @@ WHERE client = 'phone' AND push_token IS NOT NULL AND expires_at > sqlc.arg(now)
 
 -- name: ListSessionLastActive :many
 SELECT user_id, CAST(MAX(last_active_at) AS INTEGER) AS last_active_at FROM sessions GROUP BY user_id;
+
+-- name: ListSessionsOutsideSSO :many
+SELECT * FROM sessions WHERE sso = 0;
+
+-- name: DeleteSessionsByID :exec
+DELETE FROM sessions WHERE id IN (sqlc.slice('ids'));

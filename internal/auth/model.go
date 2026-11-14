@@ -317,6 +317,8 @@ type Session struct {
 	// Current marks the session the listing request itself came in on.
 	Current   bool   `json:"current"`
 	TokenHash string `json:"-"`
+	// SSO marks a session started through single sign-on, which turning SSO-only on keeps.
+	SSO bool `json:"-"`
 }
 
 // ConnectCode is what the Devices page shows a phone: the code as XXXX-XXXX-XXXX and the instance URL the QR link names.
@@ -339,6 +341,8 @@ type Device struct {
 	Platform string
 	Label    string
 	IP       string
+	// SSO is set when the sign-in went through single sign-on.
+	SSO bool
 }
 
 // GitHubGrant is what GitHub's token endpoint answers: a user token, and its refresh token when the App's tokens expire.

@@ -65,6 +65,56 @@ func TestSSORepo_Settings_AreSealedAtRestAndRoundTrip(t *testing.T) {
 	assert.Len(t, pending, 2)
 }
 
+func TestSSORepo_TurnOnOnly_EndsEverySessionOutsideSSOButTheKeptUsers(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	for _, u := range []string{"owner", "alice", "bob"} {
+		_, _, err := s.Users.UpsertUser(ctx, newTestUser(u, "gh-"+u, u))
+		require.NoError(t, err)
+	}
+	now := time.Now().UTC()
+	for _, ses := range []auth.Session{
+		{ID: "owner-github", UserID: "owner"},
+		{ID: "alice-sso", UserID: "alice", SSO: true},
+		{ID: "alice-github", UserID: "alice"},
+		{ID: "bob-phone", UserID: "bob", Client: auth.ClientPhone},
+	} {
+		ses.TokenHash, ses.CreatedAt, ses.LastActiveAt, ses.ExpiresAt = ses.ID, now, now, now.Add(time.Hour)
+		if ses.Client == "" {
+			ses.Client = auth.ClientBrowser
+		}
+		require.NoError(t, s.Sessions.CreateSession(ctx, &ses))
+	}
+	st := sso.Settings{IssuerURL: "https://login.example.com", ClientID: "c", ClientSecret: "s", DisplayName: "Acme", JoinRoleID: "r", Only: true}
+
+	require.NoError(t, s.SSO.TurnOnOnly(ctx, st, []string{"owner"}, eventbus.OutboxEvent{ID: "e1", Topic: sso.TopicChanged, Payload: sso.ChangedEvent{Only: true}}))
+
+	got, err := s.SSO.Get(ctx)
+	require.NoError(t, err)
+	assert.True(t, got.Only)
+	left := map[string][]string{}
+	for _, u := range []string{"owner", "alice", "bob"} {
+		sessions, err := s.Sessions.ListSessionsByUser(ctx, u)
+		require.NoError(t, err)
+		for _, ses := range sessions {
+			left[u] = append(left[u], ses.ID)
+		}
+	}
+	assert.Equal(t, map[string][]string{"owner": {"owner-github"}, "alice": {"alice-sso"}}, left)
+	pending, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	revoked := []string{}
+	for _, e := range pending {
+		if e.Topic == auth.TopicSessionRevoked {
+			revoked = append(revoked, string(e.Payload))
+		}
+	}
+	require.Len(t, revoked, 2, "one session.revoked per ended session, beside the settings change")
+	assert.Contains(t, revoked[0]+revoked[1], `"session_id":"alice-github"`)
+	assert.Contains(t, revoked[0]+revoked[1], `"session_id":"bob-phone"`)
+}
+
 func TestSSORepo_Create_AdmitsLikeAnInvitationDoes(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

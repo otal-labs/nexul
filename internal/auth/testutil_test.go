@@ -871,6 +871,7 @@ type fakeConnectCodes struct {
 
 type fakeConnectCode struct {
 	userID  string
+	sso     bool
 	expires time.Time
 }
 
@@ -878,7 +879,7 @@ func newFakeConnectCodes() *fakeConnectCodes {
 	return &fakeConnectCodes{byHash: map[string]fakeConnectCode{}}
 }
 
-func (f *fakeConnectCodes) ReplaceConnectCode(_ context.Context, userID, hash string, _, expiresAt time.Time) error {
+func (f *fakeConnectCodes) ReplaceConnectCode(_ context.Context, userID, hash string, sso bool, _, expiresAt time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.err != nil {
@@ -889,21 +890,21 @@ func (f *fakeConnectCodes) ReplaceConnectCode(_ context.Context, userID, hash st
 			delete(f.byHash, h)
 		}
 	}
-	f.byHash[hash] = fakeConnectCode{userID: userID, expires: expiresAt}
+	f.byHash[hash] = fakeConnectCode{userID: userID, sso: sso, expires: expiresAt}
 	f.replace++
 	return nil
 }
 
-func (f *fakeConnectCodes) ConsumeConnectCode(_ context.Context, hash string, now time.Time) (string, error) {
+func (f *fakeConnectCodes) ConsumeConnectCode(_ context.Context, hash string, now time.Time) (string, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.err != nil {
-		return "", f.err
+		return "", false, f.err
 	}
 	c, ok := f.byHash[hash]
 	if !ok || !now.Before(c.expires) {
-		return "", apperrs.ErrNotFound
+		return "", false, apperrs.ErrNotFound
 	}
 	delete(f.byHash, hash)
-	return c.userID, nil
+	return c.userID, c.sso, nil
 }

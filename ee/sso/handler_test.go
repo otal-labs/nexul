@@ -14,7 +14,7 @@ type fakeBrowser struct{ minted []string }
 
 func (fakeBrowser) SPAOrigin(*http.Request) string  { return "https://nexul.example.com" }
 func (fakeBrowser) SecureCookie(*http.Request) bool { return true }
-func (b *fakeBrowser) SessionFor(_ *http.Request, userID string) (string, error) {
+func (b *fakeBrowser) SSOSessionFor(_ *http.Request, userID string) (string, error) {
 	b.minted = append(b.minted, userID)
 	return "ses_" + userID, nil
 }

@@ -53,24 +53,66 @@ func (r *SSORepo) Get(ctx context.Context) (sso.Settings, error) {
 
 // Set replaces the settings, with its events in the same transaction.
 func (r *SSORepo) Set(ctx context.Context, s sso.Settings, evts ...eventbus.OutboxEvent) error {
-	sealed, err := crypto.Encrypt(r.encKey, []byte(s.ClientSecret))
+	params, err := r.settingsParams(s)
 	if err != nil {
-		return fmt.Errorf("encrypt sso client secret: %w", err)
-	}
-	only := int64(0)
-	if s.Only {
-		only = 1
+		return err
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).SetSSOSettings(ctx, sqlcgen.SetSSOSettingsParams{
-			IssuerUrl: s.IssuerURL, ClientID: s.ClientID, ClientSecret: sealed, DisplayName: s.DisplayName,
-			JoinRoleID: s.JoinRoleID, SsoOnly: only, UpdatedBy: s.UpdatedBy, UpdatedAt: s.UpdatedAt.Unix(),
-		})
-		if err != nil {
+		if err := r.q.WithTx(tx).SetSSOSettings(ctx, params); err != nil {
 			return fmt.Errorf("set sso settings: %w", err)
 		}
 		return enqueueWorkspaceOutbox(ctx, tx, evts)
 	})
+}
+
+// TurnOnOnly saves the settings and deletes every session not started through single sign-on outside keepUsers', with a
+// session.revoked event per session, in one transaction.
+func (r *SSORepo) TurnOnOnly(ctx context.Context, s sso.Settings, keepUsers []string, evts ...eventbus.OutboxEvent) error {
+	params, err := r.settingsParams(s)
+	if err != nil {
+		return err
+	}
+	keep := make(map[string]bool, len(keepUsers))
+	for _, id := range keepUsers {
+		keep[id] = true
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if err := q.SetSSOSettings(ctx, params); err != nil {
+			return fmt.Errorf("set sso settings: %w", err)
+		}
+		rows, err := q.ListSessionsOutsideSSO(ctx)
+		if err != nil {
+			return fmt.Errorf("list sessions outside sso: %w", err)
+		}
+		ended := []string{}
+		for _, row := range rows {
+			if keep[row.UserID] {
+				continue
+			}
+			ended = append(ended, row.ID)
+			evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: auth.TopicSessionRevoked, Payload: auth.SessionChangedEvent{
+				SessionID: row.ID, UserID: row.UserID, Client: auth.SessionClient(row.Client), Platform: row.Platform, Label: row.Label,
+			}})
+		}
+		if len(ended) > 0 {
+			if err := q.DeleteSessionsByID(ctx, ended); err != nil {
+				return fmt.Errorf("end sessions outside sso: %w", err)
+			}
+		}
+		return enqueueWorkspaceOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *SSORepo) settingsParams(s sso.Settings) (sqlcgen.SetSSOSettingsParams, error) {
+	sealed, err := crypto.Encrypt(r.encKey, []byte(s.ClientSecret))
+	if err != nil {
+		return sqlcgen.SetSSOSettingsParams{}, fmt.Errorf("encrypt sso client secret: %w", err)
+	}
+	return sqlcgen.SetSSOSettingsParams{
+		IssuerUrl: s.IssuerURL, ClientID: s.ClientID, ClientSecret: sealed, DisplayName: s.DisplayName,
+		JoinRoleID: s.JoinRoleID, SsoOnly: boolToInt(s.Only), UpdatedBy: s.UpdatedBy, UpdatedAt: s.UpdatedAt.Unix(),
+	}, nil
 }
 
 // Delete removes the settings, with its events in the same transaction.

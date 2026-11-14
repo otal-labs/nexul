@@ -101,7 +101,7 @@ func (s *Service) CreateSession(ctx context.Context, userID string) (string, err
 	}
 	ses := &Session{
 		ID: newUserID(), UserID: userID, Client: d.Client, Platform: d.Platform, Label: d.Label, IP: d.IP,
-		CreatedAt: now, LastActiveAt: now, ExpiresAt: now.Add(sessionTTL(d.Client)), TokenHash: hashToken(raw),
+		CreatedAt: now, LastActiveAt: now, ExpiresAt: now.Add(sessionTTL(d.Client)), TokenHash: hashToken(raw), SSO: d.SSO,
 	}
 	if err := s.cfg.Sessions.CreateSession(ctx, ses, sessionEvent(TopicSessionCreated, *ses)); err != nil {
 		return "", fmt.Errorf("create session: %w", err)
