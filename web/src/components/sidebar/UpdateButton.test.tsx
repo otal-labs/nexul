@@ -5,10 +5,13 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UpdateButton } from "@/components/sidebar/UpdateButton";
+import { getServerVersionKey } from "@/hooks/VersionHooks";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const renderButton = () =>
   render(
@@ -33,6 +36,23 @@ const withUpdate = (changes: unknown[]) => ({
 describe("UpdateButton", () => {
   beforeEach(() => {
     mocks.get.mockReset();
+    resetViewer();
+    viewer.instance = ["instance:read", "instance:write"];
+  });
+
+  it("renders nothing for a viewer who can't upgrade the instance", async () => {
+    viewer.instance = ["instance:read"];
+    viewer.showLocked = true;
+    const client = new QueryClient();
+    client.setQueryData([getServerVersionKey], withUpdate([]).data);
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <UpdateButton />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("link", { name: /Update available/ })).not.toBeInTheDocument();
   });
 
   it("renders nothing when the instance is current", async () => {
