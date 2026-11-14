@@ -120,7 +120,7 @@ Nexul is open core: one repository, two licenses.
 - Everything outside `ee/` is AGPL-3.0-or-later. Run it, change it, and
   self-host it at any company size. If you offer a modified copy over a
   network, publish your changes.
-- Everything inside `ee/` is under a commercial license (`ee/LICENSE`). You
+- Everything inside `ee/` is under a commercial license (`ee/LICENSE.md`). You
   can read and patch it, but running it in production needs a subscription.
   It holds the license key check, and `web/src/ee/` its settings page.
 
