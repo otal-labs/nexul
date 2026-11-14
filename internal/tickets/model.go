@@ -199,6 +199,8 @@ type TicketFilter struct {
 	// CategoryID keeps one category's tickets, or when empty the uncategorized ones; nil keeps every category.
 	CategoryID *string
 	StatusID   string
+	// Developer keeps the tickets of the developer with this login, or when empty the unassigned ones; nil keeps all.
+	Developer *string
 }
 
 // TicketScope is what access lets a ticket list show: everything with All, otherwise the tickets of ProjectIDs.

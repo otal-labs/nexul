@@ -407,6 +407,8 @@ func TestTicketList_CategoryAndStatusFilters(t *testing.T) {
 	assert.Equal(t, []string{"REF-2", "REF-3"}, keys(`{"category_id":""}`))
 	assert.Equal(t, []string{"REF-1", "REF-3"}, keys(`{"status_id":"st-todo"}`))
 	assert.Equal(t, []string{"REF-3"}, keys(`{"category_id":"","status_id":"st-todo"}`))
+	assert.Equal(t, []string{"REF-1"}, keys(`{"developer":"onik97"}`))
+	assert.Equal(t, []string{"REF-2", "REF-3"}, keys(`{"developer":""}`))
 }
 
 // TestTools_StorageFailuresPropagate checks every read a composite tool makes stops the call instead of shaping a partial result.

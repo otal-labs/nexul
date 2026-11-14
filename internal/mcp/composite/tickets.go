@@ -155,12 +155,13 @@ func ticketKey(prefix string, number int) string {
 type ticketListIn struct {
 	ProjectID   string  `json:"project_id,omitempty" jsonschema:"Only tickets in this project, from project_list."`
 	DocID       string  `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, from doc_list."`
-	Query       string  `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout. Title and body matches come first, by relevance, then note-only matches."`
-	BlockedOnly bool    `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker with no merged pull request that is not in a done-stage column."`
+	Query       string  `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout; note-only matches last."`
+	BlockedOnly bool    `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker."`
 	DueFrom     string  `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); either date leaves out tickets with none."`
 	DueTo       string  `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD)."`
 	CategoryID  *string `json:"category_id,omitempty" jsonschema:"Only this category's tickets, from project_get; an empty string for uncategorized ones."`
 	StatusID    string  `json:"status_id,omitempty" jsonschema:"Only this status column's tickets, from project_get."`
+	Developer   *string `json:"developer,omitempty" jsonschema:"Only this developer's tickets, by login; empty for unassigned."`
 	mcptool.PageArgs
 }
 
@@ -168,7 +169,7 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_list", "List tickets",
 		"Lists tickets without their bodies: each with its id, key, title, status column, type, "+
 			"category, people, due_on, labels, and, when blocked, the keys of the blockers it still waits on (waiting_on). "+
-			"Filters combine: project, category, column, source doc, full-text query, due date range (inclusive), or blocked tickets only. "+
+			"Filters combine: project, category, column, developer, source doc, full-text query, due date range (inclusive), or blocked tickets only. "+
 			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Tickets come oldest first, "+
 			"by due date when a due date filter is given, and by relevance with a query.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -181,7 +182,7 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			}
 			f := tickets.TicketFilter{
 				ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly, DueFrom: in.DueFrom, DueTo: in.DueTo,
-				CategoryID: in.CategoryID, StatusID: in.StatusID,
+				CategoryID: in.CategoryID, StatusID: in.StatusID, Developer: in.Developer,
 			}
 			found, total, err := t.PageTickets(ctx, f, in.Window())
 			if err != nil {

@@ -941,7 +941,8 @@ func (ticketRepo) ListDue(context.Context, string, string, string, tickets.Ticke
 // onBoard is the column and category part of the filter.
 func onBoard(f tickets.TicketFilter, t *tickets.Ticket) bool {
 	category := f.CategoryID == nil || t.CategoryID == *f.CategoryID
-	return category && (f.StatusID == "" || string(t.Status) == f.StatusID)
+	developer := f.Developer == nil || t.Developer == *f.Developer
+	return category && developer && (f.StatusID == "" || string(t.Status) == f.StatusID)
 }
 
 // dueWithin is the due-date part of the filter: a ticket with no date never matches a range.
