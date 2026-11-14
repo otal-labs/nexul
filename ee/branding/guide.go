@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// StableSelector is a hook in the web app that branding CSS may rely on; Probe is the text the web source must hold
-// for it, which a test checks so a rename cannot silently break a saved theme.
+// StableSelector is a hook branding CSS may rely on; Probe is the text a test finds for it in the web source.
 type StableSelector struct {
 	Selector string
 	What     string
@@ -29,8 +28,7 @@ var StableSelectors = []StableSelector{
 	{`[data-slot="label-chip"]`, "a ticket label", `data-slot="label-chip"`},
 }
 
-// StylingGuide is what an agent reads before writing branding CSS: the tokens to set, the selectors that stay, and
-// what the CSS may not do.
+// StylingGuide is what an agent reads before writing branding CSS: tokens, stable selectors, and what is refused.
 func StylingGuide() string {
 	var b strings.Builder
 	b.WriteString(`Branding CSS is plain CSS added after Nexul's own styles, on every page for everyone, the sign-in page included. instance_update with branding.css saves it, and every open page repaints at once.

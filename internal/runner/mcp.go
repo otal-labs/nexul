@@ -280,10 +280,9 @@ func instanceGetTool(s *Service) mcptool.Tool {
 // instanceDetail is instance_get's answer: the upgrade facts, the enterprise license, and the logs read when asked for.
 type instanceDetail struct {
 	UpgradeStatus
-	License  any `json:"license,omitempty"`
-	SSO      any `json:"sso,omitempty"`
-	Branding any `json:"branding,omitempty"`
-	// StylingGuide is how to write the branding's css, returned only when asked for.
+	License      any            `json:"license,omitempty"`
+	SSO          any            `json:"sso,omitempty"`
+	Branding     any            `json:"branding,omitempty"`
 	StylingGuide string         `json:"styling_guide,omitempty"`
 	Logs         *logstore.Page `json:"logs,omitempty"`
 }

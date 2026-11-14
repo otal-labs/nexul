@@ -17,9 +17,7 @@ var (
 	cssURL     = regexp.MustCompile(`(?i)url\s*\(\s*['"]?\s*`)
 )
 
-// validateCSS refuses CSS that could fetch anything from another address, so a theme can never send what a page shows
-// elsewhere. It refuses rather than strips, so the author learns which rule to change. A backslash is refused outright,
-// since an escape can spell any of the checked words.
+// validateCSS refuses CSS that could fetch from another address, naming the rule to change (ADR 0188).
 func validateCSS(css string) (string, error) {
 	css = strings.TrimSpace(css)
 	if len(css) > MaxCSSBytes {
