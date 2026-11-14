@@ -153,6 +153,7 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	if f.DocID != "" {
 		q.where("t.doc_id = ?", f.DocID)
 	}
+	q.onBoard(f)
 	if f.DueFrom != "" || f.DueTo != "" {
 		// The non-empty test is what lets idx_tickets_due_on serve the range.
 		q.where("t.due_on != ''")
@@ -192,6 +193,21 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	}
 	ts := withLabels(toTickets(rows), labels)
 	return inOrder(ids, ts, func(t *tickets.Ticket) string { return t.ID }), total, nil
+}
+
+// onBoard narrows the page to the filter's column and category.
+func (q *pageQuery) onBoard(f tickets.TicketFilter) {
+	if f.StatusID != "" {
+		q.where("t.status = ?", f.StatusID)
+	}
+	if f.CategoryID == nil {
+		return
+	}
+	if *f.CategoryID == "" {
+		q.where("COALESCE(t.category_id, '') = ''")
+		return
+	}
+	q.where("t.category_id = ?", *f.CategoryID)
 }
 
 func (r *TicketsRepo) ListByDoc(ctx context.Context, docID string) ([]*tickets.Ticket, error) {

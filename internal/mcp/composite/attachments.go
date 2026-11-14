@@ -61,7 +61,7 @@ func getAttachment(ctx context.Context, a *attachments.Service, ref string) (*at
 type attachmentCreateInput struct {
 	DocID            string `json:"doc_id,omitempty" jsonschema:"The doc to attach to, from doc_list. Send exactly one of doc_id, ticket_id, conversation_id, or memory_id."`
 	TicketID         string `json:"ticket_id,omitempty" jsonschema:"The ticket to attach to, by id or key such as REF-102."`
-	Workspace        string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
+	Workspace        string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, when the key is in more than one of yours."`
 	ConversationID   string `json:"conversation_id,omitempty" jsonschema:"The conversation to attach to, from conversation_list, or the conversation_id message_list returns for a ticket's or doc's thread."`
 	MemoryID         string `json:"memory_id,omitempty" jsonschema:"The memory to attach to, from memory_list."`
 	Name             string `json:"name,omitempty" jsonschema:"The file name, such as logo.png. Required with content; with from_attachment_id it defaults to the copied file's name."`

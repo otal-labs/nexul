@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // seedDueTickets files tickets across two workspaces and three projects; the number is the day of October they are due,
@@ -155,6 +158,44 @@ func TestTicketsRepo_Page_DueFilter(t *testing.T) {
 		assert.Equal(t, 6, total, "Page reads every workspace the scope reaches")
 		assert.Equal(t, []string{"t-b", "t-a", "t-same-day", "t-other"}, append(dueIDs(first), dueIDs(second)...))
 	})
+}
+
+func TestTicketsRepo_Page_CategoryAndStatusFilters(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	now := time.Now()
+	require.NoError(t, s.Categories.Create(t.Context(), &workspace.Category{ID: "c-1", ProjectID: "project-general", Name: "Sprint 1", CreatedAt: now, UpdatedAt: now}))
+	for _, tk := range []struct{ id, category, status string }{
+		{"t-sprint-open", "c-1", string(tickets.StatusOpen)},
+		{"t-sprint-done", "c-1", string(tickets.StatusDone)},
+		{"t-loose-open", "", string(tickets.StatusOpen)},
+	} {
+		ticket := newTestTicket(tk.id, "")
+		ticket.CategoryID, ticket.Status = tk.category, tickets.Status(tk.status)
+		require.NoError(t, s.Tickets.Create(t.Context(), ticket))
+	}
+	all := tickets.TicketScope{All: true}
+
+	tests := []struct {
+		name string
+		f    tickets.TicketFilter
+		want []string
+	}{
+		{"one category", tickets.TicketFilter{CategoryID: new("c-1")}, []string{"t-sprint-done", "t-sprint-open"}},
+		{"no category", tickets.TicketFilter{CategoryID: new("")}, []string{"t-loose-open"}},
+		{"one column", tickets.TicketFilter{StatusID: string(tickets.StatusOpen)}, []string{"t-loose-open", "t-sprint-open"}},
+		{"both combine", tickets.TicketFilter{CategoryID: new("c-1"), StatusID: string(tickets.StatusOpen)}, []string{"t-sprint-open"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts, total, err := s.Tickets.Page(t.Context(), tt.f, all, paging.Window{Limit: 50})
+			require.NoError(t, err)
+			got := dueIDs(ts)
+			slices.Sort(got)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, len(tt.want), total)
+		})
+	}
 }
 
 func TestTicketsRepo_ListDue_UsesTheDueIndex(t *testing.T) {
