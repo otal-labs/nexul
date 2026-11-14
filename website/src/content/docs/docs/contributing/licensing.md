@@ -14,7 +14,7 @@ source everywhere.
   modify it, and self-host it at any company size, as long as they honor the
   AGPL — including publishing modifications if you offer a modified copy of
   the software over a network.
-- Everything **inside `ee/`** is under a commercial license (`ee/LICENSE`).
+- Everything **inside `ee/`** is under a commercial license (`ee/LICENSE.md`).
   That code is public so you can read and patch it, but running it in
   production needs a valid Nexul subscription. Today the directory holds
   only the license; the commercial features are planned, not built.
