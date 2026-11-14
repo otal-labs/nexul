@@ -25,7 +25,7 @@ func resolve(ctx context.Context, s *Service, workspace, idOrKey string) (*Ticke
 
 type ticketDeleteIn struct {
 	ID        string `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
-	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
+	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, when the key is in more than one of yours."`
 }
 
 func ticketDeleteTool(s *Service) mcptool.Tool {
@@ -48,7 +48,7 @@ func ticketDeleteTool(s *Service) mcptool.Tool {
 
 type ticketTestReportIn struct {
 	ID          string   `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
-	Workspace   string   `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
+	Workspace   string   `json:"workspace,omitempty" jsonschema:"Workspace id or slug, when the key is in more than one of yours."`
 	Outcome     string   `json:"outcome" jsonschema:"pass or fail."`
 	Actual      string   `json:"actual,omitempty" jsonschema:"What happened instead, in markdown. Required when outcome is fail."`
 	Steps       string   `json:"steps,omitempty" jsonschema:"Steps to reproduce, in markdown."`

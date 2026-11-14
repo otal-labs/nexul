@@ -1,6 +1,7 @@
 package composite
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/textedit"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -133,6 +135,15 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 	}, nil
 }
 
+// key is the ticket's key, or its id when its project has no prefix.
+func (n *names) key(ctx context.Context, t *tickets.Ticket) (string, error) {
+	pn, err := n.of(ctx, t.ProjectID)
+	if err != nil {
+		return "", err
+	}
+	return cmp.Or(ticketKey(pn.prefix, t.Number), t.ID), nil
+}
+
 // ticketKey renders PREFIX-NUMBER (ADR 0004); a project without a prefix yet has no keys.
 func ticketKey(prefix string, number int) string {
 	if prefix == "" || number < 1 {
@@ -146,8 +157,10 @@ type ticketListIn struct {
 	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, from doc_list."`
 	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout. Title and body matches come first, by relevance, then note-only matches."`
 	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker with no merged pull request that is not in a done-stage column."`
-	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); tickets without a due date are left out."`
-	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD, such as 2026-10-31); tickets without a due date are left out."`
+	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); either date leaves out tickets with none."`
+	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD)."`
+	CategoryID  string `json:"category_id,omitempty" jsonschema:"Only this category's tickets, from project_get; none for uncategorized ones."`
+	StatusID    string `json:"status_id,omitempty" jsonschema:"Only this status column's tickets, from project_get."`
 	mcptool.PageArgs
 }
 
@@ -155,7 +168,7 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_list", "List tickets",
 		"Lists tickets without their bodies: each with its id, key, title, status column, type, "+
 			"category, people, due_on, labels, and, when blocked, the keys of the blockers it still waits on (waiting_on). "+
-			"Filters combine: project, source doc, full-text query, due date range (inclusive), or blocked tickets only. "+
+			"Filters combine: project, category, column, source doc, full-text query, due date range (inclusive), or blocked tickets only. "+
 			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Tickets come oldest first, "+
 			"by due date when a due date filter is given, and by relevance with a query.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -166,7 +179,10 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 					return nil, err
 				}
 			}
-			f := tickets.TicketFilter{ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly, DueFrom: in.DueFrom, DueTo: in.DueTo}
+			f := tickets.TicketFilter{
+				ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly, DueFrom: in.DueFrom, DueTo: in.DueTo,
+				CategoryID: in.CategoryID, StatusID: in.StatusID,
+			}
 			found, total, err := t.PageTickets(ctx, f, in.Window())
 			if err != nil {
 				return nil, err
@@ -205,7 +221,7 @@ func linkedKey(l tickets.LinkedTicket) string {
 
 type ticketGetIn struct {
 	ID        string `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
-	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when the key exists in more than one of your workspaces."`
+	Workspace string `json:"workspace,omitempty" jsonschema:"Workspace id or slug, when the key is in more than one of yours."`
 	Version   int    `json:"version,omitzero" jsonschema:"Read this version, not the current one."`
 }
 
@@ -454,8 +470,9 @@ func originOf(ctx context.Context, t *tickets.Service, w *workspace.Service, pro
 }
 
 type ticketUpdateIn struct {
-	ID               string        `json:"id" jsonschema:"The ticket's id or key, such as REF-102."`
-	Workspace        string        `json:"workspace,omitempty" jsonschema:"Workspace id or slug, from workspace_list; needed only when id is a key that exists in more than one of your workspaces. Keys in found_in_id and the blocker fields resolve in the ticket's own workspace unless this names another."`
+	ID               string        `json:"id,omitempty" jsonschema:"The ticket's id or key, such as REF-102."`
+	IDs              []string      `json:"ids,omitempty" jsonschema:"Instead of id, up to 100 ids or keys to change alike."`
+	Workspace        string        `json:"workspace,omitempty" jsonschema:"Workspace id or slug, when a key is in more than one of yours; found_in_id and blocker keys resolve there, or else in the ticket's own."`
 	Title            *string       `json:"title,omitempty" jsonschema:"A new title."`
 	Body             *string       `json:"body,omitempty" jsonschema:"The ticket's spec, as markdown; an empty string clears it. Change it only when a person asks; add anything you learn afterwards as a note with message_post's file, and if the spec looks wrong, say so and suggest the person edit it."`
 	ProjectID        *string       `json:"project_id,omitempty" jsonschema:"Move the ticket to this project, by its id from project_list; set status_id to one of its columns too."`
@@ -476,8 +493,8 @@ type ticketUpdateIn struct {
 	RemoveBlockerIDs []string      `json:"remove_blocker_ids,omitempty" jsonschema:"Ids or keys of blockers to remove."`
 	LinkPR           *prLinkIn     `json:"link_pr,omitempty" jsonschema:"A pull request to link to the ticket."`
 	LinkBranch       *branchLinkIn `json:"link_branch,omitempty" jsonschema:"A branch to link to the ticket."`
-	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink; one that is not linked changes nothing."`
-	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink; one that is not linked changes nothing."`
+	UnlinkPR         *prRefIn      `json:"unlink_pr,omitempty" jsonschema:"A linked pull request to unlink."`
+	UnlinkBranch     *branchLinkIn `json:"unlink_branch,omitempty" jsonschema:"A linked branch to unlink."`
 	RevertToVersion  *int          `json:"revert_to_version,omitempty" jsonschema:"Restore this version as a new one. Send it alone."`
 
 	Edits []textedit.Edit `json:"edits,omitempty" jsonschema:"Replace text in the body instead of resending it."`
@@ -486,7 +503,7 @@ type ticketUpdateIn struct {
 // revertsAlone reports a revert sent with no other field, which would otherwise be half applied.
 func (in ticketUpdateIn) revertsAlone() bool {
 	rest := in
-	rest.ID, rest.Workspace, rest.RevertToVersion = "", "", nil
+	rest.ID, rest.IDs, rest.Workspace, rest.RevertToVersion = "", nil, "", nil
 	return reflect.ValueOf(rest).IsZero()
 }
 
@@ -515,17 +532,29 @@ type ticketUpdateResult struct {
 	Ticket  ticketResult `json:"ticket"`
 }
 
+// ticketsUpdateResult is a change made to many tickets: the fields applied to each, and the tickets by key.
+type ticketsUpdateResult struct {
+	Applied []string `json:"applied"`
+	Tickets []string `json:"tickets"`
+}
+
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
 		"Changes a ticket's title, body, project, status column and position, type, category, developer "+
 			"and tester, due date, source doc, labels, found-in link, blockers, and linked pull requests and branches, which it can also unlink. "+
 			"The changes apply in the order the fields are listed here and "+
-			"stop at the first failure. revert_to_version restores a version, listed by ticket_get. To record a test "+
+			"stop at the first failure; with ids, each ticket in turn, returning the keys changed. revert_to_version restores a version, listed by ticket_get. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in ticketUpdateIn) (any, error) {
 			if err := in.checkFoundIn(); err != nil {
 				return nil, err
+			}
+			if err := in.checkTargets(); err != nil {
+				return nil, err
+			}
+			if len(in.IDs) > 0 {
+				return updateMany(ctx, t, w, in)
 			}
 			if in.RevertToVersion != nil && !in.revertsAlone() {
 				return nil, fmt.Errorf("%w: revert_to_version restores that version's whole body; send it alone, then update again", apperrs.ErrInvalid)
@@ -556,6 +585,99 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			}
 			return ticketUpdateResult{Applied: applied, Ticket: shaped}, nil
 		})
+}
+
+// checkTargets refuses a call naming no ticket, or naming many with a field that only fits one.
+func (in ticketUpdateIn) checkTargets() error {
+	if in.ID != "" && len(in.IDs) > 0 {
+		return fmt.Errorf("%w: send id or ids, not both", apperrs.ErrInvalid)
+	}
+	if len(in.IDs) == 0 {
+		return requireID(in.ID)
+	}
+	if len(in.IDs) > paging.MaxLimit {
+		return fmt.Errorf("%w: ids takes at most %d tickets, got %d; send the rest in another call", apperrs.ErrInvalid, paging.MaxLimit, len(in.IDs))
+	}
+	for _, f := range []struct {
+		name string
+		sent bool
+	}{
+		{"title", in.Title != nil}, {"body", in.Body != nil}, {"edits", len(in.Edits) > 0},
+		{"position", in.Position != nil}, {"revert_to_version", in.RevertToVersion != nil},
+	} {
+		if f.sent {
+			return fmt.Errorf("%w: %s changes one ticket; send it with id, not ids", apperrs.ErrInvalid, f.name)
+		}
+	}
+	return nil
+}
+
+func requireID(id string) error {
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("%w: id or ids is required; %s", apperrs.ErrInvalid, ticketHint)
+	}
+	return nil
+}
+
+// updateMany finds every ticket before changing any, so a mistyped key changes nothing, then updates them in order.
+func updateMany(ctx context.Context, t *tickets.Service, w *workspace.Service, in ticketUpdateIn) (ticketsUpdateResult, error) {
+	targets, err := resolveTickets(ctx, t, in.Workspace, in.IDs)
+	if err != nil {
+		return ticketsUpdateResult{}, fmt.Errorf("%w; nothing was changed", err)
+	}
+	n := newNames(w)
+	out := ticketsUpdateResult{Applied: []string{}, Tickets: []string{}}
+	for _, tk := range targets {
+		label, err := n.key(ctx, tk)
+		if err != nil {
+			return out, stoppedAt(tk.ID, out.Tickets, nil, err)
+		}
+		scope, err := keyScope(ctx, w, in.Workspace, tk.ProjectID)
+		if err != nil {
+			return out, stoppedAt(label, out.Tickets, nil, err)
+		}
+		u := ticketUpdate{t: t, w: w, id: tk.ID, workspace: scope}
+		applied, err := runSteps(t.WithViaMCPOn(ctx, tk.ID), u.steps(in))
+		if err != nil {
+			return out, stoppedAt(label, out.Tickets, applied, err)
+		}
+		out.Applied = applied
+		out.Tickets = append(out.Tickets, label)
+	}
+	return out, nil
+}
+
+// resolveTickets finds each ticket once, however many times ids names it.
+func resolveTickets(ctx context.Context, t *tickets.Service, workspace string, refs []string) ([]*tickets.Ticket, error) {
+	seen := map[string]bool{}
+	out := make([]*tickets.Ticket, 0, len(refs))
+	for _, ref := range refs {
+		tk, err := resolveTicket(ctx, t, workspace, ref)
+		if err != nil {
+			return nil, fmt.Errorf("ids: %s: %w", ref, err)
+		}
+		if seen[tk.ID] {
+			continue
+		}
+		seen[tk.ID] = true
+		out = append(out, tk)
+	}
+	return out, nil
+}
+
+// stoppedAt says which ticket failed and which were changed before it, with the fields it got when it got some.
+func stoppedAt(label string, done, applied []string, err error) error {
+	var partial *mcptool.PartialError
+	if errors.As(err, &partial) {
+		err = partial.Err
+	}
+	if len(applied) > 0 {
+		done = append(slices.Clone(done), label+" ("+strings.Join(applied, ", ")+")")
+	}
+	if len(done) == 0 {
+		return fmt.Errorf("%s: %w", label, err)
+	}
+	return &mcptool.PartialError{Applied: done, Err: fmt.Errorf("%s: %w; tickets after %s were not tried", label, err, label)}
 }
 
 func (in ticketUpdateIn) checkFoundIn() error {

@@ -536,7 +536,7 @@ func (r ticketRepo) Page(ctx context.Context, f tickets.TicketFilter, _ tickets.
 	all := r.filter(func(t *tickets.Ticket) bool {
 		return (f.ProjectID == "" || t.ProjectID == f.ProjectID) && (f.DocID == "" || t.DocID == f.DocID) &&
 			strings.Contains(strings.ToLower(t.Title+" "+t.Body), strings.ToLower(f.Query)) &&
-			(!f.BlockedOnly || len(blockers[t.ID]) > 0) && dueWithin(f, t)
+			(!f.BlockedOnly || len(blockers[t.ID]) > 0) && dueWithin(f, t) && onBoard(f, t)
 	})
 	if f.DueFrom != "" || f.DueTo != "" {
 		slices.SortStableFunc(all, func(a, b *tickets.Ticket) int { return strings.Compare(a.DueOn+a.ID, b.DueOn+b.ID) })
@@ -936,6 +936,12 @@ func (r ticketRepo) UpdateDueOn(_ context.Context, id, dueOn string, _ []tickets
 
 func (ticketRepo) ListDue(context.Context, string, string, string, tickets.TicketScope) ([]*tickets.Ticket, error) {
 	return nil, nil
+}
+
+// onBoard is the column and category part of the filter.
+func onBoard(f tickets.TicketFilter, t *tickets.Ticket) bool {
+	category := f.CategoryID == "" || t.CategoryID == f.CategoryID || (f.CategoryID == tickets.NoCategory && t.CategoryID == "")
+	return category && (f.StatusID == "" || string(t.Status) == f.StatusID)
 }
 
 // dueWithin is the due-date part of the filter: a ticket with no date never matches a range.

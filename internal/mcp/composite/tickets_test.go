@@ -1,6 +1,7 @@
 package composite
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -194,6 +195,11 @@ func TestTicketUpdate_Errors(t *testing.T) {
 		{"a missing category is not found", `{"id":"t-1","category_id":"c-nope"}`, apperrs.ErrNotFound},
 		{"a missing blocker is not found", `{"id":"t-1","add_blocker_ids":["REF-99"]}`, apperrs.ErrNotFound},
 		{"a blocker cycle is a conflict", `{"id":"t-2","add_blocker_ids":["REF-1"]}`, apperrs.ErrConflict},
+		{"id and ids together are invalid", `{"id":"t-1","ids":["t-2"],"developer":"lena"}`, apperrs.ErrInvalid},
+		{"a title for many tickets is invalid", `{"ids":["t-1","t-2"],"title":"x"}`, apperrs.ErrInvalid},
+		{"edits for many tickets are invalid", `{"ids":["t-1"],"edits":[{"find":"slow","replace":"fast"}]}`, apperrs.ErrInvalid},
+		{"a position for many tickets is invalid", `{"ids":["t-1"],"position":0}`, apperrs.ErrInvalid},
+		{"a missing ticket in ids is not found", `{"ids":["t-1","REF-99"],"category_id":""}`, apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -340,6 +346,67 @@ func TestTicketUpdate_NothingSentChangesNothing(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, got.(ticketUpdateResult).Applied)
 	assert.Equal(t, "Login times out", got.(ticketUpdateResult).Ticket.Title)
+}
+
+func TestTicketUpdate_IDsChangeEveryTicketTheSameWay(t *testing.T) {
+	f := newFixture(t)
+	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"ids":["REF-1","t-2","t-1"],"developer":"lena","category_id":""}`)
+	require.NoError(t, err)
+	assert.Equal(t, ticketsUpdateResult{Applied: []string{"category_id", "developer"}, Tickets: []string{"REF-1", "REF-2"}}, got,
+		"a ticket named twice changes once")
+	for _, id := range []string{"t-1", "t-2"} {
+		assert.Equal(t, "lena", f.w.tickets[id].Developer)
+		assert.Empty(t, f.w.tickets[id].CategoryID)
+	}
+}
+
+func TestTicketUpdate_IDsStopAtTheFirstTicketThatFails(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Retry", Status: "st-todo"})
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"ids":["REF-1","REF-2","REF-3"],"due_on":"2026-12-01","add_blocker_ids":["REF-2"]}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "REF-2: add_blocker_ids[0]: ")
+	assert.Contains(t, err.Error(), "already applied: REF-1, REF-2 (due_on)")
+	assert.Equal(t, "2026-12-01", f.w.tickets["t-2"].DueOn)
+	assert.Empty(t, f.w.tickets["t-3"].DueOn, "tickets after the failure are not tried")
+}
+
+func TestTicketUpdate_AMissingTicketInIDsChangesNothing(t *testing.T) {
+	f := newFixture(t)
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"ids":["REF-2","REF-99"],"developer":"lena"}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.Contains(t, err.Error(), "REF-99")
+	assert.Contains(t, err.Error(), "nothing was changed")
+	assert.Empty(t, f.w.tickets["t-2"].Developer)
+}
+
+func TestTicketUpdate_IDsTakeOnePageOfTickets(t *testing.T) {
+	refs := make([]string, 101)
+	for i := range refs {
+		refs[i] = `"t-1"`
+	}
+	_, err := call(t, asUser(t.Context()), newFixture(t).ticketTools(), "ticket_update", `{"ids":[`+strings.Join(refs, ",")+`],"developer":"lena"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "at most 100")
+}
+
+func TestTicketList_CategoryAndStatusFilters(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Retry", Status: "st-todo"})
+	keys := func(args string) []string {
+		t.Helper()
+		got, err := call(t, t.Context(), f.ticketTools(), "ticket_list", args)
+		require.NoError(t, err)
+		var out []string
+		for _, r := range got.(mcptool.Page[ticketResult]).Items {
+			out = append(out, r.Key)
+		}
+		return out
+	}
+	assert.Equal(t, []string{"REF-1"}, keys(`{"category_id":"c-1"}`))
+	assert.Equal(t, []string{"REF-2", "REF-3"}, keys(`{"category_id":"none"}`))
+	assert.Equal(t, []string{"REF-1", "REF-3"}, keys(`{"status_id":"st-todo"}`))
+	assert.Equal(t, []string{"REF-3"}, keys(`{"category_id":"none","status_id":"st-todo"}`))
 }
 
 // TestTools_StorageFailuresPropagate checks every read a composite tool makes stops the call instead of shaping a partial result.
