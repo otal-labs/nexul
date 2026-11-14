@@ -421,16 +421,33 @@ func linkedAll(ls []tickets.LinkedTicket) []linkedResult {
 }
 
 type ticketCreateIn struct {
-	ProjectID     string `json:"project_id" jsonschema:"The project's id, from project_list."`
-	Title         string `json:"title" jsonschema:"A short summary."`
-	Body          string `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omit it with a type_id to start from that template."`
-	TypeID        string `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get. Omit for the project's first type."`
-	CategoryID    string `json:"category_id,omitempty" jsonschema:"The category's id, from project_get."`
-	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, or me."`
-	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it, or me."`
-	DocID         string `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list."`
-	OriginID      string `json:"origin_id,omitempty" jsonschema:"For a bug: the id or key of the ticket it was found in, such as REF-98."`
-	OriginUnknown bool   `json:"origin_unknown,omitzero" jsonschema:"For a bug: true when nobody knows which ticket it was found in."`
+	ProjectID     string        `json:"project_id" jsonschema:"The project's id, from project_list."`
+	Title         string        `json:"title,omitempty" jsonschema:"A short summary."`
+	Tickets       []newTicketIn `json:"tickets,omitempty" jsonschema:"Instead of title and body, up to 100 tickets sharing every other field."`
+	Body          string        `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omit it with a type_id to start from that template."`
+	TypeID        string        `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get. Omit for the project's first type."`
+	CategoryID    string        `json:"category_id,omitempty" jsonschema:"The category's id, from project_get."`
+	Developer     string        `json:"developer,omitempty" jsonschema:"The member login who builds it, or me."`
+	Tester        string        `json:"tester,omitempty" jsonschema:"The member login who tests it, or me."`
+	DocID         string        `json:"doc_id,omitempty" jsonschema:"The doc this ticket is derived from, from doc_list."`
+	OriginID      string        `json:"origin_id,omitempty" jsonschema:"For a bug: the id or key of the ticket it was found in, such as REF-98."`
+	OriginUnknown bool          `json:"origin_unknown,omitzero" jsonschema:"For a bug: true when nobody knows which ticket it was found in."`
+}
+
+type newTicketIn struct {
+	Title string `json:"title" jsonschema:"A short summary."`
+	Body  string `json:"body,omitempty" jsonschema:"The body in markdown."`
+}
+
+// ticketsCreateResult is a batch of new tickets by key, in the order they were sent.
+type ticketsCreateResult struct {
+	Tickets []createdTicket `json:"tickets"`
+}
+
+type createdTicket struct {
+	ID    string `json:"id"`
+	Key   string `json:"key,omitempty"`
+	Title string `json:"title"`
 }
 
 func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
@@ -439,25 +456,91 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"Nexul on behalf of you. project_get lists the project's ticket types with their body_template. "+
 			"A bug (the type named bug) needs origin_id, the ticket it was found in, or origin_unknown true "+
 			"when nobody knows; never guess an origin. It starts in the project's first backlog column; set its "+
-			"status, labels, and blockers afterwards with ticket_update.",
+			"status, labels, and blockers afterwards with ticket_update. With tickets it creates each in order, stops at the first "+
+			"that fails, and returns their keys.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in ticketCreateIn) (any, error) {
 			if err := meToLogin(ctx, t, &in.Developer, &in.Tester); err != nil {
+				return nil, err
+			}
+			if err := in.checkBatch(); err != nil {
 				return nil, err
 			}
 			originID, err := originOf(ctx, t, w, in.ProjectID, in.OriginID)
 			if err != nil {
 				return nil, err
 			}
-			created, err := t.Create(ctx, in.ProjectID, in.Title, in.Body, in.DocID, in.Developer, tickets.CreateOptions{
-				CategoryID: in.CategoryID, TypeID: in.TypeID, Tester: in.Tester, ViaMCP: true,
-				OriginID: originID, OriginUnknown: in.OriginUnknown,
-			})
+			if len(in.Tickets) > 0 {
+				return createMany(ctx, t, w, in, originID)
+			}
+			created, err := createOne(ctx, t, in, originID, newTicketIn{Title: in.Title, Body: in.Body})
 			if err != nil {
-				return nil, fmt.Errorf("%w (%s)", err, createHint)
+				return nil, err
 			}
 			return newNames(w).ticket(ctx, created)
 		})
+}
+
+func createOne(ctx context.Context, t *tickets.Service, in ticketCreateIn, originID string, one newTicketIn) (*tickets.Ticket, error) {
+	created, err := t.Create(ctx, in.ProjectID, one.Title, one.Body, in.DocID, in.Developer, tickets.CreateOptions{
+		CategoryID: in.CategoryID, TypeID: in.TypeID, Tester: in.Tester, ViaMCP: true,
+		OriginID: originID, OriginUnknown: in.OriginUnknown,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w (%s)", err, createHint)
+	}
+	return created, nil
+}
+
+// checkBatch refuses a call with no title and no tickets, both at once, a batch past one page, or a blank title in it,
+// so a batch that is bound to fail creates nothing.
+func (in ticketCreateIn) checkBatch() error {
+	if len(in.Tickets) == 0 {
+		if in.Title == "" {
+			return fmt.Errorf("%w: title or tickets is required", apperrs.ErrInvalid)
+		}
+		return nil
+	}
+	if in.Title != "" || in.Body != "" {
+		return fmt.Errorf("%w: send title and body, or tickets, not both", apperrs.ErrInvalid)
+	}
+	if len(in.Tickets) > paging.MaxLimit {
+		return fmt.Errorf("%w: tickets takes at most %d, got %d; send the rest in another call", apperrs.ErrInvalid, paging.MaxLimit, len(in.Tickets))
+	}
+	for i, one := range in.Tickets {
+		if strings.TrimSpace(one.Title) == "" {
+			return fmt.Errorf("%w: tickets[%d] has no title; nothing was created", apperrs.ErrInvalid, i)
+		}
+	}
+	return nil
+}
+
+// createMany creates the batch in order and stops at the first failure, naming the tickets already created.
+func createMany(ctx context.Context, t *tickets.Service, w *workspace.Service, in ticketCreateIn, originID string) (ticketsCreateResult, error) {
+	n := newNames(w)
+	out := ticketsCreateResult{Tickets: make([]createdTicket, 0, len(in.Tickets))}
+	done := []string{}
+	for i, one := range in.Tickets {
+		created, err := createOne(ctx, t, in, originID, one)
+		if err != nil {
+			return out, batchStopped(fmt.Sprintf("tickets[%d]", i), done, err)
+		}
+		key, err := n.key(ctx, created)
+		if err != nil {
+			return out, batchStopped(fmt.Sprintf("tickets[%d]", i), append(done, created.ID), err)
+		}
+		done = append(done, key)
+		out.Tickets = append(out.Tickets, createdTicket{ID: created.ID, Key: key, Title: created.Title})
+	}
+	return out, nil
+}
+
+// batchStopped says which item failed and which were created before it.
+func batchStopped(item string, done []string, err error) error {
+	if len(done) == 0 {
+		return fmt.Errorf("%s: %w; nothing was created", item, err)
+	}
+	return &mcptool.PartialError{Applied: done, Err: fmt.Errorf("%s: %w; the tickets after it were not tried", item, err)}
 }
 
 // keyScope is where related ticket keys resolve: the workspace the caller named, else the project's own.

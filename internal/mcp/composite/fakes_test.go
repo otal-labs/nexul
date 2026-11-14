@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -74,6 +75,8 @@ func (r *rows[T]) reorder(ids []string) error {
 
 // world is the one store behind every fake repo, so a move in one domain shows in the other, as in SQLite.
 type world struct {
+	// capacity, when set, refuses a new ticket once this many exist, so a test can fail a batch part way.
+	capacity   int
 	tickets    map[string]*tickets.Ticket
 	order      []string
 	links      []tickets.TicketLink
@@ -226,6 +229,9 @@ type ticketRepo struct {
 }
 
 func (r ticketRepo) Create(_ context.Context, t *tickets.Ticket, _ ...eventbus.OutboxEvent) error {
+	if r.w.capacity > 0 && len(r.w.tickets) >= r.w.capacity {
+		return fmt.Errorf("%w: the project is full", apperrs.ErrConflict)
+	}
 	r.w.addTicket(t)
 	return nil
 }

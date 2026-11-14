@@ -167,6 +167,9 @@ decide whether an agent picks the right tool.
     the parent's `update`.
   - A reversible toggle (archive and restore, enable and disable) is a field
     on `update`, so the way back is as visible as the way in.
+  - The same change to many records is a list field on the tool (`ids` on
+    `ticket_update`, `tickets` on `ticket_create`, ADR 0191), never a `_many`
+    tool; it stops at the first record that fails and names the ones done.
   - Small related reads return together: a project's `get` includes its
     statuses, categories, and ticket types, because an agent needs all three
     before it can file a ticket.

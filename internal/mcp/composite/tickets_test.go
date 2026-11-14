@@ -145,6 +145,10 @@ func TestTicketCreate_Errors(t *testing.T) {
 		{"a bug without an origin is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-bug"}`, apperrs.ErrInvalid, "project_get lists"},
 		{"an unknown ticket type is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-nope"}`, apperrs.ErrInvalid, "project_get lists"},
 		{"an origin and unknown together are invalid", `{"project_id":"p-1","title":"Crash","origin_id":"REF-1","origin_unknown":true}`, apperrs.ErrInvalid, "project_get lists"},
+		{"a title and tickets together are invalid", `{"project_id":"p-1","title":"One","tickets":[{"title":"Two"}]}`, apperrs.ErrInvalid, "not both"},
+		{"a blank title in a batch creates nothing", `{"project_id":"p-1","tickets":[{"title":"Fine"},{"title":" "}]}`, apperrs.ErrInvalid, "tickets[1]"},
+		{"a batch item without a title is invalid", `{"project_id":"p-1","tickets":[{"body":"No title"}]}`, apperrs.ErrInvalid, ""},
+		{"a batch of a bug without an origin is invalid", `{"project_id":"p-1","type_id":"tt-bug","tickets":[{"title":"Crash"}]}`, apperrs.ErrInvalid, "nothing was created"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -155,6 +159,46 @@ func TestTicketCreate_Errors(t *testing.T) {
 			assert.Len(t, f.w.tickets, 2)
 		})
 	}
+}
+
+func TestTicketCreate_ABatchSharesEveryOtherField(t *testing.T) {
+	f := newFixture(t)
+	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_create",
+		`{"project_id":"p-1","type_id":"tt-task","category_id":"c-1","developer":"lena","tickets":[{"title":"Parse"},{"title":"Store","body":"In SQLite."}]}`)
+	require.NoError(t, err)
+	created := got.(ticketsCreateResult).Tickets
+	require.Len(t, created, 2)
+	assert.Equal(t, []string{"REF-3", "REF-4"}, []string{created[0].Key, created[1].Key}, "in the order sent")
+	for _, c := range created {
+		tk := f.w.tickets[c.ID]
+		assert.Equal(t, "tt-task", tk.TypeID)
+		assert.Equal(t, "c-1", tk.CategoryID)
+		assert.Equal(t, "lena", tk.Developer)
+	}
+	assert.Equal(t, "## What needs doing\n", f.w.tickets[created[0].ID].Body, "a ticket sent without a body starts from the type's template")
+	assert.Equal(t, "In SQLite.", f.w.tickets[created[1].ID].Body)
+}
+
+func TestTicketCreate_ABatchStopsAtTheFirstFailureAndNamesWhatWasCreated(t *testing.T) {
+	f := newFixture(t)
+	f.w.capacity = 3
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_create", `{"project_id":"p-1","tickets":[{"title":"One"},{"title":"Two"},{"title":"Three"}]}`)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "tickets[1]: ")
+	assert.Contains(t, err.Error(), "already applied: REF-3")
+	assert.Len(t, f.w.tickets, 3, "nothing after the failure is tried")
+}
+
+func TestTicketCreate_ABatchTakesOnePage(t *testing.T) {
+	items := make([]string, 101)
+	for i := range items {
+		items[i] = `{"title":"t"}`
+	}
+	f := newFixture(t)
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_create", `{"project_id":"p-1","tickets":[`+strings.Join(items, ",")+`]}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "at most 100")
+	assert.Len(t, f.w.tickets, 2)
 }
 
 func TestTicketCreate(t *testing.T) {
