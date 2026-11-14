@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { INSTANCE_VERSION_SECTION_URL, UpdateChangelog } from "@/components/sidebar/UpdateChangelog";
 import { UpdateDot } from "@/components/UpdateDot";
+import { useActionState } from "@/hooks/useActionState";
 import { useServerVersion } from "@/hooks/VersionHooks";
 import { cn } from "@/lib/utils";
 
@@ -11,11 +12,12 @@ interface UpdateButtonProps {
   className?: string;
 }
 
-// Hover (or focus) previews what changed; a click or tap goes to the instance version settings to upgrade.
+// Only for whoever can upgrade; hover (or focus) previews what changed, a click goes to the instance version settings.
 export const UpdateButton = ({ className }: UpdateButtonProps) => {
   const { data } = useServerVersion();
+  const canUpgrade = useActionState({ permission: "instance:write" }).state === "live";
 
-  if (!data?.update_available || !data.latest) return null;
+  if (!canUpgrade || !data?.update_available || !data.latest) return null;
 
   return (
     <HoverCard openDelay={100} closeDelay={150}>

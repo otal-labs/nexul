@@ -16,6 +16,8 @@ The `instance` runner runs the upgrade on the server, so it keeps going while th
 
 The button is missing when the instance is a development build, is already on the newest release, or its `instance` runner is offline or busy. The section says which.
 
+When a newer release is out, a download icon beside the sidebar's collapse toggle opens **Instance version**. Hovering it lists what changed. It shows only for someone whose role can update instance settings, the permission an upgrade needs.
+
 Each download is retried a few times, so a release host's brief outage doesn't stop an upgrade. If the upgrade still stops before the restart, the section marks the install phase failed within seconds, shows the upgrade's error, and its button reads **Try again**. If the instance is still on the old version after fifteen minutes, the section reports the upgrade as failed too. Read the upgrade's output on the server:
 
 ```sh
