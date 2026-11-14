@@ -940,7 +940,7 @@ func (ticketRepo) ListDue(context.Context, string, string, string, tickets.Ticke
 
 // onBoard is the column and category part of the filter.
 func onBoard(f tickets.TicketFilter, t *tickets.Ticket) bool {
-	category := f.CategoryID == "" || t.CategoryID == f.CategoryID || (f.CategoryID == tickets.NoCategory && t.CategoryID == "")
+	category := f.CategoryID == nil || t.CategoryID == *f.CategoryID
 	return category && (f.StatusID == "" || string(t.Status) == f.StatusID)
 }
 

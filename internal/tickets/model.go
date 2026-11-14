@@ -196,13 +196,10 @@ type TicketFilter struct {
 	BlockedOnly bool
 	// DueFrom and DueTo keep tickets due within those YYYY-MM-DD days, inclusive; an empty end is open.
 	DueFrom, DueTo string
-	// CategoryID keeps one category's tickets, or with NoCategory the uncategorized ones.
-	CategoryID string
+	// CategoryID keeps one category's tickets, or when empty the uncategorized ones; nil keeps every category.
+	CategoryID *string
 	StatusID   string
 }
-
-// NoCategory is the CategoryID filter that keeps tickets without a category.
-const NoCategory = "none"
 
 // TicketScope is what access lets a ticket list show: everything with All, otherwise the tickets of ProjectIDs.
 type TicketScope struct {

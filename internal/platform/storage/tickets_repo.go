@@ -200,13 +200,14 @@ func (q *pageQuery) onBoard(f tickets.TicketFilter) {
 	if f.StatusID != "" {
 		q.where("t.status = ?", f.StatusID)
 	}
-	if f.CategoryID == tickets.NoCategory {
+	if f.CategoryID == nil {
+		return
+	}
+	if *f.CategoryID == "" {
 		q.where("COALESCE(t.category_id, '') = ''")
 		return
 	}
-	if f.CategoryID != "" {
-		q.where("t.category_id = ?", f.CategoryID)
-	}
+	q.where("t.category_id = ?", *f.CategoryID)
 }
 
 func (r *TicketsRepo) ListByDoc(ctx context.Context, docID string) ([]*tickets.Ticket, error) {

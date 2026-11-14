@@ -153,14 +153,14 @@ func ticketKey(prefix string, number int) string {
 }
 
 type ticketListIn struct {
-	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only tickets in this project, from project_list."`
-	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, from doc_list."`
-	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout. Title and body matches come first, by relevance, then note-only matches."`
-	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker with no merged pull request that is not in a done-stage column."`
-	DueFrom     string `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); either date leaves out tickets with none."`
-	DueTo       string `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD)."`
-	CategoryID  string `json:"category_id,omitempty" jsonschema:"Only this category's tickets, from project_get; none for uncategorized ones."`
-	StatusID    string `json:"status_id,omitempty" jsonschema:"Only this status column's tickets, from project_get."`
+	ProjectID   string  `json:"project_id,omitempty" jsonschema:"Only tickets in this project, from project_list."`
+	DocID       string  `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, from doc_list."`
+	Query       string  `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and thread notes, such as login timeout. Title and body matches come first, by relevance, then note-only matches."`
+	BlockedOnly bool    `json:"blocked_only,omitzero" jsonschema:"Only tickets waiting on a blocker with no merged pull request that is not in a done-stage column."`
+	DueFrom     string  `json:"due_from,omitempty" jsonschema:"Only tickets due on or after this date (YYYY-MM-DD, such as 2026-10-01); either date leaves out tickets with none."`
+	DueTo       string  `json:"due_to,omitempty" jsonschema:"Only tickets due on or before this date (YYYY-MM-DD)."`
+	CategoryID  *string `json:"category_id,omitempty" jsonschema:"Only this category's tickets, from project_get; an empty string for uncategorized ones."`
+	StatusID    string  `json:"status_id,omitempty" jsonschema:"Only this status column's tickets, from project_get."`
 	mcptool.PageArgs
 }
 

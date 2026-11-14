@@ -181,10 +181,10 @@ func TestTicketsRepo_Page_CategoryAndStatusFilters(t *testing.T) {
 		f    tickets.TicketFilter
 		want []string
 	}{
-		{"one category", tickets.TicketFilter{CategoryID: "c-1"}, []string{"t-sprint-done", "t-sprint-open"}},
-		{"no category", tickets.TicketFilter{CategoryID: tickets.NoCategory}, []string{"t-loose-open"}},
+		{"one category", tickets.TicketFilter{CategoryID: new("c-1")}, []string{"t-sprint-done", "t-sprint-open"}},
+		{"no category", tickets.TicketFilter{CategoryID: new("")}, []string{"t-loose-open"}},
 		{"one column", tickets.TicketFilter{StatusID: string(tickets.StatusOpen)}, []string{"t-loose-open", "t-sprint-open"}},
-		{"both combine", tickets.TicketFilter{CategoryID: "c-1", StatusID: string(tickets.StatusOpen)}, []string{"t-sprint-open"}},
+		{"both combine", tickets.TicketFilter{CategoryID: new("c-1"), StatusID: string(tickets.StatusOpen)}, []string{"t-sprint-open"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
