@@ -447,6 +447,7 @@ func (s *Service) update(ctx context.Context, id, title, body string, restoredFr
 	if title == "" {
 		return nil, fmt.Errorf("%w: title is required", apperrs.ErrInvalid)
 	}
+	fromMarkdown := !richtext.IsStructured(body)
 	body, err := richtext.Normalize(body)
 	if err != nil {
 		return nil, fmt.Errorf("%w: body is not valid document content", apperrs.ErrInvalid)
@@ -454,6 +455,9 @@ func (s *Service) update(ctx context.Context, id, title, body string, restoredFr
 	current, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
+	}
+	if fromMarkdown {
+		body = richtext.KeepTableSizes(current.Body, body)
 	}
 	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
 		return nil, err

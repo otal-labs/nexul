@@ -17,3 +17,4 @@ predates the conversion passes through unchanged.
 Decided 2026-08-12.
 Amended 2026-09-30: a person mention is a node holding the user id, converted as `[@login](/people/<user id>)`.
 Amended by ADR 0110: a note's file is markdown-canonical, edited live without a stored rich-text body.
+Amended 2026-11-14: table column widths and row heights, which markdown cannot express, carry over table by table when a markdown body replaces a structured doc body.
