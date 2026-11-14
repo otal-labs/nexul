@@ -437,7 +437,7 @@ describe("CreateTicketForm", () => {
 
     expect(await screen.findByText("t-20")).toBeInTheDocument();
     expect(uploadedOwners()).toEqual(["t-20"]);
-    const saved = vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string };
+    const saved = await vi.waitFor(() => vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string });
     expect(saved.body).toContain('"src":"/api/attachments/a-shot.png"');
     expect(saved.body).not.toContain("blob:");
   });
@@ -454,9 +454,30 @@ describe("CreateTicketForm", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(await screen.findByText("t-20")).toBeInTheDocument();
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("shot-fail.png"));
-    const saved = vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string };
+    const saved = await vi.waitFor(() => vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string });
     expect(saved.body).toContain('"src":"/api/attachments/a-shot.png"');
     expect(saved.body).not.toContain("blob:");
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("shot-fail.png"));
+  });
+
+  it("closes once the ticket exists, while its pasted image is still uploading", async () => {
+    const user = userEvent.setup();
+    mockReferenceData();
+    mockCreateWithUploads();
+    vi.mocked(api.post).mockImplementation(async (url: string) => {
+      if (url === "/api/tickets") return { data: { id: "t-20", title: "With a screenshot" } };
+      if (url === "/api/attachments") return new Promise(() => {});
+      return { data: { chips: [] } };
+    });
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(await screen.findByLabelText("Title"), "With a screenshot");
+    pasteFiles([new File(["png"], "shot.png", { type: "image/png" })]);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByText("t-20")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(uploadedOwners()).toEqual(["t-20"]);
   });
 });
