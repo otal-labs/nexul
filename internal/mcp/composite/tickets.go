@@ -439,7 +439,6 @@ type newTicketIn struct {
 	Body  string `json:"body,omitempty" jsonschema:"The body in markdown."`
 }
 
-// ticketsCreateResult is a batch of new tickets by key, in the order they were sent.
 type ticketsCreateResult struct {
 	Tickets []createdTicket `json:"tickets"`
 }
@@ -492,8 +491,7 @@ func createOne(ctx context.Context, t *tickets.Service, in ticketCreateIn, origi
 	return created, nil
 }
 
-// checkBatch refuses a call with no title and no tickets, both at once, a batch past one page, or a blank title in it,
-// so a batch that is bound to fail creates nothing.
+// checkBatch refuses up front what would fail part way, so a doomed batch creates nothing.
 func (in ticketCreateIn) checkBatch() error {
 	if len(in.Tickets) == 0 {
 		if in.Title == "" {
@@ -535,7 +533,6 @@ func createMany(ctx context.Context, t *tickets.Service, w *workspace.Service, i
 	return out, nil
 }
 
-// batchStopped says which item failed and which were created before it.
 func batchStopped(item string, done []string, err error) error {
 	if len(done) == 0 {
 		return fmt.Errorf("%s: %w; nothing was created", item, err)
