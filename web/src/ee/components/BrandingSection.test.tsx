@@ -28,7 +28,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 
-const saved = (over: Partial<Branding> = {}): Branding => ({ unlocked: true, product_name: "Acme Hub", accent: "", ...over });
+const saved = (over: Partial<Branding> = {}): Branding => ({ unlocked: true, product_name: "Acme Hub", accent: "", css: "", ...over });
 
 const renderCard = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -87,7 +87,7 @@ describe("BrandingSection", () => {
     vi.unstubAllGlobals();
   });
 
-  it("saves the name and the accent together, and shows the refusal when the server says no", async () => {
+  it("saves the name, the accent and the CSS together, and shows the refusal when the server says no", async () => {
     mocks.patch.mockRejectedValueOnce(new Error("the product name is at most 40 characters"));
     mocks.patch.mockResolvedValueOnce({ data: saved({ product_name: "Acme Cloud" }) });
     renderCard();
@@ -95,11 +95,12 @@ describe("BrandingSection", () => {
     const name = await screen.findByLabelText("Product name");
     await userEvent.clear(name);
     await userEvent.type(name, "Acme Cloud");
+    await userEvent.type(screen.getByLabelText("Custom CSS"), "a{{color:red}");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("the product name is at most 40 characters"));
 
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/instance/branding", { product_name: "Acme Cloud", accent: "" }));
+    await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/instance/branding", { product_name: "Acme Cloud", accent: "", css: "a{color:red}" }));
     expect(await screen.findByRole("button", { name: "Saved" })).toBeInTheDocument();
   });
 

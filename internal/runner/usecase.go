@@ -80,6 +80,8 @@ type Service struct {
 	sso func(context.Context) (any, error)
 	// branding reads the instance branding instance_get includes; nil on a build that wires none.
 	branding func(context.Context) (any, error)
+	// stylingGuide is how to write branding css, which instance_get returns when asked; empty on a build that wires none.
+	stylingGuide string
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time

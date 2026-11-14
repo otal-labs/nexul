@@ -41,6 +41,7 @@ export interface BrandingPatch {
   accent?: string;
   theme_file?: string;
   remove_theme?: "light" | "dark" | "all";
+  css?: string;
 }
 
 // A save changes what every page paints, so both reads refresh with it.

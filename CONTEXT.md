@@ -117,11 +117,12 @@ _Avoid_: Premium, pro, paid tier
 
 **Branding**:
 The instance Owner's own look for the instance: a product name and logo that
-replace Nexul's, an accent colour that changes the `brand` token's value, and
-a VS Code color theme imported for the whole instance. An enterprise feature:
+replace Nexul's, an accent colour that changes the `brand` token's value,
+a VS Code color theme imported for the whole instance, and custom CSS that
+loads nothing from another address. An enterprise feature:
 without a key that includes it the instance shows the default look and what
-was saved stays. The imported theme is the one exception to one design
-language (ADR 0187).
+was saved stays. The imported theme and the custom CSS are the exceptions to
+one design language (ADR 0187, ADR 0188).
 _Avoid_: White label, skin, custom theme (a person's own palette is a theme)
 
 **License key**:

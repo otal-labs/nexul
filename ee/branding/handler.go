@@ -43,6 +43,7 @@ type patchRequest struct {
 	Accent      *string `json:"accent"`
 	ThemeFile   *string `json:"theme_file"`
 	RemoveTheme string  `json:"remove_theme"`
+	CSS         *string `json:"css"`
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +57,7 @@ func (h *Handler) patch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	st, err := h.svc.Update(r.Context(), Patch{ProductName: req.ProductName, Accent: req.Accent, Theme: req.ThemeFile, RemoveTheme: req.RemoveTheme})
+	st, err := h.svc.Update(r.Context(), Patch{ProductName: req.ProductName, Accent: req.Accent, Theme: req.ThemeFile, RemoveTheme: req.RemoveTheme, CSS: req.CSS})
 	if errors.Is(err, apperrs.ErrInvalid) {
 		httpx.WriteFieldError(w, err, fieldOf(req))
 		return
@@ -67,6 +68,8 @@ func (h *Handler) patch(w http.ResponseWriter, r *http.Request) {
 // fieldOf names the field a refusal belongs to, by which one the request carried.
 func fieldOf(req patchRequest) string {
 	switch {
+	case req.CSS != nil:
+		return "css"
 	case req.ThemeFile != nil:
 		return "theme_file"
 	case req.Accent != nil:

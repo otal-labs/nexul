@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/config"
@@ -67,7 +68,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc}).
 		WithLicense(func(ctx context.Context) (any, error) { return svc.licenseSvc.Status(ctx) }).
 		WithSSO(func(ctx context.Context) (any, error) { return svc.ssoSvc.View(ctx) }).
-		WithBranding(func(ctx context.Context) (any, error) { return svc.brandingSvc.Get(ctx) })
+		WithBranding(func(ctx context.Context) (any, error) { return svc.brandingSvc.Get(ctx) }).
+		WithStylingGuide(branding.StylingGuide())
 	if cfg.LogsURL != nil {
 		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
 	}

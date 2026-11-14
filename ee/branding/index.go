@@ -35,6 +35,9 @@ func (s *Service) Index(ctx context.Context, index []byte) []byte {
 	if css := l.css(); css != "" {
 		head.WriteString(`<style id="branding-style">` + css + "</style>\n")
 	}
+	if l.CSS != "" {
+		head.WriteString(`<style id="branding-css">` + l.CSS + "</style>\n")
+	}
 	data, err := json.Marshal(l)
 	if err != nil {
 		return index

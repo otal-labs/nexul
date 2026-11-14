@@ -34,7 +34,7 @@ func (q *Queries) DeleteInstanceBranding(ctx context.Context) error {
 }
 
 const getInstanceBranding = `-- name: GetInstanceBranding :one
-SELECT product_name, accent, light_theme, dark_theme, length(logo) AS logo_size, logo_type, logo_version, updated_by, updated_at
+SELECT product_name, accent, light_theme, dark_theme, css, length(logo) AS logo_size, logo_type, logo_version, updated_by, updated_at
 FROM instance_branding WHERE id = 1
 `
 
@@ -43,6 +43,7 @@ type GetInstanceBrandingRow struct {
 	Accent      string
 	LightTheme  string
 	DarkTheme   string
+	Css         string
 	LogoSize    sql.NullInt64
 	LogoType    string
 	LogoVersion string
@@ -58,6 +59,7 @@ func (q *Queries) GetInstanceBranding(ctx context.Context) (GetInstanceBrandingR
 		&i.Accent,
 		&i.LightTheme,
 		&i.DarkTheme,
+		&i.Css,
 		&i.LogoSize,
 		&i.LogoType,
 		&i.LogoVersion,
@@ -84,9 +86,9 @@ func (q *Queries) GetInstanceBrandingLogo(ctx context.Context) (GetInstanceBrand
 }
 
 const saveInstanceBranding = `-- name: SaveInstanceBranding :exec
-INSERT INTO instance_branding (id, product_name, accent, light_theme, dark_theme, updated_by, updated_at) VALUES (1, ?, ?, ?, ?, ?, ?)
+INSERT INTO instance_branding (id, product_name, accent, light_theme, dark_theme, css, updated_by, updated_at) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET product_name = excluded.product_name, accent = excluded.accent, light_theme = excluded.light_theme,
-    dark_theme = excluded.dark_theme, updated_by = excluded.updated_by, updated_at = excluded.updated_at
+    dark_theme = excluded.dark_theme, css = excluded.css, updated_by = excluded.updated_by, updated_at = excluded.updated_at
 `
 
 type SaveInstanceBrandingParams struct {
@@ -94,6 +96,7 @@ type SaveInstanceBrandingParams struct {
 	Accent      string
 	LightTheme  string
 	DarkTheme   string
+	Css         string
 	UpdatedBy   string
 	UpdatedAt   int64
 }
@@ -104,6 +107,7 @@ func (q *Queries) SaveInstanceBranding(ctx context.Context, arg SaveInstanceBran
 		arg.Accent,
 		arg.LightTheme,
 		arg.DarkTheme,
+		arg.Css,
 		arg.UpdatedBy,
 		arg.UpdatedAt,
 	)

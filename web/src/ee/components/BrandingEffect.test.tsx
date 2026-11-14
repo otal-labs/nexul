@@ -19,6 +19,7 @@ const look = (over: Partial<Look> = {}): Look => ({
   logo_url: "/api/branding/logo?v=v1",
   light: { themed: false, roles: { brand: "oklch(0.5 0.2 250)" } },
   dark: { themed: true, roles: { background: "oklch(0.2 0.03 260)", brand: "oklch(0.7 0.15 150)" } },
+  css: "",
   version: "x",
   ...over,
 });
@@ -75,6 +76,19 @@ describe("the instance's own look", () => {
     expect(document.head.querySelector('link[rel="icon"]')?.getAttribute("href")).toBe("/favicon.svg");
     expect(document.head.querySelector('link[rel="apple-touch-icon"]')).not.toBeNull();
     expect(document.documentElement.style.getPropertyValue("--background")).toBe("");
+  });
+
+  it("adds the instance's own CSS last in the head, follows a change, and drops it once the look no longer shows", async () => {
+    const { client } = renderWithLook(look({ css: "[data-app-sidebar]{font-family:monospace}" }));
+    await waitFor(() => expect(document.getElementById("branding-css")?.textContent).toBe("[data-app-sidebar]{font-family:monospace}"));
+    expect(document.head.lastElementChild?.id).toBe("branding-css");
+
+    client.setQueryData([getLookKey], look({ css: ".app-frame{border-radius:0}" }));
+    await waitFor(() => expect(document.getElementById("branding-css")?.textContent).toBe(".app-frame{border-radius:0}"));
+    expect(document.querySelectorAll("#branding-css")).toHaveLength(1);
+
+    client.setQueryData([getLookKey], look({ enabled: false, css: ".app-frame{border-radius:0}" }));
+    await waitFor(() => expect(document.getElementById("branding-css")).toBeNull());
   });
 
   it("leaves the unread count in the tab title", async () => {

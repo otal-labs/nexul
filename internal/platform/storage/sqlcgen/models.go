@@ -523,6 +523,7 @@ type InstanceBranding struct {
 	LogoVersion string
 	UpdatedBy   string
 	UpdatedAt   int64
+	Css         string
 }
 
 type InstanceSetting struct {

@@ -7,6 +7,7 @@ import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { BrandingCssRow } from "@/ee/components/BrandingCssRow";
 import { BrandingAccentRow, BrandingNameRow } from "@/ee/components/BrandingFields";
 import { BrandingLogoRow } from "@/ee/components/BrandingLogoRow";
 import { BrandingResetButton } from "@/ee/components/BrandingResetButton";
@@ -21,7 +22,7 @@ const BrandingStatus = ({ branding }: { branding: Branding }) => (
   <SettingsStatus tone={branding.unlocked ? "success" : "muted"}>{branding.unlocked ? "Unlocked" : "Needs a license key"}</SettingsStatus>
 );
 
-const hasAnything = (b: Branding): boolean => b.product_name !== "" || b.accent !== "" || !!b.logo || !!b.light_theme || !!b.dark_theme;
+const hasAnything = (b: Branding): boolean => b.product_name !== "" || b.accent !== "" || b.css !== "" || !!b.logo || !!b.light_theme || !!b.dark_theme;
 
 const BrandingBody = ({ branding }: { branding: Branding }) => {
   const { form, disabled, saved, onSubmit } = useBrandingForm(branding);
@@ -29,7 +30,7 @@ const BrandingBody = ({ branding }: { branding: Branding }) => {
     <SettingsCard
       id="branding"
       title="Branding"
-      description="Make this instance look like your own: its name, logo, accent and a VS Code color theme, for everyone on it."
+      description="Make this instance look like your own: its name, logo, accent, a VS Code color theme and your own CSS, for everyone on it."
       icon={Palette}
       aside={<BrandingStatus branding={branding} />}
       footer={
@@ -52,12 +53,13 @@ const BrandingBody = ({ branding }: { branding: Branding }) => {
           What is saved here stays, and shows again once <a href="#license" className="text-brand underline-offset-4 hover:underline">License</a> holds a key that includes Branding. Until then you can only remove the logo or all of it.
         </InlineNotice>
       )}
-      <form id={FORM_ID} key={branding.product_name + branding.accent} onSubmit={onSubmit}>
+      <form id={FORM_ID} key={branding.product_name + branding.accent + branding.css} onSubmit={onSubmit}>
         <SettingsRows>
           <BrandingNameRow control={form.control} disabled={disabled} />
           <BrandingLogoRow branding={branding} />
           <BrandingAccentRow control={form.control} disabled={disabled} fromTheme={!!branding.light_theme || !!branding.dark_theme} />
           <BrandingThemeRows branding={branding} />
+          <BrandingCssRow control={form.control} disabled={disabled} />
         </SettingsRows>
       </form>
     </SettingsCard>

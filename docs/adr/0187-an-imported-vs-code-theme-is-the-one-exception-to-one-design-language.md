@@ -1,5 +1,7 @@
 # An imported VS Code theme is the one exception to one design language
 
+Amended by ADR 0188: branding also takes custom CSS, with no contrast floor, that can load nothing.
+
 AGENTS.md rule 11 says one design language holds across `web/`, `website/` and `native/`, extended and never re-themed. A
 host who resells an instance (ADR 0184) wants it to look like the client's own tool, and the client's colours already exist
 as a VS Code color theme. The instance Owner may therefore import such a theme file for the whole instance, in the web app

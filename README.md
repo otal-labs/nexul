@@ -138,5 +138,5 @@ What the subscription will include.
 | Priority support | ⬜ | A response-time SLA and a direct channel. |
 | License key | ✅ | One signed key per instance unlocks every enterprise feature, checked offline. |
 | Single sign-on | ✅ | Sign in through your company's identity provider (OIDC), with an SSO-only switch. |
-| Branding | ✅ | Your name, logo, accent colour and an imported theme across the instance. |
+| Branding | ✅ | Your name, logo, accent colour, an imported theme and your own CSS across the instance, written by hand or by an agent. |
 | Many instances in one place | ⬜ | Planned: one console for a partner to see and upgrade every instance they host. |

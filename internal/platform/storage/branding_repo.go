@@ -30,7 +30,7 @@ func (r *BrandingRepo) Load(ctx context.Context) (branding.Record, bool, error) 
 	if err != nil {
 		return branding.Record{}, false, fmt.Errorf("get instance branding: %w", err)
 	}
-	rec := branding.Record{ProductName: row.ProductName, Accent: row.Accent, UpdatedBy: row.UpdatedBy, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC()}
+	rec := branding.Record{ProductName: row.ProductName, Accent: row.Accent, CSS: row.Css, UpdatedBy: row.UpdatedBy, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC()}
 	if rec.Light, err = decodeTheme(row.LightTheme); err != nil {
 		return branding.Record{}, false, err
 	}
@@ -77,7 +77,7 @@ func (r *BrandingRepo) Save(ctx context.Context, rec branding.Record, evts ...ev
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SaveInstanceBranding(ctx, sqlcgen.SaveInstanceBrandingParams{
-			ProductName: rec.ProductName, Accent: rec.Accent, LightTheme: light, DarkTheme: dark, UpdatedBy: rec.UpdatedBy, UpdatedAt: rec.UpdatedAt.Unix(),
+			ProductName: rec.ProductName, Accent: rec.Accent, LightTheme: light, DarkTheme: dark, Css: rec.CSS, UpdatedBy: rec.UpdatedBy, UpdatedAt: rec.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("save instance branding: %w", err)

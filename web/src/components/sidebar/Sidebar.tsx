@@ -28,6 +28,7 @@ export const Sidebar = ({ collapsed, onToggleCollapse, unreadCount }: SidebarPro
   return (
     <aside
       ref={ref}
+      data-app-sidebar
       className={cn(
         "relative z-20 flex h-full shrink-0 flex-col",
         collapsed ? "w-17" : "w-56",

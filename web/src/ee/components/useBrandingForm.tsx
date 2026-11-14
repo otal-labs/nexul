@@ -6,7 +6,7 @@ import { useFlash } from "@/hooks/useFlash";
 import { useUpdateBranding } from "@/ee/hooks/BrandingHooks";
 import { BrandingFormSchema, type Branding, type BrandingFormData } from "@/ee/models/Branding";
 
-// The name and the accent save together from the card's footer; a logo and a theme save the moment they are chosen.
+// The name, the accent and the CSS save together from the card's footer; a logo and a theme save the moment they are chosen.
 export const useBrandingForm = (branding: Branding) => {
   const update = useUpdateBranding();
   const [saved, flash] = useFlash();
@@ -14,7 +14,7 @@ export const useBrandingForm = (branding: Branding) => {
   const disabled = !writable || !branding.unlocked;
   const form = useForm<BrandingFormData>({
     disabled,
-    defaultValues: { product_name: branding.product_name, accent: branding.accent },
+    defaultValues: { product_name: branding.product_name, accent: branding.accent, css: branding.css },
     resolver: zodResolver(BrandingFormSchema),
   });
 

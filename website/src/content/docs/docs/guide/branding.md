@@ -1,6 +1,6 @@
 ---
 title: Branding
-description: Give an instance its own name, logo, accent colour and VS Code color theme, so it looks like your own tool.
+description: Give an instance its own name, logo, accent colour, VS Code color theme and CSS, so it looks like your own tool.
 sidebar:
   order: 4
 ---
@@ -32,10 +32,24 @@ Nexul takes the theme's background, text, secondary text, accent and error colou
 
 A theme file that includes another file is refused: upload one that holds its own colours.
 
+## Custom CSS
+
+**Custom CSS** takes your own style rules, added after Nexul's on every page for everyone, the sign-in page included. Save it with the card's **Save** button, and every open page repaints at once. Leave the field empty to remove it.
+
+Set colours through the theme's tokens rather than element by element, so every component follows: `:root.dark { --brand: #7c5cff !important; }` changes the accent in dark mode, and `:root:not(.dark)` is light mode. A token without `!important` gives way to a person's own theme. The rules can rely on a few selectors that stay put, such as `[data-app-sidebar]` for the sidebar, `.app-frame` for the panel each page sits in, `.light-field` for the backdrop behind it, and `[data-slot="button"]` for every button.
+
+Nothing may load from another address, so the CSS can never send what is on screen elsewhere. `url()` takes only a `data:` address or an `#id`, and `@import`, `image-set()`, `image()`, `src()`, a backslash and `<` are refused with the reason. An image therefore goes inline as a base64 `data:` address, and the whole CSS is at most 20,000 characters, which suits a small or soft image but not a photo. Fonts are the ones the device already has.
+
+Unlike an imported theme, Nexul does not check the contrast of custom CSS: what it paints is yours to keep readable. If a change goes wrong, empty the field, or click **Remove branding**.
+
+## Ask an agent
+
+The quickest way to write custom CSS is to ask an agent connected to the instance's [MCP server](/docs/guide/mcp-server/), for example "make our instance look like our company site" or "tone down the borders in dark mode". The agent reads the styling guide from `instance_get`, writes the rules with `instance_update`, and every open page repaints while you watch. The agent cannot see the page, so it changes a little at a time and asks you how it looks.
+
 ## Without a key
 
 When the key expires, is removed, or stops fitting the instance's address, the instance shows Nexul's own name, logo and colours again. What you saved stays, and shows again as soon as a key that includes Branding is in place. While the key is missing, the card keeps your settings but won't change them; only **Remove** on the logo and **Remove branding** still work. **Remove branding** deletes everything for good.
 
 ## From an agent
 
-`instance_get` returns the branding with the rest of the instance's state. `instance_update` takes a `branding` object: `product_name`, `accent` (`#rrggbb`), `logo` (a base64 data URL), `theme_file` (the text of a theme file), `remove_theme` (`light`, `dark` or `all`) and `clear`. An empty `product_name`, `accent` or `logo` removes that setting. It needs the same permissions as the web page, and every open page follows the change at once.
+`instance_get` returns the branding with the rest of the instance's state, and with `styling_guide` also the guide to writing custom CSS: its tokens, the selectors that stay, and what is refused. `instance_update` takes a `branding` object: `product_name`, `accent` (`#rrggbb`), `logo` (a base64 data URL), `theme_file` (the text of a theme file), `remove_theme` (`light`, `dark` or `all`), `css` and `clear`. An empty `product_name`, `accent`, `logo` or `css` removes that setting. It needs the same permissions as the web page, and every open page follows the change at once.
