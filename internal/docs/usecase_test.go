@@ -1079,3 +1079,18 @@ func TestRestoreVersion_Refusals_ChangeNothing(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdate_MarkdownEditOfASizedTable_KeepsItsSizes(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	sized := `{"type":"doc","content":[{"type":"table","content":[` +
+		`{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colwidth":[180]},"content":[{"type":"paragraph","content":[{"type":"text","text":"Item"}]}]}]},` +
+		`{"type":"tableRow","attrs":{"rowheight":64},"content":[{"type":"tableCell","attrs":{"colwidth":[180]},"content":[{"type":"paragraph","content":[{"type":"text","text":"Bolts"}]}]}]}]}]}`
+	created, err := s.Create(testCtx(), "project-1", "Stock", sized)
+	require.NoError(t, err)
+
+	updated, err := s.Update(testCtx(), created.ID, "Stock", "| Item |\n| --- |\n| Nuts |")
+	require.NoError(t, err)
+	assert.Contains(t, updated.Body, `"attrs":{"colwidth":[180]},"content":[{"type":"paragraph","content":[{"type":"text","text":"Nuts"}]}]`)
+	assert.Contains(t, updated.Body, `"attrs":{"rowheight":64}`)
+}

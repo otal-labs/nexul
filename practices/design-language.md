@@ -884,7 +884,11 @@ no bullet: the `input` hairline unticked, a `brand` fill with a
 either way. Only an editable body toggles it; a read-only body and a rendered
 reply show the state and ignore the pointer. Tables are ruled data, not boxed
 cells: a hairline under each row, a muted 13px header over a stronger rule,
-tabular figures. Images take the large radius, a black or white 10% outline
+tabular figures. In an editable body a column resizes from its right
+edge and a row from its bottom edge: the pointer turns to the resize cursor, a
+2px `ring` line marks the column edge as it moves, and a row shows a `ring`
+guide line while dragged and takes its height on release, as a spreadsheet
+does. A sized column drops the 6rem floor; a row's height is its minimum. Images take the large radius, a black or white 10% outline
 drawn inside, and the card shadow. A code block is a `surface-2` well at
 13px in both modes, its language picker the well's header row and its syntax
 hues set per mode to hold 4.5:1 on the well. The body's last block keeps no

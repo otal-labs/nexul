@@ -4,7 +4,7 @@ import Mention from "@tiptap/extension-mention";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Image from "@tiptap/extension-image";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
-import { renderTableToMarkdown, Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import { TableCell, TableHeader } from "@tiptap/extension-table";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import type { JSONContent } from "@tiptap/core";
@@ -17,6 +17,8 @@ import { DiscordTimes } from "@/components/doc/discordTime/discordTimeExtension"
 import { AttachmentImageView } from "@/components/doc/image/AttachmentImageView";
 import { AttachmentUpload, type AttachmentUploadOptions } from "@/components/doc/image/attachmentUpload";
 import { lowlight } from "@/components/doc/codeBlock/lowlight";
+import { ResizableTable } from "@/components/doc/table/resizableTable";
+import { ResizableTableRow } from "@/components/doc/table/resizableTableRow";
 import {
   MentionSuggestions,
   type MentionSuggestionsRef,
@@ -117,12 +119,8 @@ export function buildEditorExtensions({
       },
     }).configure({ lowlight }),
     Markdown,
-    Table.extend({
-      // The stock serializer leaves a pipe in cell text bare, so the next parse splits that cell in two.
-      renderMarkdown: (node, h) =>
-        renderTableToMarkdown(node, { ...h, renderChildren: (nodes, sep) => h.renderChildren(nodes, sep).replace(/\|/g, "\\|") }),
-    }),
-    TableRow,
+    ResizableTable,
+    ResizableTableRow,
     TableHeader,
     TableCell,
     Image.extend({

@@ -1119,7 +1119,6 @@ body {
 
 .prose-rich :is(th, td) {
   position: relative;
-  min-width: 6rem;
   border-bottom: 1px solid var(--border);
   padding: 0.55em 1.25em 0.55em 0;
   text-align: left;
@@ -1133,8 +1132,40 @@ body {
   font-weight: 500;
 }
 
+/* A column dragged to a width keeps it; the others hold the floor that stops a short header crushing its column. */
+.prose-rich :is(th, td):not([colwidth]) {
+  min-width: 6rem;
+}
+
 .prose-rich :is(th, td) p {
   margin: 0;
+}
+
+.prose-rich .tiptap.row-resize-cursor {
+  cursor: row-resize;
+}
+
+.prose-rich .tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+.prose-rich .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: -1px;
+  width: 2px;
+  background: var(--ring);
+  pointer-events: none;
+}
+
+.row-resize-guide {
+  position: fixed;
+  z-index: 50;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--ring);
+  pointer-events: none;
 }
 
 .prose-rich .selectedCell::after {
