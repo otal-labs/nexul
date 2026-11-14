@@ -47,6 +47,12 @@ func (s *Service) WithBranding(read func(context.Context) (any, error)) *Service
 	return s
 }
 
+// WithStylingGuide attaches the guide instance_get returns for writing branding css, so runner never imports ee.
+func (s *Service) WithStylingGuide(guide string) *Service {
+	s.stylingGuide = guide
+	return s
+}
+
 // WithLicense attaches the read of the enterprise license instance_get includes, so runner never imports ee.
 func (s *Service) WithLicense(read func(context.Context) (any, error)) *Service {
 	s.license = read

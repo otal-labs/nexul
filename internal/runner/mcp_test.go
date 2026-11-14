@@ -189,6 +189,17 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "v0.2.1", got.(instanceDetail).Latest.Version)
 	})
+	t.Run("instance_get returns the styling guide only when asked", func(t *testing.T) {
+		withVersion(t, "dev")
+		srv := fakeGitHub(t, "v0.2.0", "x")
+		s := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{}).WithStylingGuide("guide")
+		got, err := callTool(asAdmin(), t, s, "instance_get", `{}`)
+		require.NoError(t, err)
+		assert.Empty(t, got.(instanceDetail).StylingGuide)
+		got, err = callTool(asAdmin(), t, s, "instance_get", `{"styling_guide":true}`)
+		require.NoError(t, err)
+		assert.Equal(t, "guide", got.(instanceDetail).StylingGuide)
+	})
 	t.Run("instance_upgrade records the mcp source", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")

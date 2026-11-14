@@ -24,6 +24,14 @@ const setIcons = (logoURL: string) => {
   }
 };
 
+// The Owner's own rules sit last in the head, after the colours; the server already checked they load nothing.
+const setCustomCSS = (css: string) => {
+  const existing = document.getElementById("branding-css");
+  if (css === "") return void existing?.remove();
+  const style = existing ?? document.head.appendChild(Object.assign(document.createElement("style"), { id: "branding-css" }));
+  style.textContent = css;
+};
+
 // Paints the instance's look onto the page: its colours, its icon and its name in the tab. Mounted once at the root, so the
 // sign-in page wears the brand too, and a live change repaints every open page.
 export const useApplyBranding = () => {
@@ -32,6 +40,7 @@ export const useApplyBranding = () => {
   const theme = useThemeStore((s) => s.theme);
   const name = productName(look);
   const logoURL = look?.enabled ? look.logo_url : "";
+  const css = (look?.enabled && look.css) || "";
 
   useEffect(() => {
     setInstanceRoles(look?.enabled ? { light: look.light, dark: look.dark } : null);
@@ -39,6 +48,8 @@ export const useApplyBranding = () => {
   }, [look, themeId, theme]);
 
   useEffect(() => setIcons(logoURL), [logoURL]);
+
+  useEffect(() => setCustomCSS(css), [css]);
 
   useEffect(() => {
     if (!/^\(\d+\) /.test(document.title)) document.title = name;

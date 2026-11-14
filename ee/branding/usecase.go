@@ -136,6 +136,13 @@ func apply(rec *Record, p Patch) error {
 		}
 		rec.Accent = accent
 	}
+	if p.CSS != nil {
+		css, err := validateCSS(*p.CSS)
+		if err != nil {
+			return err
+		}
+		rec.CSS = css
+	}
 	switch p.RemoveTheme {
 	case "":
 	case "all":

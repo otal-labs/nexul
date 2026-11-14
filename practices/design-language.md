@@ -458,7 +458,10 @@ the one palette that is not in `themePalettes.ts`: the server derives it from
 the theme's canvas, text, accent and error colours on the same ladder, moves
 any colour that would fail those pairs until it holds, and the web app paints
 it in place of a person's own palette in its mode. An instance accent alone
-changes only `brand` (and the label on it) on the default palette.
+changes only `brand` (and the label on it) on the default palette. An
+instance's custom CSS (ADR 0188) sits after all of this with no contrast floor;
+it may rely only on the selectors in `ee/branding/guide.go`, so renaming one of
+those hooks fails `TestStableSelectors_StayInTheWebSource`.
 
 Touch. A tablet or a phone browser gets the same layout, with what a finger
 needs, and it is all keyed to `pointer: coarse`, never to width. Every control

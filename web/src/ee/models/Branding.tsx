@@ -18,6 +18,7 @@ export interface Look {
   logo_url: string;
   light: ModeRoles;
   dark: ModeRoles;
+  css: string;
   version: string;
 }
 
@@ -46,11 +47,15 @@ export interface Branding {
   logo?: BrandingLogo;
   light_theme?: BrandingTheme;
   dark_theme?: BrandingTheme;
+  css: string;
 }
+
+export const MAX_CSS_CHARS = 20_000;
 
 export const BrandingFormSchema = z.object({
   product_name: z.string().trim().max(40, "At most 40 characters"),
   accent: z.string().regex(/^(#[0-9a-fA-F]{6})?$/, "Pick a color"),
+  css: z.string().max(MAX_CSS_CHARS, `At most ${MAX_CSS_CHARS.toLocaleString()} characters`),
 });
 
 export type BrandingFormData = z.infer<typeof BrandingFormSchema>;

@@ -235,7 +235,7 @@ func instanceGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_get", "Get instance",
 		"Returns the instance's running version and release channel, the channel's newest release, whether an upgrade "+
 			"can start now and if not why, the latest upgrade record, and the enterprise license (licensee, features, expiry, "+
-			"state) the single sign-on settings and the branding (product name, accent, themes; instance_update changes them). Poll it after instance_upgrade; refresh asks "+
+			"state) the single sign-on settings and the branding (product name, accent, themes, css; instance_update changes them). Poll it after instance_upgrade; refresh asks "+
 			"GitHub for a release from the last few minutes. Pass logs to also read the instance's own logs (server, "+
 			"browser, runners, automations hosts), newest first, 100 lines by default, at most 500; pass the result's "+
 			"until back with next_offset for the next page. It needs logs:read besides instance:read and never includes a "+
@@ -265,6 +265,9 @@ func instanceGetTool(s *Service) mcptool.Tool {
 					return nil, err
 				}
 			}
+			if in.StylingGuide {
+				detail.StylingGuide = s.stylingGuide
+			}
 			if in.Logs == nil {
 				return detail, nil
 			}
@@ -277,10 +280,11 @@ func instanceGetTool(s *Service) mcptool.Tool {
 // instanceDetail is instance_get's answer: the upgrade facts, the enterprise license, and the logs read when asked for.
 type instanceDetail struct {
 	UpgradeStatus
-	License  any            `json:"license,omitempty"`
-	SSO      any            `json:"sso,omitempty"`
-	Branding any            `json:"branding,omitempty"`
-	Logs     *logstore.Page `json:"logs,omitempty"`
+	License      any            `json:"license,omitempty"`
+	SSO          any            `json:"sso,omitempty"`
+	Branding     any            `json:"branding,omitempty"`
+	StylingGuide string         `json:"styling_guide,omitempty"`
+	Logs         *logstore.Page `json:"logs,omitempty"`
 }
 
 func instanceUpgradeTool(s *Service) mcptool.Tool {
@@ -296,8 +300,9 @@ func instanceUpgradeTool(s *Service) mcptool.Tool {
 }
 
 type instanceGetIn struct {
-	Refresh bool             `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now."`
-	Logs    *logstore.Params `json:"logs,omitzero" jsonschema:"Also read the instance's own logs, filtered by these optional fields. Needs logs:read."`
+	Refresh      bool             `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now."`
+	Logs         *logstore.Params `json:"logs,omitzero" jsonschema:"Also read the instance's own logs, filtered by these optional fields. Needs logs:read."`
+	StylingGuide bool             `json:"styling_guide,omitempty" jsonschema:"Also return how to write the branding's css."`
 }
 
 // mcpUpgradeActor is upgrade provenance for an MCP call (ADR 0049): "<user id>:mcp", empty with no actor.

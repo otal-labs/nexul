@@ -172,13 +172,14 @@ func TestInstanceUpdate_BrandingFieldsReachTheirUseCases(t *testing.T) {
 	assert.Equal(t, "Acme", got.Branding.ProductName, "branding is read back whatever the call changed")
 	assert.Empty(t, b.calls)
 
-	_, err = instanceCallWith(t, l, s, b, `{"branding":{"product_name":"Acme Hub","accent":"#2563eb","theme_file":"{}","remove_theme":"light"}}`)
+	_, err = instanceCallWith(t, l, s, b, `{"branding":{"product_name":"Acme Hub","accent":"#2563eb","theme_file":"{}","remove_theme":"light","css":"a{color:red}"}}`)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"update"}, b.calls)
 	assert.Equal(t, "Acme Hub", *b.patch.ProductName)
 	assert.Equal(t, "#2563eb", *b.patch.Accent)
 	assert.Equal(t, "{}", *b.patch.Theme)
 	assert.Equal(t, "light", b.patch.RemoveTheme)
+	assert.Equal(t, "a{color:red}", *b.patch.CSS)
 }
 
 func TestInstanceUpdate_BrandingLogoTravelsAsADataURL(t *testing.T) {

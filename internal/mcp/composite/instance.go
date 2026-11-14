@@ -54,6 +54,7 @@ type brandingIn struct {
 	Logo        *string `json:"logo,omitempty" jsonschema:"A PNG, JPEG, WebP or SVG up to 512 KB as a base64 data URL; empty removes it."`
 	ThemeFile   *string `json:"theme_file,omitempty" jsonschema:"A VS Code color theme file's text, replacing the instance theme of its appearance."`
 	RemoveTheme string  `json:"remove_theme,omitempty" jsonschema:"light, dark or all: removes that theme."`
+	CSS         *string `json:"css,omitempty" jsonschema:"Style rules for every page; empty removes them."`
 	Clear       bool    `json:"clear,omitempty" jsonschema:"True removes all branding."`
 }
 
@@ -79,8 +80,9 @@ func instanceUpdateTool(l LicenseKeeper, s SSOSettings, b BrandingSettings) mcpt
 		"Changes the instance's own settings: its enterprise license key, single sign-on provider and branding. license_key replaces "+
 			"the key, or removes it when empty (the features stop, what they made stays); a key for another address, with a bad "+
 			"signature or expired is refused. sso saves the OIDC provider people sign in through, which needs a key unlocking sso; "+
-			"the provider is reached before anything is stored. branding sets the product name, logo, accent and an imported VS Code "+
-			"theme shown instead of Nexul's, which needs a key unlocking branding. Returns all three as instance_get shows them.",
+			"the provider is reached before anything is stored. branding sets the product name, logo, accent, an imported VS Code "+
+			"theme and css shown instead of Nexul's, which needs a key unlocking branding; "+
+			"instance_get with styling_guide explains the css. Returns all three as instance_get shows them.",
 		mcptool.Hints{Idempotent: true, Local: false},
 		func(ctx context.Context, in instanceUpdateIn) (any, error) {
 			var out instanceSettings
@@ -148,7 +150,7 @@ func changeBranding(ctx context.Context, b BrandingSettings, in *brandingIn) (br
 		return b.Clear(ctx)
 	}
 	var out branding.Settings
-	patch := branding.Patch{ProductName: in.ProductName, Accent: in.Accent, Theme: in.ThemeFile, RemoveTheme: in.RemoveTheme}
+	patch := branding.Patch{ProductName: in.ProductName, Accent: in.Accent, Theme: in.ThemeFile, RemoveTheme: in.RemoveTheme, CSS: in.CSS}
 	if patch != (branding.Patch{}) {
 		var err error
 		if out, err = b.Update(ctx, patch); err != nil {

@@ -28,7 +28,7 @@ func TestBrandingRepo_SettingsAndLogoLiveInOneRowAndKeepEachOther(t *testing.T) 
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
 	theme := &branding.Theme{Name: "Acme Night", Appearance: branding.Dark, Canvas: "#1b1e28", Text: "#ffffff", Accent: "#7c5cff"}
-	require.NoError(t, s.Branding.Save(ctx, branding.Record{ProductName: "Acme Hub", Accent: "#2563eb", Dark: theme, UpdatedBy: "u1", UpdatedAt: at}, evt("e1")))
+	require.NoError(t, s.Branding.Save(ctx, branding.Record{ProductName: "Acme Hub", Accent: "#2563eb", Dark: theme, CSS: "a{color:red}", UpdatedBy: "u1", UpdatedAt: at}, evt("e1")))
 	require.NoError(t, s.Branding.SetLogo(ctx, "image/png", []byte("png-bytes"), "v1", "u1", at, evt("e2")))
 
 	rec, found, err := s.Branding.Load(ctx)
@@ -36,6 +36,7 @@ func TestBrandingRepo_SettingsAndLogoLiveInOneRowAndKeepEachOther(t *testing.T) 
 	require.True(t, found)
 	assert.Equal(t, "Acme Hub", rec.ProductName)
 	assert.Equal(t, theme, rec.Dark)
+	assert.Equal(t, "a{color:red}", rec.CSS)
 	assert.Nil(t, rec.Light)
 	assert.Equal(t, &branding.Logo{ContentType: "image/png", Size: 9, Version: "v1"}, rec.Logo)
 	ct, data, err := s.Branding.Logo(ctx)

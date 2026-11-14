@@ -40,9 +40,11 @@ type Record struct {
 	Accent      string
 	Light       *Theme
 	Dark        *Theme
-	Logo        *Logo
-	UpdatedBy   string
-	UpdatedAt   time.Time
+	// CSS is the Owner's own style rules, applied after the colours; validateCSS keeps it from loading anything.
+	CSS       string
+	Logo      *Logo
+	UpdatedBy string
+	UpdatedAt time.Time
 }
 
 // Slot returns the saved theme written for mode.
@@ -61,6 +63,7 @@ type Settings struct {
 	Logo        *Logo   `json:"logo,omitempty"`
 	Light       *Themed `json:"light_theme,omitempty"`
 	Dark        *Themed `json:"dark_theme,omitempty"`
+	CSS         string  `json:"css"`
 }
 
 // Themed is an imported theme with the notes on what was moved to keep it readable.
@@ -79,7 +82,7 @@ func themed(t *Theme, accent string) *Themed {
 
 // settings views a record for the Owner.
 func (r Record) settings(unlocked bool) Settings {
-	return Settings{Unlocked: unlocked, ProductName: r.ProductName, Accent: r.Accent, Logo: r.Logo, Light: themed(r.Light, r.Accent), Dark: themed(r.Dark, r.Accent)}
+	return Settings{Unlocked: unlocked, ProductName: r.ProductName, Accent: r.Accent, Logo: r.Logo, Light: themed(r.Light, r.Accent), Dark: themed(r.Dark, r.Accent), CSS: r.CSS}
 }
 
 // Look is the branding the web app paints, empty of everything when the instance has no key unlocking it. A mode's
@@ -90,6 +93,7 @@ type Look struct {
 	LogoURL     string    `json:"logo_url"`
 	Light       ModeRoles `json:"light"`
 	Dark        ModeRoles `json:"dark"`
+	CSS         string    `json:"css"`
 	Version     string    `json:"version"`
 }
 
@@ -101,11 +105,11 @@ type ModeRoles struct {
 
 // look is what the web app paints for r.
 func (r Record) look() Look {
-	l := Look{Enabled: true, ProductName: r.ProductName, Light: r.modeRoles(Light), Dark: r.modeRoles(Dark)}
+	l := Look{Enabled: true, ProductName: r.ProductName, Light: r.modeRoles(Light), Dark: r.modeRoles(Dark), CSS: r.CSS}
 	if r.Logo != nil {
 		l.LogoURL = "/api/branding/logo?v=" + r.Logo.Version
 	}
-	sum := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%v|%v|%v|%d", r.ProductName, r.Accent, r.Light, r.Dark, r.Logo, r.UpdatedAt.Unix()))
+	sum := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%v|%v|%s|%v|%d", r.ProductName, r.Accent, r.Light, r.Dark, r.CSS, r.Logo, r.UpdatedAt.Unix()))
 	l.Version = hex.EncodeToString(sum[:6])
 	return l
 }
@@ -129,6 +133,8 @@ type Patch struct {
 	Theme *string
 	// RemoveTheme names appearances to clear, or "all".
 	RemoveTheme string
+	// CSS replaces the custom style rules; an empty string removes them.
+	CSS *string
 }
 
 func validateName(name string) (string, error) {
