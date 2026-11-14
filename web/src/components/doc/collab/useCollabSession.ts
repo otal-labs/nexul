@@ -121,7 +121,8 @@ export const useCollabSession = (
     if (!room || !token || viewing) return;
     const doc = new Y.Doc();
     const user: CollabUser = {
-      name: name || "You",
+      // Peers read this label, so it falls back to the login the way personLabel does.
+      name: name || opts.login || "Member",
       color: opts.login ? avatarFillHex(opts.login) : colorFor(doc.clientID),
       activity: mode === "edit" ? "editing" : "viewing",
       ...(opts.userId ? { id: opts.userId } : {}),
