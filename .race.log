@@ -1,0 +1,14 @@
+ok  	github.com/otal-labs/nexul/internal/auth	9.475s
+ok  	github.com/otal-labs/nexul/ee/branding	1.075s
+?   	github.com/otal-labs/nexul/ee/cmd/license-sign	[no test files]
+ok  	github.com/otal-labs/nexul/ee/license	1.029s
+ok  	github.com/otal-labs/nexul/ee/sso	1.291s
+ok  	github.com/otal-labs/nexul/internal/mcp	4.625s
+ok  	github.com/otal-labs/nexul/internal/mcp/composite	2.361s
+ok  	github.com/otal-labs/nexul/server/cmd	129.140s
+race exit 0
+ok  	github.com/otal-labs/nexul/internal/platform/storage	18.361s
+?   	github.com/otal-labs/nexul/internal/platform/storage/sqlcgen	[no test files]
+?   	github.com/otal-labs/nexul/internal/platform/storage/testutil	[no test files]
+?   	github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated	[no test files]
+storage exit 0

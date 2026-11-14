@@ -156,3 +156,10 @@ the run no longer needs it for the session.
 The questions and round-answered notices reach the inbox once each on the web and the phone, but no one has
 checked the push for them on a real phone: the emulator has no Firebase. Check that a posted round and a finished
 round each push once, and that tapping one opens the doc on Questions.
+
+## A renewed license brings SSO-only back without signing anyone out
+
+Turning SSO-only on ends every session not started through single sign-on, but only on the switch itself. When the
+switch was saved on and the license lapses, the other sign-ins come back; someone who signs in through GitHub then
+keeps that session after a renewed key makes SSO-only active again. The fix is for `ee/sso` to follow
+`instance.license_changed` and run the same `TurnOnOnly` sweep when `sso` becomes unlocked while the switch is saved on.

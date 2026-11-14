@@ -1,0 +1,9 @@
+go test -race -parallel 8 -timeout 40m -coverprofile=coverage.race.out -covermode=atomic $(go list ./... | sed '/\/internal\/platform\/storage$/d')
+ok  	github.com/otal-labs/nexul/cmd/nexul	1.059s	coverage: 0.0% of statements
+ok  	github.com/otal-labs/nexul/ee/branding	1.101s	coverage: 90.8% of statements
+	github.com/otal-labs/nexul/ee/cmd/license-sign		coverage: 0.0% of statements
+ok  	github.com/otal-labs/nexul/ee/license	1.022s	coverage: 96.2% of statements
+ok  	github.com/otal-labs/nexul/ee/sso	1.250s	coverage: 85.3% of statements
+ok  	github.com/otal-labs/nexul/internal/access	1.109s	coverage: 84.9% of statements
+ok  	github.com/otal-labs/nexul/internal/agent	1.191s	coverage: 89.5% of statements
+ok  	github.com/otal-labs/nexul/internal/attachments	1.141s	coverage: 93.4% of statements
