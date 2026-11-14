@@ -40,6 +40,10 @@ The instance Owner's passkey always still works, so a provider that breaks, or a
 
 Turning the switch on signs out everyone who didn't sign in through single sign-on, on every device, so nobody keeps a way in the switch now refuses. Instance Owners stay signed in. A phone connected from a single sign-on session counts as one. Personal access tokens are not sessions and keep working; deactivate the person under **Team** to stop theirs.
 
+## When someone is removed at the provider
+
+People who sign in through the provider are checked against it about once an hour, when the provider issues refresh tokens (Nexul asks for them with the `offline_access` scope when the provider lists it). Someone removed or disabled at the provider is signed out of their single sign-on sessions within about an hour. A provider that issues no refresh tokens never re-checks anyone, and deactivating the person under **Team** is the way to end their access then. If the provider is down or rejects the client secret, nobody is signed out.
+
 ## When the license lapses
 
 When the key expires, is removed or stops fitting the instance's address, the button and the switch go with it, so the other sign-in methods come back at once and nobody is locked out. The card says it needs a license, keeps what you saved, and still lets you remove it. Paste a renewed key and single sign-on is back as it was.

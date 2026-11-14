@@ -22,6 +22,7 @@ SAML, provisioning people from the provider and several providers at once are ou
   in the same transaction, every session not started through single sign-on except the instance Owners'; a session
   records how it started, and a phone's inherits the mark from the session that issued its connect code. Personal
   access tokens stay, since deactivating the account is what ends them.
+- **Removed at the provider.** A sign-in that returns a refresh token (`offline_access` is asked for only when the provider's discovery lists it) stores it sealed, and an hourly pass trades each one at the provider's token endpoint: a refused grant (`invalid_grant` only; a bare 401 can be a broken client) ends that person's single sign-on sessions in one transaction, while a provider that is down or rejects our client changes nothing and stops the pass, so an outage never signs anyone out. A provider that issues no refresh token is never re-checked.
 - **Settings over MCP.** `instance_update` gains an `sso` object and `instance_get` reads it back (ADR 0185). The tool
   moves from `ee/license` to `internal/mcp/composite`, which exists for a tool that composes two domains, so the license
   package does not import SSO. It reaches the provider, so it is no longer marked local. The advertised size budget

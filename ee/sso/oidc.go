@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -20,6 +21,13 @@ import (
 // discoveryTTL is how long a provider's discovery document and key set serve sign-ins before they are fetched again; a
 // token signed by a key the set has not seen fetches the keys at once.
 const discoveryTTL = time.Hour
+
+// errGrantRefused marks a refresh the provider refused, the person was removed or the grant revoked there, so their
+// sessions end.
+var errGrantRefused = errors.New("the provider refused the refresh token")
+
+// errProviderUnavailable marks a refresh that says nothing about the person: the provider is down or rejects our client.
+var errProviderUnavailable = errors.New("the provider could not answer the refresh")
 
 // errClientRejected marks a code exchange the provider refused for its client credentials, the one case a re-read
 // secret reference may fix.
@@ -39,8 +47,11 @@ type ConnectConfig struct {
 type IdP interface {
 	// AuthURL is where the browser goes to sign in; state is the CSRF token the callback must return.
 	AuthURL(state string) string
-	// Exchange trades the callback's code for the verified ID token's claims.
-	Exchange(ctx context.Context, code, state string) (Claims, error)
+	// Exchange trades the callback's code for the verified ID token's claims and the refresh token, when one is issued.
+	Exchange(ctx context.Context, code, state string) (Grant, error)
+	// Refresh trades a stored refresh token for the provider's answer and returns the token to keep, which differs when
+	// the provider rotates it. errGrantRefused means the grant is gone; errProviderUnavailable means nothing is known.
+	Refresh(ctx context.Context, refreshToken string) (string, error)
 }
 
 // Connect reaches the provider, which discovery does through its issuer URL.
@@ -56,13 +67,20 @@ func dial(hc *http.Client, secret []byte, now func() time.Time) Connect {
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot reach the provider at %s: %s", apperrs.ErrInvalid, c.Issuer, err)
 		}
+		scopes := []string{oidc.ScopeOpenID, "profile", "email"}
+		var meta struct {
+			ScopesSupported []string `json:"scopes_supported"`
+		}
+		if err := p.Claims(&meta); err == nil && slices.Contains(meta.ScopesSupported, oidc.ScopeOfflineAccess) {
+			scopes = append(scopes, oidc.ScopeOfflineAccess)
+		}
 		return &provider{
 			hc:       hc,
 			secret:   secret,
 			verifier: p.Verifier(&oidc.Config{ClientID: c.ClientID}),
 			oauth: oauth2.Config{
 				ClientID: c.ClientID, ClientSecret: c.ClientSecret, Endpoint: p.Endpoint(), RedirectURL: c.RedirectURI,
-				Scopes: []string{oidc.ScopeOpenID, "profile", "email"},
+				Scopes: scopes,
 			},
 		}, nil
 	}
@@ -115,26 +133,26 @@ func (p *provider) AuthURL(state string) string {
 	return p.oauth.AuthCodeURL(state, oidc.Nonce(p.derive("nonce", state)), oauth2.S256ChallengeOption(p.derive("pkce", state)))
 }
 
-func (p *provider) Exchange(ctx context.Context, code, state string) (Claims, error) {
+func (p *provider) Exchange(ctx context.Context, code, state string) (Grant, error) {
 	ctx = oidc.ClientContext(ctx, p.hc)
 	tok, err := p.oauth.Exchange(ctx, code, oauth2.VerifierOption(p.derive("pkce", state)))
 	var rejected *oauth2.RetrieveError
 	if errors.As(err, &rejected) && (rejected.Response.StatusCode == http.StatusUnauthorized || rejected.ErrorCode == "invalid_client") {
-		return Claims{}, fmt.Errorf("%w: %w: %s", apperrs.ErrUnauthorized, errClientRejected, rejected.ErrorCode)
+		return Grant{}, fmt.Errorf("%w: %w: %s", apperrs.ErrUnauthorized, errClientRejected, rejected.ErrorCode)
 	}
 	if err != nil {
-		return Claims{}, fmt.Errorf("%w: exchange the sign-in code: %s", apperrs.ErrUnauthorized, err)
+		return Grant{}, fmt.Errorf("%w: exchange the sign-in code: %s", apperrs.ErrUnauthorized, err)
 	}
 	raw, _ := tok.Extra("id_token").(string)
 	if raw == "" {
-		return Claims{}, fmt.Errorf("%w: the provider returned no ID token", apperrs.ErrUnauthorized)
+		return Grant{}, fmt.Errorf("%w: the provider returned no ID token", apperrs.ErrUnauthorized)
 	}
 	id, err := p.verifier.Verify(ctx, raw)
 	if err != nil {
-		return Claims{}, fmt.Errorf("%w: verify the ID token: %s", apperrs.ErrUnauthorized, err)
+		return Grant{}, fmt.Errorf("%w: verify the ID token: %s", apperrs.ErrUnauthorized, err)
 	}
 	if id.Nonce != p.derive("nonce", state) {
-		return Claims{}, fmt.Errorf("%w: the ID token answers another sign-in", apperrs.ErrUnauthorized)
+		return Grant{}, fmt.Errorf("%w: the ID token answers another sign-in", apperrs.ErrUnauthorized)
 	}
 	var c struct {
 		Email             string `json:"email"`
@@ -144,13 +162,30 @@ func (p *provider) Exchange(ctx context.Context, code, state string) (Claims, er
 		Picture           string `json:"picture"`
 	}
 	if err := id.Claims(&c); err != nil {
-		return Claims{}, fmt.Errorf("%w: read the ID token's claims: %s", apperrs.ErrUnauthorized, err)
+		return Grant{}, fmt.Errorf("%w: read the ID token's claims: %s", apperrs.ErrUnauthorized, err)
 	}
 	name := c.Name
 	if name == "" {
 		name = c.PreferredUsername
 	}
-	return Claims{Subject: id.Subject, Email: c.Email, EmailVerified: verified(c.EmailVerified), Name: name, Picture: c.Picture}, nil
+	return Grant{
+		Claims:       Claims{Subject: id.Subject, Email: c.Email, EmailVerified: verified(c.EmailVerified), Name: name, Picture: c.Picture},
+		RefreshToken: tok.RefreshToken,
+	}, nil
+}
+
+func (p *provider) Refresh(ctx context.Context, refreshToken string) (string, error) {
+	ctx = oidc.ClientContext(ctx, p.hc)
+	tok, err := p.oauth.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken}).Token()
+	var refused *oauth2.RetrieveError
+	if errors.As(err, &refused) && refused.ErrorCode == "invalid_grant" {
+		return "", fmt.Errorf("%w: %s", errGrantRefused, refused.ErrorCode)
+	}
+	// Only invalid_grant says the person is gone: a bare 401 can be a broken client, which must sign nobody out.
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", errProviderUnavailable, err)
+	}
+	return tok.RefreshToken, nil
 }
 
 // verified reads email_verified, which some providers send as the string "true".

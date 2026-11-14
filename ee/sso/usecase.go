@@ -387,40 +387,51 @@ func (s *Service) Complete(ctx context.Context, state, code string) (string, err
 	if err != nil {
 		return "", err
 	}
-	claims, err := s.exchange(ctx, st, state, code)
+	grant, err := s.exchange(ctx, st, state, code)
 	if err != nil {
 		return "", err
 	}
+	claims := grant.Claims
 	email := strings.TrimSpace(claims.Email)
 	if claims.Subject == "" || email == "" || !claims.EmailVerified {
 		return "", errUnverified
 	}
 	id := Identity{Key: st.IssuerURL + "#" + claims.Subject, Email: email, Name: claims.Name, AvatarURL: claims.Picture}
-	return s.account(ctx, st, id)
+	userID, err := s.account(ctx, st, id)
+	if err != nil {
+		return "", err
+	}
+	if grant.RefreshToken == "" {
+		return userID, nil
+	}
+	if err := s.cfg.Repo.SaveGrant(ctx, userID, grant.RefreshToken, s.cfg.Now()); err != nil {
+		return "", err
+	}
+	return userID, nil
 }
 
 // exchange trades the code for claims; a provider that rejects the client while its secret is a reference gets the
 // reference read again (at most every 5 minutes, which Refresh enforces) and one retry.
-func (s *Service) exchange(ctx context.Context, st Settings, state, code string) (Claims, error) {
+func (s *Service) exchange(ctx context.Context, st Settings, state, code string) (Grant, error) {
 	secret, err := s.clientSecret(ctx, st.ClientSecret)
 	if err != nil {
-		return Claims{}, err
+		return Grant{}, err
 	}
 	idp, err := s.connect(ctx, st, secret, false)
 	if err != nil {
-		return Claims{}, err
+		return Grant{}, err
 	}
-	claims, err := idp.Exchange(ctx, code, state)
+	grant, err := idp.Exchange(ctx, code, state)
 	if !errors.Is(err, errClientRejected) || s.cfg.Secrets == nil {
-		return claims, err
+		return grant, err
 	}
 	fresh, ok := s.cfg.Secrets.Refresh(ctx, secret)
 	if !ok {
-		return Claims{}, err
+		return Grant{}, err
 	}
 	idp, rerr := s.connect(ctx, st, fresh, false)
 	if rerr != nil {
-		return Claims{}, err
+		return Grant{}, err
 	}
 	return idp.Exchange(ctx, code, state)
 }
