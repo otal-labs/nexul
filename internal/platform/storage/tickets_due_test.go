@@ -198,6 +198,42 @@ func TestTicketsRepo_Page_CategoryAndStatusFilters(t *testing.T) {
 	}
 }
 
+func TestTicketsRepo_Page_DeveloperFilter(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	_, err := s.db.Exec(`INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-lena', 'lena', 1, 1)`)
+	require.NoError(t, err)
+	for _, tk := range []struct{ id, developerID, developer string }{
+		{"t-by-id", "u-lena", ""},
+		{"t-by-login", "", "lena"},
+		{"t-other", "", "sam"},
+		{"t-nobody", "", ""},
+	} {
+		ticket := newTestTicket(tk.id, "")
+		ticket.DeveloperID, ticket.Developer = tk.developerID, tk.developer
+		require.NoError(t, s.Tickets.Create(t.Context(), ticket))
+	}
+	all := tickets.TicketScope{All: true}
+
+	for name, tt := range map[string]struct {
+		developer *string
+		want      []string
+	}{
+		"a login matches a stored user id and a bare login": {new("lena"), []string{"t-by-id", "t-by-login"}},
+		"an empty login keeps the unassigned":               {new(""), []string{"t-nobody"}},
+		"an unknown login keeps nothing":                    {new("nobody"), []string{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ts, total, err := s.Tickets.Page(t.Context(), tickets.TicketFilter{Developer: tt.developer}, all, paging.Window{Limit: 50})
+			require.NoError(t, err)
+			got := dueIDs(ts)
+			slices.Sort(got)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, len(tt.want), total)
+		})
+	}
+}
+
 func TestTicketsRepo_ListDue_UsesTheDueIndex(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

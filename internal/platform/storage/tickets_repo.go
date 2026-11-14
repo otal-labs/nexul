@@ -154,6 +154,7 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 		q.where("t.doc_id = ?", f.DocID)
 	}
 	q.onBoard(f)
+	q.developedBy(f.Developer)
 	if f.DueFrom != "" || f.DueTo != "" {
 		// The non-empty test is what lets idx_tickets_due_on serve the range.
 		q.where("t.due_on != ''")
@@ -193,6 +194,18 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	}
 	ts := withLabels(toTickets(rows), labels)
 	return inOrder(ids, ts, func(t *tickets.Ticket) string { return t.ID }), total, nil
+}
+
+// developedBy narrows the page to one developer's tickets, matched by login as ticket people are named (ADR 0170).
+func (q *pageQuery) developedBy(login *string) {
+	if login == nil {
+		return
+	}
+	if *login == "" {
+		q.where("t.developer = ''")
+		return
+	}
+	q.where("(t.developer = ? OR t.developer IN (SELECT id FROM users WHERE login = ?))", *login, *login)
 }
 
 // onBoard narrows the page to the filter's column and category.
