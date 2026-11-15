@@ -70,7 +70,8 @@ func TestHandler_Callback(t *testing.T) {
 			func(h *harness) { h.accounts.byEmail["alice@example.com"] = Account{UserID: "u-1", Status: "removed"} }, "/login?error=account_removed"},
 		{"a role that can no longer be joined", "state=state-1&code=c", []*http.Cookie{state}, true,
 			func(h *harness) { h.accounts.roles["member"] = false }, "/login?error=sso_not_ready"},
-		{"single sign-on off for lack of a license", "state=state-1&code=c", []*http.Cookie{state}, false, nil, "/login?error=not_configured"},
+		{"a lapsed license and nobody linked yet", "state=state-1&code=c", []*http.Cookie{state}, false, nil, "/login?error=sso_lapsed"},
+		{"no provider set", "state=state-1&code=c", []*http.Cookie{state}, true, func(h *harness) { h.repo.st = Settings{} }, "/login?error=not_configured"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

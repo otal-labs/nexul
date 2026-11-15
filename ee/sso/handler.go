@@ -26,6 +26,7 @@ const (
 	codeNotConfigured   = "not_configured"
 	codeUnverified      = "sso_email_unverified"
 	codeNotReady        = "sso_not_ready"
+	codeLapsed          = "sso_lapsed"
 	codeFailed          = "sso_failed"
 )
 
@@ -206,6 +207,8 @@ func signInCode(err error) string {
 		return codeUnverified
 	case errors.Is(err, errNotReady):
 		return codeNotReady
+	case errors.Is(err, errLapsed):
+		return codeLapsed
 	case errors.Is(err, apperrs.ErrInvalid):
 		return codeNotConfigured
 	}

@@ -107,6 +107,7 @@ var (
 	errDisabled     = fmt.Errorf("%w: account is disabled", apperrs.ErrUnauthorized)
 	errRemoved      = fmt.Errorf("%w: account was removed", apperrs.ErrUnauthorized)
 	errNotReady     = fmt.Errorf("%w: single sign-on is not set up to create accounts", apperrs.ErrUnauthorized)
+	errLapsed       = fmt.Errorf("%w: single sign-on links and makes no accounts until the license key is renewed", apperrs.ErrUnauthorized)
 )
 
 // checkIssuer takes https issuers, and http only on a loopback address where a provider is run for development.
