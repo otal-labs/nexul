@@ -9,6 +9,13 @@ Nexul's enterprise features, [single sign-on](/docs/guide/single-sign-on/) and b
 
 A key is a short block of text naming who it is for, the address of the one instance it covers, the features it unlocks and the date it expires. It is signed, and the server checks the signature against a public key built into Nexul. Nothing is sent anywhere to check it, so a key works on an instance with no internet access.
 
+## Get a key
+
+A key covers one instance and every enterprise feature, with no limit on people. It runs monthly or yearly. A staging or test instance has its own address, so it needs its own key.
+
+[//]: # "TODO(pre-release/07-launch-copy): where to buy and what it costs, from the owner"
+To get one, send the instance's full public address, as it appears under **Instance URL** in Settings → Instance, and the name the key should carry. The key arrives as one block of text starting with `nexul-license-1.`.
+
 ## Add a key
 
 1. Open **Settings → Instance**. The **License** section says **No key**.
@@ -22,11 +29,11 @@ A key is refused, with the reason under the field, when:
 - its signature doesn't check out, because the text was changed or it wasn't issued for Nexul.
 - it has already expired.
 
-If you change the instance's address after adding a key, the key stops fitting: the section says **Not valid here** and the features stop until you paste a key for the new address.
+If you change the instance's address after adding a key, the key stops fitting: the section says **Not valid here** and the features stop until you paste a key for the new address. Ask for a key with the new address before you move.
 
 ## Expiry and renewal
 
-Fourteen days before the key expires, everyone who can change it sees a notice at the top of every page, with the date. Paste the renewed key with **Replace key** and the notice goes.
+Fourteen days before the key expires, everyone who can change it sees a notice at the top of every page, with the date. Each renewal is a new key; paste it with **Replace key** and the notice goes. Replacing a key changes nothing else, so there is no gap while you do it.
 
 When a key expires, its features stop. Everything they made stays: nothing is deleted, and nobody is locked out of the instance. The notice stays until a new key is pasted, and the features come back as they were.
 

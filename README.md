@@ -130,7 +130,7 @@ template to agree.
 
 ### Enterprise Edition (EE)
 
-What the subscription will include.
+What a subscription covers today (✅) and what is planned (⬜).
 
 | Feature | Done | Summary |
 |---|:---:|---|
