@@ -33,7 +33,7 @@ If you change the instance's address after adding a key, the key stops fitting: 
 
 ## Expiry and renewal
 
-Fourteen days before the key expires, everyone who can change it sees a notice at the top of every page, with the date. Each renewal is a new key; paste it with **Replace key** and the notice goes. Replacing a key changes nothing else, so there is no gap while you do it.
+A key stops working at 00:00 UTC on its expiry date, the date the License section shows. Fourteen days before then, everyone who can change it sees a notice at the top of every page, with the date. Each renewal is a new key; paste it with **Replace key** and the notice goes. Replacing a key changes nothing else, so there is no gap while you do it.
 
 When a key expires, its features stop. Everything they made stays: nothing is deleted, and nobody is locked out of the instance. The notice stays until a new key is pasted, and the features come back as they were.
 

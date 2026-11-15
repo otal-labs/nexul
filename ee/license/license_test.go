@@ -395,3 +395,24 @@ func TestHandler_Routes(t *testing.T) {
 	NewHandler(s).Routes().ServeHTTP(rec, httptest.NewRequestWithContext(asOwner(t), http.MethodDelete, "/api/instance/license", nil))
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
+
+func TestService_Set_ARenewalReplacesALiveKeyOrALapsedOne(t *testing.T) {
+	is := newIssuer(t)
+	repo := &fakeRepo{}
+	s := newTestService(is, repo, testURL)
+	_, err := s.Set(asOwner(t), is.key(t, expiresIn(5*24*time.Hour)))
+	require.NoError(t, err)
+
+	renewal := is.key(t, expiresIn(45*24*time.Hour))
+	st, err := s.Set(asOwner(t), renewal)
+	require.NoError(t, err)
+	assert.Equal(t, StateActive, st.State, "pasted over a live key, the features never stop")
+	assert.True(t, s.Enabled(t.Context(), FeatureSSO))
+
+	repo.key = is.key(t, expiresIn(-3*24*time.Hour))
+	assert.False(t, s.Enabled(t.Context(), FeatureSSO), "the lapsed key unlocks nothing")
+	st, err = s.Set(asOwner(t), renewal)
+	require.NoError(t, err, "a lapsed instance takes a new key whatever the old one says")
+	assert.Equal(t, StateActive, st.State)
+	assert.True(t, s.Enabled(t.Context(), FeatureSSO))
+}
