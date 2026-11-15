@@ -27,10 +27,20 @@ The provider must send the person's `email` and `email_verified` in the ID token
 
 The first time someone signs in through the provider:
 
-- if the provider's verified email is the email of an existing account's Google or Discord sign-in, that sign-in is linked to the account and they land in it. Accounts that only sign in with GitHub hold no email, so they are not matched; those people get a new account the first time, or can be removed from Team beforehand.
+- if the provider's verified email is the email of an existing account's Google or Discord sign-in, that sign-in is linked to the account and they land in it. Accounts that only sign in with GitHub hold no email, so they are not matched; those people get a second account the first time, which you can join onto their own (below).
 - otherwise their account is made, joined to the default workspace with the **New people join as** role, as an invitation would. They then see the same Welcome steps as anyone new.
 
 After that the provider's identity is the account's sign-in, whatever email they use later. A disabled or removed account is refused, as at every other sign-in. Invitations still work as they did: the person picks the provider on the invitation page, and signs in through single sign-on afterwards.
+
+### Join a second account onto the first
+
+When someone's first sign-in made a second account, the instance Owner moves the sign-in over:
+
+1. Open **Settings → Team** and click the person's own account.
+2. Under **Single sign-on**, click **Move from another account** and pick the account the sign-in made; only accounts whose one way in is single sign-on are listed.
+3. Confirm with **Move sign-in**.
+
+From then on, signing in through the provider opens their own account. The second account is disabled and signed out, and anything it made stays; remove it from Team when you no longer need it. The row also says **Signs in through** your provider for anyone already linked.
 
 ## Only single sign-on
 
@@ -54,4 +64,4 @@ When the key expires, is removed or stops fitting the instance's address, the bu
 
 ## Over MCP
 
-`instance_get` returns the single sign-on settings with the license, never the client secret. `instance_update` takes an `sso` object with `issuer_url`, `client_id`, `client_secret`, `display_name`, `join_role_id` and `only`; an omitted field keeps its value, and `remove: true` deletes the provider. The provider is reached, and a secret reference read, before anything is stored. `workspace_list` with the default workspace's id lists the roles for `join_role_id`. The same permissions apply as on the web page, and the card updates on every open Settings page at once.
+`instance_get` returns the single sign-on settings with the license, never the client secret. `instance_update` takes an `sso` object with `issuer_url`, `client_id`, `client_secret`, `display_name`, `join_role_id` and `only`; an omitted field keeps its value, and `remove: true` deletes the provider. The provider is reached, and a secret reference read, before anything is stored. `workspace_list` with the default workspace's id lists the roles for `join_role_id`. `account_update` with `sso_from` set to the second account's id joins it onto the account named by `id`, as above. The same permissions apply as on the web page, and the card updates on every open Settings page at once.

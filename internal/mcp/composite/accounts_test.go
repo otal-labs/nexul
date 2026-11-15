@@ -61,6 +61,10 @@ func (f *fakeTeam) UpdateMemberRoles(_ context.Context, _, workspaceID, _ string
 	return f.record("roles " + workspaceID + " +" + strings.Join(add, ",") + " -" + strings.Join(remove, ","))
 }
 
+func (f *fakeTeam) MoveSignIn(_ context.Context, fromID, toID string) error {
+	return f.record("sso " + fromID + ">" + toID)
+}
+
 func (f *fakeTeam) RemoveMember(_ context.Context, _, workspaceID, _ string) error {
 	return f.record("remove " + workspaceID)
 }
@@ -98,7 +102,7 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 		Workspaces: []*tenancy.TeamWorkspace{{ID: "ws-nexul", CanManageMembers: true}, {ID: "ws-acme"}},
 	}}
 
-	got, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_list", `{}`)
+	got, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, team), "account_list", `{}`)
 	require.NoError(t, err)
 	page := got.(mcptool.Page[accountResult])
 	require.Len(t, page.Items, 1)
@@ -131,12 +135,13 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 		{"a workspace the account is in gives and takes away", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","add_roles":["editor"],"remove_roles":["viewer"]}]}`, "", []string{"roles ws-nexul +editor -viewer"}, nil},
 		{"taking a role from a non-member is invalid", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","remove_roles":["viewer"]}]}`, "", nil, apperrs.ErrInvalid},
 		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
+		{"a duplicate's single sign-on moves first", `{"id":"bob","sso_from":"dup","remove_workspace_ids":["ws-nexul"]}`, "", []string{"sso dup>bob", "remove ws-nexul"}, nil},
 		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}, failOn: tt.failOn}
-			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", tt.args)
+			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, team), "account_update", tt.args)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 			}
@@ -159,7 +164,7 @@ func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 		`{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}`,
 	} {
 		team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}}
-		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
+		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, entry)
 		assert.Contains(t, err.Error(), "input schema", entry)
 		assert.Empty(t, team.calls, entry)
@@ -168,7 +173,7 @@ func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 
 func TestAccountUpdate_StatusGoesToTheAccountAndTheResultOmitsAnUnreadableTeam(t *testing.T) {
 	status := &fakeStatusSetter{}
-	got, err := callAccountTool(t, AccountTools(status, &fakeTeam{}), "account_update", `{"id":"bob","status":"disabled"}`)
+	got, err := callAccountTool(t, AccountTools(status, &fakeTeam{}, &fakeTeam{}), "account_update", `{"id":"bob","status":"disabled"}`)
 	require.NoError(t, err)
 	assert.Equal(t, []auth.AccountStatus{auth.AccountDisabled}, status.calls)
 	assert.Equal(t, accountUpdateResult{Applied: []string{"status"}}, got)

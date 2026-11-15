@@ -27,9 +27,14 @@ type Team interface {
 	RemoveMember(ctx context.Context, actorID, workspaceID, userID string) error
 }
 
+// SignInMover is the single sign-on use-case account_update joins a duplicate account through.
+type SignInMover interface {
+	MoveSignIn(ctx context.Context, fromID, toID string) error
+}
+
 // AccountTools are the account tools that carry workspace access, which the tenancy domain owns.
-func AccountTools(a AccountStatusSetter, t Team) []mcptool.Tool {
-	return []mcptool.Tool{accountListTool(t), accountUpdateTool(a, t)}
+func AccountTools(a AccountStatusSetter, t Team, m SignInMover) []mcptool.Tool {
+	return []mcptool.Tool{accountListTool(t), accountUpdateTool(a, t, m)}
 }
 
 // accountResult is one person on the Team: the account with the providers it signs in through but none of their identities, plus its workspace access.
@@ -72,6 +77,7 @@ type accountUpdateIn struct {
 	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled."`
 	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Roles to change per workspace."`
 	RemoveWorkspaceIDs []string             `json:"remove_workspace_ids,omitempty" jsonschema:"Workspaces to take the account out of; its account and authored content stay."`
+	SSOFrom            string               `json:"sso_from,omitempty" jsonschema:"A duplicate account whose only sign-in is single sign-on: it moves here and the duplicate is disabled."`
 }
 
 type accountUpdateResult struct {
@@ -103,7 +109,7 @@ func accountListTool(t Team) mcptool.Tool {
 		})
 }
 
-func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
+func accountUpdateTool(a AccountStatusSetter, t Team, m SignInMover) mcptool.Tool {
 	return mcptool.New("account_update", "Update account",
 		"Changes an account's status and the roles it holds in each workspace. status disabled blocks sign-in and disconnects "+
 			"their computers while keeping memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
@@ -112,16 +118,16 @@ func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 			"it is a member; remove_workspace_ids takes it out of one. You may "+
 			"give or take away only a role whose permissions you hold there yourself, and the Owner role is never "+
 			"given or taken. Someone left with no role stays a member and sees no project; which projects a person is "+
-			"in is set on each project with permission_overwrite_update. The changes apply in the order listed "+
-			"and stop at the first failure, whose message names the field and the ones already applied. "+
+			"in is set on each project with permission_overwrite_update. Changes apply in order and stop at the "+
+			"first failure, whose message names the field and those applied. "+
 			"Returns the fields applied and the account as account_list shows it to you.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountUpdateIn) (any, error) {
-			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 {
-				return nil, fmt.Errorf("%w: send status, workspaces, or remove_workspace_ids", apperrs.ErrInvalid)
+			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 && in.SSOFrom == "" {
+				return nil, fmt.Errorf("%w: send status, workspaces, remove_workspace_ids, or sso_from", apperrs.ErrInvalid)
 			}
 			actor := accountActor(ctx)
-			applied, err := runSteps(ctx, accountUpdateSteps(a, t, actor, in))
+			applied, err := runSteps(ctx, accountUpdateSteps(a, t, m, actor, in))
 			if err != nil {
 				return nil, err
 			}
@@ -129,8 +135,13 @@ func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 		})
 }
 
-func accountUpdateSteps(a AccountStatusSetter, t Team, actor string, in accountUpdateIn) []step {
+func accountUpdateSteps(a AccountStatusSetter, t Team, m SignInMover, actor string, in accountUpdateIn) []step {
 	var steps []step
+	if in.SSOFrom != "" {
+		steps = append(steps, step{field: "sso_from", run: func(ctx context.Context) error {
+			return m.MoveSignIn(ctx, in.SSOFrom, in.ID)
+		}})
+	}
 	if in.Status != "" {
 		steps = append(steps, step{field: "status", run: func(ctx context.Context) error {
 			return a.UpdateAccountStatus(ctx, actor, in.ID, in.Status)

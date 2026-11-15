@@ -88,6 +88,8 @@ type fakeAccounts struct {
 	roles     map[string]bool
 	linked    map[string]Identity
 	created   map[string]string
+	// moved is each MoveSignIn call as from>to.
+	moved []string
 }
 
 func newAccounts() *fakeAccounts {
@@ -119,6 +121,11 @@ func (a *fakeAccounts) Link(_ context.Context, userID string, id Identity) error
 func (a *fakeAccounts) Create(_ context.Context, userID string, id Identity, roleID string, _ time.Time) error {
 	a.created[userID] = roleID
 	a.linked[userID] = id
+	return nil
+}
+
+func (a *fakeAccounts) MoveSignIn(_ context.Context, fromID, toID, _ string) error {
+	a.moved = append(a.moved, fromID+">"+toID)
 	return nil
 }
 
@@ -583,4 +590,34 @@ func TestCheck_RunsOneNamedCheckAndStoresNothing(t *testing.T) {
 	h.svc.cfg.Licenses = fakeLicenses{on: false}
 	_, err = h.svc.Check(asActor(t), "issuer", Patch{})
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
+}
+
+func TestMoveSignIn_RefusesWhatTheOwnerCannotOrNeedNotDo(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		licensed bool
+		gate     error
+		from, to string
+		want     error
+	}{
+		{"without the instance permission", true, apperrs.ErrForbidden, "u-dup", "u-alice", apperrs.ErrForbidden},
+		{"without a key that unlocks sso", false, nil, "u-dup", "u-alice", apperrs.ErrForbidden},
+		{"with an account missing", true, nil, " ", "u-alice", apperrs.ErrInvalid},
+		{"onto the same account", true, nil, "u-alice", "u-alice", apperrs.ErrInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, tc.licensed)
+			h.svc.cfg.Gate = fakeGate{err: tc.gate}
+
+			err := h.svc.MoveSignIn(asActor(t), tc.from, tc.to)
+
+			require.ErrorIs(t, err, tc.want)
+			assert.Empty(t, h.accounts.moved)
+		})
+	}
+	h := newHarness(t, true)
+	require.NoError(t, h.svc.MoveSignIn(asActor(t), " u-dup ", "u-alice"))
+	assert.Equal(t, []string{"u-dup>u-alice"}, h.accounts.moved)
 }

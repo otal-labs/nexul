@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -284,4 +285,112 @@ func (r *SSORepo) RefuseGrant(ctx context.Context, userID string) (int, error) {
 		return enqueueWorkspaceOutbox(ctx, tx, evts)
 	})
 	return ended, err
+}
+
+// MoveSignIn moves the single sign-on identity and grant of fromID, whose only sign-in it is, onto toID, then disables
+// fromID and ends its sessions, all in one transaction; what fromID made stays with it.
+func (r *SSORepo) MoveSignIn(ctx context.Context, fromID, toID, actorID string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		from, login, err := checkMove(ctx, q, fromID, toID)
+		if err != nil {
+			return err
+		}
+		if _, err := q.MoveSSOIdentity(ctx, sqlcgen.MoveSSOIdentityParams{ToUserID: toID, FromUserID: fromID}); err != nil {
+			return fmt.Errorf("move sso identity: %w", err)
+		}
+		if err := q.DeleteSSOGrant(ctx, toID); err != nil {
+			return fmt.Errorf("clear sso grant of %s: %w", toID, err)
+		}
+		if err := q.MoveSSOGrant(ctx, sqlcgen.MoveSSOGrantParams{ToUserID: toID, FromUserID: fromID}); err != nil {
+			return fmt.Errorf("move sso grant: %w", err)
+		}
+		evts := []eventbus.OutboxEvent{
+			{ID: ids.New(), Topic: auth.TopicIdentityLinked, Payload: auth.IdentityChangedEvent{UserID: toID, Provider: ssoProvider, Login: login}},
+		}
+		if from.AccountStatus == string(auth.AccountActive) {
+			if _, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{AccountStatus: string(auth.AccountDisabled), UpdatedAt: time.Now().Unix(), ID: fromID}); err != nil {
+				return fmt.Errorf("disable account %s: %w", fromID, err)
+			}
+			evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: auth.TopicAccountDisabled, Payload: auth.AccountLifecycleEvent{AccountID: fromID, ActorID: actorID}})
+		}
+		revoked, err := endSessionsOf(ctx, q, fromID)
+		if err != nil {
+			return err
+		}
+		return enqueueWorkspaceOutbox(ctx, tx, append(evts, revoked...))
+	})
+}
+
+// checkMove refuses a move that would leave someone without a way in or give an account a second single sign-on, and
+// returns the account moved from with its sign-in's email.
+func checkMove(ctx context.Context, q *sqlcgen.Queries, fromID, toID string) (sqlcgen.User, string, error) {
+	from, err := q.GetUserByID(ctx, fromID)
+	if err != nil {
+		return sqlcgen.User{}, "", fmt.Errorf("get account %s: %w", fromID, notFoundIfNoRows(err))
+	}
+	to, err := q.GetUserByID(ctx, toID)
+	if err != nil {
+		return sqlcgen.User{}, "", fmt.Errorf("get account %s: %w", toID, notFoundIfNoRows(err))
+	}
+	if to.AccountStatus == string(auth.AccountRemoved) {
+		return sqlcgen.User{}, "", fmt.Errorf("%w: the account to move single sign-on to was removed; restore it first", apperrs.ErrInvalid)
+	}
+	login, err := onlySSOLogin(ctx, q, fromID)
+	if err != nil {
+		return sqlcgen.User{}, "", err
+	}
+	if err := hasNoSSO(ctx, q, toID); err != nil {
+		return sqlcgen.User{}, "", err
+	}
+	if err := protectLastActiveOwner(ctx, q, from, auth.AccountDisabled); err != nil {
+		return sqlcgen.User{}, "", err
+	}
+	return from, login, nil
+}
+
+// endSessionsOf deletes every session of the user and returns a session.revoked event for each.
+func endSessionsOf(ctx context.Context, q *sqlcgen.Queries, userID string) ([]eventbus.OutboxEvent, error) {
+	sessions, err := q.ListSessionsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions of %s: %w", userID, err)
+	}
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+	ended := make([]string, 0, len(sessions))
+	evts := make([]eventbus.OutboxEvent, 0, len(sessions))
+	for _, row := range sessions {
+		ended = append(ended, row.ID)
+		evts = append(evts, sessionRevokedEvent(row))
+	}
+	if err := q.DeleteSessionsByID(ctx, ended); err != nil {
+		return nil, fmt.Errorf("end sessions of %s: %w", userID, err)
+	}
+	return evts, nil
+}
+
+// onlySSOLogin is the email of the account's single sign-on, refused unless that is its one sign-in.
+func onlySSOLogin(ctx context.Context, q *sqlcgen.Queries, userID string) (string, error) {
+	identities, err := q.ListIdentitiesByUser(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("list identities of %s: %w", userID, err)
+	}
+	if len(identities) != 1 || identities[0].Provider != ssoProvider {
+		return "", fmt.Errorf("%w: single sign-on moves only from an account whose one sign-in it is", apperrs.ErrInvalid)
+	}
+	return identities[0].Login, nil
+}
+
+func hasNoSSO(ctx context.Context, q *sqlcgen.Queries, userID string) error {
+	identities, err := q.ListIdentitiesByUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("list identities of %s: %w", userID, err)
+	}
+	for _, id := range identities {
+		if id.Provider == ssoProvider {
+			return fmt.Errorf("%w: that account already signs in through single sign-on", apperrs.ErrConflict)
+		}
+	}
+	return nil
 }

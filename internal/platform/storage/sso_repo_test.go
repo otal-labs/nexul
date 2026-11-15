@@ -376,3 +376,89 @@ func TestSSORepo_StaleGrants_ACorruptedTokenComesBackEmptyAndDropGrantDeletesIt(
 	require.NoError(t, err)
 	assert.Len(t, sessions, 3, "dropping a grant ends no session")
 }
+
+func TestSSORepo_MoveSignIn_JoinsTheDuplicateOntoTheExistingAccount(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedDefaultRoles(t, s)
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-alice", "gh-alice", "alice"))
+	require.NoError(t, err)
+	id := sso.Identity{Key: "https://login.example.com#sub-1", Email: "alice@example.com"}
+	require.NoError(t, s.SSO.Create(ctx, "u-dup", id, "role-member", time.Unix(500, 0)))
+	require.NoError(t, s.SSO.SaveGrant(ctx, "u-dup", "refresh-1", time.Unix(500, 0)))
+	now := time.Now().UTC()
+	for _, ses := range []auth.Session{{ID: "dup-sso", UserID: "u-dup", SSO: true}, {ID: "alice-github", UserID: "u-alice"}} {
+		ses.TokenHash, ses.CreatedAt, ses.LastActiveAt, ses.ExpiresAt, ses.Client = ses.ID, now, now, now.Add(time.Hour), auth.ClientBrowser
+		require.NoError(t, s.Sessions.CreateSession(ctx, &ses))
+	}
+	before := outboxTopics(t, s)
+
+	require.NoError(t, s.SSO.MoveSignIn(ctx, "u-dup", "u-alice", "u-owner"))
+
+	acct, err := s.SSO.BySubject(ctx, id.Key)
+	require.NoError(t, err)
+	assert.Equal(t, sso.Account{UserID: "u-alice", Status: "active"}, acct, "the next sign-in through the provider lands on the existing account")
+	grants, err := s.SSO.StaleGrants(ctx, time.Unix(1_000, 0), 10)
+	require.NoError(t, err)
+	assert.Equal(t, []sso.StoredGrant{{UserID: "u-alice", RefreshToken: "refresh-1"}}, grants, "the provider keeps being re-checked for the person")
+	dup, err := s.Users.GetUserByID(ctx, "u-dup")
+	require.NoError(t, err)
+	assert.Equal(t, auth.AccountDisabled, dup.AccountStatus, "the duplicate is kept, with what it made")
+	left, err := s.Sessions.ListSessionsByUser(ctx, "u-dup")
+	require.NoError(t, err)
+	assert.Empty(t, left)
+	kept, err := s.Sessions.ListSessionsByUser(ctx, "u-alice")
+	require.NoError(t, err)
+	assert.Len(t, kept, 1)
+	assert.Equal(t, append(before, auth.TopicIdentityLinked, auth.TopicAccountDisabled, auth.TopicSessionRevoked), outboxTopics(t, s))
+}
+
+func TestSSORepo_MoveSignIn_RefusesAndChangesNothing(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		from, to string
+		want     error
+	}{
+		{"from an account that signs in another way too", "u-both", "u-alice", apperrs.ErrInvalid},
+		{"from an account with no single sign-on", "u-alice", "u-bob", apperrs.ErrInvalid},
+		{"onto an account that already has one", "u-dup", "u-both", apperrs.ErrConflict},
+		{"onto a removed account", "u-dup", "u-gone", apperrs.ErrInvalid},
+		{"from an unknown account", "u-ghost", "u-alice", apperrs.ErrNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			ctx := t.Context()
+			seedDefaultRoles(t, s)
+			for _, u := range []string{"alice", "bob", "both", "gone"} {
+				_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-"+u, "gh-"+u, u))
+				require.NoError(t, err)
+			}
+			require.NoError(t, s.Users.SetAccountStatus(ctx, "u-gone", auth.AccountRemoved))
+			require.NoError(t, s.SSO.Create(ctx, "u-dup", sso.Identity{Key: "iss#dup", Email: "dup@example.com"}, "role-member", time.Unix(500, 0)))
+			require.NoError(t, s.SSO.Link(ctx, "u-both", sso.Identity{Key: "iss#both", Email: "both@example.com"}))
+			before := outboxTopics(t, s)
+
+			err := s.SSO.MoveSignIn(ctx, tc.from, tc.to, "u-owner")
+
+			require.ErrorIs(t, err, tc.want)
+			acct, err := s.SSO.BySubject(ctx, "iss#dup")
+			require.NoError(t, err)
+			assert.Equal(t, sso.Account{UserID: "u-dup", Status: "active"}, acct)
+			assert.Equal(t, before, outboxTopics(t, s))
+		})
+	}
+}
+
+func outboxTopics(t *testing.T, s *Store) []string {
+	t.Helper()
+	pending, err := s.Outbox.Unpublished(t.Context(), 100)
+	require.NoError(t, err)
+	topics := []string{}
+	for _, e := range pending {
+		topics = append(topics, e.Topic)
+	}
+	return topics
+}

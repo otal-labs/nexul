@@ -104,6 +104,20 @@ func (q *Queries) ListStaleSSOGrants(ctx context.Context, arg ListStaleSSOGrants
 	return items, nil
 }
 
+const moveSSOGrant = `-- name: MoveSSOGrant :exec
+UPDATE sso_grants SET user_id = ?1 WHERE user_id = ?2
+`
+
+type MoveSSOGrantParams struct {
+	ToUserID   string
+	FromUserID string
+}
+
+func (q *Queries) MoveSSOGrant(ctx context.Context, arg MoveSSOGrantParams) error {
+	_, err := q.db.ExecContext(ctx, moveSSOGrant, arg.ToUserID, arg.FromUserID)
+	return err
+}
+
 const touchSSOGrant = `-- name: TouchSSOGrant :exec
 UPDATE sso_grants SET refresh_token = COALESCE(?1, refresh_token), checked_at = ?2
 WHERE user_id = ?3
