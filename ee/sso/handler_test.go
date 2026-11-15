@@ -143,3 +143,16 @@ func TestHandler_Settings_NeverReturnTheClientSecret_AndAnswerRefusalsWithTheirS
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"unlocked":true,"configured":false,"issuer_url":"","client_id":"","client_secret_set":false,"display_name":"","join_role_id":"","only":false,"redirect_uri":"https://nexul.example.com/auth/oidc/callback","active":false}`, rec.Body.String())
 }
+
+func TestHandler_Move_JoinsTheTwoAccountsNamedInTheBody(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, true)
+	routes := NewHandler(h.svc, &fakeBrowser{}).Routes()
+
+	rec := serve(t, routes, http.MethodPost, "/api/instance/sso/move", `{"from_account_id":"u-dup","to_account_id":"u-alice"}`)
+	require.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, []string{"u-dup>u-alice"}, h.accounts.moved)
+
+	rec = serve(t, routes, http.MethodPost, "/api/instance/sso/move", `{"from_account_id":"u-alice","to_account_id":"u-alice"}`)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}

@@ -325,6 +325,26 @@ func (s *Service) Remove(ctx context.Context) (View, error) {
 	return s.view(ctx, Settings{})
 }
 
+// MoveSignIn joins the two accounts a person ends up with when their first sign-in through the provider found no
+// account to match: the single sign-on moves from fromID, the account it made, onto toID, and fromID is disabled and
+// signed out with everything it made kept. It needs instance:write and a key that unlocks sso.
+func (s *Service) MoveSignIn(ctx context.Context, fromID, toID string) error {
+	if err := s.require(ctx, permissions.InstanceWrite); err != nil {
+		return err
+	}
+	if !s.unlocked(ctx) {
+		return errNeedsLicense
+	}
+	fromID, toID = strings.TrimSpace(fromID), strings.TrimSpace(toID)
+	if fromID == "" || toID == "" {
+		return fmt.Errorf("%w: both accounts are needed", apperrs.ErrInvalid)
+	}
+	if fromID == toID {
+		return fmt.Errorf("%w: single sign-on moves between two different accounts", apperrs.ErrInvalid)
+	}
+	return s.cfg.Accounts.MoveSignIn(ctx, fromID, toID, actorID(ctx))
+}
+
 // active returns the settings a sign-in runs on, or why nobody can sign in this way.
 func (s *Service) active(ctx context.Context) (Settings, error) {
 	st, err := s.cfg.Repo.Get(ctx)

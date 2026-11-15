@@ -71,3 +71,11 @@ export const ssoFollower: LiveFollower = {
   "instance.sso_changed": (_payload: unknown, { client }) =>
     Promise.all([client.invalidateQueries({ queryKey: [getSsoKey] }), client.invalidateQueries({ queryKey: [getSsoPublicKey] })]),
 };
+
+// Joins the account a first sign-in made onto the person's existing one; the Team refetches on the duplicate's account.disabled.
+export const useMoveSsoSignIn = () =>
+  useMutation({
+    mutationFn: requires("instance:write", ({ from, to }: { from: string; to: string }) => api.post("/api/instance/sso/move", { from_account_id: from, to_account_id: to })),
+    onSuccess: () => toast.success("Single sign-on moved"),
+    onError: (error) => toast.error(errorMessage(error)),
+  });

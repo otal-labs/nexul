@@ -7,6 +7,7 @@ import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
 import { TeamDialogFooter } from "@/components/team/TeamDialogFooter";
 import { TeamWelcomeBlock } from "@/components/team/TeamWelcomeBlock";
 import { TeamWorkspaceTabs } from "@/components/team/TeamWorkspaceTabs";
+import { TeamSsoRow } from "@/ee/components/TeamSsoRow";
 import { useApplyMemberStep, useFetchTeam } from "@/hooks/TeamHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { MemberDraftContext } from "@/hooks/useMemberDraft";
@@ -96,6 +97,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
             </div>
           </DialogHeader>
         )}
+        {person && <TeamSsoRow person={person} />}
         {person && <TeamWelcomeBlock person={person} />}
         {person && team && (
           <MemberDraftContext value={{ person, draft, dispatch }}>

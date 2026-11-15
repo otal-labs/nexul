@@ -44,4 +44,7 @@ type Accounts interface {
 	Create(ctx context.Context, userID string, id Identity, roleID string, at time.Time) error
 	// CanJoinAs reports whether roleID is a role of the default workspace that is not its Owner role.
 	CanJoinAs(ctx context.Context, roleID string) (bool, error)
+	// MoveSignIn moves fromID's single sign-on, its only sign-in, onto toID, then disables fromID and ends its
+	// sessions; ErrInvalid when fromID signs in another way too, ErrConflict when toID already has one.
+	MoveSignIn(ctx context.Context, fromID, toID, actorID string) error
 }

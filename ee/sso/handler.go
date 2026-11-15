@@ -64,7 +64,26 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/instance/sso", h.update)
 	mux.HandleFunc("DELETE /api/instance/sso", h.remove)
 	mux.HandleFunc("POST /api/instance/sso/verify", h.verify)
+	mux.HandleFunc("POST /api/instance/sso/move", h.move)
 	return mux
+}
+
+type moveBody struct {
+	FromAccountID string `json:"from_account_id"`
+	ToAccountID   string `json:"to_account_id"`
+}
+
+func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
+	var b moveBody
+	if err := httpx.DecodeJSON(r, &b); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.MoveSignIn(r.Context(), b.FromAccountID, b.ToAccountID); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) public(w http.ResponseWriter, r *http.Request) {

@@ -73,6 +73,23 @@ func (q *Queries) GetSSOSettings(ctx context.Context) (SsoSetting, error) {
 	return i, err
 }
 
+const moveSSOIdentity = `-- name: MoveSSOIdentity :execrows
+UPDATE user_identities SET user_id = ?1 WHERE user_id = ?2 AND provider = 'oidc'
+`
+
+type MoveSSOIdentityParams struct {
+	ToUserID   string
+	FromUserID string
+}
+
+func (q *Queries) MoveSSOIdentity(ctx context.Context, arg MoveSSOIdentityParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, moveSSOIdentity, arg.ToUserID, arg.FromUserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setSSOSettings = `-- name: SetSSOSettings :exec
 INSERT INTO sso_settings (id, issuer_url, client_id, client_secret, display_name, join_role_id, sso_only, updated_by, updated_at)
 VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)

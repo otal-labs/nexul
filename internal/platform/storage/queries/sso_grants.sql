@@ -17,3 +17,6 @@ DELETE FROM sso_grants;
 
 -- name: ListSSOSessionsByUser :many
 SELECT * FROM sessions WHERE user_id = ? AND sso = 1;
+
+-- name: MoveSSOGrant :exec
+UPDATE sso_grants SET user_id = sqlc.arg(to_user_id) WHERE user_id = sqlc.arg(from_user_id);
