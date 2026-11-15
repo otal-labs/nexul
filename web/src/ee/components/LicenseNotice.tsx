@@ -15,7 +15,7 @@ const noticeText = (license: License): string => {
     return `The enterprise license expires in ${daysUntil(license.expires_at ?? "")} days, on ${expiry}. Paste a renewed key to keep its features running.`;
   }
   if (license.state === LicenseState.Expired) {
-    return `The enterprise license expired on ${expiry}. Its features are off and everything they made is kept until a new key is pasted.`;
+    return `The enterprise license expired on ${expiry}. Its features are off until a new key is pasted, and everything they made is kept.`;
   }
   return "The enterprise license key doesn't fit this instance, so its features are off.";
 };

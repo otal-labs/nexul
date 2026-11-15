@@ -326,14 +326,23 @@ func TestComplete_AJoinRoleNobodyMayHoldAnyMore_CreatesNoAccount(t *testing.T) {
 	assert.Empty(t, h.accounts.created)
 }
 
-func TestStartAndComplete_WithoutALicense_AreRefused(t *testing.T) {
+func TestComplete_ALapsedKey_SignsInOnlyThePeopleAlreadyLinked(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t, false)
 	_, _, err := h.svc.Start(t.Context())
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	require.NoError(t, err, "whoever single sign-on made an account for keeps a way in (ADR 0184)")
+	h.accounts.bySubject[issuerKey] = Account{UserID: "u-linked", Status: "active"}
+
+	userID, err := h.svc.Complete(t.Context(), "state", "code")
+
+	require.NoError(t, err)
+	assert.Equal(t, "u-linked", userID)
+	delete(h.accounts.bySubject, issuerKey)
+	h.accounts.byEmail["alice@example.com"] = Account{UserID: "u-alice", Status: "active"}
 	_, err = h.svc.Complete(t.Context(), "state", "code")
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Empty(t, h.connected, "the provider is never contacted")
+	require.ErrorIs(t, err, errLapsed)
+	assert.Empty(t, h.accounts.linked, "an email match links nothing until the key is renewed")
+	assert.Empty(t, h.accounts.created)
 }
 
 func TestStart_ReadsTheSecretReferenceAndBuildsTheRedirectURI(t *testing.T) {
@@ -525,7 +534,7 @@ func TestRemove_WorksWithoutALicense_SoALapsedKeyNeverTrapsAProvider(t *testing.
 	require.Len(t, h.repo.events, 1)
 }
 
-func TestPublic_ShowsTheButtonOnlyWhileLicensedAndConfigured(t *testing.T) {
+func TestPublic_ShowsTheButtonWhileConfigured_AndTheSwitchOnlyWhileLicensed(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
@@ -535,7 +544,7 @@ func TestPublic_ShowsTheButtonOnlyWhileLicensedAndConfigured(t *testing.T) {
 	}{
 		{"licensed and configured", true, func(*Settings) {}, Public{Active: true, Name: "Acme SSO"}},
 		{"the only sign-in", true, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO", Only: true}},
-		{"a lapsed license hides it, and the switch with it", false, func(s *Settings) { s.Only = true }, Public{}},
+		{"a lapsed license keeps the button for the people it signs in, and drops the switch", false, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO"}},
 		{"a half-set provider", true, func(s *Settings) { s.ClientID = "" }, Public{}},
 	}
 	for _, tt := range tests {

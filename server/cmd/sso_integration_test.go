@@ -38,18 +38,13 @@ func TestSSORoutes_WithoutAUnlockingKey_ThroughTheRouter(t *testing.T) {
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/sso", nil))
 	require.Equal(t, http.StatusOK, rec.Code, "the sign-in page asks signed out")
-	assert.JSONEq(t, `{"active":false,"name":"","only":false}`, rec.Body.String(), "no button and no switch while unlicensed")
+	assert.JSONEq(t, `{"active":true,"name":"Acme SSO","only":false}`, rec.Body.String(), "the button stays for the people it signs in, the switch goes (ADR 0192)")
 
 	rec = callAPI(t, h, http.MethodPut, "/api/instance/sso", token, `{"display_name":"Acme"}`)
 	assert.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), "needs a license key")
 	rec = callAPI(t, h, http.MethodPost, "/api/instance/sso/verify?check=issuer", token, `{}`)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/oidc", nil))
-	assert.Equal(t, http.StatusFound, rec.Code)
-	assert.Contains(t, rec.Header().Get("Location"), "/login?error=not_configured")
 
 	saved, err := store.SSO.Get(t.Context())
 	require.NoError(t, err)

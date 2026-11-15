@@ -24,7 +24,7 @@ func (s *Service) recheck(ctx context.Context, log *slog.Logger) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if !st.Configured() || !s.unlocked(ctx) {
+	if !st.Configured() {
 		return 0, nil
 	}
 	secret, err := s.clientSecret(ctx, st.ClientSecret)

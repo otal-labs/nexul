@@ -56,7 +56,7 @@ People who sign in through the provider are checked against it about once an hou
 
 ## When the license lapses
 
-When the key expires, is removed or stops fitting the instance's address, the button and the switch go with it, so the other sign-in methods come back at once and nobody is locked out. The card says it needs a license, keeps what you saved, and still lets you remove it. Paste a renewed key and single sign-on is back as it was.
+When the key expires, is removed or stops fitting the instance's address, the switch goes and the other sign-in methods come back at once. The button stays for the people single sign-on already signs in, so nobody whose only way in is your provider is locked out, and someone removed at the provider is still signed out within the hour. It makes no new accounts and links none by email until the key is renewed. The card says it needs a license, keeps what you saved, and still lets you remove it. Paste a renewed key and single sign-on is back as it was.
 
 ## Remove it
 

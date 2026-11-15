@@ -95,14 +95,15 @@ func (s *Service) redirectURI(ctx context.Context) (string, error) {
 	return strings.TrimSuffix(base, "/") + "/auth/oidc/callback", nil
 }
 
-// Public is what the sign-in page shows: the button only while the key unlocks sso and a provider is set, and every
-// other method hidden only while the switch is on. A failed read counts as off.
+// Public is what the sign-in page shows: the button while a provider is set, so the people it signs in keep a way in
+// when the key lapses (ADR 0184), and every other method hidden only while the switch is on and the key unlocks sso.
+// A failed read counts as off.
 func (s *Service) Public(ctx context.Context) Public {
 	st, err := s.cfg.Repo.Get(ctx)
-	if err != nil || !st.Configured() || !s.unlocked(ctx) {
+	if err != nil || !st.Configured() {
 		return Public{}
 	}
-	return Public{Active: true, Name: st.DisplayName, Only: st.Only}
+	return Public{Active: true, Name: st.DisplayName, Only: st.Only && s.unlocked(ctx)}
 }
 
 // OnlySSO reports whether every other sign-in method is off right now.
@@ -345,13 +346,14 @@ func (s *Service) MoveSignIn(ctx context.Context, fromID, toID string) error {
 	return s.cfg.Accounts.MoveSignIn(ctx, fromID, toID, actorID(ctx))
 }
 
-// active returns the settings a sign-in runs on, or why nobody can sign in this way.
+// active returns the settings a sign-in runs on, or why nobody can sign in this way; a lapsed key still signs in the
+// people already linked, so it is not a reason.
 func (s *Service) active(ctx context.Context) (Settings, error) {
 	st, err := s.cfg.Repo.Get(ctx)
 	if err != nil {
 		return Settings{}, err
 	}
-	if !st.Configured() || !s.unlocked(ctx) {
+	if !st.Configured() {
 		return Settings{}, fmt.Errorf("%w: single sign-on is not on for this instance", apperrs.ErrInvalid)
 	}
 	return st, nil
@@ -401,7 +403,7 @@ func (s *Service) Start(ctx context.Context) (authorizeURL, state string, err er
 
 // Complete finishes a sign-in and returns the account to start a session for: the one already linked to the subject,
 // else the one whose Google or Discord sign-in has the same verified email, else a new one that joins the default
-// workspace as the settings' role.
+// workspace as the settings' role. Without a key that unlocks sso only the first is found, so nothing is linked or made.
 func (s *Service) Complete(ctx context.Context, state, code string) (string, error) {
 	st, err := s.active(ctx)
 	if err != nil {
@@ -463,6 +465,9 @@ func (s *Service) account(ctx context.Context, st Settings, id Identity) (string
 	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return "", err
+	}
+	if !s.unlocked(ctx) {
+		return "", errLapsed
 	}
 	acct, err = s.cfg.Accounts.ByEmail(ctx, id.Email)
 	if err == nil {

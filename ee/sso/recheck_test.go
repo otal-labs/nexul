@@ -97,32 +97,32 @@ func TestRecheck_AnUnreachableProvider_StopsBeforeAnyGrantIsAsked(t *testing.T) 
 	assert.Contains(t, h.repo.grants, "alice")
 }
 
-func TestRecheck_UnlicensedOrUnconfigured_DoesNothing(t *testing.T) {
+func TestRecheck_ALapsedKey_StillEndsTheSessionsOfSomeoneTheProviderRemoved(t *testing.T) {
 	t.Parallel()
-	for name, tt := range map[string]struct {
-		licensed    bool
-		unconfigure bool
-	}{
-		"no license":  {false, false},
-		"no provider": {true, true},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			h := newHarness(t, tt.licensed)
-			withGrants(h, "alice")
-			h.idp.refresh = map[string]error{"rt-alice": errGrantRefused}
-			if tt.unconfigure {
-				h.repo.st = Settings{}
-			}
+	h := newHarness(t, false)
+	withGrants(h, "alice")
+	h.repo.sessions["alice"] = 1
+	h.idp.refresh = map[string]error{"rt-alice": errGrantRefused}
 
-			ended, err := h.svc.recheck(t.Context(), slog.New(slog.DiscardHandler))
+	ended, err := h.svc.recheck(t.Context(), slog.New(slog.DiscardHandler))
 
-			require.NoError(t, err)
-			assert.Zero(t, ended)
-			assert.Empty(t, h.idp.refreshCalls)
-			assert.Contains(t, h.repo.grants, "alice")
-		})
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 1, ended, "people still sign in through the provider, so its removals still count")
+}
+
+func TestRecheck_Unconfigured_DoesNothing(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, true)
+	withGrants(h, "alice")
+	h.idp.refresh = map[string]error{"rt-alice": errGrantRefused}
+	h.repo.st = Settings{}
+
+	ended, err := h.svc.recheck(t.Context(), slog.New(slog.DiscardHandler))
+
+	require.NoError(t, err)
+	assert.Zero(t, ended)
+	assert.Empty(t, h.idp.refreshCalls)
+	assert.Contains(t, h.repo.grants, "alice")
 }
 
 func TestRecheck_MoreGrantsThanOneBatch_AreAllChecked(t *testing.T) {
