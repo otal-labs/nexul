@@ -27,6 +27,7 @@ issue itself fires. They become due once the main domain phase is complete.
 | 03 | Security-review the integration model before the store launches | `ready-for-human` |
 | 05 | Revisit canvas node kinds once topology ships | `needs-triage` |
 | 06 | Register the Cloudflare OAuth app | `ready-for-human` |
+| 07 | Launch copy the owner has to supply | `ready-for-human` |
 
 Closed: 01 (OAuth secret rotated), 04 (deploy env secrets redacted, shipped with
 the automations rework), 07 (dev-login verified off: only the debug compose

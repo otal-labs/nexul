@@ -16,8 +16,9 @@ source everywhere.
   the software over a network.
 - Everything **inside `ee/`** is under a commercial license (`ee/LICENSE.md`).
   That code is public so you can read and patch it, but running it in
-  production needs a valid Nexul subscription. Today the directory holds
-  only the license; the commercial features are planned, not built.
+  production needs a valid Nexul subscription. It holds the license key
+  check, single sign-on and branding, which a per-instance key unlocks:
+  see [Enterprise license](/docs/guide/enterprise-license/).
 
 ## Contributing
 
