@@ -102,7 +102,9 @@ const commitsDuring = async (ui: React.ReactElement, ready: () => Promise<unknow
     </QueryClientProvider>,
   );
   await ready();
-  await act(async () => {});
+  // The idle button shows before the runs query settles; count only once every query has settled and notified.
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
   commits = 0;
   runSteps(60, own);
   return commits;
