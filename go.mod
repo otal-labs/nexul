@@ -2,7 +2,7 @@ module github.com/otal-labs/nexul
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/1password/onepassword-sdk-go v0.4.1
