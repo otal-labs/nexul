@@ -118,7 +118,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["plays:run"] } };
     if (url === "/api/auth/me") return { data: { user: { id: "u-me", login: "me" } } };
-    if (url === "/api/plays/runs") return { data: [trail({})] };
+    if (url === "/api/plays/runs") return new Promise((resolve) => setTimeout(() => resolve({ data: [trail({})] }), 10)); // answers after the subject renders, as under load
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     return { data: [] };
   });
