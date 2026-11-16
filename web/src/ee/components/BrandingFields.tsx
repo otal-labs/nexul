@@ -15,10 +15,10 @@ const LightResult = () => {
   const brand = look?.enabled ? look.light.roles.brand : undefined;
   return (
     brand && (
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground" title="How it paints in light mode">
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span aria-hidden>→</span>
         <span className="size-4 rounded-full border border-input" style={{ backgroundColor: brand }} />
-        <span className="sr-only">In light mode</span>
+        <span>in light mode</span>
       </span>
     )
   );

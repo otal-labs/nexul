@@ -251,8 +251,8 @@ describe("RoleSettingsSection", () => {
     ]);
     expect(screen.getByRole("checkbox", { name: "Run plays" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Run plays" }).className).not.toMatch(/opacity/);
-    expect(screen.getByTitle("Needs See first")).toHaveTextContent("Run");
-    expect(screen.getByTitle("Needs Read first")).toHaveTextContent("Clone");
+    expect(screen.getByText("Needs See first")).toBeVisible();
+    expect(screen.getByText("Needs Read first")).toBeVisible();
   });
 
   it("starts a new role from a copy of another role's permissions and welcome steps", async () => {

@@ -38,7 +38,7 @@ export const PermissionDomainRow = ({ domain, value, onChange, className }: Perm
           {domain.extras.map((extra) => (
             <label
               key={extra.value}
-              title={level === 0 ? `Needs ${firstRung} first` : extra.label}
+              title={extra.label}
               className={cn("flex items-center gap-2 text-xs text-muted-foreground", level === 0 || locked ? "cursor-not-allowed" : "cursor-pointer")}
             >
               <Checkbox
@@ -50,6 +50,7 @@ export const PermissionDomainRow = ({ domain, value, onChange, className }: Perm
               {extraName(extra.action)}
             </label>
           ))}
+          {level === 0 && <span className="text-xs text-muted-foreground">Needs {firstRung} first</span>}
         </div>
       )}
     </li>
