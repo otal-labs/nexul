@@ -21,6 +21,14 @@ const classRules = [
 
 const noElse = { selector: "IfStatement[alternate]", message: "Early return, no else." };
 
+const buttonClassName = String.raw`JSXOpeningElement[name.name=/^(Button|ActionButton|LockedActionButton)$/] > JSXAttribute[name.name="className"]`;
+const disabledOpacity = String.raw`/(^|[\s"'\x60:])disabled:opacity-/`;
+const disabledOpacityMessage = "Button already draws its disabled look in muted-foreground; a lower opacity drops the label near 3.5:1.";
+const buttonDisabledOpacity = [
+  { selector: `${buttonClassName} Literal[value=${disabledOpacity}]`, message: disabledOpacityMessage },
+  { selector: `${buttonClassName} TemplateElement[value.raw=${disabledOpacity}]`, message: disabledOpacityMessage },
+];
+
 export default tseslint.config(
   { ignores: ["dist", "coverage"] },
   js.configs.recommended,
@@ -56,7 +64,7 @@ export default tseslint.config(
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", noElse, ...classRules.flatMap(({ pattern, message }) => [
+      "no-restricted-syntax": ["error", noElse, ...buttonDisabledOpacity, ...classRules.flatMap(({ pattern, message }) => [
         { selector: `Literal[value=${pattern}]`, message },
         { selector: `TemplateElement[value.raw=${pattern}]`, message },
       ])],

@@ -51,7 +51,7 @@ const ThemeRow = ({ mode, branding }: ThemeRowProps) => {
         <div className="flex flex-wrap gap-x-1 gap-y-4">
           <BrandingFileButton label={theme ? "Replace" : "Import"} accept=".json,.jsonc,application/json" verb="import a theme" disabled={locked} busy={update.isPending} onFile={(f) => void choose(f)} />
           {theme && (
-            <ActionButton type="button" permission="instance:write" verb="remove the theme" size="sm" variant="ghost" className="disabled:opacity-50" disabled={locked} onClick={() => update.mutate({ remove_theme: mode })}>
+            <ActionButton type="button" permission="instance:write" verb="remove the theme" size="sm" variant="ghost" disabled={locked} onClick={() => update.mutate({ remove_theme: mode })}>
               Remove
             </ActionButton>
           )}
