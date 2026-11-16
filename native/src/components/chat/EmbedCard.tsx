@@ -88,12 +88,12 @@ const EmbedFooter = ({ embed: { footer, timestamp } }: { embed: Embed }) => {
     <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
       {icon && <EmbedIcon uri={icon} />}
       {footer && (
-        <Text numberOfLines={1} className="shrink font-mono text-[11px] text-muted-foreground">
+        <Text numberOfLines={1} className="shrink font-mono text-micro text-muted-foreground">
           {footer.text}
         </Text>
       )}
-      {footer && timestamp && <Text className="font-mono text-[11px] text-muted-foreground">·</Text>}
-      {timestamp && <Text className="font-mono text-[11px] text-muted-foreground">{formatCalendarTime(embedTimestamp(timestamp), now)}</Text>}
+      {footer && timestamp && <Text className="font-mono text-micro text-muted-foreground">·</Text>}
+      {timestamp && <Text className="font-mono text-micro text-muted-foreground">{formatCalendarTime(embedTimestamp(timestamp), now)}</Text>}
     </View>
   );
 };
@@ -116,7 +116,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
         <EmbedHeading embed={embed} tone={tone} />
         {embed.description && (
           <View className={cn(fold.longDescription && !open && CLAMPED_DESCRIPTION)}>
-            <DiscordMarkdown text={embed.description} textClassName="text-[13px] leading-5 text-foreground/80" />
+            <DiscordMarkdown text={embed.description} textClassName="text-row leading-5 text-foreground/80" />
           </View>
         )}
         {fields.length > 0 && <EmbedFieldGrid fields={fields} />}

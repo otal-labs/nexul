@@ -128,7 +128,7 @@ export const EmptyState = ({ title, message, icon = Inbox, action, size = "defau
       <OrbitMark icon={icon} compact={compact} still={still} />
       <Rise delay={90} distance={6} still={still}>
         {compact && <Text className="text-center text-sm font-medium">{title}</Text>}
-        {!compact && <Text role="heading" className="mt-6 text-center font-display text-[26px] leading-[30px] tracking-[-0.5px]">{title}</Text>}
+        {!compact && <Text role="heading" className="mt-6 text-center font-display text-empty-headline leading-[30px] tracking-[-0.5px]">{title}</Text>}
       </Rise>
       {message && (
         <Rise delay={140} distance={6} still={still}>

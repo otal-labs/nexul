@@ -21,7 +21,7 @@ export const DocRow = ({ doc, onPress }: DocRowProps) => {
     >
       <FileText size={18} color={String(mutedForeground)} />
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text numberOfLines={2} className="text-[15px] leading-5">
+        <Text numberOfLines={2} className="text-body leading-5">
           {doc.title}
         </Text>
         <Text className="font-mono text-xs text-muted-foreground">

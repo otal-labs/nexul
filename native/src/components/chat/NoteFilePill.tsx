@@ -31,7 +31,7 @@ export const NoteFilePill = ({ conversationId, attachmentId }: NoteFilePillProps
         <Text numberOfLines={1} className="shrink text-xs">
           {file.name}
         </Text>
-        <Text className="font-mono text-[11px] text-muted-foreground">{formatBytes(file.size)}</Text>
+        <Text className="font-mono text-micro text-muted-foreground">{formatBytes(file.size)}</Text>
       </View>
     </Pressable>
   );

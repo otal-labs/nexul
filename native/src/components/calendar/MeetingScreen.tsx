@@ -39,7 +39,7 @@ export const MeetingScreen = () => {
           {meeting.notes !== "" && (
             <View className="gap-2">
               <Microheader>Notes</Microheader>
-              <Text selectable className="text-[15px] leading-6">
+              <Text selectable className="text-body leading-6">
                 {meeting.notes}
               </Text>
             </View>

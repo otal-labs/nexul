@@ -50,13 +50,13 @@ export const BoardRowView = ({ row, projectPrefix, onOpenTicket }: BoardRowViewP
       {row.kind === "head" && (
         <View className="flex-row items-center gap-2 px-2 pb-0.5 pt-1.5">
           <View className={cn("size-2 rounded-full", statusStageDot(row.status.kind))} />
-          <Text className="flex-1 text-[13px] font-medium">{row.status.name}</Text>
+          <Text className="flex-1 text-row font-medium">{row.status.name}</Text>
           <Text className="font-mono text-xs text-muted-foreground">{row.count}</Text>
         </View>
       )}
       {row.kind === "empty" && (
         <View className="items-center rounded-lg border border-dashed border-input py-4">
-          <Text className="text-[13px] text-muted-foreground">No tickets</Text>
+          <Text className="text-row text-muted-foreground">No tickets</Text>
         </View>
       )}
       {row.kind === "card" && (

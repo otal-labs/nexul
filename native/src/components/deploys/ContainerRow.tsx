@@ -33,7 +33,7 @@ export const ContainerRow = ({ container, first, onOpenLogs }: ContainerRowProps
         </Text>
       </View>
       <View className={cn("size-2 rounded-full", containerStatusDot(container.status))} />
-      <Text className="text-[13px] text-muted-foreground">{container.status}</Text>
+      <Text className="text-row text-muted-foreground">{container.status}</Text>
       {onOpenLogs && <ChevronRight size={16} color={String(mutedForeground)} />}
     </Pressable>
   );

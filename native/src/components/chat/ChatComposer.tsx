@@ -44,9 +44,9 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
     <View className="gap-1 bg-background px-3 pb-2 pt-1.5">
       {editing && (
         <View className="flex-row items-center justify-between px-1">
-          <Text className="text-[13px] font-medium text-muted-foreground">Editing your message</Text>
+          <Text className="text-row font-medium text-muted-foreground">Editing your message</Text>
           <Pressable role="button" aria-label="Cancel editing" onPress={stopEditing} hitSlop={8} className="min-h-8 justify-center px-1">
-            <Text className="text-[13px] font-medium">Cancel</Text>
+            <Text className="text-row font-medium">Cancel</Text>
           </Pressable>
         </View>
       )}

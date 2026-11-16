@@ -19,7 +19,7 @@ export const AgendaDueRow = ({ ticket }: { ticket: TicketModel }) => {
     >
       <StatusTile icon={Ticket} />
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text numberOfLines={2} className="text-[15px] leading-5">
+        <Text numberOfLines={2} className="text-body leading-5">
           {ticket.title}
         </Text>
         {project && <Text className="font-mono text-xs text-muted-foreground">{ticketKey(ticket, project.prefix)}</Text>}

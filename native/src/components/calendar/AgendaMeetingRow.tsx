@@ -30,11 +30,11 @@ export const AgendaMeetingRow = ({ meeting, occurrence }: AgendaMeetingRowProps)
     >
       <StatusTile icon={cancelled ? CalendarX : CalendarClock} dot={cancelled ? "bg-destructive" : undefined} />
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text numberOfLines={2} className={cn("text-[15px] leading-5", cancelled && "text-muted-foreground line-through")}>
+        <Text numberOfLines={2} className={cn("text-body leading-5", cancelled && "text-muted-foreground line-through")}>
           {meeting.title}
         </Text>
         {detail !== "" && (
-          <Text numberOfLines={1} className="text-[13px] text-muted-foreground">
+          <Text numberOfLines={1} className="text-row text-muted-foreground">
             {detail}
           </Text>
         )}

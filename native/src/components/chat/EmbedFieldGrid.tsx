@@ -19,7 +19,7 @@ const EmbedFieldItem = ({ field }: { field: EmbedField }) => {
       <View className="flex-row items-center gap-1.5">
         {tone && <View className={cn("size-1.5 rounded-full", toneBg[tone])} />}
         <View className="min-w-0 flex-1">
-          <DiscordMarkdown text={field.value} textClassName="text-[13px] leading-[18px] text-foreground" />
+          <DiscordMarkdown text={field.value} textClassName="text-row leading-[18px] text-foreground" />
         </View>
       </View>
     </View>

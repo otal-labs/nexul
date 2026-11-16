@@ -152,7 +152,9 @@ as written. In particular:
   that uses it and to the design language's [Tokens](design-language.md#tokens)
   table in the same change; a one-off hex is drift.
 - Text renders through `Text` from `src/components/ui/text`, which carries the
-  `font-sans` family. Weight is `font-medium` or `font-semibold`; technical
+  `font-sans` family. Sizes are the type scale's steps in `src/global.css`
+  (`text-micro`, `text-row`, `text-body`…), never `text-[Npx]`, which lint
+  fails. Weight is `font-medium` or `font-semibold`; technical
   data is `font-mono`; `font-display` (Fraunces) is for screen titles,
   record titles and empty-state headlines only, never under 20pt. Empty,
   loading and error states are `EmptyState` (the orbit mark), `LoadingDisplay`

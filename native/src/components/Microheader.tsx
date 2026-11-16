@@ -8,7 +8,7 @@ interface MicroheaderProps {
 
 // The one small uppercase label: group heads, facts, section heads (the web's microheaderClass).
 export const Microheader = ({ children, className }: MicroheaderProps) => (
-  <Text className={cn("font-mono text-[11px] font-medium uppercase tracking-[1.3px] text-muted-foreground", className)}>
+  <Text className={cn("font-mono text-micro font-medium uppercase tracking-[1.3px] text-muted-foreground", className)}>
     {children}
   </Text>
 );

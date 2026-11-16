@@ -64,9 +64,9 @@ export const StackScreen = () => {
           {changed.length > 0 && <StackSecretsChangedNotice names={changed}>{redeploy}</StackSecretsChangedNotice>}
           {changed.length === 0 && redeploy}
           {stack.strategy === DeployStrategy.Compose && (
-            <Text className="text-[13px] text-muted-foreground">Redeploy from the web: this stack builds from its compose file.</Text>
+            <Text className="text-row text-muted-foreground">Redeploy from the web: this stack builds from its compose file.</Text>
           )}
-          {isRun && !canRedeploy && <Text className="text-[13px] text-muted-foreground">Nothing to redeploy yet: this stack has no deployed image.</Text>}
+          {isRun && !canRedeploy && <Text className="text-row text-muted-foreground">Nothing to redeploy yet: this stack has no deployed image.</Text>}
 
           <View className="gap-2">
             <Microheader className="px-1">Services</Microheader>

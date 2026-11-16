@@ -29,7 +29,7 @@ export const SearchRow = ({ hit, onPress }: SearchRowProps) => {
     <Pressable role="button" onPress={() => onPress(hit)} className="min-h-14 flex-row items-center gap-3.5 px-5 py-2.5 active:bg-accent">
       <Icon size={18} color={String(mutedForeground)} />
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={2} className="text-[15px] leading-5">
+        <Text numberOfLines={2} className="text-body leading-5">
           {hit.type === "channel" ? `#${hit.title}` : hit.title}
         </Text>
       </View>

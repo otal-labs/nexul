@@ -25,7 +25,7 @@ export const ConnectScreen = () => {
       <View className="flex-1 justify-end gap-10 px-6 pb-10">
         <View className="gap-4">
           <NexulMark size={40} color={String(foreground)} />
-          <Text role="heading" className="font-display text-[38px] leading-[42px] tracking-[-0.8px]">
+          <Text role="heading" className="font-display text-connect-headline leading-[42px] tracking-[-0.8px]">
             Connect this phone to Nexul
           </Text>
           <Text className="text-base leading-6 text-muted-foreground">

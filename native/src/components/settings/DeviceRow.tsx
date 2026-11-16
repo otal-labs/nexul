@@ -29,14 +29,14 @@ export const DeviceRow = ({ session, first, onSignOut }: DeviceRowProps) => {
       {phone && <Smartphone size={18} color={String(mutedForeground)} />}
       {!phone && <Monitor size={18} color={String(mutedForeground)} />}
       <View className="min-w-0 flex-1 gap-0.5">
-        <Text numberOfLines={1} className="text-[15px]">
+        <Text numberOfLines={1} className="text-body">
           {label}
         </Text>
         <Text numberOfLines={1} className="font-mono text-xs text-muted-foreground">
           {session.ip} · {session.current ? "active now" : <RelativeTime iso={session.last_active_at} />}
         </Text>
       </View>
-      {session.current && <Text className="pr-3 font-mono text-[11px] uppercase tracking-[1px] text-muted-foreground">This phone</Text>}
+      {session.current && <Text className="pr-3 font-mono text-micro uppercase tracking-[1px] text-muted-foreground">This phone</Text>}
       {!session.current && onSignOut && (
         <Pressable role="button" accessibilityLabel={`Sign out ${label}`} onPress={onSignOut} className="size-11 items-center justify-center rounded-md active:bg-accent">
           <X size={16} color={String(mutedForeground)} />

@@ -93,7 +93,7 @@ interface DiscordMarkdownProps {
 }
 
 // Bot content only; nested spans are bare Text so they inherit the line's size and color.
-export const DiscordMarkdown = ({ text, mentionHandles, textClassName = "text-[15px] leading-[21px]" }: DiscordMarkdownProps) => {
+export const DiscordMarkdown = ({ text, mentionHandles, textClassName = "text-body leading-[21px]" }: DiscordMarkdownProps) => {
   const [open, setOpen] = useState<OpenTime | null>(null);
   return (
     <OpenTimeContext value={setOpen}>

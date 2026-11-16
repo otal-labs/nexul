@@ -96,14 +96,14 @@ export const NotificationRow = ({ notification, onPress, onMarkRead, onMarkUnrea
         </View>
         <View className="min-w-0 flex-1 gap-0.5">
           <View className="flex-row items-baseline gap-3">
-            <Text numberOfLines={2} className={cn("min-w-0 flex-1 text-[15px] leading-5", unread ? "font-medium" : "text-muted-foreground")}>
+            <Text numberOfLines={2} className={cn("min-w-0 flex-1 text-body leading-5", unread ? "font-medium" : "text-muted-foreground")}>
               {notification.subject_title}
             </Text>
             <Text className="font-mono text-xs text-muted-foreground">
               <RelativeTime iso={notification.created_at} />
             </Text>
           </View>
-          <Text numberOfLines={1} className="text-[13px] text-muted-foreground">
+          <Text numberOfLines={1} className="text-row text-muted-foreground">
             {kindLabels[notification.kind]}
           </Text>
         </View>

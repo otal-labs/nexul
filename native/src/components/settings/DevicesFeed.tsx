@@ -46,7 +46,7 @@ export const DevicesFeed = ({ sessions }: DevicesFeedProps) => {
           )}
         </View>
         <View className="gap-2">
-          <Text className="text-[13px] text-muted-foreground">Everything except this phone will need to sign in again.</Text>
+          <Text className="text-row text-muted-foreground">Everything except this phone will need to sign in again.</Text>
           <Button
             variant="outline"
             className="border-destructive/40"
