@@ -43,7 +43,7 @@ export const BrandingAccentRow = ({ control, disabled, fromTheme }: FieldProps &
           <ColorPicker label="Accent" value={field.value} onChange={field.onChange} disabled={disabled} emptyLabel={fromTheme ? "From theme" : "Default"} />
           {field.value !== "" && <LightResult />}
           {field.value !== "" && (
-            <Button type="button" variant="ghost" size="sm" className="disabled:opacity-50" disabled={disabled} onClick={() => field.onChange("")}>
+            <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => field.onChange("")}>
               Use the default
             </Button>
           )}

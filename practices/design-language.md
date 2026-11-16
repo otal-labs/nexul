@@ -212,7 +212,7 @@ has the same chip). A destructive button is white on `destructive-fill`.
 A disabled button keeps its shape but loses its fill and shadow and takes
 `muted-foreground` text (6:1 or better), never a lower opacity: a half-faded
 label sits near 3.5:1 on a settings tray. The web app's `Button`
-does this once for every variant. A button that is busy keeps its own fill and
+does this once for every variant, and lint rejects a `disabled:opacity-` class passed to it. A button that is busy keeps its own fill and
 text: its spinner already says it is working, and grey would read as not allowed.
 
 A live status (a runner, an execution log, a health dot) reuses the one
