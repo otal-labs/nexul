@@ -1159,6 +1159,38 @@ body {
   pointer-events: none;
 }
 
+/* The caret cell's edges take a finger on a touch screen: a short ring bar centred on each, inside a 44px hit area. */
+.prose-rich .table-grip {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  border-radius: 9999px;
+  background: var(--ring);
+  touch-action: none;
+}
+
+@media (pointer: coarse) {
+  .prose-rich .table-grip {
+    display: block;
+  }
+}
+
+.prose-rich .table-grip-column {
+  top: 50%;
+  right: -2px;
+  width: 4px;
+  height: 20px;
+  margin-top: -10px;
+}
+
+.prose-rich .table-grip-row {
+  bottom: -2px;
+  left: 50%;
+  width: 20px;
+  height: 4px;
+  margin-left: -10px;
+}
+
 .row-resize-guide {
   position: fixed;
   z-index: 50;

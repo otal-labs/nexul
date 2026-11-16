@@ -3,7 +3,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
 const edgeHeight = 5;
-const minRowHeight = 24;
+export const minRowHeight = 24;
 const rowEdgeKey = new PluginKey<boolean>("rowResize");
 
 // The row under the pointer and its position in the doc, when the pointer sits on that row's bottom edge.
@@ -27,31 +27,42 @@ const setHover = (view: EditorView, onEdge: boolean) => {
 };
 
 // Like a spreadsheet, a guide line follows the pointer and the row takes its height on release, so a drag is one edit.
+export const rowDrag = (view: EditorView, row: HTMLTableRowElement) => {
+  const doc = view.dom.ownerDocument;
+  const frame = (row.closest(".tableWrapper") ?? row).getBoundingClientRect();
+  const guide = doc.body.appendChild(doc.createElement("div"));
+  guide.className = "row-resize-guide";
+  guide.style.left = `${frame.left}px`;
+  guide.style.width = `${frame.width}px`;
+  const height = (y: number) => Math.max(minRowHeight, Math.round(y - row.getBoundingClientRect().top));
+  return {
+    place: (y: number) => {
+      guide.style.top = `${row.getBoundingClientRect().top + height(y)}px`;
+    },
+    finish: (y: number) => {
+      guide.remove();
+      setHover(view, false);
+      // Found again from the row's DOM, since a collaborator's edit during the drag may have moved it.
+      const pos = row.isConnected ? rowPos(view, row) : null;
+      if (pos === null) return;
+      view.dispatch(view.state.tr.setNodeAttribute(pos, "rowheight", height(y)));
+    },
+  };
+};
+
 const startDrag = (view: EditorView, event: MouseEvent) => {
   const row = view.editable && event.button === 0 ? rowEdgeAt(view, event) : null;
   if (!row) return false;
   event.preventDefault();
   const win = view.dom.ownerDocument.defaultView ?? window;
-  const frame = (row.closest(".tableWrapper") ?? row).getBoundingClientRect();
-  const guide = view.dom.ownerDocument.body.appendChild(view.dom.ownerDocument.createElement("div"));
-  guide.className = "row-resize-guide";
-  guide.style.left = `${frame.left}px`;
-  guide.style.width = `${frame.width}px`;
-  const height = (y: number) => Math.max(minRowHeight, Math.round(y - row.getBoundingClientRect().top));
-  const place = (e: MouseEvent) => {
-    guide.style.top = `${row.getBoundingClientRect().top + height(e.clientY)}px`;
-  };
+  const drag = rowDrag(view, row);
+  const place = (e: MouseEvent) => drag.place(e.clientY);
   const finish = (e: MouseEvent) => {
     win.removeEventListener("mousemove", place);
     win.removeEventListener("mouseup", finish);
-    guide.remove();
-    setHover(view, false);
-    // Found again from the row's DOM, since a collaborator's edit during the drag may have moved it.
-    const pos = row.isConnected ? rowPos(view, row) : null;
-    if (pos === null) return;
-    view.dispatch(view.state.tr.setNodeAttribute(pos, "rowheight", height(e.clientY)));
+    drag.finish(e.clientY);
   };
-  place(event);
+  drag.place(event.clientY);
   win.addEventListener("mousemove", place);
   win.addEventListener("mouseup", finish);
   return true;
