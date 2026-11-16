@@ -29,15 +29,15 @@ export const MessageAuthorLine = ({ message }: { message: Message }) => {
   const name = (isBot && (message.author_name || "Bot")) || (message.author_kind === "agent" && "Agent") || personLabel(resolvePerson(message.author_id));
   return (
     <View className="flex-row items-center gap-2">
-      <Text numberOfLines={1} className="shrink text-[13px] font-semibold">
+      <Text numberOfLines={1} className="shrink text-row font-semibold">
         {name}
       </Text>
       {isBot && (
         <View className="rounded-sm border border-input px-1">
-          <Text className="font-mono text-[9px] font-medium uppercase tracking-[0.8px] text-muted-foreground">Bot</Text>
+          <Text className="font-mono text-micro font-medium uppercase tracking-[0.8px] text-muted-foreground">Bot</Text>
         </View>
       )}
-      <Text className="font-mono text-[11px] text-muted-foreground">{formatMessageTime(message.created_at)}</Text>
+      <Text className="font-mono text-micro text-muted-foreground">{formatMessageTime(message.created_at)}</Text>
       {message.via && <Text numberOfLines={1} className="shrink text-xs text-muted-foreground">via {message.via}</Text>}
       {message.edited_at && <Text className="text-xs text-muted-foreground">(edited)</Text>}
     </View>

@@ -77,8 +77,8 @@ export const DiscordTimePopover = ({ open, onClose }: DiscordTimePopoverProps) =
             className="absolute gap-1.5 rounded-xl border border-border bg-popover p-3.5"
             style={{ top, left, width }}
           >
-            <Text className="text-[15px] font-medium">{fullDiscordTime(open.time.date)}</Text>
-            <Text selectable className="font-mono text-[13px]">
+            <Text className="text-body font-medium">{fullDiscordTime(open.time.date)}</Text>
+            <Text selectable className="font-mono text-row">
               {open.time.code}
             </Text>
             <TimeActions time={open.time} onClose={onClose} />

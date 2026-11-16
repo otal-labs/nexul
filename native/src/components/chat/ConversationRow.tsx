@@ -56,7 +56,7 @@ export const ConversationRow = ({ conversation, unreadCount, dmCtx }: Conversati
       className="min-h-[52px] flex-row items-center gap-3.5 px-5 py-2.5 active:bg-accent"
     >
       <ConversationMark conversation={conversation} dmCtx={dmCtx} />
-      <Text numberOfLines={1} className={cn("min-w-0 flex-1 text-[15px]", unread ? "font-medium" : "text-muted-foreground")}>
+      <Text numberOfLines={1} className={cn("min-w-0 flex-1 text-body", unread ? "font-medium" : "text-muted-foreground")}>
         {label}
       </Text>
       {unread && <UnreadBadge count={unreadCount} />}

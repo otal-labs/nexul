@@ -41,8 +41,8 @@ export const TicketCardBody = ({ ticket, stage, projectPrefix, typeName, typeCol
   const labelColors = useContext(BoardLabelColorsContext);
   return (
     <>
-      <Text className="font-mono text-[11px] text-muted-foreground">{ticketKey(ticket, projectPrefix)}</Text>
-      <Text numberOfLines={3} className="text-[15px] font-medium leading-5">
+      <Text className="font-mono text-micro text-muted-foreground">{ticketKey(ticket, projectPrefix)}</Text>
+      <Text numberOfLines={3} className="text-body font-medium leading-5">
         {ticket.title}
       </Text>
       {(typeName || labels.length > 0 || person.login) && (

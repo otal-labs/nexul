@@ -47,7 +47,7 @@ export const DeployScreen = () => {
       {logError && <ErrorDisplay error={logError} />}
       {lines && lines.length === 0 && (
         <View className="mx-4 mb-4 flex-1 items-center justify-center rounded-xl border border-border bg-surface-2 px-6">
-          <Text className="text-center text-[13px] text-muted-foreground">Waiting for the runner to pick this up</Text>
+          <Text className="text-center text-row text-muted-foreground">Waiting for the runner to pick this up</Text>
         </View>
       )}
       {lines && lines.length > 0 && (

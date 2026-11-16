@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/text";
 const MessageCode = ({ code }: { code: string }) => (
   <View className="rounded-md border border-border bg-surface-2 px-2.5 py-1.5">
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <Text className="font-mono text-[13px] leading-5">{code}</Text>
+      <Text className="font-mono text-row leading-5">{code}</Text>
     </ScrollView>
   </View>
 );

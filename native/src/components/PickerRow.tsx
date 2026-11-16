@@ -27,7 +27,7 @@ export const PickerRow = ({ label, selected, onPress, leading, meta, disabled = 
       className={cn("min-h-[52px] flex-row items-center gap-3 px-5 py-2.5 active:bg-accent", disabled && "opacity-50")}
     >
       {leading}
-      <Text numberOfLines={1} className={cn("min-w-0 flex-1 text-[15px]", selected && "font-medium")}>
+      <Text numberOfLines={1} className={cn("min-w-0 flex-1 text-body", selected && "font-medium")}>
         {label}
       </Text>
       {meta && <Text className="font-mono text-xs text-muted-foreground">{meta}</Text>}

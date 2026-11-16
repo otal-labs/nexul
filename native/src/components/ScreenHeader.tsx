@@ -19,9 +19,9 @@ interface ScreenHeaderProps {
 
 // A long title steps down so a sentence-long ticket still fits a phone in three lines.
 const titleSize = (title: string) => {
-  if (title.length > 90) return "text-[22px] leading-[27px]";
-  if (title.length > 44) return "text-[25px] leading-[30px]";
-  return "text-[30px] leading-[35px]";
+  if (title.length > 90) return "text-screen-title-sm leading-[27px]";
+  if (title.length > 44) return "text-screen-title-md leading-[30px]";
+  return "text-screen-title leading-[35px]";
 };
 
 // The top of a screen in the web's page-header grammar: eyebrow, the title in the display face, one meta line.

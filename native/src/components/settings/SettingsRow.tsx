@@ -24,7 +24,7 @@ export const SettingsRow = ({ label, meta, icon: Icon, first = false, onPress }:
       className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-3 active:bg-accent", !first && "border-t border-border")}
     >
       {Icon && <Icon size={18} color={String(mutedForeground)} />}
-      <Text className="shrink-0 text-[15px]">{label}</Text>
+      <Text className="shrink-0 text-body">{label}</Text>
       <Text numberOfLines={1} className="min-w-0 flex-1 text-right font-mono text-xs text-muted-foreground">
         {meta}
       </Text>

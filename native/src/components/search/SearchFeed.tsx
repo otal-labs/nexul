@@ -22,6 +22,6 @@ export const SearchFeed = ({ groups, cut, onSelect }: SearchFeedProps) => (
     contentContainerClassName="pb-6"
     renderSectionHeader={({ section }) => <Microheader className="px-5 pt-4 pb-1.5">{section.title}</Microheader>}
     renderItem={({ item }) => <SearchRow hit={item} onPress={onSelect} />}
-    ListFooterComponent={cut ? <Text className="px-5 pt-4 text-[13px] text-muted-foreground">More matches than shown. Add a word to narrow.</Text> : null}
+    ListFooterComponent={cut ? <Text className="px-5 pt-4 text-row text-muted-foreground">More matches than shown. Add a word to narrow.</Text> : null}
   />
 );

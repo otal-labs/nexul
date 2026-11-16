@@ -31,7 +31,7 @@ const Marker = ({ status, open, number }: { status: ChecklistRowStatus; open: bo
   >
     {!open && status === "answered" && <Icon as={Check} size={14} strokeWidth={3} className="text-background" />}
     {!open && status === "skipped" && <Icon as={Minus} size={14} strokeWidth={3} className="text-muted-foreground" />}
-    {(open || status === "pending") && <Text className={cn("font-mono text-[11px]", open ? "text-background" : "text-muted-foreground")}>{number}</Text>}
+    {(open || status === "pending") && <Text className={cn("font-mono text-micro", open ? "text-background" : "text-muted-foreground")}>{number}</Text>}
   </View>
 );
 

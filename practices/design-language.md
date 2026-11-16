@@ -248,10 +248,13 @@ axis settings:
 | Phone | a static cut, `assets/fonts/Fraunces-Display.ttf`, family `Fraunces Display` | opsz 28, wght 560, SOFT 50, WONK 1 baked in, because Android does not apply variable axes reliably |
 
 The web app's sizes are one named scale, set in `@theme` in
-`web/src/index.css`; a size the table lacks is added to it and to the theme,
-never written as `text-[13px]`, and lint fails on an arbitrary `text-[Npx]`,
-`text-[Nrem]` or `font-[NNN]`. Text never goes under 11px, except initials in
-a mark under 24px.
+`web/src/index.css`, and the phone's are the same steps in
+`native/src/global.css` plus its own (in [Phone tokens and
+type](#phone-tokens-and-type)); a size the table lacks is added to it and to
+the theme of each surface that uses it, never written as `text-[13px]`, and
+lint fails on an arbitrary `text-[Npx]` or `text-[Nrem]` in both apps, and on
+`font-[NNN]` on the web. Text never goes under 11px, except initials in a mark
+under 24px.
 
 | Utility | Size / leading | Use |
 |---|---|---|
@@ -2937,7 +2940,20 @@ phone reads every colour through `useCSSVariable`.
 Type. Fraunces is a static cut at the web's axes (opsz 28, wght 560, SOFT
 50, WONK 1), `Fraunces Display`, for screen titles, record titles and
 empty-state headlines, never under 20pt. A screen title is 30pt, 25pt past 44
-characters and 22pt past 90, three lines at most. Rejected: the static
+characters and 22pt past 90, three lines at most.
+
+The phone takes `text-initial`, `text-micro`, `text-row`,
+`text-empty-headline` and `text-title` from the shared table at the same
+values, and adds these steps, which only it uses:
+
+| Utility | Size / leading | Use |
+|---|---|---|
+| `text-body` | 15 / 20pt | the reading size: row and card titles, message bodies, sheet copy, buttons and action rows |
+| `text-sheet-title` | 17 / 22pt | a sheet's `SheetTitle` |
+| `text-screen-title`, `-md`, `-sm` | 30, 25, 22pt | a `ScreenHeader` title, by its length |
+| `text-connect-headline` | 38pt | the connect screen's headline |
+
+The display steps carry no leading; each title sets its own. Rejected: the static
 Fraunces SemiBold Google Fonts serves, which sits at opsz 9 with SOFT 0 and
 read wide and sharp next to the web's soft titles.
 

@@ -16,7 +16,7 @@ interface ServerRefusedScreenProps {
 
 export const ServerRefusedScreen = ({ host, version, retrying, onRetry, children }: ServerRefusedScreenProps) => (
   <View className="flex-1 justify-center gap-6 bg-background px-6">
-    <Text role="heading" className="font-display text-[28px] leading-[32px] tracking-[-0.5px]">
+    <Text role="heading" className="font-display text-title leading-[32px] tracking-[-0.5px]">
       This server needs an upgrade
     </Text>
     <Text className="text-base leading-6 text-muted-foreground">

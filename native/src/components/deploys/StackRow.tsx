@@ -18,7 +18,7 @@ export const StackRow = ({ stack, latest, onPress }: StackRowProps) => (
   <Pressable role="button" onPress={onPress} className="min-h-16 flex-row items-center gap-3.5 px-5 py-3 active:bg-accent">
     <StatusTile icon={Layers} dot={latest && deployStatusDot(latest.status)} />
     <View className="min-w-0 flex-1 gap-0.5">
-      <Text className="text-[15px] font-medium" numberOfLines={1}>
+      <Text className="text-body font-medium" numberOfLines={1}>
         {stack.name}
       </Text>
       <Text className="font-mono text-xs text-muted-foreground" numberOfLines={1}>
@@ -26,13 +26,13 @@ export const StackRow = ({ stack, latest, onPress }: StackRowProps) => (
       </Text>
     </View>
     <View className="items-end gap-0.5">
-      {latest && <Text className="text-[13px]">{deployOutcome(latest.status)}</Text>}
+      {latest && <Text className="text-row">{deployOutcome(latest.status)}</Text>}
       {latest && (
         <Text className="font-mono text-xs text-muted-foreground">
           <RelativeTime iso={latest.created_at} />
         </Text>
       )}
-      {!latest && <Text className="text-[13px] text-muted-foreground">No deploys</Text>}
+      {!latest && <Text className="text-row text-muted-foreground">No deploys</Text>}
     </View>
   </Pressable>
 );

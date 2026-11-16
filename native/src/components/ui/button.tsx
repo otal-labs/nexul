@@ -58,7 +58,7 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-foreground text-[15px] font-medium',
+    'text-foreground text-body font-medium',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {

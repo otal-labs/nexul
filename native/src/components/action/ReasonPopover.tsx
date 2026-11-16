@@ -32,8 +32,8 @@ export const ReasonPopover = ({ name, reason, anchor, onClose }: ReasonPopoverPr
             className="absolute gap-0.5 rounded-xl border border-border bg-popover p-3.5"
             style={{ top: anchor.y + anchor.height + 8, width, left: Math.min(Math.max(MARGIN, anchor.x), windowWidth - MARGIN - width) }}
           >
-            <Text className="text-[15px] font-medium">{name} is locked</Text>
-            <Text className="text-[13px] text-muted-foreground">{reason}</Text>
+            <Text className="text-body font-medium">{name} is locked</Text>
+            <Text className="text-row text-muted-foreground">{reason}</Text>
           </View>
         )}
       </Pressable>

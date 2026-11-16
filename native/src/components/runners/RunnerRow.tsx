@@ -20,7 +20,7 @@ export const RunnerRow = ({ runner }: RunnerRowProps) => (
   <View accessible className="min-h-16 flex-row items-center gap-3.5 px-5 py-3">
     <StatusTile icon={Server} dot={runnerStatusDot(runner.connected)} dashed={!runner.connected} />
     <View className="min-w-0 flex-1 gap-0.5">
-      <Text className="text-[15px] font-medium" numberOfLines={1}>
+      <Text className="text-body font-medium" numberOfLines={1}>
         {runner.name || "Runner"}
       </Text>
       {runner.machine && runner.machine !== runner.name && (
@@ -30,7 +30,7 @@ export const RunnerRow = ({ runner }: RunnerRowProps) => (
       )}
     </View>
     <View className="items-end gap-0.5">
-      <Text className="text-[13px]">{doing(runner)}</Text>
+      <Text className="text-row">{doing(runner)}</Text>
       <Text className="font-mono text-xs text-muted-foreground">{runner.version}</Text>
     </View>
   </View>

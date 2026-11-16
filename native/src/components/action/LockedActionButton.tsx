@@ -39,7 +39,7 @@ export const LockedActionButton = ({ name, reason, label, variant, size, classNa
         className={cn(variant !== "outline" && "bg-foreground/[0.06] active:bg-foreground/[0.06]", variant === "outline" && "bg-transparent", className)}
       >
         <Icon as={Lock} className="size-3.5 text-muted-foreground" />
-        <TextClassContext.Provider value="text-[15px] font-medium text-muted-foreground">{children}</TextClassContext.Provider>
+        <TextClassContext.Provider value="text-body font-medium text-muted-foreground">{children}</TextClassContext.Provider>
       </Button>
       <ReasonPopover name={name} reason={reason} anchor={anchor} onClose={() => setAnchor(null)} />
     </>

@@ -4,7 +4,7 @@ import { Text } from "@/components/ui/text";
 export const UnreadBadge = ({ count }: { count: number }) => (
   <Text
     aria-label={`${count} unread`}
-    className="min-w-5 overflow-hidden rounded-full bg-foreground px-1.5 text-center font-mono text-[11px] leading-5 text-background"
+    className="min-w-5 overflow-hidden rounded-full bg-foreground px-1.5 text-center font-mono text-micro leading-5 text-background"
   >
     {count > 99 ? "99+" : count}
   </Text>
