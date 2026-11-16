@@ -154,7 +154,7 @@ track in light is `muted-foreground`, not a share of ink: ink at 30% sat near
 2:1 and read as disabled (`themeContrast.test.ts` holds it at 3:1). A disabled
 checkbox keeps its box at full strength on a `muted` fill, its tick on
 `muted-foreground` when checked, never a lower opacity, and its row says why
-on hover.
+in words beside it, never only on hover.
 
 The current row. Every list that marks the current item (the sidebar and its
 channels, the section navs, the Docs, Memories, Plays and Inbox list panes, the
@@ -475,7 +475,8 @@ A field set under 16px reads at 16px, or iOS zooms the page on focus. There
 is no grey tap flash and no double-tap zoom, the page never bounces, and the
 shell keeps clear of the notch (`safe-area`). The status bar takes the
 canvas colour of the mode and palette (`theme-color`, kept in step by
-`applyThemePalette`).
+`applyThemePalette`). A touch screen shows no `title`, so a fact never lives
+only in one: it is words on the screen, or a tap opens it in a popover.
 
 Prose links. The web app's prose links are `brand` text: on the page
 panel they hold contrast. The site, whose text sits on the canvas, uses

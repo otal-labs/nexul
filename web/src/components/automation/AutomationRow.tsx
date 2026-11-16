@@ -37,7 +37,7 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
         </Link>
         <AutomationAttentionChip automation={automation} attention={attention} muted={failing} />
       </div>
-      <span className="font-mono text-xs leading-5 whitespace-nowrap text-muted-foreground tabular-nums" title="The last run, then the last 7 days">
+      <span className="font-mono text-xs leading-5 whitespace-nowrap text-muted-foreground tabular-nums">
         {automationLastRunText(automation)}
         {week && ` · ${week}`}
       </span>

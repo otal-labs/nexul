@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Logo } from "@/components/Logo";
 import { CollapseToggleButton } from "@/components/sidebar/CollapseToggleButton";
 import { UpdateButton } from "@/components/sidebar/UpdateButton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLook } from "@/ee/hooks/BrandingHooks";
 import { isBranded } from "@/ee/models/Branding";
 import { useProductName } from "@/ee/hooks/useProductName";
@@ -29,9 +30,17 @@ export const SidebarHeader = ({ collapsed, onToggleCollapse }: SidebarHeaderProp
               <span className="truncate text-base">{name}</span>
             </Link>
             {!branded && (
-              <span title={server?.version} className="rounded-full bg-foreground/[0.07] px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                Beta
-              </span>
+              <Popover>
+                <PopoverTrigger
+                  title={server?.version}
+                  className="hit-area rounded-full bg-foreground/[0.07] px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  Beta
+                </PopoverTrigger>
+                <PopoverContent className="w-fit px-2 py-1 text-xs">
+                  Version <span className="font-mono">{server?.version ?? "unknown"}</span>
+                </PopoverContent>
+              </Popover>
             )}
             <div className="ml-auto flex items-center gap-0.5">
               <UpdateButton />
