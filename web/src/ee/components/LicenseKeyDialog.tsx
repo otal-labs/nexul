@@ -52,7 +52,7 @@ export const LicenseKeyDialog = ({ replacing }: LicenseKeyDialogProps) => {
           verb="change the license key"
           size="sm"
           variant={replacing ? "outline" : "default"}
-          className="ml-auto"
+          className="hit-area ml-auto"
         >
           {replacing ? "Replace key" : "Add license key"}
         </ActionButton>
