@@ -1266,7 +1266,9 @@ export const AppRouter = () => {
   conversations (channels, voice channels, direct messages, threads); the
   account menu (Support, Sign out) and the Your settings gear at the bottom.
   The icon rail keeps every page and adds one Chat link for the conversations. The
-  signed-out pages and the wizards render without it. Pages render inside `<main>` under
+  signed-out pages and the wizards render without it. The shell is the viewport's
+  height and clips (`relative overflow-clip`): pages scroll inside their own panels,
+  and the document itself never scrolls. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Every page reached from a workspace's sidebar lives under `/:workspace`, the
   workspace's slug (ADR 0089); personal and instance pages (`/settings/*`,
