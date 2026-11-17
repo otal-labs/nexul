@@ -51,7 +51,8 @@ export const Layout = () => {
         </main>
       )}
       {shell && (
-        <div className="safe-area flex h-dvh">
+        // Clipped and positioned, so an escaped absolute child (an sr-only input in a scroller) can't stretch the page.
+        <div className="safe-area relative flex h-dvh overflow-clip">
           <div className="light-field" aria-hidden />
           {!onboarding && (
             <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} unreadCount={unread?.count ?? 0} />
