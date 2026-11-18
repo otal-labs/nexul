@@ -42,13 +42,14 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
             {ordered.map((role) => (
               <RoleMatrixHead key={role.id} role={role} workspaceId={workspaceId} holders={holdersOf(role.id)} />
             ))}
-            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 align-bottom", hidden > 0 ? "border-l border-border bg-card" : "border-b-transparent")}>
+            {/* The heads fade under this slot like the cells do; its control sits above the names, clear of the counts and menus under it. */}
+            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 pt-2.5 align-top")}>
               {hidden > 0 && (
                 <button
                   type="button"
                   onClick={more}
                   aria-label={`Show ${hidden} more ${hidden === 1 ? "role" : "roles"}`}
-                  className="relative z-10 mb-1.5 inline-flex h-6 items-center gap-0.5 rounded-md bg-card px-1 font-mono text-micro text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground"
+                  className="relative z-10 inline-flex h-6 items-center gap-0.5 rounded-md bg-card px-1 font-mono text-micro text-muted-foreground tabular-nums hover:bg-accent hover:text-foreground"
                 >
                   +{hidden}
                   <ChevronRight aria-hidden className="size-3" />

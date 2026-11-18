@@ -23,7 +23,7 @@ const backClass = "-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreg
 export const RoleDetailHeader = ({ title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <header className="sticky-crumbs -mx-4 space-y-1.5 px-4 pb-3 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
+    <header className="sticky-crumbs -mx-4 space-y-1.5 px-4 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
       {!backAlways && (
         <Link to={wsPath("/access/roles")} className={backClass}>
           <ChevronLeft aria-hidden className="size-4" />

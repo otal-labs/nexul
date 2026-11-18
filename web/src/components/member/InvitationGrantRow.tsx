@@ -1,5 +1,6 @@
 import { Controller, useFormContext, useFormState, useWatch } from "react-hook-form";
 
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RolesChecklist } from "@/components/role/RolesChecklist";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
@@ -8,10 +9,12 @@ import type { CreateInvitationFormData } from "@/models/Invitation";
 interface InvitationGrantRowProps {
   index: number;
   remove: (index: number) => void;
+  // Off for the only workspace: a link that admits nowhere gives nothing.
+  removable: boolean;
 }
 
 // One workspace an invitation admits to: the workspace, then the roles the link gives there, nothing ticked at first.
-export const InvitationGrantRow = ({ index, remove }: InvitationGrantRowProps) => {
+export const InvitationGrantRow = ({ index, remove, removable }: InvitationGrantRowProps) => {
   const { control, setValue } = useFormContext<CreateInvitationFormData>();
   const { errors } = useFormState({ control });
   const workspaceId = useWatch({ control, name: `grants.${index}.workspace_id` });
@@ -44,7 +47,11 @@ export const InvitationGrantRow = ({ index, remove }: InvitationGrantRowProps) =
             </Select>
           )}
         />
-        <button type="button" aria-label={`Remove workspace ${index + 1}`} className="text-sm text-muted-foreground hover:text-foreground" onClick={() => remove(index)}>Remove</button>
+        {removable && (
+          <Button type="button" variant="ghost" size="sm" aria-label={`Remove workspace ${index + 1}`} onClick={() => remove(index)}>
+            Remove
+          </Button>
+        )}
       </div>
       {grantErrors?.workspace_id?.message && <p role="alert" className="text-sm text-destructive">{grantErrors.workspace_id.message}</p>}
       {workspaceId && (

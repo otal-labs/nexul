@@ -260,6 +260,18 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
     expect(area.getByText("Tickets")).toBeInTheDocument();
     expect(area.getByRole("button", { name: "Hide 1 with no access" })).toHaveAttribute("aria-expanded", "true");
   });
+
+  it("folds the areas no compared role holds under its band in Compare roles, and shows them on request", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/compare");
+
+    const matrix = within(await screen.findByRole("table"));
+    expect(matrix.getByRole("rowheader", { name: "Docs" })).toBeInTheDocument();
+    expect(matrix.queryByRole("rowheader", { name: "Tickets" })).not.toBeInTheDocument();
+    await user.click(matrix.getByRole("button", { name: "Show 1 no role holds" }));
+    expect(matrix.getByRole("rowheader", { name: "Tickets" })).toBeInTheDocument();
+  });
 });
 
 describe("RolesAndPeopleSection, a long list of holders", () => {

@@ -37,6 +37,29 @@ describe("CreateInvitationForm", () => {
     });
   });
 
+  it("offers Remove on a workspace only once the link admits to two, so it always admits somewhere", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <CreateInvitationDialog onCreated={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Invite" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(await dialog.findByText("Roles in Acme")).toBeInTheDocument();
+    expect(dialog.queryByRole("button", { name: /^Remove workspace/ })).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole("button", { name: "Add workspace" }));
+    await user.click(dialog.getByRole("button", { name: "Remove workspace 2" }));
+    expect(dialog.queryByRole("button", { name: /^Remove workspace/ })).not.toBeInTheDocument();
+
+    // An open dialog stays in the shared confirmation root into the next case.
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("holds Create link until a role is ticked, then sends every role ticked", async () => {
     mocks.post.mockResolvedValue({ data: { id: "inv-1", url: "https://nexul.example.com/invite#t", grants: [] } });
     const user = userEvent.setup();

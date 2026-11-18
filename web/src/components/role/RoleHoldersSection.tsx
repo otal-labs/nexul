@@ -64,7 +64,7 @@ export const RoleHoldersSection = () => {
       {created && <CreatedInvitationLink key={created.id} invitation={created} />}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {holders && holders.length === 0 && <EmptyRow flush>Nobody holds {role?.name} yet.</EmptyRow>}
+      {holders && holders.length === 0 && <EmptyRow flush className="flex min-h-14 items-center border-y border-border">Nobody holds {role?.name} yet.</EmptyRow>}
       {holders && holders.length > FIND_FROM && (
         <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
       )}

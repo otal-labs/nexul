@@ -11,7 +11,7 @@ Your instance is private: nobody signs in without an invitation. Each person the
 
 1. Open the role on **Access → Roles and people** and press **Invite**, which starts the link with that role ticked. An instance administrator can also press **Invite** on **Settings → Team**.
 2. Under **Link expires in**, choose **1 day** or **7 days**.
-3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Each role shows its description under its name. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
+3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Each role shows its description under its name. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another, and **Remove** takes one away once there are two.
 4. Press **Create link**. The new link shows above the role's people (on Team, the **Invitations** tab opens with it on top); press **Copy link**. It's shown once.
 5. Send the link yourself, by email, chat, or however you like. Nexul sends nothing.
 

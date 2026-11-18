@@ -1,5 +1,6 @@
 import { ArrowDown } from "lucide-react";
 
+import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { levelName } from "@/models/PermissionLevel";
 import { roleSectionId, type RoleSection } from "@/models/RoleSection";
 
@@ -36,7 +37,8 @@ export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkPr
         <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
         {top > 0 && (
           <span>
-            up to <span className="text-foreground">{levelName(top)}</span>
+            up to <LevelGlyph level={top} className="mx-1 align-middle" />
+            <span className="text-foreground">{levelName(top)}</span>
           </span>
         )}
         <ArrowDown aria-hidden className="size-3 opacity-60 group-hover/link:opacity-100" />

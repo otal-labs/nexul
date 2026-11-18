@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SearchIcon } from "lucide-react";
 
 import type { PermissionAction } from "@nexul/client-core/permissionActions";
 
@@ -56,13 +56,14 @@ export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, 
       </div>
     </div>
     {onSearch && (
-    <div className="overflow-hidden px-3 pt-3 pb-2 [scrollbar-gutter:stable_both-edges]">
+    <div className="relative overflow-hidden px-3 pt-3 pb-2 [scrollbar-gutter:stable_both-edges]">
+      <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-5.5 mt-0.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
         aria-label={`Search ${title.toLowerCase()}`}
-        placeholder="Search…"
+        placeholder="Search"
         value={search ?? ""}
         onChange={(e) => onSearch(e.target.value)}
-        className="h-8 text-xs"
+        className="h-8 pl-8 text-xs"
       />
     </div>
     )}

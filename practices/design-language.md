@@ -604,7 +604,7 @@ dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 360px default, one width shared by every page,
 kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
-search field (`ListPaneHeader`; a list nobody creates in or searches, the
+search field led by the search mark, its placeholder "Search" (`ListPaneHeader`; a list nobody creates in or searches, the
 Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers, the row's
 own padding and its hover lift separate them: a 13px normal-weight title in
 `foreground` over a muted one-line preview, mono meta trailing right. A
@@ -1446,7 +1446,7 @@ pane's top on `panel-opaque` (`sticky-crumbs`) so its section links stay in reac
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
-mono, then "up to" and the highest level it holds in words ("In projects 10/12,
+mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12,
 up to Delete"), so the count never reads as the level's, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
@@ -1484,13 +1484,13 @@ reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
 own once the pane is 42rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
 muted line under it, and the level as its word in a fixed 80px slot on the right,
-on the name's baseline (the glyph stays in the header and the matrix); a yes-or-no
-permission reads Yes with a check, or a muted No. The areas a role has no
+on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
+permission reads Yes with a check in the glyph's slot, or a muted No. The areas a role has no
 access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named over its description with the role's tally on its line. Compare roles
+role named over its description on one line (whole in its tooltip), each row as tall as its content, with the role's tally on its line. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1498,12 +1498,12 @@ width, and holds the role matrix (below). `RolesAndPeopleSection` and
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
 read-only, in the access grid's frame: one column per role, the columns sharing the
 width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
-lie to the right, and a "+5" control in its head while columns are hidden that scrolls
-them into view, the Owner first
+lie to the right (the heads fade under it like the cells), and a "+5" control at the top of that fade while columns are hidden that scrolls
+them into view, clear of the counts and menus; the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
-sections, Instance, Workspace and In projects. A cell is the level as a
+sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 no role holds" toggle on the band, so what tells the roles apart leads. A cell is the level as a
 `LevelGlyph`, three slots on every row with a level the area lacks drawn as an
 outline, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
@@ -1583,7 +1583,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium over the
-role's description in muted 12px, and the role's tally trailing, the box and the
+role's description in muted 12px on one line (whole in its tooltip), and the role's tally trailing, the box and the
 tally on the name's line however tall the description makes the row (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the

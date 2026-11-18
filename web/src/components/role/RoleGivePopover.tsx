@@ -43,10 +43,10 @@ export const RoleGivePopover = ({ person }: RoleGivePopoverProps) => {
         <RoleFindField value={query} onChange={setQuery} placeholder="Search roles" label="Find a role" />
         <div className="scroll-edge flex min-h-0 flex-col gap-1 overflow-y-auto pb-2">
           {shown.map((choice) => (
-            <button key={choice.role.id} type="button" className={cn(menuItemClass, "h-auto items-start gap-3 py-2.5")} disabled={holders.pending} onClick={() => holders.give(person, choice.role)}>
+            <button key={choice.role.id} type="button" className={cn(menuItemClass, "h-auto shrink-0 items-start gap-3 py-2.5")} disabled={holders.pending} onClick={() => holders.give(person, choice.role)}>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm text-balance break-words">{choice.role.name}</span>
-                {choice.role.description && <span className="line-clamp-2 text-xs text-muted-foreground">{choice.role.description}</span>}
+                {choice.role.description && <span className="block truncate text-xs text-muted-foreground" title={choice.role.description}>{choice.role.description}</span>}
               </span>
               <span className="mt-0.5 flex shrink-0">
                 <RoleTally domains={domains} permissions={choice.role.permissions} />

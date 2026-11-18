@@ -1,13 +1,14 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 
 import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { microheaderClass } from "@/components/Microheader";
+import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { fadeEndCell, leadStrip, matrixFadeWidth, nameText, stickyCell } from "@/components/accessgrid/gridStyles";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { levelOf, type PermissionDomain } from "@/models/PermissionLevel";
-import { extraName, rungName, type SectionDomains } from "@/models/RoleSection";
+import { extraName, holdsArea, rungName, type SectionDomains } from "@/models/RoleSection";
 
 interface RoleMatrixGroupProps {
   title: string;
@@ -64,27 +65,38 @@ const AbilityCell = ({ ability, permissions }: { ability: PermissionInfo; permis
   </td>
 );
 
-// One of the editor's sections as a band, then its yes-or-no rows and its areas, each cell what that column's role holds.
-export const RoleMatrixGroup = ({ title, domains, held }: RoleMatrixGroupProps) => (
-  <tbody>
-    <tr>
-      <th scope="colgroup" colSpan={held.length + 2} className={cn(leadStrip, "h-8 p-0 text-left")}>
-        <span className={cn(microheaderClass, "sticky left-0 inline-block pl-6")}>{title}</span>
-      </th>
-    </tr>
-    {domains.abilities.map((ability) => (
-      <MatrixRow key={ability.value} label={ability.label}>
-        {held.map((permissions, column) => (
-          <AbilityCell key={column} ability={ability} permissions={permissions} />
-        ))}
-      </MatrixRow>
-    ))}
-    {domains.areas.map((domain) => (
-      <MatrixRow key={domain.domain} label={domain.name}>
-        {held.map((permissions, column) => (
-          <AreaCell key={column} domain={domain} permissions={permissions} />
-        ))}
-      </MatrixRow>
-    ))}
-  </tbody>
-);
+// One editor section: a band, then its rows, each cell what that column's role holds; rows no role holds fold under the band.
+export const RoleMatrixGroup = ({ title, domains, held }: RoleMatrixGroupProps) => {
+  const [showNone, setShowNone] = useState(false);
+  const abilities = domains.abilities.filter((ability) => showNone || held.some((permissions) => permissions.includes(ability.value)));
+  const areas = domains.areas.filter((domain) => showNone || held.some((permissions) => holdsArea(domain, permissions)));
+  const none =
+    domains.abilities.filter((ability) => !held.some((permissions) => permissions.includes(ability.value))).length +
+    domains.areas.filter((domain) => !held.some((permissions) => holdsArea(domain, permissions))).length;
+  return (
+    <tbody>
+      <tr>
+        <th scope="colgroup" colSpan={held.length + 2} className={cn(leadStrip, "h-8 p-0 text-left")}>
+          <span className="sticky left-0 inline-flex items-center gap-2 pl-6">
+            <span className={microheaderClass}>{title}</span>
+            {none > 0 && <RoleFoldButton open={showNone} onToggle={() => setShowNone(!showNone)} label={`${showNone ? "Hide" : "Show"} ${none} no role holds`} className="h-6 font-normal" />}
+          </span>
+        </th>
+      </tr>
+      {abilities.map((ability) => (
+        <MatrixRow key={ability.value} label={ability.label}>
+          {held.map((permissions, column) => (
+            <AbilityCell key={column} ability={ability} permissions={permissions} />
+          ))}
+        </MatrixRow>
+      ))}
+      {areas.map((domain) => (
+        <MatrixRow key={domain.domain} label={domain.name}>
+          {held.map((permissions, column) => (
+            <AreaCell key={column} domain={domain} permissions={permissions} />
+          ))}
+        </MatrixRow>
+      ))}
+    </tbody>
+  );
+};

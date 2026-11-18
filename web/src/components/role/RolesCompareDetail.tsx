@@ -19,8 +19,8 @@ export const RolesCompareDetail = () => {
   const error = rolesError ?? catalogError;
 
   return (
-    <Container className="space-y-6 py-6 sm:pr-3.5">
-      <RoleDetailHeader title="Compare roles" line="What each role can open and change here, area by area. The Owner holds everything, so it isn't listed." backAlways />
+    <Container className="space-y-5 pt-0 pb-6 sm:pr-3.5">
+      <RoleDetailHeader title="Compare roles" line="The Owner holds everything, so it isn't listed." backAlways />
       {(rolesPending || catalogPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
