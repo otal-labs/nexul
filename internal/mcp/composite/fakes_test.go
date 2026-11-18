@@ -8,9 +8,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -116,6 +118,7 @@ type fixture struct {
 	projects *workspace.Service
 	reviews  *codereview.Service
 	folders  *docFolders
+	syncs    *issuesync.Service
 }
 
 // newFixture seeds project REF with three columns, two types, a category, and tickets REF-1 (todo) and REF-2 (done).
@@ -160,7 +163,8 @@ func newFixture(t *testing.T) fixture {
 		{ID: "f-main", ProjectID: "p-1", Name: "Main", IsDefault: true},
 		{ID: "f-web", ProjectID: "p-2", Name: "Main", IsDefault: true},
 	}}
-	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews, folders: folders}
+	syncs := issuesync.New(issuesync.Deps{Repo: &issueSyncRepo{}, Repos: issueRepos{projectRepo{w: w}}, Gate: allowGate{}})
+	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews, folders: folders, syncs: syncs}
 }
 
 func must(t *testing.T, err error) {
@@ -203,7 +207,7 @@ func (f fixture) ticketTools() []mcptool.Tool {
 }
 
 func (f fixture) projectTools() []mcptool.Tool {
-	return ProjectTools(f.projects, f.tickets, f.folders)
+	return ProjectTools(f.projects, f.tickets, f.folders, f.syncs)
 }
 
 func call(t *testing.T, ctx context.Context, tools []mcptool.Tool, name, args string) (any, error) {
@@ -957,4 +961,46 @@ func dueWithin(f tickets.TicketFilter, t *tickets.Ticket) bool {
 		return true
 	}
 	return t.DueOn != "" && t.DueOn >= f.DueFrom && (f.DueTo == "" || t.DueOn <= f.DueTo)
+}
+
+// issueSyncRepo stores syncs only; the project tools never read links.
+type issueSyncRepo struct {
+	issuesync.LinkRepo
+	syncs []issuesync.Sync
+}
+
+func (r *issueSyncRepo) GetSync(_ context.Context, owner, repo string) (issuesync.Sync, error) {
+	for _, s := range r.syncs {
+		if s.Owner == owner && s.Repo == repo {
+			return s, nil
+		}
+	}
+	return issuesync.Sync{}, apperrs.ErrNotFound
+}
+
+func (r *issueSyncRepo) ListSyncsByProject(_ context.Context, projectID string) ([]issuesync.Sync, error) {
+	var out []issuesync.Sync
+	for _, s := range r.syncs {
+		if s.ProjectID == projectID {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+func (r *issueSyncRepo) ListEnabledSyncs(context.Context) ([]issuesync.Sync, error) { return nil, nil }
+
+func (r *issueSyncRepo) PutSync(_ context.Context, s issuesync.Sync) error {
+	r.syncs = slices.DeleteFunc(r.syncs, func(have issuesync.Sync) bool { return have.Owner == s.Owner && have.Repo == s.Repo })
+	r.syncs = append(r.syncs, s)
+	return nil
+}
+
+func (r *issueSyncRepo) SetSwept(context.Context, string, string, time.Time) error { return nil }
+
+type issueRepos struct{ repos projectRepo }
+
+func (r issueRepos) ProjectOf(ctx context.Context, owner, repo string) (string, error) {
+	ref, err := r.repos.GetRepoByFullName(ctx, owner, repo)
+	return ref.ProjectID, err
 }

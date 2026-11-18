@@ -115,6 +115,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.integrationsSvc.RunAuditRetention(ctx, logger)
 	go docs.RunSettleLoop(ctx, store.Docs, store.CommitsTo(storage.SettleWrites...).Next, logger)
 	go svc.calendarSvc.RunReminderLoop(ctx, store.CommitsTo(storage.ReminderWrites...).Next, logger)
+	go svc.issueSyncSvc.RunSweepLoop(ctx, store.CommitsTo(storage.IssueSweepWrites...).Next, logger)
 
 	return wsHandler, runnerSvc, runnerHTTP, automationsDialin
 }

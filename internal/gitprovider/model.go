@@ -143,3 +143,9 @@ type IssuePatch struct {
 	Labels      *[]string
 	Assignees   *[]string
 }
+
+// Rate is what is left of a token's core rate limit, and when it resets.
+type Rate struct {
+	Remaining int
+	Reset     time.Time
+}

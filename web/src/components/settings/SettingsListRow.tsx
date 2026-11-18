@@ -10,6 +10,8 @@ interface SettingsListRowProps extends Omit<ComponentProps<"li">, "children"> {
   meta?: ReactNode;
   // Right-aligned mono, saying what it counts: "8 tickets".
   count?: ReactNode;
+  // An always-visible control before the actions, such as a switch.
+  control?: ReactNode;
   // The row's `⋯`: shown on hover or focus where the device can hover, always where it can't.
   actions?: ReactNode;
   // Keeps the actions in view at rest, for a row whose action is its point (a Deploy).
@@ -20,7 +22,7 @@ interface SettingsListRowProps extends Omit<ComponentProps<"li">, "children"> {
 }
 
 // One row for every project settings list: the board's grammar, a hairline apart, lifting on hover inside its rules.
-export const SettingsListRow = ({ lead, name, meta, count, actions, showActions = false, handleRef, handleProps, className, ...props }: SettingsListRowProps) => (
+export const SettingsListRow = ({ lead, name, meta, count, control, actions, showActions = false, handleRef, handleProps, className, ...props }: SettingsListRowProps) => (
   <li
     className={cn(
       "group/row relative flex min-h-11 items-center gap-2 text-sm px-2 before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40",
@@ -45,6 +47,7 @@ export const SettingsListRow = ({ lead, name, meta, count, actions, showActions 
         {count && <span className="ml-auto shrink-0 pl-2 font-mono text-xs text-muted-foreground tabular-nums">{count}</span>}
       </span>
     </span>
+    {control && <span className="relative flex shrink-0 items-center">{control}</span>}
     {actions && (
       <span
         className={cn(

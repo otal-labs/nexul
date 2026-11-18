@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectRepos } from "@/components/project/ProjectRepos";
 import { api } from "@/api/client";
 import type { RepoRef } from "@/models/Project";
+import type { Installation } from "@/models/Repository";
+import type { IssueSync } from "@/models/IssueSync";
 import { withOwner } from "@/test/viewer";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -22,9 +24,17 @@ const repos: RepoRef[] = [
   { owner: "onik97", name: "nexul-e2e", full_name: "onik97/nexul-e2e", connector_id: "github", role: "tests" },
 ];
 
-const renderRepos = (list: RepoRef[] = repos) => {
+let syncs: IssueSync[] = [];
+
+const renderRepos = (list: RepoRef[] = repos, installations: Installation[] = []) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.mocked(api.get).mockImplementation(withOwner(async () => ({ data: list })));
+  vi.mocked(api.get).mockImplementation(
+    withOwner(async (url: string) => {
+      if (url.endsWith("/issue-sync")) return { data: syncs };
+      if (url === "/api/repositories/installations") return { data: { installations } };
+      return { data: list };
+    }),
+  );
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
@@ -38,6 +48,8 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
+  vi.mocked(api.put).mockReset();
+  syncs = [];
 });
 
 describe("ProjectRepos", () => {
@@ -64,6 +76,27 @@ describe("ProjectRepos", () => {
     renderRepos();
     expect(await screen.findByText("onik97/nexul-e2e")).toBeInTheDocument();
     expect(screen.getAllByText("Tests, never deployed")).toHaveLength(1);
+  });
+
+  it("turns a GitHub repository's issue sync on from its row", async () => {
+    const user = userEvent.setup();
+    const on: IssueSync = { project_id: "p-1", owner: "onik97", repo: "nexul", label: "nexul", mode: "label", enabled: true };
+    vi.mocked(api.put).mockImplementation(async () => {
+      syncs = [on];
+      return { data: on };
+    });
+    renderRepos();
+    const toggle = await screen.findByRole("switch", { name: "Sync onik97/nexul's GitHub issues to tickets" });
+    await vi.waitFor(() => expect(toggle).toBeEnabled());
+    await user.click(toggle);
+    expect(api.put).toHaveBeenCalledWith("/api/projects/p-1/issue-sync", { owner: "onik97", repo: "nexul", enabled: true });
+    await vi.waitFor(() => expect(toggle).toBeChecked());
+  });
+
+  it("keeps the switch off and says why when the installation has not accepted Issues", async () => {
+    renderRepos(repos, [{ account_login: "Onik97", missing_permissions: ["issues"] } as Installation]);
+    expect(await screen.findByText("Issues permission missing")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Sync onik97/nexul's GitHub issues to tickets" })).toBeDisabled();
   });
 
   it("shows an empty state when there are no repos", async () => {

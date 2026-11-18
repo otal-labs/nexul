@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { applyReaction, conversationLabel, isContinuation, splitMessageBody, upsertMessage, type ChatMessage, type Conversation } from "@nexul/client-core/chat";
+import { applyReaction, conversationLabel, externalAuthor, isContinuation, splitMessageBody, upsertMessage, type ChatMessage, type Conversation } from "@nexul/client-core/chat";
 import { unknownPerson, type Person } from "@nexul/client-core/person";
 
 const conversation = (overrides: Partial<Conversation>): Conversation => ({
@@ -112,6 +112,13 @@ describe("splitMessageBody", () => {
   });
 });
 
+describe("externalAuthor", () => {
+  it("is the name and picture the message kept", () => {
+    const m = { author_kind: "external", author_name: "carol", author_avatar_url: "https://avatars.example.com/carol" } as ChatMessage;
+    expect(externalAuthor(m)).toEqual({ user_id: "", login: "carol", display_name: "carol", avatar_url: "https://avatars.example.com/carol" });
+  });
+});
+
 describe("isContinuation", () => {
   const at = (hour: number, minute: number, second = 0, day = 28) => new Date(2026, 8, day, hour, minute, second).toISOString();
   const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
@@ -143,6 +150,7 @@ describe("isContinuation", () => {
     ["is the same bot posting as another name", message({ author_kind: "bot", author_id: "b1", author_name: "CI" }), message({ author_kind: "bot", author_id: "b1", author_name: "GitHub", created_at: at(10, 1) }), false],
     ["is the same bot with another avatar", message({ author_kind: "bot", author_id: "b1", author_name: "CI" }), message({ author_kind: "bot", author_id: "b1", author_name: "CI", author_avatar_url: "https://example.com/a.png", created_at: at(10, 1) }), false],
     ["is a bot after a person sharing its id", message({}), message({ author_kind: "bot", created_at: at(10, 1) }), false],
+    ["is the same GitHub commenter again", message({ author_kind: "external", author_id: "github:carol", author_name: "carol" }), message({ author_kind: "external", author_id: "github:carol", author_name: "carol", created_at: at(10, 1) }), true],
   ])("a message that %s", (_name, prev, curr, expected) => {
     expect(isContinuation(prev, curr)).toBe(expected);
   });

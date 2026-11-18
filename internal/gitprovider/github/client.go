@@ -248,6 +248,16 @@ func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitpro
 	return out, resp.NextPage, nil
 }
 
+// RateLimit implements gitprovider.RateReader.
+func (c *Client) RateLimit(ctx context.Context) (gitprovider.Rate, error) {
+	limits, _, err := c.gh.RateLimit.Get(ctx)
+	if err != nil {
+		return gitprovider.Rate{}, fmt.Errorf("read rate limit: %w", mapErr(err))
+	}
+	core := limits.GetCore()
+	return gitprovider.Rate{Remaining: core.Remaining, Reset: core.Reset.Time}, nil
+}
+
 // GetIssue implements gitprovider.GitProvider.
 func (c *Client) GetIssue(ctx context.Context, owner, name string, number int) (*gitprovider.Issue, error) {
 	if err := githubapp.ValidateRepository(owner, name); err != nil {

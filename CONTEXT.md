@@ -70,6 +70,17 @@ of someone's workspaces is refused rather than guessed. The ticket's id stays
 the one reference that needs nothing else.
 _Avoid_: Ticket id (that is the UUID), ticket number (only the second half)
 
+**Issue sync**:
+A repository's GitHub issues kept in step with its project's tickets, turned on
+per repository by its Issues switch. In label mode, the default, an issue
+labelled `nexul` becomes a ticket; in all mode every issue does. The ticket
+follows the issue's title, body, labels, first assignee who is a member, and
+open or closed state, and its comments arrive on the ticket's thread from an
+external author. Removing the label pauses the issue, adding it back resumes
+it, and a deleted or transferred issue stops syncing while its ticket stays. A
+done ticket never leaves done because its issue reopened.
+_Avoid_: Import (a one-shot copy), mirror, GitHub ticket
+
 **Due date**:
 The day a ticket is due, a date with no time, set or cleared by anyone who can
 edit the ticket. It shows on the Calendar to whoever sees the ticket, and the
@@ -696,6 +707,13 @@ Gated by `botwebhook:read`, `botwebhook:write`, `botwebhook:delete`;
 posting through the URL needs no permission of the sender, and in a channel
 posts only while the bot's creator may post there.
 _Avoid_: Integration (a separate service with a scoped token), Agent, app
+
+**External author**:
+Someone outside Nexul whose words reach a thread, such as a commenter on a
+synced GitHub issue. Their message keeps the name and picture it arrived with
+and says where it came from (via github); they are not a member, mention
+nobody, and only their own host edits or deletes what they wrote.
+_Avoid_: Guest, bot (a bot posts through its URL)
 
 **Occupancy**:
 Who's currently in a voice channel, shown live in the channel list without
@@ -1494,6 +1512,11 @@ automations hosts they are placed on.
 route, limits, lifecycle, and the media proxy their messages' images load
 through. Posts reach chat through one use-case chat exposes; chat never
 learns what a webhook is.
+
+**Issue sync** (`issuesync`) — a repository's GitHub issues linked to its
+project's tickets: the sync settings, the issue and comment links, the
+consumer of `git.issue` and `git.issue_comment`, and the sweep that catches
+missed deliveries. It reaches tickets and chat only through seams it declares.
 
 **Calendar** — meetings, their invitees and replies, repeats, and the
 reminders before each meeting and the day before a ticket's due date.

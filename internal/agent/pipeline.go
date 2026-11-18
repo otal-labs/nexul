@@ -633,9 +633,12 @@ func (s *Service) contextMessages(ctx context.Context, history []ConversationMes
 		if m.AuthorKind == "bot" {
 			author = m.AuthorName + " (bot)"
 		}
+		if m.AuthorKind == "external" {
+			author = m.AuthorName + " (" + m.Via + ")"
+		}
 		cm := ContextMessage{Author: author, Body: noteBody(m), At: m.CreatedAt}
 		all = append(all, cm)
-		relayed := m.Via != "" && m.AuthorKind != "bot"
+		relayed := m.Via != "" && m.AuthorKind != "bot" && m.AuthorKind != "external"
 		if !relayed && (m.AuthorKind != "agent" || m.Note != nil) {
 			others = append(others, cm)
 		}

@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { externalAuthor } from "@nexul/client-core/chat";
 import { personLabel } from "@nexul/client-core/person";
 
 import { BotAvatar } from "@/components/chat/BotAvatar";
@@ -18,6 +19,7 @@ export const MessageAvatar = ({ message }: { message: Message }) => {
       {message.author_kind === "user" && <PersonAvatar person={resolvePerson(message.author_id)} size={32} />}
       {message.author_kind === "bot" && <BotAvatar src={message.author_avatar_url} name={message.author_name || "Bot"} size={32} />}
       {message.author_kind === "agent" && <BotAvatar src={undefined} name="Agent" size={32} />}
+      {message.author_kind === "external" && <PersonAvatar person={externalAuthor(message)} size={32} />}
     </>
   );
 };
@@ -26,7 +28,11 @@ export const MessageAvatar = ({ message }: { message: Message }) => {
 export const MessageAuthorLine = ({ message }: { message: Message }) => {
   const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
   const isBot = message.author_kind === "bot";
-  const name = (isBot && (message.author_name || "Bot")) || (message.author_kind === "agent" && "Agent") || personLabel(resolvePerson(message.author_id));
+  const name =
+    (isBot && (message.author_name || "Bot")) ||
+    (message.author_kind === "agent" && "Agent") ||
+    (message.author_kind === "external" && personLabel(externalAuthor(message))) ||
+    personLabel(resolvePerson(message.author_id));
   return (
     <View className="flex-row items-center gap-2">
       <Text numberOfLines={1} className="shrink text-row font-semibold">

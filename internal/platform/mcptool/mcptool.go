@@ -94,8 +94,8 @@ const (
 
 // PageArgs is embedded in a list tool's input so every list takes the same limit and offset.
 type PageArgs struct {
-	Limit  int `json:"limit,omitzero" jsonschema:"Page size, 1 to 100, default 50."`
-	Offset int `json:"offset,omitzero" jsonschema:"The previous page's next_offset."`
+	Limit  int `json:"limit,omitzero" jsonschema:"1 to 100, default 50."`
+	Offset int `json:"offset,omitzero" jsonschema:"The last page's next_offset."`
 }
 
 // Window is the stretch of the list the arguments ask for; out-of-range values fall back to the defaults.

@@ -110,3 +110,6 @@ UPDATE instance_settings SET github_oauth_client_id = ?, github_oauth_client_sec
 
 -- name: ListUsersWithFirstRunDone :many
 SELECT id FROM users WHERE first_login_done = 1 AND id IN (SELECT value FROM json_each(sqlc.arg(user_ids)));
+
+-- name: GetUserIDByIdentityLogin :one
+SELECT user_id FROM user_identities WHERE provider = ? AND login = ? COLLATE NOCASE ORDER BY created_at LIMIT 1;

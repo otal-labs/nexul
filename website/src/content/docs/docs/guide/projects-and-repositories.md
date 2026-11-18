@@ -48,6 +48,22 @@ A repository belongs to one project. Attaching one that's already in another pro
 
 If the project's tests live in a repository of their own, choose **A separate one** under **Tests live in** at the repository step and pick it. It's attached for agents to read and run, and never deployed: Nexul refuses to build a stack from it. It shows in **Settings → Repositories** with a `tests` marker, and the interview starts from it when it asks about testing. It has to be a different repository from the one the project deploys, so the tests search leaves that one out.
 
+## Sync GitHub issues to tickets
+
+Each GitHub repository in **Settings → Repositories** has an **Issues** switch, for whoever can change the project. Turned on, every open issue labelled `nexul` becomes a ticket in the project's first backlog column, and so does any issue that gets the label later. The ticket follows the issue from then on:
+
+- **Title, body and labels** change when they change on GitHub, and an open editor reloads. The `nexul` label itself stays on GitHub.
+- **The developer** becomes the first assignee whose GitHub account a project member signs in with; other assignees are ignored.
+- **Closing** the issue moves the ticket to the first done column, with a note on its thread saying why GitHub closed it. **Reopening** moves it back to backlog, but a ticket already done stays done: its thread says so, and a follow-up is a new bug.
+- **Comments** on the issue appear on the ticket's thread under the commenter's GitHub name and picture, and their edits and deletions follow.
+- **Removing the label** pauses the issue: nothing more changes until the label is back. A **deleted or transferred** issue stops syncing, and its ticket stays.
+
+The ticket's reporter shows the issue's author on GitHub. Changes the GitHub App makes itself are skipped, and Nexul catches anything a lost webhook missed within 15 minutes. GitHub's changes win; nothing in Nexul is written back to GitHub yet.
+
+If the App's installation on the repository's account hasn't accepted the Issues permission, the switch stays off and the list says **Issues permission missing**. See [GitHub App](/docs/guide/github-app/).
+
+Agents turn it on with `project_update` and `github_issue_sync`, naming the `repository` as `owner/name` with `enabled` set to `true`. `mode` set to `all` syncs every issue instead of the labelled ones, and `label` picks another label. `project_get` shows each repository's sync.
+
 ## Rename a workspace
 
 A workspace has a name and a URL slug, as in `/acme/board`. Change both in **Configuration → General**, with `workspaces:write`.

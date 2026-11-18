@@ -146,11 +146,14 @@ const (
 	ActorKindAutomation = "automation"
 	ActorKindPlay       = "play"
 	ActorKindPlayMCP    = ActorKindPlay + ":mcp"
+	// ReporterKindGitHub files a ticket for a synced GitHub issue; Login is the issue's author on GitHub.
+	ReporterKindGitHub = "github"
 )
 
-// Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), or an automation.
+// Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), an automation, or a synced
+// GitHub issue (github).
 type Reporter struct {
-	Kind           string `json:"kind" enum:"user,user:mcp,automation"`
+	Kind           string `json:"kind" enum:"user,user:mcp,automation,github"`
 	Login          string `json:"login,omitempty"`
 	AutomationID   string `json:"automation_id,omitempty"`
 	AutomationName string `json:"automation_name,omitempty"`

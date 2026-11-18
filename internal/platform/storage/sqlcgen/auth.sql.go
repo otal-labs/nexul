@@ -238,6 +238,22 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 	return i, err
 }
 
+const getUserIDByIdentityLogin = `-- name: GetUserIDByIdentityLogin :one
+SELECT user_id FROM user_identities WHERE provider = ? AND login = ? COLLATE NOCASE ORDER BY created_at LIMIT 1
+`
+
+type GetUserIDByIdentityLoginParams struct {
+	Provider string
+	Login    string
+}
+
+func (q *Queries) GetUserIDByIdentityLogin(ctx context.Context, arg GetUserIDByIdentityLoginParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserIDByIdentityLogin, arg.Provider, arg.Login)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const insertIdentity = `-- name: InsertIdentity :exec
 INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, username, avatar_url, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)

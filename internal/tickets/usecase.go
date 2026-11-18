@@ -163,6 +163,10 @@ type CreateOptions struct {
 	ViaMCP        bool
 	OriginID      string
 	OriginUnknown bool
+	// Status is the column it lands in, the project's first when empty.
+	Status Status
+	// Reporter, when set, is who filed it instead of the caller.
+	Reporter *Reporter
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
@@ -188,7 +192,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	opt.TypeID = typeID
-	status, err := s.firstColumn(ctx, projectID)
+	status, err := s.landing(ctx, projectID, opt.Status)
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
@@ -225,7 +229,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		DeveloperID: dev.ID,
 		Tester:      tester.Login,
 		TesterID:    tester.ID,
-		Reporter:    s.reporter(ctx, opt.ViaMCP),
+		Reporter:    cmp.Or(deref(opt.Reporter), s.reporter(ctx, opt.ViaMCP)),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -254,6 +258,29 @@ func (s *Service) typeOrDefault(ctx context.Context, projectID, typeID string) (
 		return "", fmt.Errorf("default type of project %s: %w", projectID, err)
 	}
 	return first, nil
+}
+
+// landing is the column a new ticket lands in: the one asked for, which must exist, else the project's first.
+func (s *Service) landing(ctx context.Context, projectID string, status Status) (Status, error) {
+	if status == "" {
+		return s.firstColumn(ctx, projectID)
+	}
+	exists, err := s.statuses.Exists(ctx, string(status))
+	if err != nil {
+		return "", fmt.Errorf("check status %s: %w", status, err)
+	}
+	if !exists {
+		return "", fmt.Errorf("%w: status %q is not a configured board column", apperrs.ErrInvalid, status)
+	}
+	return status, nil
+}
+
+func deref[T any](p *T) T {
+	var zero T
+	if p == nil {
+		return zero
+	}
+	return *p
 }
 
 // firstColumn is where a new ticket lands, so every board shows it; a project without columns keeps the open status.

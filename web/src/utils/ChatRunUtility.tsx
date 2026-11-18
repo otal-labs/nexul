@@ -8,6 +8,7 @@ import { chatDayLabel } from "@/utils/ChatDayUtility";
 const headerName = (message: Message, resolveAuthor: (authorId: string) => Person, currentUserId: string | undefined): string | undefined => {
   if (message.author_kind === "system") return undefined;
   if (message.author_kind === "bot") return message.author_name || "Bot";
+  if (message.author_kind === "external") return message.author_name ?? "";
   if (message.author_kind === "agent") return "Agent";
   if (message.author_id === currentUserId) return undefined;
   return personLabel(resolveAuthor(message.author_id));

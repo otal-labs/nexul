@@ -265,3 +265,20 @@ func TestMapErr_RateLimitsAreRetryableWithTheirWait(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimit_ReadsTheCoreLimit(t *testing.T) {
+	c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/rate_limit", r.URL.Path)
+		_, _ = fmt.Fprint(w, `{"resources":{"core":{"limit":5000,"remaining":150,"reset":1795000000}}}`) // test server: write errors are irrelevant
+	}))
+	got, err := c.RateLimit(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, 150, got.Remaining)
+	assert.True(t, got.Reset.Equal(time.Unix(1795000000, 0)), "reset is %v", got.Reset)
+
+	failing := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	_, err = failing.RateLimit(t.Context())
+	assert.ErrorIs(t, err, apperrs.ErrRetryable)
+}

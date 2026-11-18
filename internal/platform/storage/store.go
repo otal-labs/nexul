@@ -20,6 +20,7 @@ type Store struct {
 	Attachments           *AttachmentsRepo
 	Tickets               *TicketsRepo
 	CodeReviews           *CodeReviewsRepo
+	IssueSync             *IssueSyncRepo
 	Deploys               *DeploysRepo
 	Stacks                *StacksRepo
 	Services              *ServicesRepo
@@ -105,6 +106,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Attachments:           &AttachmentsRepo{db: db, w: w, q: q},
 		Tickets:               &TicketsRepo{db: db, w: w, q: q},
 		CodeReviews:           &CodeReviewsRepo{db: db, w: w, q: q},
+		IssueSync:             &IssueSyncRepo{db: db, w: w, q: q},
 		Deploys:               &DeploysRepo{db: db, w: w, q: q},
 		Stacks:                &StacksRepo{db: db, w: w, q: q, encKey: encKey, hot: hot},
 		Services:              &ServicesRepo{db: db, w: w, q: q},
