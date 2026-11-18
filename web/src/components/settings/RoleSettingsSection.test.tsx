@@ -148,7 +148,7 @@ describe("RoleSettingsSection", () => {
     renderSection();
 
     await screen.findByRole("columnheader", { name: /Editor/ });
-    expect(screen.getAllByRole("columnheader").slice(0, 3).map((head) => head.textContent)).toEqual(["Area", "Ownernobody", "Editornobody"]);
+    expect(screen.getAllByRole("columnheader").slice(0, 3).map((head) => head.textContent)).toEqual(["Area", "Owner—", "Editor—"]);
     expect(matrixRow("Members")).toEqual(["Write", "Write"]);
     expect(matrixRow("Roles")).toEqual(["Delete+1", "Read"]);
     expect(matrixRow("Runners")).toEqual(["Read", "None"]);
@@ -400,7 +400,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByLabelText("0 people");
+    await screen.findAllByLabelText("Nobody");
     await openMenu(user, "Editor", "Delete");
     await user.click(await screen.findByRole("button", { name: "Delete role" }));
 
@@ -428,7 +428,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByLabelText("0 people");
+    await screen.findAllByLabelText("Nobody");
     await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
     const item = await screen.findByRole("button", { name: "Clone to workspace…" });
     expect(item).toHaveAttribute("aria-disabled", "true");

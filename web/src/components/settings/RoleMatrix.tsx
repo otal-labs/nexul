@@ -32,7 +32,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf }: RoleMatri
             {ordered.map((role) => (
               <RoleMatrixHead key={role.id} role={role} workspaceId={workspaceId} holders={holdersOf(role.id)} />
             ))}
-            <th aria-hidden className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 bg-card")} />
+            <th aria-hidden className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20")} />
           </tr>
         </thead>
         {ROLE_SECTIONS.map((section) => (

@@ -41,7 +41,7 @@ export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevel
         )}
       </div>
       {rows && (
-        <dl className="gap-x-8 @2xl:columns-2">
+        <dl className="gap-x-8 border-t border-border @2xl:columns-2">
           {heldAbilities.map((ability) => (
             <RoleAbilityRow key={ability.value} ability={ability} held />
           ))}

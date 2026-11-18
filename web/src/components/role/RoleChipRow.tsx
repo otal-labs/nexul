@@ -10,7 +10,10 @@ export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
     <span className="flex min-w-0 items-center gap-1 overflow-hidden">
       {roles.length === 0 && <NoRolesChip />}
       {roles.slice(0, SHOWN).map((role) => (
-        <RoleChip key={role.id} name={role.name} />
+        // A longer name gives way first, so "Client" keeps its word while a long role's name truncates.
+        <span key={role.id} className="flex min-w-0" style={{ flexShrink: role.name.length }}>
+          <RoleChip name={role.name} />
+        </span>
       ))}
       {rest.length > 0 && (
         <span className="shrink-0 font-mono text-micro text-muted-foreground tabular-nums" title={rest.map((role) => role.name).join(", ")}>

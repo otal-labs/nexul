@@ -6,6 +6,12 @@ import { useRoleActions } from "@/hooks/useRoleActions";
 import { headName, type Role } from "@/models/Role";
 import type { TeamPerson } from "@/models/Team";
 
+const holdersLabel = (count: number): string => {
+  if (count === 0) return "Nobody";
+  if (count === 1) return "1 person";
+  return `${count} people`;
+};
+
 interface RoleMatrixHeadProps {
   role: Role;
   workspaceId: string;
@@ -28,8 +34,8 @@ export const RoleMatrixHead = ({ role, workspaceId, holders }: RoleMatrixHeadPro
       </Tooltip>
       <span className="mt-0.5 flex h-6 items-center justify-between font-mono text-micro text-muted-foreground tabular-nums">
         {holders && (
-          <span className="translate-y-px" aria-label={holders.length === 1 ? "1 person" : `${holders.length} people`} title={holders.map((p) => p.display_name || p.login).join(", ")}>
-            {holders.length === 0 ? "nobody" : holders.length}
+          <span className="translate-y-px" aria-label={holdersLabel(holders.length)} title={holders.map((p) => p.display_name || p.login).join(", ")}>
+            {holders.length === 0 ? "\u2014" : holders.length}
           </span>
         )}
         {!role.is_owner_role && <RowActionsMenu subject={role.name} actions={actions} />}

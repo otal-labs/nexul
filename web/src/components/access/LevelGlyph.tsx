@@ -22,7 +22,7 @@ export const LevelGlyph = ({ level, rungs = 3, align = "start", className }: Lev
               "h-2 w-1.5",
               rung === 0 && "rounded-l-[2px]",
               rung === rungs - 1 && "rounded-r-[2px]",
-              rung < level ? "bg-foreground/75" : "bg-foreground/12",
+              rung < level ? "bg-foreground/75" : "bg-muted-foreground/60",
               (rung < 0 || rung >= rungs) && "invisible",
             )}
           />

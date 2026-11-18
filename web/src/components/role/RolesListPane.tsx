@@ -15,7 +15,7 @@ interface RolesListPaneProps {
   selectedId: string | undefined;
 }
 
-// The workspace's roles, the Owner first and outside the count as the page header counts them, each with how many hold it;
+// The workspace's roles, the Owner first, each with how many hold it;
 // under them, pinned outside the scroller so they stay in view, every role side by side and the members holding none.
 export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
@@ -27,7 +27,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ListPaneHeader title="Roles" count={others.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} />
+      <ListPaneHeader title="Roles" count={roles.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} />
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Roles">
           {[...owners, ...others].map((role) => (
@@ -43,7 +43,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
           ))}
         </EnterList>
       </div>
-      <div className="shrink-0 overflow-y-hidden border-t border-border py-1.5 [scrollbar-gutter:stable_both-edges]">
+      <div className="shrink-0 overflow-y-hidden border-t border-border pt-3 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Overview">
           <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense selected={selectedId === COMPARE_ROLES} />
           {seesTeam && (

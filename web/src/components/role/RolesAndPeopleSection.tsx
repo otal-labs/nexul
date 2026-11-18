@@ -24,7 +24,7 @@ export const RolesAndPeopleSection = () => {
   const seesTeam = useSeesTeam();
   const { data: roles, error, isPending } = useFetchWorkspaceRoles(workspaceId);
   const selected = roles?.find((role) => role.id === roleId);
-  const count = roles?.filter((role) => !role.is_owner_role).length ?? 0;
+  const count = roles?.length ?? 0;
   const special = roleId === NO_ROLES && seesTeam;
 
   return (

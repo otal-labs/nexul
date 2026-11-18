@@ -615,7 +615,8 @@ row whose record already shows its details when open (Docs) is one line at
 empty at rest, the title truncated with its full text in the tooltip, then the
 mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
-`bg-accent` lift, never a boxed border. A row's actions are its right-click menu,
+`bg-accent` lift, never a boxed border; both fills round at 6px, and while the row has keyboard focus its
+edge steps 4px in so the focus ring stays whole. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
 whoever may manage the record's access, then Delete in destructive), each item
@@ -1428,10 +1429,10 @@ and the words between names stay in the UI sans. A row's state sits on its secon
 row's presence, a connector's, which drops the word its tab already says.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
-pane, above) inside the tab: the roles, the Owner first with a muted crown and
-left out of the header's count as the page header leaves it out, each row its
-name over its description with the holder count in mono trailing (left out for
-a viewer the server shows no Team); under them, pinned below the scroller behind
+pane, above) inside the tab: the roles, the Owner first with a muted crown, every role
+in the header's count as in the page header's, each row its name over its
+description with the holder count in mono on the title's baseline (left out at
+none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
 a hairline so they stay in view however many roles there are, two one-line rows at
 the list's 32px pitch and on its gutter, Compare roles and No roles. The Owner's row
 reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role. Before a row is picked the
@@ -1441,9 +1442,10 @@ open role is one page, its header on the list header's line. Its header is the n
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
-mono and the highest level it holds as a `LevelGlyph` ("In projects ▮▮▮
-10/12", "No access" in the sans), with a small arrow down, each jumping to its section below the
-holders, so what the role allows is a glance away whatever the list's length.
+mono and the highest level it holds as a `LevelGlyph` and its word ("In
+projects ▮▮▮ Delete 10/12"), with a small arrow down, each jumping to its section below the
+holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
+plain words, not a link.
 Then People: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite
 at its right (Invite names the role only in its accessible name, so a long name
@@ -1488,7 +1490,7 @@ read-only, in the access grid's frame: one column per role, the columns sharing 
 width the area column leaves (no filler) and ending in a 48px fade while more
 lie to the right, the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
-lines) over the holder count in mono, beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
+lines) over the holder count in mono (a muted dash, named Nobody, at none), beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects. A cell is the level as a
 `LevelGlyph`, aligned to its end, and its word; a cell the role has no access in

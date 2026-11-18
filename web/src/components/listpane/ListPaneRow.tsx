@@ -57,18 +57,18 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
         ref={ref}
         {...prefetch}
         className={cn(
-          "group relative flex gap-2 px-3 transition-colors duration-150 ease-standard",
+          "group relative flex gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && !detail && (dense ? "min-h-8" : "min-h-10"),
           (snippet !== "" || !!detail) && "min-h-14",
           selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
-        {selected && <CurrentRowEdge className="z-10" />}
+        {selected && <CurrentRowEdge className="z-10 group-has-[:focus-visible]:left-1" />}
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}
-          className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-sm focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
+          className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
         >
           <span className={cn("flex min-w-0 items-start gap-1.5 text-row", cornerMeta && "pr-12")}>
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}

@@ -28,7 +28,8 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
     // A count of zero says nothing, so it drops out of the line.
     grid.projects.length > 0 && countLabel(grid.projects.length, "project", "projects"),
     owner && grid.channels.length > 0 && countLabel(grid.channels.length, "public channel", "public channels"),
-    grid.roles.length > 0 && countLabel(grid.roles.length, "role", "roles"),
+    // The grids list the roles that can be ticked, never the Owner's, so the count adds it back to match the roles list.
+    countLabel(grid.roles.length + 1, "role", "roles"),
   ]
     .filter(Boolean)
     .join(" · ");

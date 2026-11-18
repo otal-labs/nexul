@@ -24,7 +24,7 @@ export const RolesCompareDetail = () => {
       {(rolesPending || catalogPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
-        <div className="px-6 pb-6">
+        <div className="rounded-xl border border-border bg-card px-6 pb-6 shadow-card">
           <RoleMatrix roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={(roleId) => team && roleHolders(team, workspaceId, roleId)} />
         </div>
       )}
