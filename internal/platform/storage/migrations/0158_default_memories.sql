@@ -1,0 +1,3 @@
+-- Every project with no memories of its own gets the shipped default memories once, in Go right after this script
+-- (seedDefaultMemories): a project with no ordinary memory, or whose only one is the untouched "Working in this project"
+-- placeholder an older release seeded, which goes with its versions and attachments. Any other project keeps what it has.

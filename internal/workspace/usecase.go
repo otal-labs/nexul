@@ -30,6 +30,7 @@ type Service struct {
 	workspaces WorkspaceGate
 	tickets    TicketProjects
 	instance   InstanceTemplates
+	memories   MemorySeeds
 	now        func() time.Time
 }
 
@@ -40,6 +41,14 @@ type InstanceTemplates interface {
 
 // SetInstanceTemplates wires the instance layer a new project's ticket types take their body templates from.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
+
+// MemorySeeds reads the memories a new project starts with, leaving out any that does not parse (ADR 0194).
+type MemorySeeds interface {
+	ProjectMemories(ctx context.Context) ([]SeedMemory, error)
+}
+
+// SetMemorySeeds wires the instance's default memories a new project copies in.
+func (s *Service) SetMemorySeeds(m MemorySeeds) { s.memories = m }
 
 // NewService wires the workspace use-cases over the given repos and gates.
 func NewService(repo Repo, cats CategoryRepo, types TicketTypeRepo, statuses StatusRepo, gate Gate, workspaces WorkspaceGate) *Service {
@@ -112,9 +121,13 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	if err != nil {
 		return nil, err
 	}
+	seeds, err := s.seedMemories(ctx)
+	if err != nil {
+		return nil, err
+	}
 	creator, _ := identity.ActorFromCtx(ctx)
-	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types, CreatorID: creator.ID}
-	// Default statuses/types are seeded by ProjectsRepo.Create in the same transaction, not here.
+	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types, SeedMemories: seeds, CreatorID: creator.ID}
+	// Default statuses, types and memories are seeded by ProjectsRepo.Create in the same transaction, not here.
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
@@ -587,4 +600,16 @@ func (s *Service) nextPosition(ctx context.Context, workspaceID, prefix string) 
 		}
 	}
 	return position, nil
+}
+
+// seedMemories is the instance's default memories, copied into the project once (ADR 0194); none until wired.
+func (s *Service) seedMemories(ctx context.Context) ([]SeedMemory, error) {
+	if s.memories == nil {
+		return nil, nil
+	}
+	seeds, err := s.memories.ProjectMemories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read the default memories: %w", err)
+	}
+	return seeds, nil
 }

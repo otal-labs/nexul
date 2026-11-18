@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
@@ -174,7 +176,7 @@ func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
 
 		listed, err := f.tpl.List(as(uPlain))
 		require.NoError(t, err, "any member reads the instance templates")
-		assert.Len(t, listed, 22)
+		assert.Len(t, listed, 27)
 	})
 
 	t.Run("a copy resets to the instance version, not the code default", func(t *testing.T) {
@@ -444,6 +446,44 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 			assert.Equal(t, forbidden, outcome(f.tpl.Delete(as(user), roles.TemplateKind, mine.Key)), user)
 		}
 	})
+}
+
+// TestIntegration_TemplateMemories: a new project copies the instance's default memories once, an edited and an added one
+// included, skipping one stored without its check that no longer parses.
+func TestIntegration_TemplateMemories(t *testing.T) {
+	t.Parallel()
+	f := newTemplateFixture(t)
+	f.setInstance(t, memories.DefaultsKind, "writing-tickets", "---\nname: Writing our tickets\ndescription: Use when filing work.\n---\n\n- One outcome each.\n")
+	added, err := f.tpl.Update(as(uTemplater), memories.DefaultsKind, "", templates.Instance, "---\nname: Releases\ndescription: Use when cutting a release.\nalways_included: true\n---\n\nTag from master.\n")
+	require.NoError(t, err)
+	assert.True(t, added.Added)
+	assert.Equal(t, "Releases", added.Name, "named from its frontmatter, not its generated key")
+	_, err = f.tpl.Update(as(uOwner), memories.DefaultsKind, "", templates.Instance, "no frontmatter")
+	assert.Equal(t, invalid, outcome(err))
+	require.NoError(t, f.store.InstanceTemplates.Save(as(uOwner), &templates.Record{Kind: memories.DefaultsKind, Key: "zz-broken", Body: "no frontmatter", UpdatedAt: time.Now()}))
+
+	_, p := f.newWorkspace(t, "Beta", "BET")
+	got, err := f.store.Memories.ListByProject(context.Background(), p.ID)
+	require.NoError(t, err)
+	var seeded []string
+	for _, m := range got {
+		versions, err := f.store.Memories.ListVersionSummaries(context.Background(), m.ID)
+		require.NoError(t, err)
+		md, err := richtext.ToMarkdown(m.Body)
+		require.NoError(t, err)
+		seeded = append(seeded, fmt.Sprintf("%s | %s | %t %t | v%d, %d version", m.Title, strings.TrimSpace(md), m.AlwaysIncluded, m.Footer, m.Version, len(versions)))
+	}
+	require.Len(t, seeded, 6, "five defaults and the added one; the broken one is skipped")
+	assert.Equal(t, "Writing our tickets | - One outcome each. | false false | v1, 1 version", seeded[1], "the instance's edit reaches the new project")
+	assert.Contains(t, seeded[4], "Finishing a ticket |")
+	assert.Contains(t, seeded[4], "| true true | v1, 1 version", "the shipped footer arrives always included")
+	assert.Equal(t, "Releases | Tag from master. | true false | v1, 1 version", seeded[5], "an added template reaches the new project")
+
+	general, err := f.store.Memories.ListByProject(context.Background(), pGeneral)
+	require.NoError(t, err)
+	for _, m := range general {
+		assert.NotEqual(t, "Releases", m.Title, "a project made before keeps what it had")
+	}
 }
 
 // TestIntegration_FreshInstallFirstWorkspaceGetsTheTemplateRoles: the owner wizard binding the pre-seeded default

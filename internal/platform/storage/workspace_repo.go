@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
@@ -48,7 +49,7 @@ func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
 		if len(types) == 0 {
 			types = workspace.DefaultTicketTypes
 		}
-		return seedProjectDefaults(ctx, q, p.WorkspaceID, p.ID, types, p.CreatedAt.Unix())
+		return seedProjectDefaults(ctx, q, p.WorkspaceID, p.ID, types, p.SeedMemories, p.CreatedAt.Unix())
 	})
 }
 
@@ -75,8 +76,8 @@ func listCreator(ctx context.Context, q *sqlcgen.Queries, p *workspace.Project) 
 }
 
 // seedProjectDefaults inserts defaults in the same transaction as the project, so a board is always usable and a
-// new doc always has its default folder to land in.
-func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, types []workspace.TicketType, at int64) error {
+// new doc always has its default folder to land in, and the project starts with the instance's default memories.
+func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, types []workspace.TicketType, seeds []workspace.SeedMemory, at int64) error {
 	statuses := []struct {
 		name string
 		kind string
@@ -108,33 +109,29 @@ func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, p
 	}); err != nil {
 		return fmt.Errorf("seed default doc folder for project %s: %w", projectID, err)
 	}
-	memoryID := uuid.NewString()
-	if err := q.CreateMemory(ctx, sqlcgen.CreateMemoryParams{
-		ID: memoryID, WorkspaceID: workspaceID, ProjectID: sql.NullString{String: projectID, Valid: true},
-		Title: "Working in this project", WhenToUse: "Always included in this project's turns.",
-		Body:           seedMemoryBody,
-		AlwaysIncluded: 1, Version: 1, CreatedAt: at, UpdatedAt: at,
-	}); err != nil {
-		return fmt.Errorf("seed memory for project %s: %w", projectID, err)
-	}
-	// No author: this row seeds automatically, no user wrote it (mirrors 0139's seed for project-general).
-	if err := q.InsertMemoryVersion(ctx, sqlcgen.InsertMemoryVersionParams{
-		ID: uuid.NewString(), MemoryID: memoryID, Version: 1,
-		Title: "Working in this project", WhenToUse: "Always included in this project's turns.",
-		Body: seedMemoryBody, AlwaysIncluded: 1, EditorIds: "[]", CreatedAt: at,
-	}); err != nil {
-		return fmt.Errorf("seed memory version for project %s: %w", projectID, err)
+	for _, m := range seeds {
+		if err := seedMemory(ctx, q, workspaceID, projectID, m, at); err != nil {
+			return fmt.Errorf("seed memory %q for project %s: %w", m.Title, projectID, err)
+		}
 	}
 	return nil
 }
 
-// seedMemoryBody is legacy plain text, not structured Tiptap JSON — ADR 0026 lets a pre-conversion body pass
-// through unchanged, and no user authored this row for richtext.Normalize to run against.
-const seedMemoryBody = `This memory is Agent's shared context for this project — durable notes worth remembering across every chat turn.
-
-Replace this starter text with anything the team wants Agent to always know: conventions, gotchas, or standing preferences.
-
-Edit it any time; it stays always-included until someone turns that off.`
+// seedMemory writes one of a new project's memories at version 1 with its history row; no author, since no user wrote it.
+func seedMemory(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, m workspace.SeedMemory, at int64) error {
+	id := ids.New()
+	if err := q.CreateMemory(ctx, sqlcgen.CreateMemoryParams{
+		ID: id, WorkspaceID: workspaceID, ProjectID: sql.NullString{String: projectID, Valid: true},
+		Title: m.Title, WhenToUse: m.WhenToUse, Body: m.Body,
+		AlwaysIncluded: boolToInt(m.AlwaysIncluded), Footer: boolToInt(m.Footer), Version: 1, CreatedAt: at, UpdatedAt: at,
+	}); err != nil {
+		return err
+	}
+	return q.InsertMemoryVersion(ctx, sqlcgen.InsertMemoryVersionParams{
+		ID: uuid.NewString(), MemoryID: id, Version: 1, Title: m.Title, WhenToUse: m.WhenToUse,
+		Body: m.Body, AlwaysIncluded: boolToInt(m.AlwaysIncluded), EditorIds: "[]", CreatedAt: at,
+	})
+}
 
 func (r *ProjectsRepo) Get(ctx context.Context, id string) (*workspace.Project, error) {
 	row, err := r.q.GetProject(ctx, id)

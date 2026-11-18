@@ -24,6 +24,8 @@ type Project struct {
 	UpdatedAt     time.Time     `json:"updated_at"`
 	// SeedTicketTypes are the types creating the project seeds; empty seeds DefaultTicketTypes.
 	SeedTicketTypes []TicketType `json:"-"`
+	// SeedMemories are the memories creating the project seeds, bodies in their stored rich-text form (ADR 0194).
+	SeedMemories []SeedMemory `json:"-"`
 	// CreatorID is whom creating the project lists in it, with their roles; empty for the server's own create.
 	CreatorID string `json:"-"`
 }
@@ -358,4 +360,13 @@ type UnreadGroup struct {
 	WorkspaceID string
 	ProjectID   string
 	Unread      int
+}
+
+// SeedMemory is one memory a new project starts with, copied once from the instance's default memories (ADR 0194).
+type SeedMemory struct {
+	Title          string
+	WhenToUse      string
+	Body           string
+	AlwaysIncluded bool
+	Footer         bool
 }
