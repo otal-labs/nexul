@@ -25,9 +25,10 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
   const draft = useAccessDraft(grid);
   useLeaveGuard(draft.projectChanges.length + draft.channelChanges.length > 0, wsPath("/access"), useAccessDraftStore.getState().clear);
   const facts = [
-    countLabel(grid.projects.length, "project", "projects"),
-    owner && countLabel(grid.channels.length, "public channel", "public channels"),
-    countLabel(grid.roles.length, "role", "roles"),
+    // A count of zero says nothing, so it drops out of the line.
+    grid.projects.length > 0 && countLabel(grid.projects.length, "project", "projects"),
+    owner && grid.channels.length > 0 && countLabel(grid.channels.length, "public channel", "public channels"),
+    grid.roles.length > 0 && countLabel(grid.roles.length, "role", "roles"),
   ]
     .filter(Boolean)
     .join(" · ");

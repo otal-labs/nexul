@@ -8,7 +8,7 @@ interface AccountStatusLabelProps {
 // Only an account that can't sign in says so; an active one needs no word, its presence already reads beside it.
 export const AccountStatusLabel = ({ status }: AccountStatusLabelProps) => (
   <>
-    {status === "disabled" && <SettingsStatus tone="warning">Disabled</SettingsStatus>}
+    {status === "disabled" && <SettingsStatus tone="muted">Disabled</SettingsStatus>}
     {status === "removed" && <SettingsStatus tone="destructive">Removed</SettingsStatus>}
   </>
 );
