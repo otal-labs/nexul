@@ -5,7 +5,7 @@ sidebar:
   order: 11
 ---
 
-The interview is how you tell agents how a project works: its stack, how the code is organised, when tests are written, the style rules, the project's own words. You answer a list of questions, an agent asks about whatever is still unclear, then it writes the interview memory. Every agent turn in the project reads that memory before anything else.
+The interview is how you tell agents how a project works: what it is and who it's for, which tests a change needs, how a change reaches the main branch, what an agent may do without asking, the rules no linter checks, its user interfaces, and the project's own words. You answer a list of questions, an agent asks about whatever is still unclear, then it writes the interview memory. Every agent turn in the project reads that memory before anything else.
 
 Open **Interview** under the project in the sidebar. The page has two tabs, **Questions** and **Memory**. On **Questions** the sources sit beside the questions on a wide window and under them on a narrow one. The line above the tabs shows the latest run and holds **Regenerate** and **Audit via AI**, whichever tab is open.
 
@@ -17,12 +17,12 @@ The page follows the **Memories and interview** area in the role editor: someone
 
    The bar above the questions has a segment per question, and the line under it counts what's answered, what's skipped, and what needs you. **Need you** counts every question with no answer yet and every draft or suggested change waiting on you; click it to open the first one.
 2. Once every question is answered or skipped, press **Done**.
-3. The agent reads your answers and the code, then asks follow-ups about skipped questions, gaps, and anything the code contradicts. They appear on the page a round at a time, each with a recommended answer and a line on why it's asked. Answer them the same way.
-4. When nothing is left to ask, the agent writes the memory, on the **Memory** tab.
+3. The agent reads your answers and the code, then asks only what it can't read for itself: a skipped question the code doesn't settle, a gap that changes how work is done, or an answer the code contradicts. It never asks an answered question again. Its follow-ups appear on the page a round at a time, up to four in a round and two rounds in a run, each with a recommended answer and a line on why it's asked. Answer them the same way.
+4. When nothing is left to ask, or after its second round, the agent writes the memory, on the **Memory** tab.
 
 The run happens on your paired computer, like any [play](/docs/guide/plays/). The line above the tabs shows where it is: **Agent working**, **Agent asking**, **Memory ready**, **Memory out of date**, or **Run failed**. While the agent asks, **Answer** beside it opens the question.
 
-The agent records nothing from the code that you didn't confirm, and it writes rules, not a transcript of your answers.
+The agent writes a rule only when you gave or confirmed it, and writes rules, not a transcript of your answers. The one rule it takes from the code is how a change reaches the main branch, when you skip that question. An agent may do without asking only what you tick under **What may an agent do without asking a person?**: skip it, or leave a box empty, and agents ask first, merging their own pull requests included.
 
 ## Change it later
 

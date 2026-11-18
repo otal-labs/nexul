@@ -25,74 +25,39 @@ const (
 const TemplateKind = "interview"
 
 // DefaultInterviewTemplate is the code default of the Interview template: what only a person knows, one ## per question.
-const DefaultInterviewTemplate = `## What languages and frameworks does this project use?
-Name versions only where they are pinned on purpose.
-
-## How is the code organised?
-- Layers (routes, logic, storage)
-- Feature folders
-- Entities and systems
-- Functional core with a thin outer shell
-
-## How do errors travel?
-And what gets logged, at which level.
-- Returned and wrapped
-- Thrown and caught at the edge
-- Result types
-
-## When are tests written?
-- Before the code
-- With the change
-- Only for bugs
-- No tests yet
+const DefaultInterviewTemplate = `## What is this project, and who is it for?
+One or two sentences: what it does and who uses it.
 
 ## Which tests does a change need?
-And the coverage floor, if any.
+Skip it when a change needs none. Put the coverage floor, if any, in the text box.
 - [ ] Unit
 - [ ] Integration against real dependencies
-- [ ] End-to-end in this repo
-- [ ] End-to-end in a separate repo
-
-## Which style rules matter most?
-Skip what a linter already enforces.
-- [ ] Early return, no else
-- [ ] Small functions
-- [ ] Comments only for why
-- [ ] Strict types, no any
-
-## When may a change add a dependency?
-- Freely
-- When it saves real code
-- Only after asking
-- Only with a written decision
-
-## Where do secrets live?
-And what must never be committed or logged.
-- Environment variables
-- A secrets manager
-- An encrypted file in the repo
+- [ ] End-to-end
 
 ## How does a change reach the main branch?
-And how commit messages are written.
+Skipped, the project's code decides it.
 - Pull request, squash merge
+- Pull request, rebase merge
 - Pull request, merge commit
-- Straight to main
 
-## Where are decisions written down?
-- Decision records in the repo
-- A docs folder
-- A wiki outside the repo
-- Nowhere yet
+## What may an agent do without asking a person?
+Unticked or skipped, it asks first.
+- [ ] Merge its own pull request
+- [ ] Add a dependency
+- [ ] Change the database schema
+- [ ] Touch production or its data
 
-## Does this project have a user interface?
-If yes, the design system, screen sizes, and accessibility rules.
-- Web
-- Mobile
-- Both
-- None
+## Which rules matter most that no linter checks?
+One per line: style, how errors are handled, what must never be committed or logged. Skip it when there are none.
+
+## Which user interfaces does it have?
+Skip it when it has none. For each, add its design system, screen sizes and accessibility rules in the text box.
+- [ ] Web
+- [ ] Mobile
+- [ ] Desktop
 
 ## Which words mean something specific here?
-One per line, the term then what it means.
+One per line, the term then what it means. Skip it when there are none.
 `
 
 // CreateInterview returns the project's interview memory, creating it empty the first time.

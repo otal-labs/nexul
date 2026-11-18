@@ -70,7 +70,7 @@ On the [phone app](/docs/guide/phone-app/) the same **Doc | Questions** switch s
 
 ## Tickets
 
-Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. Set a **Developer** to build it and a **Tester** to check it, both optional.
+Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. A new project's task has **What needs doing**, **Acceptance criteria**, **How to verify** and **Out of scope**; a feature opens with **Why** in place of the first; a bug has **Steps to reproduce**, **Expected result**, **Actual result** and **Screenshots**. Set a **Developer** to build it and a **Tester** to check it, both optional.
 
 The ticket page has everything else. The line under the title shows where the ticket stands, on every tab: its key, its status, whoever acts next (the tester while it sits in a Testing column, otherwise the developer), its first open blocker and two of its pull requests, with a count for the rest. The properties and the sections below sit beside the ticket and its thread; on a narrow window they fold behind **Details** above the tabs.
 

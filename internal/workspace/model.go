@@ -133,9 +133,9 @@ const TemplateKind = "ticket_body"
 
 // DefaultTicketTypes are every new project's types in board order, with the code defaults of their body templates.
 var DefaultTicketTypes = []TicketType{
-	{Name: "task", BodyTemplate: "## What needs doing\n\n\n## Acceptance criteria\n\n"},
-	{Name: "bug", BodyTemplate: "## Steps to reproduce\n\n\n## Expected result\n\n\n## Actual result\n\n\n## Provide screenshot\n\n"},
-	{Name: "feature", BodyTemplate: "## Why\n\n\n## Acceptance criteria\n\n\n## Out of scope\n\n"},
+	{Name: "task", BodyTemplate: "## What needs doing\n\n\n## Acceptance criteria\n\n\n## How to verify\n\n\n## Out of scope\n\n"},
+	{Name: "bug", BodyTemplate: "## Steps to reproduce\n\n\n## Expected result\n\n\n## Actual result\n\n\n## Screenshots\n\n"},
+	{Name: "feature", BodyTemplate: "## Why\n\n\n## Acceptance criteria\n\n\n## How to verify\n\n\n## Out of scope\n\n"},
 }
 
 // ProjectIcon is purely cosmetic; unset ("") falls back to prefix-only rendering.

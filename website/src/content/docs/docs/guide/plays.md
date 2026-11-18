@@ -20,7 +20,7 @@ A run keeps the target's T3 thread unless that thread is in another T3 project, 
 
 If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, or none of your computers able to take it, with the reason for each. A pressed run never waits for a computer. A play on a blocked ticket asks you to confirm first.
 
-The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move.
+The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move. With no such memory, **Fix with AI** leaves its pull request open and moves the card to the first review column.
 
 ## Follow a run
 
@@ -45,9 +45,9 @@ Every workspace starts with ten. They are ordinary plays: rename, edit, or delet
 
 | Play | Runs on | What it does |
 |---|---|---|
-| **Fix with AI** | a ticket in an In progress column | Reads the ticket, fixes it on its own branch, and opens a pull request with the computer's own GitHub sign-in. |
+| **Fix with AI** | a ticket in an In progress column | Builds the ticket on its own branch, proves each acceptance criterion, and opens a pull request with the computer's own GitHub sign-in. On a ticket that failed testing it carries on from the failed report. It finishes as the project's finishing memory says; with none, it leaves the pull request open and moves the card to review. |
 | **Test with AI** | a ticket in a Testing column | Tests the ticket against its acceptance criteria, then passes or fails it. |
-| **To tickets via AI** | a doc | Splits the doc into tickets a developer could pick up on their own. |
+| **To tickets via AI** | a doc | Splits the doc into thin, ordered tickets, each with acceptance criteria, how to verify it, and its blockers. It asks nothing: a decision only a person can make becomes a ticket of its own, whose body opens with "Needs a person: ...", and it blocks the tickets that wait on it. |
 | **Clarify via AI** | a doc | Asks the doc's authors about what it leaves open, a round at a time. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
 | **Update doc via AI** | a doc | Writes the answers to the doc's questions into it, without asking more. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
 | **Interview** | a project's Interview page | Asks follow-ups and writes the project's rules for agents. See [Interview](/docs/guide/interview/). |

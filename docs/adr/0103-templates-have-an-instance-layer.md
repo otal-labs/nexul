@@ -2,6 +2,9 @@
 
 Amended by ADR 0132: the decisions check is a seeded play now, so its instructions are a template like the other built-in plays'.
 
+Amended by ADR 0193: a migration may carry a new code default to every copy still equal to the previous one; an edited
+copy keeps its own.
+
 Four texts start every workspace or project off: the Interview template, the mention chip template, the built-in
 plays' instructions, and each default ticket type's body template. Each had a default in code and nothing between that
 default and the workspace or project holding a copy, so an owner who wanted every workspace to ask the same interview
