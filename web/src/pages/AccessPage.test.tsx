@@ -242,7 +242,7 @@ describe("AccessPage", () => {
     serve(grid({ setup: { finished: true } }), false, ["projects:create", "roles:write"], ["projects:access", "projects:write"]);
     renderPage();
 
-    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+    expect(await screen.findByText("Roles and people card")).toBeInTheDocument();
     expect(mocks.get).not.toHaveBeenCalledWith("/api/workspaces/ws-1/access");
   });
 
