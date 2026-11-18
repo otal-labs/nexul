@@ -4,6 +4,7 @@ import { Microheader } from "@/components/Microheader";
 import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { RoleAbilityRow } from "@/components/role/RoleAbilityRow";
 import { RoleLevelRow } from "@/components/role/RoleLevelRow";
+import { cn } from "@/lib/utils";
 import { holdsArea, roleSectionId, type SectionDomains } from "@/models/RoleSection";
 import type { PermissionArea } from "@/models/Permission";
 
@@ -41,7 +42,7 @@ export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevel
         )}
       </div>
       {rows && (
-        <dl className="gap-x-8 border-t border-border @2xl:columns-2">
+        <dl className={cn("gap-x-8 border-t border-border", held + (showNone ? none : 0) > 1 && "@2xl:columns-2")}>
           {heldAbilities.map((ability) => (
             <RoleAbilityRow key={ability.value} ability={ability} held />
           ))}

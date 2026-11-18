@@ -269,7 +269,7 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
     const matrix = within(await screen.findByRole("table"));
     expect(matrix.getByRole("rowheader", { name: "Docs" })).toBeInTheDocument();
     expect(matrix.queryByRole("rowheader", { name: "Tickets" })).not.toBeInTheDocument();
-    await user.click(matrix.getByRole("button", { name: "Show 1 no role holds" }));
+    await user.click(matrix.getByRole("button", { name: "Show 1 held by no role" }));
     expect(matrix.getByRole("rowheader", { name: "Tickets" })).toBeInTheDocument();
   });
 });

@@ -44,8 +44,8 @@ export const RoleHoldersSection = () => {
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-2">
           <Microheader id="role-people-title">People</Microheader>
-          {holders && holders.length > 0 && (
-            <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched && matched.length > 0 ? `${matched.length} of ${holders.length}` : holders.length}</span>
+          {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+            <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
           )}
         </div>
         {changeable && givable && (

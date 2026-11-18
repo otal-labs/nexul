@@ -79,7 +79,7 @@ export const RoleMatrixGroup = ({ title, domains, held }: RoleMatrixGroupProps) 
         <th scope="colgroup" colSpan={held.length + 2} className={cn(leadStrip, "h-8 p-0 text-left")}>
           <span className="sticky left-0 inline-flex items-center gap-2 pl-6">
             <span className={microheaderClass}>{title}</span>
-            {none > 0 && <RoleFoldButton open={showNone} onToggle={() => setShowNone(!showNone)} label={`${showNone ? "Hide" : "Show"} ${none} no role holds`} className="h-6 font-normal" />}
+            {none > 0 && <RoleFoldButton open={showNone} onToggle={() => setShowNone(!showNone)} label={`${showNone ? "Hide" : "Show"} ${none} held by no role`} className="h-6 font-normal" />}
           </span>
         </th>
       </tr>
