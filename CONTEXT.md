@@ -320,15 +320,18 @@ restored. Cloned, never shared, to another project. Plural in the UI: "memories"
 _Avoid_: Doc (docs are for clients and requirements), skill, note
 
 **Interview**:
-How a project's rules for agents are established: its stack, paradigm,
-testing strategy, principles, and vocabulary. A person answers the
+How a project's rules for agents are established: what it is, which
+tests a change needs, how a change reaches the main branch, what an agent
+may do without asking, the rules no linter checks, its user interfaces, and
+its vocabulary. A person answers the
 workspace's Interview template, a list of questions, on the project's
 Interview page, with no agent involved; the template is the instance
 template until the workspace edits its own, which takes `memories:template`. Then the Interview play reads
-those answers, the codebase, and the question sources, asks follow-ups about
-skipped questions, gaps, anything the code contradicts, and what a question
-source did that the answers do not settle, a round at a time on the same
-page, and writes the interview memory. The page holds the questions, their stored
+those answers, the codebase, and the question sources, asks only what it
+cannot read: skipped questions the code does not settle, gaps, anything the
+code contradicts, and what a question source did that the answers do not
+settle, a round at a time on the same page and at most two rounds a run,
+and writes the interview memory. The page holds the questions, their stored
 answers, and the memory. Running it again changes only what the changed
 answers change. The answers are stored per project, one per question per
 round (round 0 the template's, then one round per batch of follow-ups),
@@ -403,7 +406,8 @@ play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing and for a stack is the stack's own thread; a play never moves its ticket itself, the agent does, as
-its footer memories say. Every workspace,
+its footer memories say; with none, Fix with AI leaves its pull request open
+and moves the ticket to the first review column. Every workspace,
 new or existing, is seeded with the same ten, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
 "Test with AI" (ticket, testing stage), "Draft interview" (interview),

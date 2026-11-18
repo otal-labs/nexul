@@ -4,6 +4,8 @@ Amended by ADR 0132: an auto play may start a play when a moment matches, still 
 
 Its move-on-success consequence is superseded by ADR 0112: a play never moves its ticket; footer memories tell the agent where it goes.
 
+Amended by ADR 0193: with no footer memory, Fix with AI's own instructions move the ticket to the first review column.
+
 Superseded in part by ADR 0115: an interview run's thread is hidden plumbing holding its session; the run is read on the
 project's Interview page, not as a conversation.
 

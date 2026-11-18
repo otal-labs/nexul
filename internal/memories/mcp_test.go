@@ -156,7 +156,7 @@ func TestMemoryCreate(t *testing.T) {
 		first := mustCall(t, s, "memory_create", `{"project_id":"project-1","kind":"interview"}`).(memoryResult)
 		assert.Equal(t, KindInterview, first.Kind)
 		assert.Empty(t, strings.TrimSpace(first.Body))
-		assert.Len(t, first.Questions, 12)
+		assert.Len(t, first.Questions, 7)
 		again := mustCall(t, s, "memory_create", `{"project_id":"project-1","kind":"interview"}`).(memoryResult)
 		assert.Equal(t, first.ID, again.ID)
 	})

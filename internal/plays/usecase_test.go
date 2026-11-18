@@ -204,14 +204,14 @@ func TestSeedDefaults_CreatesTheTenDefaultPlays(t *testing.T) {
 		wantShow *Stage
 		mentions []string
 	}{
-		{"Fix with AI", TypeTicket, &progress, []string{"ticket_update", "link_pr"}},
-		{"To tickets via AI", TypeDoc, nil, []string{"project_get", "ticket_list", "ticket_create"}},
-		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "one round at a time", "memory_update"}},
-		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "never production"}},
-		{"Draft interview", TypeInterview, nil, []string{"`kind` `interview`", "stance is follow", "`trail_id`", "500 characters", "Never ask"}},
+		{"Fix with AI", TypeTicket, &progress, []string{"ticket_update", "link_pr", "first review column"}},
+		{"To tickets via AI", TypeDoc, nil, []string{"project_get", "ticket_list", "ticket_create", "Needs a person", "add_blocker_ids"}},
+		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "a round at a time", "two rounds", "memory_update"}},
+		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "Never test on production"}},
+		{"Draft interview", TypeInterview, nil, []string{"`kind` `interview`", "stance is follow", "`trail_id`", "500 characters", "Ask nothing"}},
 		{"Clarify via AI", TypeDoc, nil, []string{"doc_get", "`questions`", "`anything_else_reply`", "`no_gaps`", "Never use your question tool"}},
 		{"Update doc via AI", TypeDoc, nil, []string{"doc_get", "Ask nothing", "`no_gaps`", "Open points"}},
-		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "known breaks", "doc_create", "Main folder", "Carry over", "Keeps", "Never ask"}},
+		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "doc_create", "no `folder_id`", "Carry over", "Keeps", "Ask nothing"}},
 		{"Decisions check", TypeTicket, &done, []string{"`decisions_log`", "memory_update", "superseded by"}},
 		{"Investigate a crash", TypeStack, nil, []string{"stack_get", "`logs`", "Never deploy, restart, stop or edit", "nexul-triage"}},
 	}

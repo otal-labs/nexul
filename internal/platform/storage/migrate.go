@@ -18,8 +18,9 @@ var migrationFS embed.FS
 // goSteps run in a migration's own transaction right after its script, for work SQL can't express. A step uses its
 // own SQL, frozen to its migration's schema: the generated queries match the newest schema, which an upgrade has not reached.
 var goSteps = map[string]func(ctx context.Context, tx *sql.Tx) error{
-	"0142_version_change_size": backfillVersionSizes,
-	"0144_memory_history":      backfillMemoryHistory,
+	"0142_version_change_size":         backfillVersionSizes,
+	"0144_memory_history":              backfillMemoryHistory,
+	"0157_starting_templates_one_flow": versionPlaysMigratedIn0157,
 }
 
 // Migrate applies every pending migration. Test helpers use this no-backup path directly; production boots

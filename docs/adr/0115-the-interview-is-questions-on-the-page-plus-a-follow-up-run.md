@@ -3,6 +3,9 @@
 Supersedes in part ADR 0055 and ADR 0065: the interview is no longer a conversation in the project's interview
 thread.
 
+Amended by ADR 0193: the run asks only for decisions, at most four a round and two rounds a run, and takes how a change
+reaches the main branch from the code when that question is skipped.
+
 The interview used to be a conversation: the Interview play asked one question at a time in the project's interview
 thread, starting with whether to scan the codebase, and wrote the interview memory as it went. The owner found it
 confusing in practice: a chat that is really a form, answers that lived only in the thread, and a re-run that had to

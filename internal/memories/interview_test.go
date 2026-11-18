@@ -348,7 +348,7 @@ func TestInterviewHandlers(t *testing.T) {
 
 	rec = serve(t, h, http.MethodGet, "/api/memories/interview-template?workspace_id=workspace-1", "")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"questions":[{"text":"What languages and frameworks does this project use?"`)
+	assert.Contains(t, rec.Body.String(), `"questions":[{"text":"What is this project, and who is it for?"`)
 	rec = serve(t, h, http.MethodGet, "/api/memories/interview-template", "")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 

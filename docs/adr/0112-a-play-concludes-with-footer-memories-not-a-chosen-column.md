@@ -2,6 +2,8 @@
 
 Supersedes the move-on-success consequence of ADR 0055.
 
+Amended by ADR 0193: with no footer memory, Fix with AI's own instructions move the ticket to the first review column.
+
 A ticket play's run dialog used to ask which column to move the ticket to when the run ended done, and the runner
 applied it afterwards, never backwards. The owner found the picker getting in the way on every run: the right column
 depends on how the work went, which nobody knows at the press, and the never-backwards rule then skipped the move
