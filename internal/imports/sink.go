@@ -21,6 +21,8 @@ type sink struct {
 	info    Info
 	members []Member
 	cols    []Column
+	// folders are the doc folders this run has found or made, by name.
+	folders map[string]string
 }
 
 var _ Sink = (*sink)(nil)
@@ -58,11 +60,11 @@ func (k *sink) Ticket(ctx context.Context, t Ticket) error {
 			return k.counted(ctx, true)
 		}
 		if item, err = k.create(ctx, t); err != nil {
-			return k.failed(ctx, t, "", err)
+			return k.failed(ctx, KindTicket, t.SourceID, t.Title, "", err)
 		}
 	}
 	if err := k.fill(ctx, item.NexulID, t); err != nil {
-		return k.failed(ctx, t, item.NexulID, err)
+		return k.failed(ctx, KindTicket, t.SourceID, t.Title, item.NexulID, err)
 	}
 	item.State = ItemFilled
 	if err := k.s.repo.Record(ctx, k.imp.WorkspaceID, k.imp.Source, item); err != nil {
@@ -126,6 +128,11 @@ func (k *sink) bodyOf(t Ticket) string {
 
 // copyFiles downloads each file into an attachment on the ticket; one that fails or is too large stays a link.
 func (k *sink) copyFiles(ctx context.Context, ticketID string, urls []string) map[string]string {
+	return k.copyFilesTo(ctx, urls, func(name string, data []byte) (string, error) { return k.s.desk.Attach(ctx, ticketID, name, data) })
+}
+
+// copyFilesTo downloads each file and stores it with attach; one that fails or is too large stays a link.
+func (k *sink) copyFilesTo(ctx context.Context, urls []string, attach func(name string, data []byte) (string, error)) map[string]string {
 	copied := map[string]string{}
 	for _, u := range urls {
 		if _, done := copied[u]; done {
@@ -137,7 +144,7 @@ func (k *sink) copyFiles(ctx context.Context, ticketID string, urls []string) ma
 			k.imp.Report.FilesLinked++
 			continue
 		}
-		id, err := k.s.desk.Attach(ctx, ticketID, name, data)
+		id, err := attach(name, data)
 		if err != nil {
 			k.s.log.InfoContext(ctx, "import kept a file as a link", "import_id", k.imp.ID, "error", err)
 			k.imp.Report.FilesLinked++
@@ -163,22 +170,22 @@ func (k *sink) column(ctx context.Context, ref StatusRef) (Column, error) {
 }
 
 // failed records a record that did not come in and carries on with the next.
-func (k *sink) failed(ctx context.Context, t Ticket, nexulID string, cause error) error {
+func (k *sink) failed(ctx context.Context, kind, sourceID, title, nexulID string, cause error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	if errors.Is(cause, apperrs.ErrRetryable) {
 		return cause
 	}
-	k.s.log.WarnContext(ctx, "import could not bring a record in", "import_id", k.imp.ID, "source_id", t.SourceID, "error", cause)
+	k.s.log.WarnContext(ctx, "import could not bring a record in", "import_id", k.imp.ID, "source_id", sourceID, "error", cause)
 	reason := failureReason(cause)
-	item := Item{ImportID: k.imp.ID, Kind: KindTicket, SourceID: t.SourceID, NexulID: nexulID, State: ItemFailed, Error: reason}
+	item := Item{ImportID: k.imp.ID, Kind: kind, SourceID: sourceID, NexulID: nexulID, State: ItemFailed, Error: reason}
 	if err := k.s.repo.Record(ctx, k.imp.WorkspaceID, k.imp.Source, item); err != nil {
 		return err
 	}
 	k.imp.Failed++
 	if len(k.imp.Report.Failures) < MaxListedFailures {
-		k.imp.Report.Failures = append(k.imp.Report.Failures, Failure{Kind: KindTicket, SourceID: t.SourceID, Title: t.Title, Error: reason})
+		k.imp.Report.Failures = append(k.imp.Report.Failures, Failure{Kind: kind, SourceID: sourceID, Title: title, Error: reason})
 	}
 	return k.counted(ctx, false)
 }
@@ -205,6 +212,98 @@ func (k *sink) counted(ctx context.Context, done bool) error {
 		return errStopped
 	}
 	return nil
+}
+
+// DocLink implements Sink: the id is derived, so the link holds before the doc is written.
+func (k *sink) DocLink(sourceID string) string {
+	return "/docs/" + k.id(KindDoc, strings.TrimSpace(sourceID))
+}
+
+// Doc implements Sink.
+func (k *sink) Doc(ctx context.Context, d Doc) error {
+	d.SourceID = strings.TrimSpace(d.SourceID)
+	if d.SourceID == "" {
+		return fmt.Errorf("%w: %s handed a doc without a source id", apperrs.ErrInvalid, k.imp.Source)
+	}
+	item, ok, err := k.s.repo.Item(ctx, k.imp.ID, KindDoc, d.SourceID)
+	if err != nil {
+		return err
+	}
+	if ok && item.State != ItemCreated {
+		return nil
+	}
+	if !ok {
+		_, before, err := k.s.repo.Imported(ctx, k.imp.WorkspaceID, k.imp.Source, KindDoc, d.SourceID)
+		if err != nil {
+			return err
+		}
+		if before {
+			k.imp.Report.Skipped++
+			return k.counted(ctx, true)
+		}
+		if item, err = k.createDoc(ctx, d); err != nil {
+			return k.failed(ctx, KindDoc, d.SourceID, d.Title, "", err)
+		}
+	}
+	copied := k.copyFilesTo(ctx, d.Files, func(name string, data []byte) (string, error) {
+		return k.s.shelf.AttachToDoc(ctx, item.NexulID, name, data)
+	})
+	if len(copied) > 0 {
+		if err := k.s.shelf.SetDocBody(ctx, item.NexulID, docTitle(d), rewriteLinks(d.Body, copied)); err != nil {
+			return k.failed(ctx, KindDoc, d.SourceID, d.Title, item.NexulID, fmt.Errorf("point the body at its files: %w", err))
+		}
+	}
+	k.imp.Report.Unsupported += d.Unsupported
+	item.State = ItemFilled
+	if err := k.s.repo.Record(ctx, k.imp.WorkspaceID, k.imp.Source, item); err != nil {
+		return err
+	}
+	return k.counted(ctx, true)
+}
+
+// createDoc writes the doc into its folder and records it, so a restart from here only fills it.
+func (k *sink) createDoc(ctx context.Context, d Doc) (Item, error) {
+	folderID, err := k.folder(ctx, d.Folder)
+	if err != nil {
+		return Item{}, err
+	}
+	nd := NewDoc{ID: k.id(KindDoc, d.SourceID), ProjectID: k.imp.ProjectID, FolderID: folderID, Title: docTitle(d), Body: d.Body}
+	err = k.s.shelf.CreateDoc(ctx, nd)
+	if err != nil && !errors.Is(err, apperrs.ErrConflict) {
+		return Item{}, err
+	}
+	item := Item{ImportID: k.imp.ID, Kind: KindDoc, SourceID: d.SourceID, NexulID: nd.ID, State: ItemCreated}
+	if err := k.s.repo.Record(ctx, k.imp.WorkspaceID, k.imp.Source, item); err != nil {
+		return Item{}, err
+	}
+	return item, nil
+}
+
+// folder is the id of the doc folder named name, the project's default folder when name is empty.
+func (k *sink) folder(ctx context.Context, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	if id, ok := k.folders[strings.ToLower(name)]; ok {
+		return id, nil
+	}
+	id, err := k.s.shelf.Folder(ctx, k.imp.ProjectID, name)
+	if err != nil {
+		return "", fmt.Errorf("folder %s: %w", name, err)
+	}
+	if k.folders == nil {
+		k.folders = map[string]string{}
+	}
+	k.folders[strings.ToLower(name)] = id
+	return id, nil
+}
+
+func docTitle(d Doc) string {
+	if title := strings.TrimSpace(d.Title); title != "" {
+		return title
+	}
+	return "Untitled"
 }
 
 // Checkpoint implements Sink.

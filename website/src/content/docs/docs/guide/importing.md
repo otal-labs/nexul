@@ -1,13 +1,13 @@
 ---
 title: Importing
-description: Bring another tool's records into a project as tickets, with their comments, labels, assignees and files.
+description: Bring another tool's records into a project as tickets or docs, with their comments, labels, assignees and files.
 sidebar:
   order: 10
 ---
 
-An import copies another tool's records into one [project](/docs/guide/projects-and-repositories/) as tickets. It reads first and writes only once you confirm, so you see how many records there are and where people and statuses will land before anything changes.
+An import copies another tool's records into one [project](/docs/guide/projects-and-repositories/) as tickets or docs. It reads first and writes only once you confirm, so you see how many records there are and where people and statuses will land before anything changes.
 
-Today it reads **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee. More tools will follow on the same page.
+Today it reads **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee. It also reads **Notion pages** into docs. More tools will follow on the same page.
 
 Only the workspace's Owner can run an import.
 
@@ -35,9 +35,26 @@ A repository whose [issue sync](/docs/guide/projects-and-repositories/#sync-gith
 
 Importing tells nobody: no notification goes out and no [auto play](/docs/guide/plays/) starts for an imported ticket. Once it is in, it is an ordinary ticket.
 
+## From Notion
+
+A Notion import reads the pages you shared with an internal integration and writes them as [docs](/docs/guide/docs-tickets-and-board/).
+
+1. In Notion, create an internal integration with read content access and copy its secret.
+2. Open each page to import, and add the integration under **Connections**. Its child pages come with it.
+3. In **Configuration → Import**, pick **Notion pages** and the project, paste the secret, and press **Scan**. To import only some pages, paste their links under **Root pages**, one per line; left empty, every top page shared with the integration comes in.
+
+- **Folders.** Each root page becomes a doc folder named after it. A folder of that name the project already has is reused.
+- **Pages.** Every page under the root becomes a doc in that folder, the root included. A parent's doc links each of its child pages where they sat.
+- **Links.** A link or mention of another page in the import points at its doc. A page outside the import keeps its Notion link.
+- **Databases.** Each row of a database becomes a doc that opens with a table of its properties, and the page holding the database lists its rows. A linked view of a database is skipped.
+- **Files.** Images and files uploaded to Notion are copied into the doc while the import runs, since Notion's links to them expire within the hour. Files linked from elsewhere stay links.
+- **Blocks with no match.** Embeds, synced blocks, columns and equations come in as their text or a link, and the import counts how many.
+
+One import reads up to 5,000 pages, down to 24 levels below its root page. The secret is deleted when the import ends. If an import fails or you cancel it, a doc it had started but not finished is archived, and the next import writes it again.
+
 ## Running it again
 
-An import skips everything an earlier import brought into the workspace from the same source, so running it again only adds what is new. A ticket you edited since is never overwritten. If the server restarts during an import, it carries on where it stopped without creating anything twice.
+An import skips everything an earlier import brought into the workspace from the same source, so running it again only adds what is new. A ticket or doc you edited since is never overwritten. If the server restarts during an import, it carries on where it stopped without creating anything twice.
 
 Records that could not come in are listed with the reason, up to 200, and the count goes on past that. Earlier imports stay listed under the form with what each brought in.
 

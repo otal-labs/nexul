@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/issuesync"
@@ -24,6 +26,7 @@ import (
 func importSources(git gitprovider.GitProvider, workspaceSvc *workspace.Service, syncs *storage.IssueSyncRepo) map[string]imports.Source {
 	return map[string]imports.Source{
 		imports.SourceGitHub: imports.NewGitHubSource(importGitHubIssues{git: git}, importProjectRepos{svc: workspaceSvc}, importIssueSyncs{repo: syncs}),
+		imports.SourceNotion: imports.NewNotionSource(imports.NewNotionClient("", nil, 3)),
 	}
 }
 
@@ -44,6 +47,7 @@ func (s importIssueSyncs) SyncOn(ctx context.Context, owner, name string) (bool,
 }
 
 var (
+	_ imports.Shelf    = importShelf{}
 	_ imports.Desk     = importDesk{}
 	_ imports.Board    = importBoard{}
 	_ imports.People   = importPeople{}
@@ -113,6 +117,76 @@ func (d importDesk) Attach(ctx context.Context, ticketID, name string, data []by
 		return "", err
 	}
 	return a.ID, nil
+}
+
+// importShelf writes an import's docs through docs and attachments, as the person who started it (ADR 0017).
+type importShelf struct {
+	docs        *docs.Service
+	attachments *attachments.Service
+}
+
+// Folder finds the folder by name first, so a re-run and a person's own folder of that name are both reused.
+func (f importShelf) Folder(ctx context.Context, projectID, name string) (string, error) {
+	find := func() (string, error) {
+		folders, err := f.docs.ListFolders(ctx, projectID)
+		if err != nil {
+			return "", err
+		}
+		for _, folder := range folders {
+			if strings.EqualFold(strings.TrimSpace(folder.Name), strings.TrimSpace(name)) {
+				return folder.ID, nil
+			}
+		}
+		return "", nil
+	}
+	if id, err := find(); err != nil || id != "" {
+		return id, err
+	}
+	folder, err := f.docs.CreateFolder(ctx, projectID, name)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return find()
+	}
+	if err != nil {
+		return "", err
+	}
+	return folder.ID, nil
+}
+
+// CreateDoc restores a doc of the id an earlier, stopped import archived, so a re-run fills it again.
+func (f importShelf) CreateDoc(ctx context.Context, d imports.NewDoc) error {
+	_, err := f.docs.CreateWithID(ctx, d.ID, d.ProjectID, d.FolderID, d.Title, d.Body)
+	if !errors.Is(err, apperrs.ErrConflict) {
+		return err
+	}
+	existing, getErr := f.docs.Get(ctx, d.ID)
+	if getErr == nil && existing.Archived {
+		if _, err := f.docs.Restore(ctx, d.ID); err != nil {
+			return err
+		}
+		_, err := f.docs.Update(ctx, d.ID, d.Title, d.Body)
+		if err != nil {
+			return err
+		}
+	}
+	return apperrs.ErrConflict
+}
+
+func (f importShelf) SetDocBody(ctx context.Context, docID, title, body string) error {
+	_, err := f.docs.Update(ctx, docID, title, body)
+	return err
+}
+
+func (f importShelf) AttachToDoc(ctx context.Context, docID, name string, data []byte) (string, error) {
+	a, err := f.attachments.Upload(ctx, attachments.Owner{DocID: docID}, name, data)
+	if err != nil {
+		return "", err
+	}
+	return a.ID, nil
+}
+
+func (f importShelf) ArchiveDoc(ctx context.Context, docID string) error {
+	_, err := f.docs.Archive(ctx, docID)
+	return err
 }
 
 // importBoard reads and adds a project's status columns.

@@ -133,6 +133,26 @@ func (r *fakeRepo) Record(_ context.Context, workspaceID, source string, it Item
 	return nil
 }
 
+func (r *fakeRepo) Unfilled(_ context.Context, importID, kind string) ([]Item, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []Item
+	for _, it := range r.items {
+		if it.ImportID == importID && it.Kind == kind && it.State == ItemCreated {
+			out = append(out, it)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeRepo) Forget(_ context.Context, workspaceID, source string, it Item) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.items[it.ImportID+"/"+it.Kind+"/"+it.SourceID] = it
+	delete(r.ids, workspaceID+"/"+source+"/"+it.Kind+"/"+it.SourceID)
+	return nil
+}
+
 func (r *fakeRepo) stored(id string) Import {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -12,9 +12,13 @@ interface ImportRunCardProps {
   id: string;
 }
 
-const ticketCount = (n: number) => `${n.toLocaleString()} ${n === 1 ? "ticket" : "tickets"}`;
+// A scan finds tickets or docs; the button names whichever it found.
+const recordCount = (n: number, docs: boolean) => {
+  const [one, many] = docs ? ["doc", "docs"] : ["ticket", "tickets"];
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+};
 
-// The open import, live: a scan under way, a scan to confirm within 24 hours, or tickets coming in.
+// The open import, live: a scan under way, a scan to confirm within 24 hours, or records coming in.
 export const ImportRunCard = ({ id }: ImportRunCardProps) => {
   const imp = useImport(id);
   const confirm = useConfirmImport();
@@ -36,7 +40,7 @@ export const ImportRunCard = ({ id }: ImportRunCardProps) => {
             </Button>
             {ready && (
               <Button loading={confirm.isPending} disabled={imp.total === 0} onClick={() => confirm.mutate(imp.id)}>
-                Import {ticketCount(imp.total)}
+                Import {recordCount(imp.total, imp.report.docs > 0 && imp.report.tickets === 0)}
               </Button>
             )}
           </div>

@@ -41,6 +41,7 @@ export interface StartImportInput {
   source: string;
   project_id: string;
   from: string;
+  credential?: string;
 }
 
 export const useStartImport = () => {

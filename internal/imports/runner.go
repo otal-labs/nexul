@@ -90,6 +90,9 @@ func (s *Service) step(ctx context.Context, imp *Import) (time.Duration, bool) {
 func (s *Service) settle(ctx context.Context, log interface {
 	WarnContext(ctx context.Context, msg string, args ...any)
 }, imp *Import, err error) (time.Duration, bool) {
+	if errors.Is(err, errStopped) {
+		s.archiveUnfilled(ctx, imp)
+	}
 	if err == nil || errors.Is(err, errStopped) || ctx.Err() != nil {
 		return 0, false
 	}
@@ -125,6 +128,31 @@ func (s *Service) fail(ctx context.Context, imp *Import, reason string) {
 	}
 	if _, err := s.move(ctx, current, current.State, StateFailed, reason); err != nil {
 		s.log.ErrorContext(ctx, "fail import", "import_id", imp.ID, "error", err)
+		return
+	}
+	s.archiveUnfilled(ctx, current)
+}
+
+// archiveUnfilled archives the docs a stopped import wrote but never filled, and forgets them, so a re-run brings
+// them in again instead of skipping an empty doc.
+func (s *Service) archiveUnfilled(ctx context.Context, imp *Import) {
+	if s.shelf == nil {
+		return
+	}
+	items, err := s.repo.Unfilled(ctx, imp.ID, KindDoc)
+	if err != nil {
+		s.log.ErrorContext(ctx, "list unfilled docs", "import_id", imp.ID, "error", err)
+		return
+	}
+	for _, it := range items {
+		if err := s.shelf.ArchiveDoc(ctx, it.NexulID); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			s.log.WarnContext(ctx, "archive unfilled doc", "import_id", imp.ID, "doc_id", it.NexulID, "error", err)
+			continue
+		}
+		it.State, it.Error = ItemFailed, "the import stopped before it was filled, so it was archived"
+		if err := s.repo.Forget(ctx, imp.WorkspaceID, imp.Source, it); err != nil {
+			s.log.WarnContext(ctx, "forget unfilled doc", "import_id", imp.ID, "doc_id", it.NexulID, "error", err)
+		}
 	}
 }
 

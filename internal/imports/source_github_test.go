@@ -42,8 +42,16 @@ func (r repoList) Repos(context.Context, string) ([]string, error) { return r, n
 
 type recordingSink struct {
 	tickets     []Ticket
+	docs        []Doc
 	checkpoints []string
 }
+
+func (s *recordingSink) Doc(_ context.Context, d Doc) error {
+	s.docs = append(s.docs, d)
+	return nil
+}
+
+func (s *recordingSink) DocLink(sourceID string) string { return "/docs/doc-" + sourceID }
 
 func (s *recordingSink) Ticket(_ context.Context, t Ticket) error {
 	s.tickets = append(s.tickets, t)

@@ -72,6 +72,21 @@ type Desk interface {
 	Attach(ctx context.Context, ticketID, name string, data []byte) (string, error)
 }
 
+// NewDoc is one doc the import writes; ID is derived, so writing it again is ErrConflict.
+type NewDoc struct {
+	ID, ProjectID, FolderID, Title, Body string
+}
+
+// Shelf writes docs and their folders, as the person who started the import.
+type Shelf interface {
+	// Folder is the id of the project's doc folder of that name, ignoring case, made when there is none.
+	Folder(ctx context.Context, projectID, name string) (string, error)
+	CreateDoc(ctx context.Context, d NewDoc) error
+	SetDocBody(ctx context.Context, docID, title, body string) error
+	AttachToDoc(ctx context.Context, docID, name string, data []byte) (string, error)
+	ArchiveDoc(ctx context.Context, docID string) error
+}
+
 // Service runs imports; HTTP and MCP both go through it (ADR 0019).
 type Service struct {
 	repo    Repo
@@ -80,6 +95,7 @@ type Service struct {
 	board   Board
 	people  People
 	desk    Desk
+	shelf   Shelf
 	files   Files
 	sources map[string]Source
 	log     *slog.Logger
@@ -94,6 +110,7 @@ type Deps struct {
 	Board    Board
 	People   People
 	Desk     Desk
+	Shelf    Shelf
 	// Files downloads source files; nil uses a client that carries no credential and keeps to each source's hosts.
 	Files Files
 	// Sources is every tool an import can read, by the name import_run takes.
@@ -105,7 +122,7 @@ type Deps struct {
 func NewService(d Deps) *Service {
 	s := &Service{
 		repo: d.Repo, owners: d.Owners, project: d.Projects, board: d.Board, people: d.People, desk: d.Desk,
-		files: d.Files, sources: d.Sources, log: d.Log, now: time.Now,
+		shelf: d.Shelf, files: d.Files, sources: d.Sources, log: d.Log, now: time.Now,
 	}
 	if s.files == nil {
 		s.files = NewFetcher()
@@ -175,7 +192,12 @@ func (s *Service) Cancel(ctx context.Context, id string) (*Import, error) {
 	if imp.State.Final() {
 		return nil, fmt.Errorf("%w: import %s has already ended (%s)", apperrs.ErrInvalid, id, imp.State)
 	}
-	return s.move(ctx, imp, imp.State, StateCancelled, "")
+	moved, err := s.move(ctx, imp, imp.State, StateCancelled, "")
+	if err != nil {
+		return nil, err
+	}
+	s.archiveUnfilled(ctx, moved)
+	return moved, nil
 }
 
 // move changes imp's state from from to to, leaving its counts and report as stored, or says the import moved on

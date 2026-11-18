@@ -38,4 +38,13 @@ Rejected: a tool per source (five tools for one task); updating previously impor
 made in Nexul since); posting imported comments as the importing person (their name on words they never wrote, and their
 @handles would notify).
 
+The Notion source (amended the same day) is the first that writes docs, so the sink gained a doc path beside the ticket
+one: each root page becomes a folder named after it, found by name first so a re-run reuses it, and every page and
+database row under it a doc. Links between imported pages are written in one pass: the plan comes first, from a search
+of everything shared with the integration, and a doc's id is derived, so a link names a doc before it exists. Blocks are
+read and converted page by page, so Notion's signed file links, which expire within the hour, are downloaded minutes
+after they are handed out. A doc written but never filled is archived when its import fails or is cancelled, and
+forgotten, so a re-run writes it again. The import form takes the integration secret without a ticker: nothing keeps the
+secret, and the scan is the check, failing with what to fix (a refused secret, nothing shared, a page not shared).
+
 Decided 2026-11-18.

@@ -17,9 +17,10 @@ export const ImportScanSummary = ({ id }: ImportScanSummaryProps) => {
   return (
     <div className="space-y-6">
       <SettingsRows>
-        <SettingsRow label="Found" description="Tickets an earlier import brought in are skipped.">
+        <SettingsRow label="Found" description="What an earlier import brought in is skipped.">
           <span className="text-sm tabular-nums">
-            {report.tickets.toLocaleString()} tickets · {report.comments.toLocaleString()} comments
+            {report.docs > 0 && `${report.docs.toLocaleString()} docs`}
+            {report.docs === 0 && `${report.tickets.toLocaleString()} tickets · ${report.comments.toLocaleString()} comments`}
           </span>
         </SettingsRow>
       </SettingsRows>

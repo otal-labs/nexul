@@ -186,6 +186,38 @@ func (r *ImportsRepo) Record(ctx context.Context, workspaceID, source string, it
 	})
 }
 
+func (r *ImportsRepo) Unfilled(ctx context.Context, importID, kind string) ([]imports.Item, error) {
+	rows, err := r.q.ListImportItemsInState(ctx, sqlcgen.ListImportItemsInStateParams{ImportID: importID, Kind: kind, State: string(imports.ItemCreated)})
+	if err != nil {
+		return nil, fmt.Errorf("list unfilled %s items: %w", kind, err)
+	}
+	out := make([]imports.Item, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, imports.Item{
+			ImportID: row.ImportID, Kind: row.Kind, SourceID: row.SourceID, NexulID: row.NexulID,
+			State: imports.ItemState(row.State), Error: row.Error,
+		})
+	}
+	return out, nil
+}
+
+func (r *ImportsRepo) Forget(ctx context.Context, workspaceID, source string, item imports.Item) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		err := q.PutImportItem(ctx, sqlcgen.PutImportItemParams{
+			ImportID: item.ImportID, Kind: item.Kind, SourceID: item.SourceID, NexulID: item.NexulID, State: string(item.State), Error: item.Error,
+		})
+		if err != nil {
+			return fmt.Errorf("record import item %s/%s: %w", item.Kind, item.SourceID, classifyWriteErr(err))
+		}
+		err = q.DeleteImportSourceID(ctx, sqlcgen.DeleteImportSourceIDParams{WorkspaceID: workspaceID, Source: source, Kind: item.Kind, SourceID: item.SourceID})
+		if err != nil {
+			return fmt.Errorf("forget imported %s %s: %w", item.Kind, item.SourceID, err)
+		}
+		return nil
+	})
+}
+
 // People is every member of the workspace with the GitHub logins and emails their linked sign-ins carry, lowercased;
 // an email is the login of a Google, Discord or single sign-on identity.
 func (r *ImportsRepo) People(ctx context.Context, workspaceID string) ([]imports.Member, error) {
