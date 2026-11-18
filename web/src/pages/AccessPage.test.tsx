@@ -30,18 +30,19 @@ const grid = (over: Partial<AccessGrid> = {}): AccessGrid => ({
   ...over,
 });
 
-const me = (owner: boolean, finished: boolean, permissions: string[]) => ({
+const me = (owner: boolean, finished: boolean, permissions: string[], newProject: string[]) => ({
   role_name: owner ? "Owner" : "Developer",
   roles: [{ id: owner ? "r-owner" : "r-dev", name: owner ? "Owner" : "Developer", is_owner: owner }],
   permissions,
   projects: [],
+  new_project_actions: newProject,
   access_setup_finished: finished,
 });
 
-const serve = (data: AccessGrid, owner = true, permissions = ["projects:access", "roles:write"]) =>
+const serve = (data: AccessGrid, owner = true, permissions = ["projects:access", "roles:write"], newProject: string[] = []) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/access") return { data };
-    if (url === "/api/workspaces/ws-1/me") return { data: me(owner, data.setup.finished, permissions) };
+    if (url === "/api/workspaces/ws-1/me") return { data: me(owner, data.setup.finished, permissions, newProject) };
     if (url === "/api/workspaces/ws-1/roles") return { data: data.roles };
     if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", slug: "acme" }] };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [{ user_id: "u-lena", login: "lena", display_name: "Lena", avatar_url: "" }] } };
@@ -234,6 +235,14 @@ describe("AccessPage", () => {
     expect(screen.getByRole("heading", { name: "Access" })).toBeInTheDocument();
     expect(await screen.findByText("2 roles")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/workspaces/ws-1/access");
+  });
+
+  it("asks no grids of someone who would manage only the project they have yet to create", async () => {
+    serve(grid({ setup: { finished: true } }), false, ["projects:create", "roles:write"], ["projects:access", "projects:write"]);
+    renderPage();
+
+    expect(await screen.findByText("Roles card")).toBeInTheDocument();
     expect(mocks.get).not.toHaveBeenCalledWith("/api/workspaces/ws-1/access");
   });
 

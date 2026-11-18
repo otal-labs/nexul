@@ -1,4 +1,4 @@
-import { AREA_PERMISSION, hasPermission, projectPermissions, workspaceWidePermissions, type Area } from "@nexul/client-core/permissions";
+import { AREA_PERMISSION, hasPermission, heldPermissions, projectPermissions, workspaceWidePermissions, type Area } from "@nexul/client-core/permissions";
 
 import { isInstanceSection, type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { useActionState } from "@/hooks/useActionState";
@@ -41,7 +41,7 @@ const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data, isFetched } = useFetchMyRole(selectedWorkspaceId);
   if (!isFetched) return undefined;
-  return hasPermission(workspaceWidePermissions(data), value);
+  return hasPermission(heldPermissions(data), value);
 };
 
 // Whether the viewer may read the Access grids, which the server refuses to anyone managing no project; undefined while loading.

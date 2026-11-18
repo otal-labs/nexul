@@ -15,6 +15,7 @@ import {
   useSaveTestsAnswer,
   projectFollower,
 } from "@/hooks/ProjectHooks";
+import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
@@ -77,6 +78,14 @@ describe("useCreateProject", () => {
       setup_finished: false,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+
+  it("reads the creator's own access again, since the project now lists them", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: project });
+    const client = seeded([[[getMyRoleKey, "ws-1"], { role_name: "Administrator", permissions: [], projects: [] }]]);
+    const { result } = renderHook(() => useCreateProject(), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+    await result.current.mutateAsync({ name: "Backend", prefix: "BE" });
+    expect(isStale(client, [getMyRoleKey, "ws-1"])).toBe(true);
   });
 });
 

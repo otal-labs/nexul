@@ -223,6 +223,8 @@ type meResponse struct {
 	Permissions []string    `json:"permissions"`
 	Restricted  bool        `json:"restricted"`
 	Projects    []MeProject `json:"projects"`
+	// NewProjectActions is what they hold in a project they create, so a client can offer the project wizard before they are in any.
+	NewProjectActions []string `json:"new_project_actions,omitempty"`
 	// AccessSetupFinished is false until an Owner finishes the workspace's one-time access setup.
 	AccessSetupFinished bool `json:"access_setup_finished"`
 	// ShowLockedActions is true when any held role has the switch on: an action they can't take is shown dimmed with the reason.
@@ -238,7 +240,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, meResponse{
 		RoleName: RoleNames(access.Roles), Roles: access.Roles, Permissions: access.Permissions,
-		Restricted: access.Restricted, Projects: access.Projects, AccessSetupFinished: access.AccessSetupFinished, ShowLockedActions: access.ShowLockedActions,
+		Restricted: access.Restricted, Projects: access.Projects, NewProjectActions: access.NewProjectActions, AccessSetupFinished: access.AccessSetupFinished, ShowLockedActions: access.ShowLockedActions,
 	})
 }
 

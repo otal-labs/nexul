@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -363,6 +364,32 @@ func conversationIDs(cs []*chat.Conversation) []string {
 		out = append(out, c.ID)
 	}
 	return out
+}
+
+// /me's new_project_actions is what a project its reader creates gives them, so the wizard's door needs no project yet.
+func TestIntegration_Me_NewProjectActionsAreWhatTheCreatedProjectGives(t *testing.T) {
+	t.Parallel()
+	f := newPermFixture(t)
+	s := f.svc
+
+	before, err := s.tenancySvc.MyAccess(as(uWriter), wsDefault, uWriter)
+	require.NoError(t, err)
+	assert.Contains(t, before.NewProjectActions, "projects:write")
+	assert.NotContains(t, before.Permissions, "projects:write")
+
+	p, err := s.workspaceSvc.Create(as(uWriter), wsDefault, "Mobile", "MOB", workspace.ProjectIcon(""))
+	require.NoError(t, err)
+	after, err := s.tenancySvc.MyAccess(as(uWriter), wsDefault, uWriter)
+	require.NoError(t, err)
+	i := slices.IndexFunc(after.Projects, func(held tenancy.MeProject) bool { return held.ProjectID == p.ID })
+	require.GreaterOrEqual(t, i, 0, "the creator is in the project")
+	for _, action := range before.NewProjectActions {
+		assert.True(t, after.Projects[i].Actions.Has(permissions.Action(action)), action)
+	}
+
+	reader, err := s.tenancySvc.MyAccess(as(uReader), wsDefault, uReader)
+	require.NoError(t, err)
+	assert.Empty(t, reader.NewProjectActions, "without projects:create there is no project to create")
 }
 
 // A project's creator, and each role they hold but the Owner's, is listed in it in the same write, over HTTP and MCP.

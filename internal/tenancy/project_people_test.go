@@ -2,6 +2,7 @@ package tenancy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -156,6 +157,26 @@ func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	f.repo.getErr = errors.New("database is locked")
 	_, err = f.svc.MyAccess(t.Context(), "ws-1", "bob")
 	require.ErrorIs(t, err, f.repo.getErr)
+}
+
+// TestHandler_Me_SaysWhatACreatorHoldsInTheProjectTheyCreate: a non-Owner in no project yet still learns, beside
+// projects:create, the project actions their roles give them in one they create; without projects:create, none.
+func TestHandler_Me_SaysWhatACreatorHoldsInTheProjectTheyCreate(t *testing.T) {
+	f := newAccessFixture(t)
+	require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "lena", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+	f.wsPerms.perms["lena"] = []string{"chat:write", "projects:create", "projects:write"}
+	rec := do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "lena")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var me meResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &me))
+	assert.Equal(t, []string{"chat:write", "projects:create"}, me.Permissions)
+	assert.Empty(t, me.Projects)
+	assert.Equal(t, []string{"projects:write"}, me.NewProjectActions)
+
+	f.wsPerms.perms["lena"] = []string{"chat:write", "projects:write"}
+	rec = do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "lena")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "new_project_actions")
 }
 
 // TestMyAccess_ShowLockedActionsIsOnWhenAnyHeldRoleHasIt: a person holding several roles sees locked actions as soon as

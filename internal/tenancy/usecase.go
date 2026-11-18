@@ -357,14 +357,19 @@ func (s *Service) MyAccess(ctx context.Context, workspaceID, userID string) (*My
 	}
 	owner := slices.ContainsFunc(roles, func(r *TeamRole) bool { return r.IsOwner })
 	held := s.MemberPermissions(ctx, workspaceID, userID)
+	var newProject []string
 	if !owner {
-		held = slices.DeleteFunc(held, func(a string) bool { return permissions.AreaOf(permissions.Action(a)) == permissions.AreaProject })
+		inProject := func(a string) bool { return permissions.AreaOf(permissions.Action(a)) == permissions.AreaProject }
+		if slices.Contains(held, string(permissions.ProjectsCreate)) {
+			newProject = slices.DeleteFunc(slices.Clone(held), func(a string) bool { return !inProject(a) })
+		}
+		held = slices.DeleteFunc(held, inProject)
 	}
 	ws, err := s.repo.Get(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("get workspace %s: %w", workspaceID, err)
 	}
-	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}, AccessSetupFinished: ws.AccessSetupFinished}
+	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}, NewProjectActions: newProject, AccessSetupFinished: ws.AccessSetupFinished}
 	for _, r := range roles {
 		show, err := s.roleNames.ShowLockedActions(ctx, workspaceID, r.ID)
 		if err != nil {
