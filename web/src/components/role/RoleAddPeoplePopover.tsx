@@ -46,10 +46,10 @@ export const RoleAddPeoplePopover = () => {
           Add people
         </ActionButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-1">
-        <div className="flex flex-col gap-1">
+      <PopoverContent align="end" className="w-80 p-2">
+        <div className="flex flex-col gap-1.5">
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a person" aria-label="Find a person" className="h-8" />
-          <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+          <div className="scroll-edge flex max-h-72 flex-col gap-0.5 overflow-y-auto pb-2">
             {inWorkspace.length > 0 && <p className={cn(microheaderClass, "px-2 pt-1.5 pb-0.5")}>In {workspace.name}</p>}
             {inWorkspace.map((person) => (
               <RolePersonOption key={person.id} person={person} disabled={holders.pending} onPick={pick} />
@@ -60,7 +60,6 @@ export const RoleAddPeoplePopover = () => {
             ))}
             {team && shown.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">{needle ? "Nobody matches." : `Everyone you can see holds ${role.name}.`}</p>}
           </div>
-          <p className="border-t border-border px-2 pt-2 pb-1 text-xs text-muted-foreground">Someone without an account here gets an invitation instead.</p>
         </div>
       </PopoverContent>
     </Popover>

@@ -17,8 +17,8 @@ export const NoRolesDetail = () => {
   const name = workspace?.name ?? "this workspace";
 
   return (
-    <Container className="space-y-6 py-6 sm:pr-3.5">
-      <RoleDetailHeader title="No roles" line={`In ${name} but holding no role, so they see no projects or plays. Open a role and use Add people to give one.`} />
+    <Container className="space-y-6 pt-[max(0px,calc(var(--spacing)*3-var(--radius-xl)))] pb-6 sm:pr-3.5">
+      <RoleDetailHeader title="No roles" line={`In ${name} but holding no role, so they see no projects or plays.`} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {people && people.length === 0 && <EmptyRow flush>Everyone in {name} holds a role.</EmptyRow>}

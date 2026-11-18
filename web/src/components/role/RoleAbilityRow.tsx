@@ -8,15 +8,15 @@ interface RoleAbilityRowProps {
   held: boolean;
 }
 
-// A yes-or-no permission: a check, or a muted No.
+// A yes-or-no permission: a check and Yes in the level slot, or a muted No.
 export const RoleAbilityRow = ({ ability, held }: RoleAbilityRowProps) => (
-  <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border py-1.5">
+  <div className="flex min-h-10 break-inside-avoid items-start justify-between gap-3 border-b border-border py-2.5">
     <dt className={cn("min-w-0 truncate text-sm", !held && "text-muted-foreground")} title={ability.label}>
       {ability.label}
     </dt>
-    <dd className="shrink-0 text-xs">
-      {held && <Check className="size-3.5 text-foreground" strokeWidth={2.5} aria-label="Yes" />}
-      {!held && <span className="text-muted-foreground">No</span>}
+    <dd className={cn("flex h-5 w-20 shrink-0 items-center gap-2 text-xs", held ? "text-foreground" : "text-muted-foreground")}>
+      {held && <Check aria-hidden className="size-3.5" strokeWidth={2.5} />}
+      {held ? "Yes" : "No"}
     </dd>
   </div>
 );

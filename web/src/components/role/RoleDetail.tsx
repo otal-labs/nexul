@@ -5,8 +5,10 @@ import { Container } from "@/components/Container";
 import { RoleDetailHeader } from "@/components/role/RoleDetailHeader";
 import { RoleHoldersSection } from "@/components/role/RoleHoldersSection";
 import { RoleLevelsSection } from "@/components/role/RoleLevelsSection";
+import { RoleSectionLinks } from "@/components/role/RoleSectionLinks";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useSeesTeam } from "@/hooks/AccessHooks";
+import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useRoleActions } from "@/hooks/useRoleActions";
 import type { Role } from "@/models/Role";
@@ -25,13 +27,16 @@ export const RoleDetail = ({ role }: RoleDetailProps) => {
   const holders = team ? roleHolders(team, workspaceId, role.id) : undefined;
   const { actions, dialogs, edit } = useRoleActions(role, workspaceId, holders);
   const menu = actions.filter((action) => action.label !== "Edit");
+  const { data: catalog } = useFetchPermissionCatalog();
+  const permissions = role.is_owner_role ? (catalog ?? []).map((entry) => entry.value) : role.permissions;
 
   return (
-    <Container className="space-y-8 py-6 sm:pr-3.5">
+    <Container className="space-y-6 pt-[max(0px,calc(var(--spacing)*3-var(--radius-xl)))] pb-6 sm:pr-3.5">
       <RoleDetailHeader
         title={role.name}
         line={role.description}
         owner={role.is_owner_role}
+        tally={catalog && <RoleSectionLinks catalog={catalog} permissions={permissions} />}
         actions={
           !role.is_owner_role && (
             <>

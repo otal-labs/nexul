@@ -29,8 +29,8 @@ export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDial
   };
 
   return (
-    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm" })}>
-      {role ? `Invite to ${role.name}` : "Invite"}
+    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm", "aria-label": `Invite to ${role.name}`, title: `Invite to ${role.name}` })}>
+      Invite
     </ActionButton>
   );
 };

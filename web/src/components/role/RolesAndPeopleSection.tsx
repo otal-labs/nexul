@@ -25,13 +25,22 @@ export const RolesAndPeopleSection = () => {
   const { data: roles, error, isPending } = useFetchWorkspaceRoles(workspaceId);
   const selected = roles?.find((role) => role.id === roleId);
   const count = roles?.filter((role) => !role.is_owner_role).length ?? 0;
-  const special = roleId === COMPARE_ROLES || (roleId === NO_ROLES && seesTeam);
+  const special = roleId === NO_ROLES && seesTeam;
 
   return (
     <div className="min-h-0 flex-1">
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {roles && (
+      {roles && roleId === COMPARE_ROLES && (
+        <div data-pane-layout className="h-full">
+          <div className="panel h-full min-h-0 overflow-hidden">
+            <div className="scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto [scrollbar-gutter:stable]">
+              <RolesCompareDetail />
+            </div>
+          </div>
+        </div>
+      )}
+      {roles && roleId !== COMPARE_ROLES && (
         <ListDetailLayout
           hasSelection={!!roleId}
           stableGutter
@@ -42,7 +51,6 @@ export const RolesAndPeopleSection = () => {
           detail={
             <>
               {selected && <RoleDetail key={selected.id} role={selected} />}
-              {roleId === COMPARE_ROLES && <RolesCompareDetail />}
               {roleId === NO_ROLES && seesTeam && <NoRolesDetail />}
               {!selected && !special && <NoDataDisplay message="That role isn't here" />}
             </>

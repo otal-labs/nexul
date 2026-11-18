@@ -9,7 +9,7 @@ Your instance is private: nobody signs in without an invitation. Each person the
 
 ## Invite someone
 
-1. Open the role on **Access → Roles and people** and press **Invite to** followed by its name, which starts the link with that role ticked. An instance administrator can also press **Invite** on **Settings → Team**.
+1. Open the role on **Access → Roles and people** and press **Invite**, which starts the link with that role ticked. An instance administrator can also press **Invite** on **Settings → Team**.
 2. Under **Link expires in**, choose **1 day** or **7 days**.
 3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Each role shows its description under its name. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
 4. Press **Create link**. The new link shows above the role's people (on Team, the **Invitations** tab opens with it on top); press **Copy link**. It's shown once.
@@ -51,15 +51,15 @@ Team takes `accounts:read`, and shows everyone on the instance.
 
 ## Give someone a role
 
-Roles are given from the role. Open **Access → Roles and people** and pick a role from the list on the left, where each shows its description and how many people hold it. The role's page lists its **People**, each with when they were last seen and the other roles they hold, then what the role allows.
+Roles are given from the role. Open **Access → Roles and people** and pick a role from the list on the left, where each shows its description and how many people hold it. The role's page opens with its description and how much of each section it reaches (each a link down to that section), then lists its **People**, each with when they were last seen and the other roles they hold (past eight people, the list shows the first eight with **Show all** for the rest, and a find field narrows it), then what the role allows: the sections it reaches first, and the areas it has no access to folded under **Show** and their number.
 
 - **Add people** lists everyone you can see who doesn't hold the role, the workspace's members first, then people **Not in** the workspace **yet**, whom picking also adds to it. Search narrows the list, and it stays open so you can add several in a row.
-- **Invite to** the role makes a link for someone without an account ([Invite someone](#invite-someone)).
+- **Invite** makes a link for someone without an account that starts with the role ticked ([Invite someone](#invite-someone)). The role's open links list under its people as **Invited**, each with a **…** menu to revoke it.
 - A person's **…** menu takes the role from them, views Nexul as them ([Check what someone can see](#check-what-someone-can-see)), or removes them from the workspace, which asks first and takes every role they hold there; their account stays.
 
 Each change saves at once and says so. If one is refused, the message names the person and the role. You can't give a role holding more than you hold, or take one you couldn't give: its page says why, with a lock, instead of offering Add people. The Owner role is never given or taken here.
 
-**No roles**, under the roles, lists the members holding none, who see no projects or plays until a role is given from its own page. Giving and taking roles takes `members:write` in the workspace.
+**No roles**, under the roles, lists the members holding none, who see no projects or plays until they get one: **Give a role** beside each picks one of the roles you may give. Giving and taking roles takes `members:write` in the workspace.
 
 ## Check what someone can see
 
@@ -93,7 +93,7 @@ Lists answer by role only. An action there that a rule on one row refuses is sti
 
 A fourth tab, **Welcome**, switches on the [Welcome wizard](/docs/guide/welcome-wizard/) steps the role gives its holders. Switching one on asks everyone holding the role again, including anyone who skipped it.
 
-**Compare roles**, under the roles on **Access → Roles and people**, shows every role side by side: one column per role, the Owner first, with how many people hold it under its name, and one row per area in the editor's three sections, each cell the role's level there (a **+1** after it counts the extra checkboxes it holds) or **Yes** and **No** for a switch. A column's **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
+**Compare roles**, under the roles on **Access → Roles and people**, opens full width with every role side by side: one column per role, the Owner first, with how many people hold it under its name, and one row per area in the editor's three sections, each cell the role's level there (a **+1** after it counts the extra checkboxes it holds) or **Yes** and **No** for a switch. A column's **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
 
 Nobody can hand out a permission they don't hold: not in a role, a rule's Allow, or an invitation, and can't lift a Deny on one. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 

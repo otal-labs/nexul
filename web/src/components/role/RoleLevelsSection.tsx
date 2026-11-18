@@ -9,17 +9,18 @@ interface RoleLevelsSectionProps {
   role: Role;
 }
 
-// What the role allows, in the editor's sections; the Owner holds the whole catalog.
+// What the role allows, in the editor's sections and order; the Owner holds the whole catalog.
 export const RoleLevelsSection = ({ role }: RoleLevelsSectionProps) => {
   const { data: catalog, error, isPending } = useFetchPermissionCatalog();
   const permissions = role.is_owner_role ? (catalog ?? []).map((entry) => entry.value) : role.permissions;
+  const sections = ROLE_SECTIONS.map((section) => ({ ...section, domains: sectionDomains(catalog ?? [], section.area) }));
   return (
     <div className="@container space-y-6">
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {catalog &&
-        ROLE_SECTIONS.map((section) => (
-          <RoleLevelsGroup key={section.area} title={section.title} domains={sectionDomains(catalog, section.area)} permissions={permissions} />
+        sections.map((section) => (
+          <RoleLevelsGroup key={section.area} area={section.area} title={section.title} domains={section.domains} permissions={permissions} />
         ))}
     </div>
   );

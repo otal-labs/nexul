@@ -39,7 +39,10 @@ const roles = [
   role("r-admin", "Admin", ["docs:read", "docs:write", "docs:delete"]),
 ];
 
-const catalog = ["read", "write", "delete"].map((action) => ({ value: `docs:${action}`, label: `${action} docs`, domain: "docs", action, area: "project" }));
+const verbs = { read: "Read", write: "Write", delete: "Delete" } as const;
+const catalog = (["docs", "tickets"] as const).flatMap((domain) =>
+  (Object.keys(verbs) as (keyof typeof verbs)[]).map((action) => ({ value: `${domain}:${action}`, label: `${verbs[action]} ${domain}`, domain, action, area: "project" })),
+);
 
 const person = (id: string, name: string, roleIds: string[] | null): TeamPerson => ({
   id,
@@ -81,6 +84,10 @@ const team: Team = {
   can_manage_accounts: false,
 };
 
+const invitations = [
+  { id: "inv-1", invited_by: "alice", created_at: "", expires_at: "2099-01-01T00:00:00Z", grants: [{ workspace_id: "ws-1", workspace_name: "Acme", role_id: "r-dev", role_name: "Developer", roles: [{ id: "r-dev", name: "Developer" }] }] },
+];
+
 const serve = (permissions = LEAD) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/roles") return { data: roles };
@@ -89,7 +96,7 @@ const serve = (permissions = LEAD) =>
     if (url === "/api/auth/me") return { data: { user: { id: "bob" }, instance_permissions: permissions } };
     if (url === "/api/permissions/catalog") return { data: { permissions: catalog } };
     if (url === "/api/team") return { data: team };
-    if (url === "/api/invitations") return { data: { invitations: [], accepted: [], ended: [] } };
+    if (url === "/api/invitations") return { data: { invitations, accepted: [], ended: [] } };
     return { data: [] };
   });
 
@@ -209,5 +216,67 @@ describe("RolesAndPeopleSection", () => {
     expect(screen.queryByText(/^People/)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /No roles/ })).not.toBeInTheDocument();
     expect(mocks.get).not.toHaveBeenCalledWith("/api/team");
+  });
+});
+
+describe("RolesAndPeopleSection, the rest of a role's page", () => {
+  it("gives a member holding no role one from No roles", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/none");
+
+    await user.click(await screen.findByRole("button", { name: "Give Kai Nakamura a role" }));
+    await user.click(await screen.findByRole("button", { name: /^Developer/ }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/members/kai", { role_ids: ["r-dev"] });
+  });
+
+  it("asks before revoking a role's open invitation link, and sends nothing when cancelled", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/r-dev");
+
+    const links = within(await screen.findByRole("list", { name: "Open invitation links" }));
+    await user.click(links.getByRole("button", { name: /Actions for Invite link by/ }));
+    await user.click(await screen.findByRole("button", { name: "Revoke link" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    expect(mocks.delete).not.toHaveBeenCalled();
+
+    await user.click(links.getByRole("button", { name: /Actions for Invite link by/ }));
+    await user.click(await screen.findByRole("button", { name: "Revoke link" }));
+    await user.click(await screen.findAllByRole("button", { name: "Revoke link" }).then((buttons) => buttons.at(-1)!));
+    expect(mocks.delete).toHaveBeenCalledWith("/api/invitations/inv-1");
+  });
+
+  it("folds the areas a role has no access to under one line, and shows them on request", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/r-dev");
+
+    const area = within(await screen.findByRole("region", { name: "In projects" }));
+    expect(area.getByText("Docs")).toBeInTheDocument();
+    expect(area.queryByText("Tickets")).not.toBeInTheDocument();
+    await user.click(area.getByRole("button", { name: "Show 1 with no access" }));
+    expect(area.getByText("Tickets")).toBeInTheDocument();
+    expect(area.getByRole("button", { name: "Hide 1 with no access" })).toHaveAttribute("aria-expanded", "true");
+  });
+});
+
+describe("RolesAndPeopleSection, a long list of holders", () => {
+  it("shows a role's first eight holders, all of them on Show all, and every match while searching", async () => {
+    serve();
+    const crowd = Array.from({ length: 12 }, (_, i) => person(`p${i}`, `Person ${String(i).padStart(2, "0")}`, ["r-dev"]));
+    const served = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation(async (url: string) => (url === "/api/team" ? { data: { ...team, people: [...team.people, ...crowd] } } : served(url)));
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/r-dev");
+
+    const list = await holders("Developer");
+    expect(list.getAllByRole("listitem")).toHaveLength(8);
+    await user.type(screen.getByRole("textbox", { name: "Find a person" }), "Person 1");
+    expect(list.getAllByRole("listitem").map((row) => row.textContent)).toEqual([expect.stringContaining("Person 10"), expect.stringContaining("Person 11")]);
+    await user.clear(screen.getByRole("textbox", { name: "Find a person" }));
+    await user.click(screen.getByRole("button", { name: "Show all 14" }));
+    expect(list.getAllByRole("listitem")).toHaveLength(14);
   });
 });

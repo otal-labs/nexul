@@ -117,3 +117,10 @@ export const roleChangeCount = (
   ) +
   apart(steps, loadedSteps) +
   fields.filter(Boolean).length;
+
+// Whether a role holds anything in an area: a level, or one of its extra verbs.
+export const holdsArea = (domain: PermissionDomain, permissions: readonly string[]): boolean =>
+  levelOf(domain, [...permissions]) > 0 || domain.extras.some((extra) => permissions.includes(extra.value));
+
+// The id of a section on a role's page, which the header's links jump to.
+export const roleSectionId = (area: PermissionArea): string => `role-section-${area}`;

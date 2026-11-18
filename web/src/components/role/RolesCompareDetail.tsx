@@ -20,7 +20,7 @@ export const RolesCompareDetail = () => {
 
   return (
     <Container className="space-y-6 py-6 sm:pr-3.5">
-      <RoleDetailHeader title="Compare roles" line="Every role side by side: what each can open and change here." />
+      <RoleDetailHeader title="Compare roles" line="What each role can open and change here, area by area." backAlways />
       {(rolesPending || catalogPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
