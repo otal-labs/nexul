@@ -79,7 +79,7 @@ export const useShowRunnersLink = (): boolean => {
 };
 
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.
-const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string[]): SettingsSection[] => {
+const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string[], owner = false): SettingsSection[] => {
   const instanceSections = (Object.keys(INSTANCE_SECTION_PERMISSION) as InstanceSection[]).filter((section) =>
     hasPermission(anywhere, INSTANCE_SECTION_PERMISSION[section]),
   );
@@ -89,6 +89,7 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
     showGeneral: hasPermission(permissions, "workspaces:write"),
     showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
+    showImport: owner,
   });
 };
 
@@ -116,7 +117,7 @@ export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
   const { data: role, isFetched: roleFetched } = useFetchMyRole(selectedWorkspaceId);
 
   if (!me || !roleFetched) return undefined;
-  return settingsSectionsFor(me.instance_permissions, role?.permissions ?? []);
+  return settingsSectionsFor(me.instance_permissions, role?.permissions ?? [], !!role?.roles?.some((r) => r.is_owner));
 };
 
 // The workspace sections of Configuration the viewer may open; the instance ones live on the Settings page.

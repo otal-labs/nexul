@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -72,6 +73,7 @@ func declared() []eventbus.Topic {
 		tenancy.Topics(),
 		chat.Topics(),
 		botwebhook.Topics(),
+		imports.Topics(),
 		calendar.Topics(),
 		workspace.Topics(),
 		plays.Topics(),

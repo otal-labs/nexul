@@ -79,6 +79,7 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 		ReporterLogin:          t.Reporter.Login,
 		ReporterAutomationID:   t.Reporter.AutomationID,
 		ReporterAutomationName: t.Reporter.AutomationName,
+		ReporterSource:         t.Reporter.Source,
 		CreatedAt:              t.CreatedAt.Unix(),
 		UpdatedAt:              t.UpdatedAt.Unix(),
 	})
@@ -269,7 +270,7 @@ func (r *TicketsRepo) ListByProjectWithoutBody(ctx context.Context, projectID st
 				CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, ProjectID: row.ProjectID, CategoryID: row.CategoryID, TypeID: row.TypeID,
 				FinishedAt: row.FinishedAt, Position: row.Position, Number: row.Number, Tester: row.Tester, ReporterKind: row.ReporterKind,
 				ReporterLogin: row.ReporterLogin, ReporterAutomationID: row.ReporterAutomationID, ReporterAutomationName: row.ReporterAutomationName,
-				DueOn: row.DueOn,
+				ReporterSource: row.ReporterSource, DueOn: row.DueOn,
 			},
 			DeveloperID: row.DeveloperID, DeveloperLogin: row.DeveloperLogin, TesterID: row.TesterID, TesterLogin: row.TesterLogin,
 		}))
@@ -920,6 +921,7 @@ func toTicket(people sqlcgen.GetTicketRow) *tickets.Ticket {
 			Login:          row.ReporterLogin,
 			AutomationID:   row.ReporterAutomationID,
 			AutomationName: row.ReporterAutomationName,
+			Source:         row.ReporterSource,
 		},
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),

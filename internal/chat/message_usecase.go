@@ -290,6 +290,8 @@ type ExternalPost struct {
 	AuthorID, Name, AvatarURL, Body string
 	// Via names the host, such as github.
 	Via string
+	// At is when it was written there, which an import keeps; zero is now.
+	At time.Time
 }
 
 // PostExternalMessage posts p as the server, unchecked; its @handles name people elsewhere, so it mentions nobody.
@@ -302,6 +304,9 @@ func (s *Service) PostExternalMessage(ctx context.Context, p ExternalPost) (*Mes
 		return nil, fmt.Errorf("%w: an external message needs its id and the name it shows", apperrs.ErrInvalid)
 	}
 	m.ID, m.Mentions, m.AuthorName, m.AuthorAvatarURL, m.Via = p.ID, []Mention{}, strings.TrimSpace(p.Name), strings.TrimSpace(p.AvatarURL), p.Via
+	if !p.At.IsZero() {
+		m.CreatedAt, m.UpdatedAt = p.At.UTC(), p.At.UTC()
+	}
 	return s.create(ctx, m)
 }
 

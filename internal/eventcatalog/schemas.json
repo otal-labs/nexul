@@ -4198,6 +4198,10 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "comments": {
+            "type": "integer",
+            "description": "How many comments the issue has."
           }
         },
         "required": [
@@ -4211,7 +4215,8 @@
           "assignees",
           "author",
           "html_url",
-          "updated_at"
+          "updated_at",
+          "comments"
         ]
       },
       "sender": {
@@ -4739,6 +4744,207 @@
       "user_id",
       "provider",
       "login"
+    ]
+  },
+  "import.progress": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "import": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "scanning",
+              "ready",
+              "importing",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "report": {
+            "type": "object",
+            "properties": {
+              "tickets": {
+                "type": "integer"
+              },
+              "comments": {
+                "type": "integer"
+              },
+              "docs": {
+                "type": "integer"
+              },
+              "people": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "login": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "member": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "member"
+                  ]
+                }
+              },
+              "statuses": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "backlog",
+                        "progress",
+                        "review",
+                        "testing",
+                        "done"
+                      ]
+                    },
+                    "column": {
+                      "type": "string"
+                    },
+                    "new": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "kind",
+                    "column",
+                    "new"
+                  ]
+                }
+              },
+              "skipped": {
+                "type": "integer"
+              },
+              "files_copied": {
+                "type": "integer"
+              },
+              "files_linked": {
+                "type": "integer"
+              },
+              "failures": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "source_id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "source_id",
+                    "error"
+                  ]
+                }
+              },
+              "error": {
+                "type": "string"
+              },
+              "cursor": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tickets",
+              "comments",
+              "docs",
+              "people",
+              "statuses",
+              "skipped",
+              "files_copied",
+              "files_linked",
+              "failures"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "source",
+          "from",
+          "state",
+          "created_by",
+          "total",
+          "done",
+          "failed",
+          "report",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "import"
     ]
   },
   "instance.branding_changed": {
@@ -8723,7 +8929,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -8734,6 +8941,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -8894,7 +9105,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -8905,6 +9117,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9053,7 +9269,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9064,6 +9281,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9237,7 +9458,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9248,6 +9470,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9409,7 +9635,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9420,6 +9647,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9639,7 +9870,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9650,6 +9882,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9815,7 +10051,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9826,6 +10063,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -9955,7 +10196,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -9966,6 +10208,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -10095,7 +10341,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -10106,6 +10353,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [
@@ -10346,7 +10597,8 @@
                   "user",
                   "user:mcp",
                   "automation",
-                  "github"
+                  "github",
+                  "import"
                 ]
               },
               "login": {
@@ -10357,6 +10609,10 @@
               },
               "automation_name": {
                 "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
               }
             },
             "required": [

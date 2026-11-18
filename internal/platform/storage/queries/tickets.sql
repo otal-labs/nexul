@@ -1,6 +1,6 @@
 -- name: CreateTicket :exec
-INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, created_at, updated_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, reporter_source, created_at, updated_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTicket :one
 -- A developer or tester is a user id, read back with its login, or a login nobody has signed in with, read back as is.
@@ -55,7 +55,7 @@ WHERE tickets.project_id = ? ORDER BY tickets.created_at;
 -- Every ticket column but body, which stays unread; body comes back empty.
 SELECT tickets.id, tickets.title, CAST('' AS TEXT) AS body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at,
        tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester,
-       tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.due_on,
+       tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, tickets.reporter_source, tickets.due_on,
        CAST(COALESCE(d.id, '') AS TEXT) AS developer_id, CAST(COALESCE(d.login, tickets.developer) AS TEXT) AS developer_login,
        CAST(COALESCE(te.id, '') AS TEXT) AS tester_id, CAST(COALESCE(te.login, tickets.tester) AS TEXT) AS tester_login
 FROM tickets LEFT JOIN users d ON d.id = tickets.developer LEFT JOIN users te ON te.id = tickets.tester

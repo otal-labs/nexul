@@ -160,9 +160,13 @@ type ticketRef struct {
 	Tester      string `json:"tester"`
 	TesterID    string `json:"tester_id"`
 	Reporter    struct {
+		Kind  string `json:"kind"`
 		Login string `json:"login"`
 	} `json:"reporter"`
 }
+
+// importedTicketKind is the reporter kind of a ticket an import filed, which tells nobody (ADR 0201).
+const importedTicketKind = "import"
 
 // serviceOutageEvent mirrors the deploy domain's service.container_stopped and service.container_recovered payloads.
 type serviceOutageEvent struct {
@@ -300,6 +304,9 @@ func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev event
 	}
 	if e.Ticket.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("ticket.created missing ticket id"))
+	}
+	if e.Ticket.Reporter.Kind == importedTicketKind {
+		return nil
 	}
 	return svc.onTicketCreated(CtxWithEventKey(ctx, ev.ID), e.Ticket, e.MentionedUserIDs)
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -94,6 +95,7 @@ var liveRules = map[string]liveRule{
 	pairing.TopicFactsChanged:        ownFrame,
 	pairing.TopicPairFailed:          ownFrame,
 	pairing.TopicPresenceChanged:     ownFrame,
+	imports.TopicProgress:            ownFrame,
 	access.TopicGrantChanged:         grantFrame,
 	access.TopicComputerGrantChanged: computerGrantFrame,
 

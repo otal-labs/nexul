@@ -896,6 +896,30 @@ gets a new high-priority bug found in it at the top of its column. A build missi
 updates a note and files nothing (ADR 0168).
 _Avoid_: Crash ticket (a stack's own), crash reporter (the app that sends the report)
 
+**Import**:
+One run that brings another tool's records into a project: it scans first, counting what would come in and how people
+and statuses map, waits up to 24 hours for the workspace's Owner to confirm, then writes, with live progress, and ends
+completed, failed or cancelled. A workspace has one open import at a time; its credential is deleted when it ends, and a
+later import of the same source skips everything an earlier one brought in. `import_run` carries every source
+(ADR 0201).
+_Avoid_: Migration, sync (an import runs once; sync keeps going)
+
+**Import source**:
+The tool an import reads (GitHub issues first; Linear, Trello, Asana and Notion to follow). It only reads and describes
+what it finds; the import maps people by GitHub login or email, statuses onto columns by name or kind, and copies files
+from the source's own hosts.
+_Avoid_: Connector (a connector is a credential Nexul keeps), adapter
+
+**Imported ticket**:
+A ticket an import filed: its reporter is `import` with the source's name, and its comments are external messages. It
+notifies nobody and starts no auto play when it arrives; after that it is an ordinary ticket.
+_Avoid_: Synced ticket
+
+**External message**:
+A message written in another tool and copied into a thread by an import, shown under its author's name there and the
+tool it came from. It is nobody's to edit and mentions nobody.
+_Avoid_: Bot message (a bot posts live through its URL)
+
 **Watching a stack**:
 Getting a notification when one of its services goes down and another when it
 is back. Everyone who can read a stack in a project watches it by default; the
@@ -1543,6 +1567,9 @@ folders, with `@` cross-references to tickets and other docs.
 
 **Git provider** — the abstraction over GitHub and future providers: branches,
 PRs, webhooks.
+
+**Imports** — imports and their sources: the scan, the job and its loop, progress, the mappings of people, statuses
+and files, and the record of what each import brought in. It writes through seams onto tickets, chat and attachments.
 
 **Integrations** — the platform for external services: scoped tokens, signed
 webhooks, the store.

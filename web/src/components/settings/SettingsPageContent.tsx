@@ -1,3 +1,4 @@
+import { ImportSection } from "@/components/import/ImportSection";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
@@ -33,6 +34,7 @@ export const SettingsPageContent = ({ section, canManageWorkspace }: SettingsPag
     {section === "general" && <GeneralPanel canManageWorkspace={canManageWorkspace} />}
     {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && <MentionsPanel canManageWorkspace={canManageWorkspace} />}
+    {section === "import" && <ImportSection />}
     {section === "danger" && <DangerZoneSection />}
   </>
 );

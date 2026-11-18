@@ -30,6 +30,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -112,6 +113,7 @@ type coreServices struct {
 	calendarSvc         *calendar.Service
 	crashIntakeSvc      *crashintake.Service
 	issueSyncSvc        *issuesync.Service
+	importsSvc          *imports.Service
 	voiceSvc            *voice.Service
 	voiceHandler        *voice.Handler
 	voiceWebhookHandler *voice.WebhookHandler
@@ -382,6 +384,16 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		crashIntakeDesk{tickets: ticketsSvc, statuses: store.Statuses, types: store.TicketTypes},
 		crashIntakeNotes{tickets: ticketsSvc, chat: chatSvc, projects: store.Projects, users: store.Users},
 		gitRouter, logger)
+	importsSvc := imports.NewService(imports.Deps{
+		Repo:     store.Imports,
+		Owners:   accessSvc,
+		Projects: importProjects{projects: store.Projects},
+		Board:    importBoard{svc: workspaceSvc},
+		People:   importPeople{store: store.Imports, projects: store.Projects, access: accessSvc},
+		Desk:     importDesk{tickets: ticketsSvc, chat: chatSvc, attachments: attachmentsSvc, types: store.TicketTypes, projects: store.Projects},
+		Sources:  importSources(gitRouter, workspaceSvc, store.IssueSync),
+		Log:      logger,
+	})
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,
 		People:        newGitHubPeople(authSvc, appConfigs),
@@ -483,6 +495,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		chatSvc:             chatSvc,
 		botwebhookSvc:       botwebhookSvc,
 		calendarSvc:         calendarSvc,
+		importsSvc:          importsSvc,
 		crashIntakeSvc:      crashIntakeSvc,
 		issueSyncSvc:        newIssueSync(store, ticketsSvc, chatSvc, workspaceSvc, accessSvc, gitRouter, appConfigs),
 		voiceSvc:            voiceSvc,

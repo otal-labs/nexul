@@ -79,7 +79,7 @@ type ConversationMessage struct {
 	// Via names the harness a person's message was relayed from, empty for one written in Nexul; on a bot's message it
 	// names the bot behind an overridden name instead.
 	Via string
-	// AuthorName is the name a bot's message showed, the only name a bot has.
+	// AuthorName is the name a bot's or an external message showed, the only name either has.
 	AuthorName string
 }
 

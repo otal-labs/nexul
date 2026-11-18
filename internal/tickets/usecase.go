@@ -167,6 +167,16 @@ type CreateOptions struct {
 	Status Status
 	// Reporter, when set, is who filed it instead of the caller.
 	Reporter *Reporter
+	// Import files the ticket for an import: its id and labels come from it, and its reporter names the source.
+	Import *ImportedTicket
+}
+
+// ImportedTicket is what an import fixes about a ticket it files (ADR 0201).
+type ImportedTicket struct {
+	// ID is derived by the import, so filing the same record again after a crash is ErrConflict, not a second ticket.
+	ID     string
+	Source string
+	Labels []string
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
@@ -233,6 +243,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+	t.imported(opt.Import)
 	if opt.ViaMCP {
 		ctx = WithViaMCP(ctx)
 	}
@@ -293,6 +304,28 @@ func (s *Service) firstColumn(ctx context.Context, projectID string) (Status, er
 		return StatusOpen, nil
 	}
 	return Status(first), nil
+}
+
+// imported gives a ticket an import files its derived id, its labels, and a reporter naming the source.
+func (t *Ticket) imported(imp *ImportedTicket) {
+	if imp == nil {
+		return
+	}
+	t.ID = cmp.Or(strings.TrimSpace(imp.ID), t.ID)
+	t.Reporter.Kind, t.Reporter.Source = ActorKindImport, imp.Source
+	t.Labels = normalizeLabels(imp.Labels)
+}
+
+// normalizeLabels trims labels and drops empty and repeated ones, ignoring case, keeping the first spelling.
+func normalizeLabels(labels []string) []string {
+	var out []string
+	for _, l := range labels {
+		l = strings.TrimSpace(l)
+		if l != "" && !slices.ContainsFunc(out, func(o string) bool { return strings.EqualFold(o, l) }) {
+			out = append(out, l)
+		}
+	}
+	return out
 }
 
 // persist writes the ticket, and its found-in link in the same transaction when it was filed with one.

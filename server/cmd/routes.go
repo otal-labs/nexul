@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/mcp"
@@ -83,6 +84,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/attachments", attachments.NewHandler(svc.attachmentsSvc).Routes())
 	mountGateway(apiMux, "/api/tickets", tickets.NewHandler(svc.ticketsSvc).Routes())
 	mountGateway(apiMux, "/api/crash-reports", crashintake.NewHandler(svc.crashIntakeSvc).Routes())
+	mountGateway(apiMux, "/api/imports", imports.NewHandler(svc.importsSvc).Routes())
 	mountGateway(apiMux, "/api/topology", topology.NewHandler(svc.topoSvc).Routes())
 	deployHandler := deploy.NewHandler(svc.deploySvc).Routes()
 	mountGateway(apiMux, "/api/deploys", deployHandler)
@@ -220,6 +222,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Mentions:    svc.mentionsSvc,
 		Chat:        svc.chatSvc,
 		Botwebhooks: svc.botwebhookSvc,
+		Imports:     svc.importsSvc,
 		Calendar:    svc.calendarSvc,
 		Plays:       svc.playsSvc,
 		PlayRuns:    svc.playsRunner,

@@ -73,7 +73,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 
 ## What an agent can do
 
-112 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
+114 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
 
 | Area | Tools |
 |---|---|
@@ -85,6 +85,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 | Templates | `template_get`, `template_update` |
 | Chat and notifications | `conversation_list`, `conversation_update`, `conversation_delete`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
 | Bots | `botwebhook_list`, `botwebhook_create`, `botwebhook_update` |
+| Imports | `import_run` |
 | Calendar | `meeting_list`, `meeting_create`, `meeting_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_cancel` |
 | Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `host_create`, `host_delete`, `instance_get`, `instance_update`, `instance_upgrade` |

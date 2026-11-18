@@ -654,6 +654,28 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, fixedNow, tk.CreatedAt)
 		assert.NotEmpty(t, repo.eventsFor(TopicCreated))
 	})
+	t.Run("an import names the id, column, labels and source", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		tk, err := s.Create(context.Background(), "p-1", "Imported", "body", "", "", CreateOptions{Status: StatusDone, Import: &ImportedTicket{
+			ID: "derived-1", Source: "github", Labels: []string{" bug ", "Bug", "", "ui"},
+		}})
+		require.NoError(t, err)
+		assert.Equal(t, "derived-1", tk.ID)
+		assert.Equal(t, StatusDone, tk.Status)
+		assert.Equal(t, []string{"bug", "ui"}, tk.Labels)
+		assert.Equal(t, Reporter{Kind: ActorKindImport, Source: "github"}, tk.Reporter)
+		assert.True(t, tk.Reporter.Imported())
+	})
+	t.Run("an import into a column that does not exist is refused", func(t *testing.T) {
+		s := newTestService(newFakeRepo())
+		_, err := s.Create(context.Background(), "p-1", "Imported", "", "", "", CreateOptions{Status: "gone", Import: &ImportedTicket{}})
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		boom := errors.New("db down")
+		s = NewService(newFakeRepo(), fakeStatusStore{err: boom}, nil)
+		_, err = s.Create(context.Background(), "p-1", "Imported", "", "", "", CreateOptions{Status: StatusDone, Import: &ImportedTicket{}})
+		require.ErrorIs(t, err, boom)
+	})
 	t.Run("blank doc_id is stored empty", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)

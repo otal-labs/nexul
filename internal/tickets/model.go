@@ -148,16 +148,22 @@ const (
 	ActorKindPlayMCP    = ActorKindPlay + ":mcp"
 	// ReporterKindGitHub files a ticket for a synced GitHub issue; Login is the issue's author on GitHub.
 	ReporterKindGitHub = "github"
+	// ActorKindImport files a ticket an import brought in; notifications and auto plays pass it by (ADR 0201).
+	ActorKindImport = "import"
 )
 
-// Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), an automation, or a synced
-// GitHub issue (github).
+// Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), an automation, a synced
+// GitHub issue (github), or an import (import).
 type Reporter struct {
-	Kind           string `json:"kind" enum:"user,user:mcp,automation,github"`
+	Kind           string `json:"kind" enum:"user,user:mcp,automation,github,import"`
 	Login          string `json:"login,omitempty"`
 	AutomationID   string `json:"automation_id,omitempty"`
 	AutomationName string `json:"automation_name,omitempty"`
+	Source         string `json:"source,omitempty" jsonschema:"The tool an imported ticket came from, such as github; empty for any other reporter."`
 }
+
+// Imported reports whether an import filed the ticket.
+func (r Reporter) Imported() bool { return r.Kind == ActorKindImport }
 
 // Role names one of the two editable people on a ticket.
 type Role string

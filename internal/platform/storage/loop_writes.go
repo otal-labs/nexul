@@ -12,7 +12,9 @@ var (
 	SettleWrites = []TableWrite{Writes("doc_settles")}
 	// IssueSweepWrites wakes the issue sweep to backfill a sync just turned on; the sweep itself runs on a timer.
 	IssueSweepWrites = []TableWrite{Writes("github_issue_sync")}
-	ReminderWrites   = []TableWrite{
+	// ImportWrites includes the loop's own progress writes, which wake it again after a run for nothing new.
+	ImportWrites   = []TableWrite{Writes("imports")}
+	ReminderWrites = []TableWrite{
 		Writes("meetings"), Writes("meeting_invitees"), Writes("tickets"), Writes("projects"), Writes("users"),
 		Writes("statuses"), Writes("ticket_due_reminders"),
 	}

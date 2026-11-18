@@ -1825,3 +1825,19 @@ func TestManageChannel_OnlyChannelsAndVoiceChannels(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 }
+
+// TestPostExternalMessage_KeepsWhenItWasWrittenThere: an imported comment keeps its original time; a live one is now.
+func TestPostExternalMessage_KeepsWhenItWasWrittenThere(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	dm, err := s.CreateDM(t.Context(), "w-1", "u-1", []string{"u-2"})
+	require.NoError(t, err)
+	at := fixedNow.Add(-48 * time.Hour)
+
+	old, err := s.PostExternalMessage(t.Context(), ExternalPost{ID: "m-old", ConversationID: dm.ID, AuthorID: "github:alice", Name: "alice", Body: "seen", Via: "github", At: at})
+	require.NoError(t, err)
+	assert.Equal(t, at, repo.messages[old.ID].CreatedAt)
+	live, err := s.PostExternalMessage(t.Context(), ExternalPost{ID: "m-live", ConversationID: dm.ID, AuthorID: "github:alice", Name: "alice", Body: "again", Via: "github"})
+	require.NoError(t, err)
+	assert.Equal(t, fixedNow, repo.messages[live.ID].CreatedAt)
+}

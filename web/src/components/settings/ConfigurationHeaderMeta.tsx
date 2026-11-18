@@ -1,4 +1,5 @@
 import type { SettingsSection } from "@/components/settings/SettingsNav";
+import { useFetchImports } from "@/hooks/ImportHooks";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -22,6 +23,12 @@ const MentionsMeta = () => {
   return <span className="tabular-nums">{workspace && count(fields, "field")}</span>;
 };
 
+const ImportMeta = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: imports } = useFetchImports(workspaceId);
+  return <span className="tabular-nums">{imports && count(imports.length, "import")}</span>;
+};
+
 interface ConfigurationHeaderMetaProps {
   section: SettingsSection;
 }
@@ -32,5 +39,6 @@ export const ConfigurationHeaderMeta = ({ section }: ConfigurationHeaderMetaProp
     {(section === "general" || section === "danger") && <GeneralMeta />}
     {section === "interview" && <InterviewMeta />}
     {section === "mentions" && <MentionsMeta />}
+    {section === "import" && <ImportMeta />}
   </span>
 );
