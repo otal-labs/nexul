@@ -37,7 +37,10 @@ interface ListPaneRowProps {
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
 export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
-  const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-row";
+  // On the title's line the meta sets inline in the title's line box, so a mono count sits on the title's baseline instead of
+  // centring in it.
+  const onTitleLine = metaOnTitleLine && "mt-2 block h-lh text-row";
+  const titleLineBox = metaOnTitleLine && "mt-2 h-lh text-row";
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.
@@ -61,7 +64,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
           selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
-        {selected && <CurrentRowEdge />}
+        {selected && <CurrentRowEdge className="z-10" />}
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}
@@ -104,7 +107,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
             {actions}
           </div>
         )}
-        {!!trailing && <div className={cn("relative z-10 flex shrink-0 items-center", onTitleLine)}>{trailing}</div>}
+        {!!trailing && <div className={cn("relative z-10 flex shrink-0 items-center", titleLineBox)}>{trailing}</div>}
       </li>
     </RowContextMenu>
   );

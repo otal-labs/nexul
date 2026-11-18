@@ -32,7 +32,7 @@ interface ListPaneHeaderProps {
 export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, newPermission, newVerb, projectId, onNew, newClassName, search, onSearch, controls }: ListPaneHeaderProps) => (
   // Each band keeps the list's scrollbar gutter, so the + and the search field end where the rows do.
   <div className="shrink-0">
-    <div className="flex h-14 items-center justify-between overflow-hidden border-b border-border pr-1 pl-3 [scrollbar-gutter:stable]">
+    <div className="flex h-14 items-center justify-between overflow-hidden border-b border-border pr-1 pl-3 [scrollbar-gutter:stable_both-edges]">
       <h1 className="flex items-baseline gap-2 text-sm font-semibold">
         {title}
         {(count > 0 || !hideZeroCount) && <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{count}</span>}
@@ -56,7 +56,7 @@ export const ListPaneHeader = ({ title, count, hideZeroCount = false, newLabel, 
       </div>
     </div>
     {onSearch && (
-    <div className="overflow-hidden px-3 pt-3 pb-2 [scrollbar-gutter:stable]">
+    <div className="overflow-hidden px-3 pt-3 pb-2 [scrollbar-gutter:stable_both-edges]">
       <Input
         aria-label={`Search ${title.toLowerCase()}`}
         placeholder="Search…"

@@ -28,7 +28,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ListPaneHeader title="Roles" count={others.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} />
-      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable]">
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Roles">
           {[...owners, ...others].map((role) => (
             <RoleListRow
@@ -43,7 +43,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
           ))}
         </EnterList>
       </div>
-      <div className="shrink-0 overflow-y-hidden border-t border-border py-1.5 [scrollbar-gutter:stable]">
+      <div className="shrink-0 overflow-y-hidden border-t border-border py-1.5 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Overview">
           <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense selected={selectedId === COMPARE_ROLES} />
           {seesTeam && (

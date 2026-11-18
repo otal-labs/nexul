@@ -31,7 +31,7 @@ export const RoleDetail = ({ role }: RoleDetailProps) => {
   const permissions = role.is_owner_role ? (catalog ?? []).map((entry) => entry.value) : role.permissions;
 
   return (
-    <Container className="space-y-6 pt-[max(0px,calc(var(--spacing)*3-var(--radius-xl)))] pb-6 sm:pr-3.5">
+    <Container className="space-y-6 pt-0 pb-6 sm:pr-3.5">
       <RoleDetailHeader
         title={role.name}
         line={role.description}

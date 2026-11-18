@@ -34,6 +34,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus: var(--focus);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-warning-mark: var(--warning-mark);
@@ -90,6 +91,8 @@
   --shape-md: 0.375rem;
   --shape-lg: 0.5rem;
   --shape-xl: 0.75rem;
+  /* What a panel's radius inset leaves short of 12px: zero by default, the whole 12px in a palette with square panels. */
+  --radius-gap: max(0px, calc(0.75rem - var(--shape-xl)));
   --shape-2xl: 1rem;
 
   /* canvas < surface-2 (wells inside a panel) < panel < card < popover */

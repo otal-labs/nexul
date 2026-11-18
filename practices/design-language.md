@@ -115,6 +115,7 @@ in the three token files; this table holds the roles.
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
 | `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain. The still field behind the app draws warm and low only: `field-mid` lit the middle, under the panels, whose flat fill turned its falloff into a disc, so it stays for the showcase surfaces' live field | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
 | `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
+| `radius-gap` | 12px less `shape-xl`, never below 0 | same | what a pane's scroller adds back as padding where a square palette leaves its radius inset at 0, so content sits at one height in every palette | web only |
 | `console` / `console-edge` / `console-ink` / `console-control` | `#0b0b0b` / `#232323` / `#d4d4d4` / `#a3a3a3` | same | the docs' code blocks: the console fill, its hairline, its text and its copy button, dark in both modes | site only; its token hues are in `website/src/lib/shiki-mono.ts` |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
@@ -661,9 +662,11 @@ rounded edge on one flat line. Once scrolled, the top fades over 24px too,
 growing with the first 24px of scroll so the first row at rest is never
 washed out. The open record's scroller sits inset by the panel's radius top
 and bottom, and the list's at the bottom, so no scrollbar runs under the
-rounded corners. Every list scroller keeps a stable scrollbar gutter, and so
-does each band of `ListPaneHeader`, so the `+` and the search field end on
-the rows' edge. In a grouped list (Docs, Memories, Plays) the group row you
+rounded corners. Every list scroller keeps a stable scrollbar gutter on both
+edges, and so does each band of `ListPaneHeader`, so the `+` and the search
+field end on the rows' edge and the current row's tint sits as far from the
+panel's left edge as from its right. A meta on the title's line (`metaOnTitleLine`)
+sets inline in that line, so a mono count sits on the title's baseline. In a grouped list (Docs, Memories, Plays) the group row you
 are scrolled into stays pinned at the top on `panel-opaque`, 36px tall, and
 the top fade runs under it instead of over it (`sticky-group-head`).
 `ListDetailLayout` and `ListPaneRow` in
@@ -1394,7 +1397,7 @@ box of their own and no hover lift unless the row is a link. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
 detail (Connected · by Alice 20d ago, Active · last used 9d ago, Revoked 8 Oct),
 never a chip; an active account says nothing, only one that can't sign in
-(Disabled, Removed). Destructive actions that are not the card's job are ghost
+(Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job are ghost
 buttons that turn `destructive` on hover, kept apart from the primary action,
 and ask before they act. A card that edits values saves from its footer with
 `SettingsSaveBar`: the strip is always there; Save is the primary button,
@@ -1481,13 +1484,16 @@ width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
 
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
-read-only, in the access grid's frame: one column per role, the Owner first
+read-only, in the access grid's frame: one column per role, the columns sharing the
+width the area column leaves (no filler) and ending in a 48px fade while more
+lie to the right, the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono, beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects. A cell is the level as a
-`LevelGlyph` and its word, muted at None, with a mono "+1" on the word's
-baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted No. Deleting a role
+`LevelGlyph`, aligned to its end, and its word; a cell the role has no access in
+is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
+baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and
 `RoleMatrixHead` in `web/src/components/settings/` are the reference.
 
