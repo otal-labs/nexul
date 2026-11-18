@@ -35,3 +35,5 @@ CREATE TABLE IF NOT EXISTS github_comment_links (
     message_id        TEXT NOT NULL UNIQUE,
     ticket_id         TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE
 );
+-- Serves the ticket delete's cascade, which would otherwise scan every comment link.
+CREATE INDEX IF NOT EXISTS idx_github_comment_links_ticket ON github_comment_links(ticket_id);

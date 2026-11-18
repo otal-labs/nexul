@@ -68,7 +68,7 @@ func (d issueSyncTickets) Create(ctx context.Context, projectID string, n issues
 	if err != nil {
 		return "", err
 	}
-	return t.ID, d.moveTo(ctx, t, issuesync.StageBacklog)
+	return t.ID, nil
 }
 
 func (d issueSyncTickets) Move(ctx context.Context, id string, stage issuesync.Stage) error {

@@ -1,6 +1,7 @@
 package issuesync
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -372,4 +373,50 @@ func TestSweep_HostFails_ReportsIt(t *testing.T) {
 	assert.ErrorContains(t, f.svc.Sweep(t.Context()), "sweep acme/app")
 	f.repo.err = errors.New("disk")
 	assert.ErrorContains(t, f.svc.Sweep(t.Context()), "disk")
+}
+
+func TestHandleIssue_OlderDeliveryArrivingLate_NeverUndoesAPauseOrResume(t *testing.T) {
+	t.Run("a late unlabel after an unchanged delivery", func(t *testing.T) {
+		f := newFixture(t)
+		f.deliver(t, "opened", labelled())
+		f.deliver(t, "labeled", labelled(later(2*time.Minute)))
+		f.deliver(t, "unlabeled", labelled(later(time.Minute), func(i *Issue) { i.Labels = []string{"bug"} }))
+		l, err := f.repo.GetLink(t.Context(), "acme", "app", 7)
+		require.NoError(t, err)
+		assert.False(t, l.Paused, "the issue carries the label now")
+	})
+	t.Run("a late labelled edit after a pause", func(t *testing.T) {
+		f := newFixture(t)
+		f.deliver(t, "opened", labelled())
+		f.deliver(t, "unlabeled", labelled(later(2*time.Minute), func(i *Issue) { i.Labels = []string{"bug"} }))
+		f.deliver(t, "edited", labelled(later(time.Minute), func(i *Issue) { i.Title = "stale" }))
+		l, err := f.repo.GetLink(t.Context(), "acme", "app", 7)
+		require.NoError(t, err)
+		assert.True(t, l.Paused)
+		assert.Equal(t, "Crash on save", f.ticket(t).Title)
+	})
+}
+
+// failsOnceAfterCreating files the ticket and still reports an error the first time, as a write that fails after it would.
+type failsOnceAfterCreating struct {
+	*fakeTickets
+	calls int
+}
+
+func (f *failsOnceAfterCreating) Create(ctx context.Context, projectID string, n NewTicket) (string, error) {
+	id, err := f.fakeTickets.Create(ctx, projectID, n)
+	f.calls++
+	if f.calls == 1 {
+		return id, errors.New("busy")
+	}
+	return id, err
+}
+
+func TestHandleIssue_CreatedThenFailed_TheRetryFilesNoSecondTicket(t *testing.T) {
+	f := newFixture(t)
+	f.svc.Tickets = &failsOnceAfterCreating{fakeTickets: f.tickets}
+	assert.ErrorIs(t, f.svc.HandleIssue(t.Context(), issueEv(t, "opened", "bob-gh", labelled())), apperrs.ErrRetryable)
+	f.deliver(t, "opened", labelled())
+	assert.Equal(t, 1, f.tickets.count())
+	assert.Equal(t, []string{"bug"}, f.ticket(t).Labels, "the retry finishes what the first attempt left")
 }

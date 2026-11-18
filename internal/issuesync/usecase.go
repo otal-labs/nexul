@@ -17,7 +17,8 @@ import (
 // Tickets is the tickets side of the sync (ADR 0017).
 type Tickets interface {
 	Get(ctx context.Context, id string) (Ticket, error)
-	// Create files the ticket in the project's first backlog column, or its first column when it has none.
+	// Create files the ticket in the project's first backlog column, or its first column when it has none; an id returned
+	// with an error is a ticket that exists.
 	Create(ctx context.Context, projectID string, t NewTicket) (string, error)
 	// Move puts the ticket in the project's first column of stage.
 	Move(ctx context.Context, id string, stage Stage) error
@@ -269,18 +270,22 @@ func (s *Service) unlink(ctx context.Context, link *Link, action string) error {
 	return s.Repo.DeleteLink(ctx, link.Owner, link.Repo, link.Number)
 }
 
-// file creates the ticket of a newly matching issue; the link is saved first, so a retry never files a second one.
+// file creates the ticket of a newly matching issue and links it before anything else can fail, so a retry finds the
+// link and never files a second one.
 func (s *Service) file(ctx context.Context, sync *Sync, action string, issue Issue) error {
 	if !sync.Matches(issue.Labels) {
 		return nil
 	}
-	id, err := s.Tickets.Create(ctx, sync.ProjectID, NewTicket{Title: issue.Title, Body: issue.Body, Reporter: issue.Author})
-	if err != nil {
-		return fmt.Errorf("file a ticket for %s/%s#%d: %w", sync.Owner, sync.Repo, issue.Number, err)
+	id, createErr := s.Tickets.Create(ctx, sync.ProjectID, NewTicket{Title: issue.Title, Body: issue.Body, Reporter: issue.Author})
+	if id == "" {
+		return fmt.Errorf("file a ticket for %s/%s#%d: %w", sync.Owner, sync.Repo, issue.Number, createErr)
 	}
 	link := &Link{Owner: sync.Owner, Repo: sync.Repo, Number: issue.Number, IssueID: issue.ID, TicketID: id, LinkedAt: s.now().UTC()}
 	if err := s.Repo.SaveLink(ctx, link); err != nil {
 		return fmt.Errorf("link %s/%s#%d: %w", sync.Owner, sync.Repo, issue.Number, err)
+	}
+	if createErr != nil {
+		return fmt.Errorf("file a ticket for %s/%s#%d: %w", sync.Owner, sync.Repo, issue.Number, createErr)
 	}
 	return s.follow(ctx, sync, link, action, issue)
 }
@@ -289,19 +294,21 @@ func (s *Service) update(ctx context.Context, sync *Sync, link *Link, action str
 	if issue.UpdatedAt.Before(link.IssueUpdatedAt) {
 		return nil
 	}
+	// Every state a delivery leaves records its time, so an older one arriving later never undoes a pause or resume.
 	if !sync.Matches(issue.Labels) {
 		if link.Paused {
 			return nil
 		}
-		link.Paused = true
+		link.Paused, link.IssueUpdatedAt = true, issue.UpdatedAt.UTC()
 		return s.Repo.SaveLink(ctx, link)
 	}
 	resumed := link.Paused
 	link.Paused = false
 	if hash := issue.Hash(); hash == link.InboundHash || hash == link.OutboundHash {
-		if !resumed {
+		if !resumed && !issue.UpdatedAt.After(link.IssueUpdatedAt) {
 			return nil
 		}
+		link.IssueUpdatedAt = issue.UpdatedAt.UTC()
 		return s.Repo.SaveLink(ctx, link)
 	}
 	return s.follow(ctx, sync, link, action, issue)
