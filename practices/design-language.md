@@ -211,7 +211,9 @@ has the same chip). A destructive button is white on `destructive-fill`.
 
 A disabled button keeps its shape but loses its fill and shadow and takes
 `muted-foreground` text (6:1 or better), never a lower opacity: a half-faded
-label sits near 3.5:1 on a settings tray. The web app's `Button`
+label sits near 3.5:1 on a settings tray. On the web a filled button keeps its shape as a
+`border` hairline drawn inside its edge, with no tint under the label: ink at
+6% held it at 5.9:1 on a card. The web app's `Button`
 does this once for every variant, and lint rejects a `disabled:opacity-` class passed to it. A button that is busy keeps its own fill and
 text: its spinner already says it is working, and grey would read as not allowed.
 
@@ -1393,7 +1395,7 @@ never a chip; an active account says nothing, only one that can't sign in
 buttons that turn `destructive` on hover, kept apart from the primary action,
 and ask before they act. A card that edits values saves from its footer with
 `SettingsSaveBar`: the strip is always there; Save is the primary button,
-disabled (the flat disabled tint) until something changes, then Discard and
+disabled (the flat disabled look) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
 Saved with a check for 1.4s. Settings that apply the moment they are picked
 (Appearance, a play's Limits) have no Save and no confirmation: the control
