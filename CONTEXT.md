@@ -423,8 +423,8 @@ target's thread, which for an interview is hidden plumbing and for a stack is th
 its footer memories say; with none, Fix with AI leaves its pull request open
 and moves the ticket to the first review column. Every workspace,
 new or existing, is seeded with the same ten, "Fix with AI" (ticket,
-progress stage), "To tickets via AI" (doc), "Interview" (interview),
-"Test with AI" (ticket, testing stage), "Draft interview" (interview),
+progress stage, with two auto plays), "To tickets via AI" (doc), "Interview" (interview),
+"Test with AI" (ticket, testing stage, with its auto play), "Draft interview" (interview),
 "Clarify via AI" (doc), "Update doc via AI" (doc), "Audit via AI" (interview), "Decisions check"
 (ticket, done stage, with its auto play), and "Investigate a crash" (stack,
 with its auto play), as ordinary plays
@@ -458,7 +458,9 @@ cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`. A ticket play's auto
 play may instead wait for a **Schedule** and work through every ticket it takes as a **Sweep**, and any auto play may run
-**One at a time**.
+**One at a time**. Every workspace is seeded with the flow's three, switched off: Fix with AI on a ticket entering
+progress, and on a backlog ticket becoming unblocked, one at a time, both on the developer; Test with AI on a ticket
+entering testing with no tester, on whoever moved it (ADR 0195).
 _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
 
 **Schedule**:

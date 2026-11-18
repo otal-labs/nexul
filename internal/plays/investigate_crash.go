@@ -19,8 +19,8 @@ const investigateCrashInstructions = "A service in a stack crashed. Find out why
 
 // investigateCrashAutoPlay is the seeded auto play: a crashed service starts the play on the computer a person picks,
 // off until one is picked and it is switched on.
-func investigateCrashAutoPlay() *AutoPlayInput {
-	return &AutoPlayInput{
+func investigateCrashAutoPlay() AutoPlayInput {
+	return AutoPlayInput{
 		Moment: MomentStackServiceCrashed, RunOn: RunOnComputer,
 		Conditions: Conditions{Match: MatchAll, Groups: []Group{}},
 		Priority:   Priority{Rules: []PriorityRule{}, Otherwise: LevelNormal},
