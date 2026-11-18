@@ -22,7 +22,7 @@ Decision: one order, and plays say what they need instead of where to go.
   and a shared computer is not in anyone's order. An auto play that named only shared computers is switched off on
   upgrade rather than moved onto its person's own machines.
 - **The app repository wins a checkout tie.** Several matching checkouts on one computer resolve to the clone of the
-  project's `app` repository; only two folders of the same repository are ambiguous.
+  project's `app` repository; two clones of the app, or several matches with no app among them, are ambiguous.
 
 The trade-off: a play can no longer say "only on that machine" by name. A machine that is the only one with something
 gets a label for it, which is one more thing for an owner to set, but it survives a reinstall or a second machine with
