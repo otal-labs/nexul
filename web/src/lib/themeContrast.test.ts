@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ThemeId } from "@/enums/Theme";
 import { currentRowFillClass } from "@/components/CurrentRow";
 import { crumbLinkClass, currentCrumbClass } from "@/components/PageBreadcrumb";
+import { disabledFillClass } from "@/components/ui/button";
 import { segmentedThumbClass } from "@/components/ui/toggle-group";
 import { switchOffTrackClass } from "@/components/ui/switch";
 import css from "@/index.css?raw";
@@ -99,6 +100,13 @@ const withTint = (mode: Mode, surface: Rgb): Rgb => {
   return ink(mode, "brand").map((v, i) => v * share + surface[i]! * (1 - share)) as Rgb;
 };
 
+// A disabled filled button's fill as the shipped class spells it: transparent, or a tint such as `bg-foreground/[0.06]` or `bg-foreground/4`.
+const disabledFill = (mode: Mode, surface: Rgb): Rgb => {
+  const [, bracket, percent] = disabledFillClass.match(/bg-foreground\/(?:\[([\d.]+)\]|(\d+))/) ?? [];
+  const share = bracket ? Number(bracket) : Number(percent ?? 0) / 100;
+  return ink(mode, "foreground").map((v, i) => v * share + surface[i]! * (1 - share)) as Rgb;
+};
+
 // Every pair a palette paints text on: body ink and secondary ink on each surface, ink on the current row's brand tint over each, the label on the brand fill, and a hovered or highlighted row's ink on its accent lift.
 const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   const onSurface = surfaces(mode);
@@ -106,6 +114,7 @@ const failingPairs = (mode: Mode, mutedFloor: number): string[] => {
   for (const [surface, rgb] of Object.entries(onSurface)) {
     pairs.push([`foreground on ${surface}`, ratio(ink(mode, "foreground"), rgb), MIN_RATIO]);
     pairs.push([`muted-foreground on ${surface}`, ratio(ink(mode, "muted-foreground"), rgb), mutedFloor]);
+    pairs.push([`muted-foreground on a disabled button over ${surface}`, ratio(ink(mode, "muted-foreground"), disabledFill(mode, rgb)), mutedFloor]);
   }
   pairs.push(["card-foreground on card", ratio(ink(mode, "card-foreground"), onSurface.card!), MIN_RATIO]);
   pairs.push(["popover-foreground on popover", ratio(ink(mode, "popover-foreground"), onSurface.popover!), MIN_RATIO]);

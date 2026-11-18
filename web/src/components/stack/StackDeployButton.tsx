@@ -157,7 +157,7 @@ export const StackDeployButton = ({ stack, lastHealthy, image }: StackDeployButt
     <>
       {nothing && (
         <LockedReason reason={NO_WAY}>
-          <Button type="button" size="sm" aria-disabled onClick={(event) => event.preventDefault()} className="cursor-default bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.06]">
+          <Button type="button" size="sm" aria-disabled onClick={(event) => event.preventDefault()} className="cursor-default bg-transparent text-muted-foreground ring-1 ring-border ring-inset hover:bg-transparent">
             <RocketIcon /> Deploy
           </Button>
         </LockedReason>

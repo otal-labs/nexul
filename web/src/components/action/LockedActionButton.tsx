@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 type Variant = NonNullable<ButtonProps["variant"]>;
 
-const FILLED = "bg-foreground/[0.06] hover:bg-foreground/[0.06]";
+const FILLED = "bg-transparent ring-1 ring-border ring-inset hover:bg-transparent";
 
 const VARIANT_CLASS: Record<Variant, string> = {
   default: FILLED,
