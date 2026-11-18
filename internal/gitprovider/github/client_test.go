@@ -104,7 +104,7 @@ func TestGetRepo(t *testing.T) {
 		assertErrorIs(t, err, apperrs.ErrRetryable)
 	})
 	t.Run("unmapped status returns the raw error", func(t *testing.T) {
-		c := newTestClient(t, errorHandler(http.StatusGone))
+		c := newTestClient(t, errorHandler(http.StatusTeapot))
 		_, err := c.GetRepo(context.Background(), "acme", "app")
 		require.Error(t, err)
 		assert.NotErrorIs(t, err, apperrs.ErrNotFound)

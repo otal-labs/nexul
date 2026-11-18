@@ -81,7 +81,7 @@ var scopeRules = map[string]scopeRule{
 	"ticket.assignee_changed": nestedProjectScope("ticket"), "ticket.developer_changed": nestedProjectScope("ticket"),
 	"ticket.tester_changed": nestedProjectScope("ticket"), "ticket.due_date_changed": nestedProjectScope("ticket"), "ticket.test_passed": nestedProjectScope("ticket"),
 	"ticket.test_failed": nestedProjectScope("ticket"), "ticket.deleted": projectScope, "doc.deleted": projectScope,
-	"ticket.unblocked": projectScope, "doc.settled": nestedProjectScope("doc"),
+	"ticket.unblocked": projectScope, "ticket.labels_changed": nestedProjectScope("ticket"), "doc.settled": nestedProjectScope("doc"),
 	"doc.created": nestedProjectScope("doc"), "doc.updated": nestedProjectScope("doc"), "doc.moved": nestedProjectScope("doc"),
 	"doc.folder.created": nestedProjectScope("folder"), "doc.folder.updated": nestedProjectScope("folder"),
 	"doc.folder.deleted":                    nestedProjectScope("folder"),
