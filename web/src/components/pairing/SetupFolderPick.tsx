@@ -50,7 +50,7 @@ export const SetupFolderPick = ({ projects, folder, disabled, onPick }: SetupFol
       )}
       <span>Installs</span>
       <span className="min-w-0 text-pretty">
-        mattpocock/skills and nexul-memory into {dirs[0]} and {dirs[1]}, keeping any skill you already have
+        nexul-memory and nexul-triage into {dirs[0]} and {dirs[1]}
       </span>
     </div>
   );

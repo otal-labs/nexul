@@ -19,7 +19,7 @@ type setupPrompt struct {
 	Token        string
 }
 
-// skillLocations are where the default set goes: Claude Code reads the first, Codex and Pi the second, Cursor and opencode both.
+// skillLocations are where Nexul's skills go: Claude Code reads the first, Codex and Pi the second, Cursor and opencode both.
 const skillLocations = "~/.claude/skills/ and ~/.agents/skills/"
 
 // piMCPMinMinor is the first 0.x Pi release with an MCP client.
@@ -46,16 +46,13 @@ func prepareInstructions(p setupPrompt) string {
 	fmt.Fprintf(&b, "You are running Nexul's setup for %s on this computer (%s). Work unattended: never ask a question; if a step fails, stop and say which step failed and why.\n\n", p.ProviderName, p.ComputerName)
 	fmt.Fprintf(&b, "1. Connect Nexul's MCP server to %s at user level, named `nexul`, replacing any existing `nexul` entry so the token below is the one it uses. It is a Streamable HTTP server at %s, authenticated with the header `Authorization: Bearer %s`. Write the token only into the config file; never put it in a shell command, a log, or your reply.\n", p.ProviderName, p.MCPURL, p.Token)
 	b.WriteString(mcpConfigStep(p))
-	fmt.Fprintf(&b, "\n2. Install the default skill set, mattpocock/skills, into both %s Never overwrite a skill directory that already exists in either location: the user may have edited it.\n", skillLocations)
-	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
-	b.WriteString("   - Copy each skill directory it wrote into ~/.claude/skills/ and into ~/.agents/skills/, creating them if needed and skipping any name already present, then delete the temporary directory.\n")
-	b.WriteString("   - " + atomicWrite + "\n")
+	fmt.Fprintf(&b, "\nInstall Nexul's own skills into both %s. %s\n\n", skillLocations, atomicWrite)
 	names := skills.Names()
 	for i, name := range names {
 		skill, _ := skills.Get(name)
-		fmt.Fprintf(&b, "%d. %s", 3+i, skillInstallStep(skill, "the file named "+name+" at the end of these instructions"))
+		fmt.Fprintf(&b, "%d. %s", 2+i, skillInstallStep(skill, "the file named "+name+" at the end of these instructions"))
 	}
-	fmt.Fprintf(&b, "%d. Verify that every skill from step 2 and %s has a SKILL.md in both %s\n\n", 3+len(names), strings.Join(names, ", "), skillLocations)
+	fmt.Fprintf(&b, "%d. Verify that %s each have a SKILL.md in both %s\n\n", 2+len(names), strings.Join(names, " and "), skillLocations)
 	b.WriteString("End with one line saying what you connected, installed, and verified.\n")
 	for _, name := range names {
 		skill, _ := skills.Get(name)
@@ -118,7 +115,7 @@ func mcpConfigStep(p setupPrompt) string {
 func confirmInstructions(p setupPrompt) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are finishing Nexul's setup for %s on this computer (%s). Work unattended: never ask a question.\n\n", p.ProviderName, p.ComputerName)
-	fmt.Fprintf(&b, "1. Check that %s each hold the mattpocock/skills set and nexul-memory, every skill with a SKILL.md.\n", skillLocations)
+	fmt.Fprintf(&b, "1. Check that %s each hold %s, every skill with a SKILL.md.\n", skillLocations, strings.Join(skills.Names(), " and "))
 	b.WriteString("2. List the skills this session has discovered: the ones your harness made available to you, not the files on disk.\n")
 	fmt.Fprintf(&b, "3. Call Nexul's MCP tool `computer_setup_update` with computer_id %q, provider %q, confirmed true, and skills set to that list. Do not confirm if Nexul's MCP tools are not available in this session or nexul-memory is missing from the list; say what is missing instead.\n", p.ComputerID, p.Driver)
 	fmt.Fprintf(&b, "4. Once the provider is confirmed, confirm the computer itself: call `computer_setup_update` again with computer_id %q and confirmed true, and no provider; confirming again is harmless.\n", p.ComputerID)

@@ -790,15 +790,21 @@ func TestSetupInstructions_PerDriver(t *testing.T) {
 			assert.Contains(t, prepare, tt.want)
 			assert.NotContains(t, prepare, "mcp add", "the token never goes on a command line, where any local user can read it")
 			assert.Contains(t, prepare, "~/.claude/skills/ and ~/.agents/skills/")
-			assert.Contains(t, prepare, "npx -y skills@latest add mattpocock/skills")
-			assert.Contains(t, prepare, "Never overwrite a skill directory that already exists")
+			confirm := confirmInstructions(p)
+			for _, thirdParty := range []string{"npx", "mattpocock"} {
+				assert.NotContains(t, prepare, thirdParty, "setup installs only Nexul's own skills")
+				assert.NotContains(t, confirm, thirdParty, "and checks only those")
+			}
+			assert.Contains(t, prepare, "Verify that nexul-memory and nexul-triage each have a SKILL.md")
+			assert.Contains(t, confirm, "each hold nexul-memory and nexul-triage")
+			assert.Contains(t, prepare, "move it into place with one rename", "parallel setup turns never see a half-written skill")
 			assert.True(t, strings.HasSuffix(prepare, shipped.NexulTriage.Content+"````\n"), "the last skill file closes the instructions whole")
 			for _, skill := range []shipped.Skill{shipped.NexulMemory, shipped.NexulTriage} {
 				assert.Contains(t, prepare, skill.Content, "every shipped skill is given whole")
 				assert.Contains(t, prepare, "is not \""+skill.Version+"\"", "an outdated copy is rewritten, not kept")
 			}
 			assert.NotContains(t, prepare, "unless it already exists")
-			assert.NotContains(t, confirmInstructions(p), "dep_x", "the confirm session never needs the token")
+			assert.NotContains(t, confirm, "dep_x", "the confirm session never needs the token")
 		})
 	}
 }

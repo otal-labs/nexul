@@ -18,7 +18,7 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 
 **Done** keeps your model and folder choices without running anything; **Cancel** drops them. The switches are already saved.
 
-Each turn connects the provider to Nexul with the computer's own MCP token (written into the provider's own config file, never onto a command line), installs the default skill set and the nexul-memory and [nexul-triage](/docs/guide/triage/) skills into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others.
+Each turn connects the provider to Nexul with the computer's own MCP token (written into the provider's own config file, never onto a command line), installs the nexul-memory and [nexul-triage](/docs/guide/triage/) skills into `~/.claude/skills/` and `~/.agents/skills/`, and confirms the provider. One failed provider doesn't block the others. Setup installs only Nexul's own skills and leaves any other skill on the computer as it is; how a project works is written in its [memories](/docs/guide/memories/), which reach every agent through Nexul.
 
 ## Switch a provider off
 
@@ -32,7 +32,7 @@ A play stopped because setup isn't done shows a **Set up** button that opens the
 
 The computer's row reads **Setup confirmed** with the providers it covers, **Needs setup**, **Setup failed** with the providers that failed, or the provider being set up right now. Unfold the row for a line per provider and when it was confirmed. A provider T3 Code no longer lists keeps its last state on the setup screen, marked **No longer in T3 Code**; **Remove** on its row forgets it, its confirmation and its turns.
 
-Press **Re-run setup** in the row's **…** menu, or **Re-run all** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it never overwrites an installed skill and keeps the token the providers hold.
+Press **Re-run setup** in the row's **…** menu, or **Re-run all** on the setup screen, after adding a provider or moving to a new machine. It re-checks and changes nothing that already works: it rewrites a Nexul skill only when it is out of date, and keeps the token the providers hold.
 
 Plays that push a branch or open a pull request use the computer's own GitHub sign-in, `gh auth login` or a git credential helper, because Nexul never gives a run write access to your repositories. The computer's details show whether one is set under **GitHub** (see [the computer's facts](/docs/guide/paired-computers/#the-computers-facts)).
 

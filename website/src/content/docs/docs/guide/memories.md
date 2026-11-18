@@ -37,6 +37,22 @@ Because only names travel, a long memory never stops a turn.
 
 Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory skill (and nexul-triage, which [files bugs in Nexul itself](/docs/guide/triage/)), which tells agents how to look memories up and when to write or update one. Agents may write memories too; every save keeps its author.
 
+## Default memories
+
+Memories are a project's skills, so a new project starts with five, one for each step of the work:
+
+| Memory | What it holds |
+|---|---|
+| Writing a doc | what a doc proposing a feature says before it is cut into tickets |
+| Writing tickets | how to file a ticket someone else could build and prove done |
+| Building a ticket | how to build one: read it whole, reproduce a bug, test first, prove it, open the pull request |
+| Reviewing a change | how to review a pull request against its ticket and the project's rules, with proof for each finding |
+| Finishing a ticket | always included, in Footer: whether to merge, the note to post, and which column the ticket moves to |
+
+From then on they are ordinary memories: edit, delete or replace them like any other, and nothing rewrites them later. A project made before they existed got them only if it had no memories of its own.
+
+What a new project starts with is the instance's to change, under **Memories** in **Settings → Templates** (see below). Each is written as a `SKILL.md`: frontmatter with `name` (the title), `description` (the **When to use** line) and, optionally, `always_included` and `footer`, set to `true` or `false`, then the body in markdown. **New default memory** adds one of the instance's own, which **Delete** removes again; the five that ship reset instead.
+
 ## Main and Footer
 
 The list has two folders. **Main** holds everyday memories. **Footer** holds memories that conclude a play run: the agent reads them once the work is done, for example to decide which column the ticket belongs in now. Move a memory between them with the folder under its title, or **Move to** in its right-click menu. A play's run dialog lists footer memories in their own section.
@@ -53,7 +69,7 @@ The [decisions check](/docs/guide/plays/#the-decisions-check) writes it as ticke
 
 ## Templates
 
-Some text starts each workspace or project off: the interview questions, how a ticket mention chip looks, each built-in play's instructions, and each default ticket type's body template. Each has an instance version every new workspace and project starts from. Two more, the Intro and Footer that open and close every agent prompt, live only at the instance.
+Some text starts each workspace or project off: the interview questions, how a ticket mention chip looks, each built-in play's instructions, each default ticket type's body template, and each default memory. Each has an instance version every new workspace and project starts from. Two more, the Intro and Footer that open and close every agent prompt, live only at the instance.
 
 Edit the instance's in **Settings → Templates**, under Instance settings, with `templates:write`. Each opens in its editor with **Save**, **Reset to default**, and **Clone to…**.
 
@@ -63,6 +79,7 @@ Edit the instance's in **Settings → Templates**, under Instance settings, with
 | Mention chip | **Configuration → Mention chips** | yes, until edited |
 | Play instructions | each built-in play in **Plays** | no, copied when the workspace is made |
 | Ticket body | a ticket type in project settings | no, copied when the project is made |
+| Default memories | the project's **Memories** | no, copied when the project is made |
 
 A mention chip's format is built from the fields `{ticket.Project}`, `{ticket.Ticket}`, `{ticket.Status}`, `{ticket.Type}`, `{ticket.Developer}` and `{ticket.Due}`, added with the **+** buttons under it. Fields with only a space between them show with a `·` between, as in `ATL-12 · Fix login redirect loop · In progress`, and a field with no value is left out with its dot; any other text you type between fields shows as typed.
 

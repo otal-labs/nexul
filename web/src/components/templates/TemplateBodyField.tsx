@@ -42,6 +42,14 @@ export const TemplateBodyField = ({ kind, id, value, onChange, questionCount = 0
         />
       </div>
     )}
+    {kind === "memory" && (
+      <div className="space-y-1.5">
+        <label htmlFor={id} className="text-sm font-medium">
+          Memory (SKILL.md)
+        </label>
+        <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={14} className="font-mono text-xs" />
+      </div>
+    )}
     {kind === "agent_prompt" && (
       <div className="space-y-2">
         <label htmlFor={id} className="text-sm font-medium">

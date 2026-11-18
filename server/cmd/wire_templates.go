@@ -52,11 +52,13 @@ func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Serv
 			{Key: agent.TemplateFooter, Name: "Footer", Body: agent.DefaultFooter},
 		}},
 		templates.Kind{Name: roles.TemplateKind, Defaults: roleDefaults, Addable: true, Check: roles.CheckTemplate, Title: roles.TemplateName},
+		templates.Kind{Name: memories.DefaultsKind, Defaults: memoryDefaults(), Addable: true, Check: memories.CheckSkillFile, Title: memories.SkillFileName},
 	)
 	mem.SetInstanceTemplates(svc)
 	ten.SetInstanceTemplates(svc)
 	pl.SetInstanceTemplates(svc)
 	ws.SetInstanceTemplates(svc)
+	ws.SetMemorySeeds(projectMemories{templates: svc})
 	rl.SetTemplateRoles(svc)
 	return svc
 }
@@ -159,4 +161,29 @@ func (l ticketBodyLayer) Write(ctx context.Context, at templates.Location, key, 
 
 func (l ticketBodyLayer) Reset(ctx context.Context, at templates.Location, key, instanceBody string) error {
 	return l.Write(ctx, at, key, instanceBody)
+}
+
+func memoryDefaults() []templates.Default {
+	shipped := memories.Defaults()
+	out := make([]templates.Default, len(shipped))
+	for i, d := range shipped {
+		out[i] = templates.Default{Key: d.Key, Name: memories.SkillFileName(d.Text), Body: d.Text}
+	}
+	return out
+}
+
+// projectMemories hands a new project the instance's default memories, parsed and in their stored form (ADR 0194).
+type projectMemories struct{ templates *templates.Service }
+
+func (p projectMemories) ProjectMemories(ctx context.Context) ([]workspace.SeedMemory, error) {
+	texts, err := p.templates.Bodies(ctx, memories.DefaultsKind)
+	if err != nil {
+		return nil, err
+	}
+	seeds := memories.Seeds(ctx, texts)
+	out := make([]workspace.SeedMemory, len(seeds))
+	for i, s := range seeds {
+		out[i] = workspace.SeedMemory(s)
+	}
+	return out, nil
 }

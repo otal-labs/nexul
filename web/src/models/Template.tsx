@@ -4,8 +4,8 @@ import type { InterviewQuestion } from "@/models/InterviewTemplate";
 
 // Mirrors internal/templates/model.go (ADR 0103): a template resolves code default, then instance, then workspace or project.
 // These are the text kinds, grouped on the Templates card; template roles have a card of their own.
-export const TEMPLATE_KINDS = ["interview", "mention_chip", "play_instructions", "ticket_body", "agent_prompt"] as const;
-type TextTemplateKind = (typeof TEMPLATE_KINDS)[number];
+export const TEMPLATE_KINDS = ["interview", "mention_chip", "play_instructions", "ticket_body", "agent_prompt", "memory"] as const;
+export type TextTemplateKind = (typeof TEMPLATE_KINDS)[number];
 
 export const ROLE_TEMPLATE = "role";
 export type TemplateKind = TextTemplateKind | typeof ROLE_TEMPLATE;
@@ -47,6 +47,7 @@ export const TEMPLATE_GROUP_LABELS: Record<TextTemplateKind, string> = {
   play_instructions: "Play instructions",
   ticket_body: "Ticket bodies",
   agent_prompt: "Agent prompt",
+  memory: "Memories",
 };
 
 // How each kind reaches workspaces and projects, under its group on the instance's Templates.
@@ -56,6 +57,7 @@ export const TEMPLATE_GROUP_HINTS: Record<TextTemplateKind, string> = {
   play_instructions: "Copied into each workspace when it is created.",
   ticket_body: "Copied into each project when it is created.",
   agent_prompt: "Opens and closes every Agent prompt.",
+  memory: "Copied into each project when it is created.",
 };
 
 // The layer under the instance, or null when the kind lives only at the instance and can never be cloned below it.
@@ -65,6 +67,7 @@ export const BELOW_SCOPE: Record<TemplateKind, "workspace" | "project" | null> =
   play_instructions: "workspace",
   ticket_body: "project",
   agent_prompt: null,
+  memory: null,
   role: null,
 };
 
@@ -75,6 +78,7 @@ export const WRITE_PERMISSION: Record<TemplateKind, string> = {
   play_instructions: "plays:write",
   ticket_body: "projects:write",
   agent_prompt: "templates:write",
+  memory: "templates:write",
   role: "templates:write",
 };
 
@@ -102,3 +106,14 @@ export const cloneTarget = ({ scope, target }: CloneTemplateFormData): TemplateL
   if (scope === "project") return { scope, project_id: target };
   return INSTANCE;
 };
+
+// Default memories are written as a SKILL.md; the instance adds its own (ADR 0194), and a new one starts from this.
+export const MEMORY_TEMPLATE = "memory";
+export const MEMORY_TEMPLATE_SKELETON = `---
+name: New memory
+description: Use when …
+always_included: false
+footer: false
+---
+
+`;

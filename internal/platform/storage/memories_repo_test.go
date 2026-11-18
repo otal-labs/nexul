@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 func newTestMemory(id, projectID string) *memories.Memory {
@@ -69,14 +70,16 @@ func TestMemoriesRepo_Create_WritesVersion1(t *testing.T) {
 func TestMemoriesRepo_ListByProject_IncludesTheSeededDefault(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
+	p := newTestProject("p-1", "Backend", 0)
+	p.SeedMemories = []workspace.SeedMemory{{Title: "Finishing a ticket", WhenToUse: "Use at the end.", Body: "Move it.", AlwaysIncluded: true, Footer: true}}
+	require.NoError(t, s.Projects.Create(context.Background(), p))
 	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "p-1"), ""))
 
 	got, err := s.Memories.ListByProject(context.Background(), "p-1")
 	require.NoError(t, err)
 	// One row seeded at project creation (ProjectsRepo.Create) plus the one this test just created.
 	require.Len(t, got, 2)
-	assert.Equal(t, "Working in this project", got[0].Title)
+	assert.Equal(t, "Finishing a ticket", got[0].Title)
 	assert.True(t, got[0].AlwaysIncluded)
 	assert.Equal(t, "mem-1", got[1].ID)
 }
@@ -91,8 +94,8 @@ func TestMemoriesRepo_ListByWorkspace_OrdersByProjectThenCreatedAt(t *testing.T)
 
 	got, err := s.Memories.ListByWorkspace(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	// The two fresh projects' seeded defaults plus project-general's own seeded row plus the two created here.
-	require.Len(t, got, 5)
+	// project-general's own seeded row plus the two created here; a project made without seeds starts with none.
+	require.Len(t, got, 3)
 }
 
 func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
@@ -182,16 +185,19 @@ func TestMemoriesRepo_Delete_CascadesVersions(t *testing.T) {
 	assert.Empty(t, versions)
 }
 
-func TestProjectsRepo_Create_SeedsAnAlwaysIncludedMemory(t *testing.T) {
+func TestProjectsRepo_Create_SeedsEachGivenMemoryWithItsFirstVersion(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
+	p := newTestProject("p-1", "Backend", 0)
+	p.SeedMemories = []workspace.SeedMemory{{Title: "Finishing a ticket", WhenToUse: "Use at the end.", Body: "Move it.", AlwaysIncluded: true, Footer: true}}
+	require.NoError(t, s.Projects.Create(context.Background(), p))
 
 	got, err := s.Memories.ListByProject(context.Background(), "p-1")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
-	assert.Equal(t, "Working in this project", got[0].Title)
+	assert.Equal(t, "Finishing a ticket", got[0].Title)
 	assert.True(t, got[0].AlwaysIncluded)
+	assert.True(t, got[0].Footer)
 	assert.Equal(t, "workspace-default", got[0].WorkspaceID)
 	assert.Equal(t, 1, got[0].Version)
 	assert.NotEmpty(t, got[0].Body)
@@ -247,7 +253,7 @@ func TestMemoriesRepo_PageByProject_CoversTheProjectOnceOldestFirst(t *testing.T
 	ctx := t.Context()
 	s := newTestStore(t)
 	seedProject(t, s, "p-other", "workspace-default", "OTH")
-	want := []string{"memory-project-general-working"}
+	want := []string{"memory-project-general-finishing"}
 	for i := range 9 {
 		m := newTestMemory(fmt.Sprintf("m-%d", i), "project-general")
 		m.CreatedAt = m.CreatedAt.Add(time.Duration(i/3) * time.Second)

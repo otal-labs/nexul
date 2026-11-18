@@ -9,9 +9,11 @@ import { BELOW_SCOPE, INSTANCE, type Template } from "@/models/Template";
 
 interface InstanceTemplateEditorProps {
   template: Template;
+  // Called once the save lands, so a new template's form can close instead of offering to add it twice.
+  onSaved?: () => void;
 }
 
-export const InstanceTemplateEditor = ({ template }: InstanceTemplateEditorProps) => {
+export const InstanceTemplateEditor = ({ template, onSaved }: InstanceTemplateEditorProps) => {
   const [body, setBody] = useState(template.body);
   const save = useSaveInstanceTemplate();
   const reset = useResetInstanceTemplate();
@@ -44,15 +46,17 @@ export const InstanceTemplateEditor = ({ template }: InstanceTemplateEditorProps
             Clone to…
           </Button>
         )}
-        <Button type="button" variant="ghost" size="sm" disabled={!template.edited} loading={reset.isPending} onClick={() => void onReset()}>
-          Reset to default
-        </Button>
+        {!template.added && (
+          <Button type="button" variant="ghost" size="sm" disabled={!template.edited} loading={reset.isPending} onClick={() => void onReset()}>
+            Reset to default
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
           disabled={body === template.body}
           loading={save.isPending}
-          onClick={() => save.mutate({ kind, key, body })}
+          onClick={() => save.mutate({ kind, key, body }, { onSuccess: () => onSaved?.() })}
         >
           Save
         </Button>

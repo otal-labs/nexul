@@ -65,7 +65,7 @@ A play is a pre-configured Agent turn fired from a ticket or a doc page, such
 as Fix with AI and To tickets via AI, with memories the person selects, doc
 threads and persisted trails that read as a transcript, and a harness and
 model picker in the run dialog. A paired computer is set up per provider by a
-wizard that installs a starting skill set and
+wizard that installs Nexul's skills and
 confirms through the MCP server; an agent run is refused on a computer or
 provider that is not set up, with a link to the wizard. Tickets gain a
 developer, a tester and a reporter, found-in and blocked-by links, body
