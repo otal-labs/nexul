@@ -48,6 +48,26 @@ A repository belongs to one project. Attaching one that's already in another pro
 
 If the project's tests live in a repository of their own, choose **A separate one** under **Tests live in** at the repository step and pick it. It's attached for agents to read and run, and never deployed: Nexul refuses to build a stack from it. It shows in **Settings → Repositories** with a `tests` marker, and the interview starts from it when it asks about testing. It has to be a different repository from the one the project deploys, so the tests search leaves that one out.
 
+## Link GitHub issues to tickets
+
+Each repository row in **Settings → Repositories** has an **Issues** switch. Switched on, every open issue on that repository labelled `nexul` becomes a ticket in the project's first backlog column, and so does any issue that gets the label later. The ticket shows the GitHub login that opened the issue as its reporter. Turning it on takes `projects:write`.
+
+From then on GitHub leads, and the ticket follows its issue:
+
+- **Title and description** follow every edit. Someone editing the ticket at the time sees it reload.
+- **Labels** follow the issue's labels, except `nexul` itself.
+- **Developer** becomes the first assignee who signs in to Nexul with that GitHub account and is in the project. Other assignees are ignored.
+- **Closing** the issue moves the ticket to the first done column, with a note giving GitHub's reason. **Reopening** it never takes a done ticket out of done; the ticket gets a note saying to report a bug instead. A reopened issue whose ticket isn't done yet moves back to the first backlog column.
+- **Comments** appear on the ticket's thread under the commenter's GitHub name and picture, marked **on GitHub**, and follow their edits and deletes. A comment can't mention anyone in Nexul or start the Agent.
+
+Removing the `nexul` label pauses its ticket: nothing on GitHub changes it until the label comes back, when it catches up. Deleting the issue, or moving it to another repository, unlinks the ticket and leaves a note on it; the ticket stays. Switching **Issues** off stops every change for that repository; switching it on again catches up on what changed meanwhile.
+
+Nexul also looks over each switched-on repository every 15 minutes, to catch anything GitHub failed to deliver, and waits whenever GitHub says the App is close to its rate limit. Changes made by the App itself are ignored.
+
+The [GitHub App](/docs/guide/github-app/) needs the Issues permission on the repository's account. Until its owner accepts it, the switched-on repository shows **Issues permission missing** under the list.
+
+Agents set the same thing with `project_update`'s `github_issue_sync` (the repository's `owner` and `name`, `enabled`, and optionally a different `label`, or `mode` `all` to link every issue, labelled or not), and `project_get` shows each repository's sync. Tickets never change the issue on GitHub yet.
+
 ## Rename a workspace
 
 A workspace has a name and a URL slug, as in `/acme/board`. Change both in **Configuration → General**, with `workspaces:write`.

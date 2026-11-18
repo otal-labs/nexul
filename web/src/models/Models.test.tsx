@@ -33,6 +33,7 @@ describe("ticket people", () => {
     expect(reporterLabel({ kind: "user:mcp", login: "onik97" })).toBe("Nexul · from onik97");
     expect(reporterLabel({ kind: "automation", automation_name: "Triage" })).toBe("Nexul · Triage");
     expect(reporterLabel({ kind: "user:mcp" })).toBe("Nexul");
+    expect(reporterLabel({ kind: "github", login: "bob-gh" }, () => "Someone else")).toBe("bob-gh on GitHub");
   });
 
   it("puts the tester on the card only in a testing stage", () => {

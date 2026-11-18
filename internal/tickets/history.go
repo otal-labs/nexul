@@ -247,7 +247,7 @@ func (s *Service) RestoreVersion(ctx context.Context, id string, version int) (*
 	if err != nil {
 		return nil, fmt.Errorf("restore version %d of ticket %s: %w", version, id, err)
 	}
-	return s.updateTicket(ctx, id, current.Title, v.Body, version)
+	return s.updateTicket(ctx, id, current.Title, v.Body, version, false)
 }
 
 // CommitSitting writes the version a live editing sitting ends with, crediting everyone who edited; a body the

@@ -98,6 +98,8 @@ const (
 	AuthorSystem AuthorKind = "system"
 	// AuthorBot is a bot's post through its webhook URL; AuthorID is the bot's id, not a user's.
 	AuthorBot AuthorKind = "bot"
+	// AuthorExternal is someone outside Nexul, such as a GitHub commenter; AuthorID is "<via>:<login>", not a user's.
+	AuthorExternal AuthorKind = "external"
 )
 
 // Message is one chat message: markdown body, own edit/delete, a nullable attachment door.
@@ -121,7 +123,8 @@ type Message struct {
 	Handoffs []Handoff `json:"handoffs,omitempty"`
 	// Via names the harness its author wrote it in, such as T3, when it was relayed from there; empty when written in Nexul.
 	Via string `json:"via,omitempty"`
-	// AuthorName and AuthorAvatarURL are what a bot message showed when posted, kept through the bot's rename or delete.
+	// AuthorName and AuthorAvatarURL are what a bot or external message showed when posted, kept through the bot's
+	// rename or delete.
 	AuthorName      string `json:"author_name,omitempty"`
 	AuthorAvatarURL string `json:"author_avatar_url,omitempty"`
 	// Embeds are a bot message's embeds as the sender posted them, JSON chat stores without reading.

@@ -262,6 +262,7 @@ var routePermissions = map[string][]string{
 	"PATCH /api/projects/{id}":                   {"projects:write"},
 	"POST /api/projects/{id}/prefix":             {"projects:write"},
 	"POST /api/projects/{id}/repos":              {"projects:write"},
+	"PUT /api/projects/{id}/issue-sync":          {"projects:write"},
 	"PUT /api/projects/{id}/setup":               {"projects:write"},
 	"PUT /api/projects/{id}/tests-location":      {"projects:write"},
 	"POST /api/projects/{id}/tickets/{ticketID}": {"tickets:write"},

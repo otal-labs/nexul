@@ -222,10 +222,11 @@ func (c *Client) DeleteWebhook(ctx context.Context, owner, name, hookID string) 
 // issuesPerPage is GitHub's largest page, so an import reads the fewest pages.
 const issuesPerPage = 100
 
-// ListIssues implements gitprovider.GitProvider: one page of issues, pull requests left out, and the next page, 0 after the last.
-func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) ([]*gitprovider.Issue, int, error) {
+// ListIssues implements gitprovider.GitProvider: one page of issues, pull requests left out, the next page, 0 after the
+// last, and the rate limit GitHub reported.
+func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) (gitprovider.IssuePage, error) {
 	if err := githubapp.ValidateRepository(owner, name); err != nil {
-		return nil, 0, err
+		return gitprovider.IssuePage{}, err
 	}
 	listOpts := &githubapi.IssueListByRepoOptions{
 		State:       opts.State,
@@ -235,7 +236,7 @@ func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitpro
 	}
 	issues, resp, err := c.gh.Issues.ListByRepo(ctx, owner, name, listOpts)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list issues %s/%s: %w", owner, name, mapErr(err))
+		return gitprovider.IssuePage{}, fmt.Errorf("list issues %s/%s: %w", owner, name, mapErr(err))
 	}
 	out := make([]*gitprovider.Issue, 0, len(issues))
 	for _, i := range issues {
@@ -245,7 +246,7 @@ func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitpro
 		issue := gitprovider.IssueFromGitHub(i)
 		out = append(out, &issue)
 	}
-	return out, resp.NextPage, nil
+	return gitprovider.IssuePage{Issues: out, NextPage: resp.NextPage, Rate: gitprovider.RateLimit{Remaining: resp.Rate.Remaining, Reset: resp.Rate.Reset.Time}}, nil
 }
 
 // GetIssue implements gitprovider.GitProvider.

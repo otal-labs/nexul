@@ -31,6 +31,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/integrations"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
@@ -110,6 +111,7 @@ type coreServices struct {
 	botwebhookSvc       *botwebhook.Service
 	calendarSvc         *calendar.Service
 	crashIntakeSvc      *crashintake.Service
+	issueSyncSvc        *issuesync.Service
 	voiceSvc            *voice.Service
 	voiceHandler        *voice.Handler
 	voiceWebhookHandler *voice.WebhookHandler
@@ -380,6 +382,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		crashIntakeDesk{tickets: ticketsSvc, statuses: store.Statuses, types: store.TicketTypes},
 		crashIntakeNotes{tickets: ticketsSvc, chat: chatSvc, projects: store.Projects, users: store.Users},
 		gitRouter, logger)
+	issueSyncSvc := newIssueSync(store, ticketsSvc, chatSvc, workspaceSvc, accessSvc, gitRouter, appConfigs, logger)
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,
 		People:        newGitHubPeople(authSvc, appConfigs),
@@ -482,6 +485,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		botwebhookSvc:       botwebhookSvc,
 		calendarSvc:         calendarSvc,
 		crashIntakeSvc:      crashIntakeSvc,
+		issueSyncSvc:        issueSyncSvc,
 		voiceSvc:            voiceSvc,
 		voiceHandler:        voiceHandler,
 		voiceWebhookHandler: voiceWebhookHandler,

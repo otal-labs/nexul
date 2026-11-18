@@ -116,6 +116,20 @@ type IssueComment struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// IssuePage is one page of ListIssues and the host's rate limit left after reading it.
+type IssuePage struct {
+	Issues []*Issue
+	// NextPage is 0 after the last page.
+	NextPage int
+	Rate     RateLimit
+}
+
+// RateLimit is the host's request budget; a zero Reset means the host did not say.
+type RateLimit struct {
+	Remaining int
+	Reset     time.Time
+}
+
 // IssueOpts filters ListIssues; Page starts at 1, and 0 reads the first page.
 type IssueOpts struct {
 	// State is open, closed or all; empty reads open issues.

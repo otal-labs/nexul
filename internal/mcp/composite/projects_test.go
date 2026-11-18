@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -269,4 +270,44 @@ func TestProjectTools_DocFolders(t *testing.T) {
 	assert.Contains(t, err.Error(), "project_get lists the project's doc folders", "the error says where valid folder ids come from")
 	web, _ := f.folders.ListFolders(t.Context(), "p-2")
 	assert.Equal(t, "Main", web[0].Name)
+}
+
+func TestProjectUpdate_GitHubIssueSync_TurnsOnShowsAndKeepsWhatWasNotSent(t *testing.T) {
+	f := newFixture(t)
+	f.w.repos["p-1"] = []workspace.RepoRef{{Owner: "acme", Name: "app"}}
+	got, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","github_issue_sync":{"owner":"acme","name":"app","enabled":true}}`)
+	require.NoError(t, err)
+	res := got.(projectUpdateResult)
+	assert.Equal(t, []string{"github_issue_sync"}, res.Applied)
+	want := &issuesync.Sync{ProjectID: "p-1", Owner: "acme", Repo: "app", Label: "nexul", Mode: issuesync.ModeLabel, Enabled: true}
+	assert.Equal(t, []*issuesync.Sync{want}, res.Project.IssueSync)
+
+	_, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","github_issue_sync":{"owner":"acme","name":"app","mode":"all"}}`)
+	require.NoError(t, err)
+	view, err := call(t, asUser(t.Context()), f.projectTools(), "project_get", `{"id":"p-1"}`)
+	require.NoError(t, err)
+	want.Mode = issuesync.ModeAll
+	assert.Equal(t, []*issuesync.Sync{want}, view.(projectDetail).IssueSync, "an omitted enabled keeps it on")
+}
+
+func TestProjectUpdate_GitHubIssueSync_Refusals(t *testing.T) {
+	tests := []struct {
+		name  string
+		owner bool
+		args  string
+		want  error
+	}{
+		{"a repository the project doesn't have", true, `{"owner":"globex","name":"site","enabled":true}`, apperrs.ErrInvalid},
+		{"an unknown mode", true, `{"owner":"acme","name":"app","mode":"some"}`, apperrs.ErrInvalid},
+		{"not an owner", false, `{"owner":"acme","name":"app","enabled":true}`, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.w.repos["p-1"] = []workspace.RepoRef{{Owner: "acme", Name: "app"}}
+			f.w.owner = tt.owner
+			_, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","github_issue_sync":`+tt.args+`}`)
+			assert.ErrorIs(t, err, tt.want)
+		})
+	}
 }

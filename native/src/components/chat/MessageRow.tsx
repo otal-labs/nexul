@@ -58,7 +58,7 @@ const OwnMessage = ({ message, continuation }: { message: Message; continuation:
 
 // Everyone else's text runs plain under a 32pt avatar, so a long thread reads as a transcript, not a stack of boxes.
 const OtherMessage = ({ message, continuation }: { message: Message; continuation: boolean }) => {
-  const isBot = message.author_kind === "bot";
+  const isBot = message.author_kind === "bot" || message.author_kind === "external";
   const embeds = isBot ? (message.embeds ?? []).map((embed) => dropEchoedAuthor(embed, message.author_name || "Bot")) : [];
   return (
     <View className={cn("flex-row gap-3 px-4", continuation ? "pt-1" : "pt-4")}>

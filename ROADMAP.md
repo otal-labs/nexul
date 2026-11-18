@@ -419,6 +419,15 @@ instance Owner's passkey outlasts, and branding: the instance's own name,
 logo, accent and an imported VS Code theme. When a key expires the features
 stop and their data stays. ADRs 0184 to 0187.
 
+### GitHub issues as tickets
+
+An Issues switch on each of a project's repositories turns its GitHub issues
+labelled `nexul` into tickets that follow them: title, description, labels,
+the assignee who is a member, closing, and comments, with a removed label
+pausing the ticket. Done tickets stay done when an issue reopens, and a sweep
+every 15 minutes catches what GitHub failed to deliver. Writing back to GitHub
+comes next. ADRs 0199 and 0200.
+
 ---
 
 ## Now — improving what's built

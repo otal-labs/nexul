@@ -160,6 +160,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 		return codereview.HandlePRReviewSubmitted(ctx, svc.reviewSvc, ev)
 	})
 	mustSubscribe(ctx, bus, "tickets.complete", gitprovider.TopicPRMerged, "", svc.ticketsSvc.HandlePRMerged)
+	mustSubscribe(ctx, bus, "issuesync.issue", gitprovider.TopicIssue, "", svc.issueSyncSvc.HandleIssue)
+	mustSubscribe(ctx, bus, "issuesync.comment", gitprovider.TopicIssueComment, "", svc.issueSyncSvc.HandleIssueComment)
 	mustSubscribe(ctx, bus, "codereview.mirror", gitprovider.TopicPRMerged, "", func(ctx context.Context, ev eventbus.Event) error {
 		return codereview.HandlePRMerged(ctx, svc.reviewSvc, ev)
 	})

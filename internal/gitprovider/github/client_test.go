@@ -598,7 +598,7 @@ func TestClient_RepositorySegmentsAreCheckedBeforeEveryNamedRequest(t *testing.T
 		{"delete webhook", func() error { return client.DeleteWebhook(t.Context(), owner, name, "1") }},
 		{"update webhook", func() error { return client.UpdateWebhook(t.Context(), owner, name, "1") }},
 		{"issues", func() error {
-			_, _, err := client.ListIssues(t.Context(), owner, name, gitprovider.IssueOpts{})
+			_, err := client.ListIssues(t.Context(), owner, name, gitprovider.IssueOpts{})
 			return err
 		}},
 		{"issue", func() error { _, err := client.GetIssue(t.Context(), owner, name, 1); return err }},

@@ -18,6 +18,8 @@ export const ReporterKind = {
   User: "user",
   UserMCP: "user:mcp",
   Automation: "automation",
+  // The GitHub login that opened the issue the ticket follows.
+  GitHub: "github",
 } as const;
 
 export type ReporterKind = (typeof ReporterKind)[keyof typeof ReporterKind];
@@ -71,6 +73,7 @@ const asLogin: NameOf = (login) => login;
 
 export const reporterName = (reporter: TicketReporter, nameOf: NameOf = asLogin): string => {
   if (reporter.kind === ReporterKind.User) return reporter.login ? nameOf(reporter.login) : "";
+  if (reporter.kind === ReporterKind.GitHub) return `${reporter.login ?? "someone"} on GitHub`;
   return "Nexul";
 };
 

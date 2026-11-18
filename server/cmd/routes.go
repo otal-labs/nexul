@@ -21,6 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/integrations"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/mcp"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -106,6 +107,9 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/people", requireUserID(tenancyHandler.PeopleRoutes()))
 	// An exact pattern, more specific than the "/api/projects/" subtree the workspace domain claimed above.
 	apiMux.Handle("GET /api/projects/{projectID}/people", requireUserID(tenancyHandler.ProjectPeopleRoutes()))
+	issueSyncRoutes := requireUserID(issuesync.NewHandler(svc.issueSyncSvc).Routes())
+	apiMux.Handle("GET /api/projects/{id}/issue-sync", issueSyncRoutes)
+	apiMux.Handle("PUT /api/projects/{id}/issue-sync", issueSyncRoutes)
 	mountGateway(apiMux, "/api/invitations", requireUserID(svc.invitationHandler.Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/roles", requireUserID(roles.NewHandler(svc.rolesSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/access", access.NewHandler(svc.accessSvc).GridRoutes())
@@ -187,6 +191,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Memories:      svc.memoriesSvc,
 		Templates:     svc.templatesSvc,
 		Tickets:       svc.ticketsSvc,
+		IssueSync:     svc.issueSyncSvc,
 		Topology:      svc.topoSvc,
 		Deploy:        svc.deploySvc,
 		Reviews:       svc.reviewSvc,

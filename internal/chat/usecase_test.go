@@ -1825,3 +1825,43 @@ func TestManageChannel_OnlyChannelsAndVoiceChannels(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 }
+
+func TestPostExternalMessage_PostsOnceWithoutMentions_AndEditsKeepThemOff(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	p := ExternalPost{ID: "gh-55", ConversationID: c.ID, Via: "github", Login: "bob-gh", AvatarURL: "https://example.com/bob.png", Body: "ping @Agent"}
+	_, err = s.PostExternalMessage(t.Context(), p)
+	require.NoError(t, err)
+	_, err = s.PostExternalMessage(t.Context(), p)
+	require.NoError(t, err, "posting the same comment again is a no-op")
+
+	m, err := repo.GetMessage(t.Context(), "gh-55")
+	require.NoError(t, err)
+	assert.Equal(t, AuthorExternal, m.AuthorKind)
+	assert.Equal(t, "github:bob-gh", m.AuthorID)
+	assert.Equal(t, "bob-gh", m.AuthorName)
+	assert.Equal(t, "github", m.Via)
+	assert.Empty(t, m.Mentions, "an outsider's @Agent starts no turn")
+
+	edited, err := s.EditExternalMessage(t.Context(), "gh-55", "github:bob-gh", "now @alice too")
+	require.NoError(t, err)
+	assert.Equal(t, "now @alice too", edited.Body)
+	assert.Empty(t, edited.Mentions)
+	_, err = s.EditExternalMessage(t.Context(), "gh-55", "github:carol-gh", "not mine")
+	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+}
+
+func TestPostExternalMessage_Refusals(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	_, err = s.PostExternalMessage(t.Context(), ExternalPost{ConversationID: c.ID, Via: "github", Login: "bob-gh", Body: "hi"})
+	assert.ErrorIs(t, err, apperrs.ErrInvalid, "no id")
+	own, err := s.PostMessage(t.Context(), c.ID, "u-1", "mine")
+	require.NoError(t, err)
+	_, err = s.EditExternalMessage(t.Context(), own.ID, "u-1", "edited")
+	assert.ErrorIs(t, err, apperrs.ErrInvalid, "a member's message is not an external one")
+}

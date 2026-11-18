@@ -36,6 +36,7 @@ internal/
   harness/               # harness.Client interface, one implementation per agent harness kind
   install/               # the nexul command: services on systemd, launchd, Windows; a supervisor with no systemd
   integrations/          # external service integrations, scoped tokens
+  issuesync/             # a project's GitHub issues followed by its tickets, through a label
   livekit/               # minimal stdlib LiveKit client
   mcp/                   # MCP server adapter (tools/resources/prompts)
   memories/              # per-project agent memory domain, own entity from docs

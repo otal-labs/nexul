@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -22,9 +23,16 @@ type DocFolders interface {
 	DeleteFolder(ctx context.Context, id string) error
 }
 
-// ProjectTools are the project tools that also read and set label colors and doc folders, which tickets and docs own.
-func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders) []mcptool.Tool {
-	return []mcptool.Tool{projectGetTool(w, t, d), projectUpdateTool(w, t, d)}
+// IssueSyncs is the slice of the issue sync project_get and project_update read and change it through.
+type IssueSyncs interface {
+	Syncs(ctx context.Context, projectID string) ([]*issuesync.Sync, error)
+	Set(ctx context.Context, projectID string, in issuesync.Input) (*issuesync.Sync, error)
+}
+
+// ProjectTools are the project tools that also read and set label colors, doc folders and GitHub issue syncs, which
+// tickets, docs and issuesync own.
+func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders, s IssueSyncs) []mcptool.Tool {
+	return []mcptool.Tool{projectGetTool(w, t, d, s), projectUpdateTool(w, t, d, s)}
 }
 
 // projectDetail is everything an agent needs before filing or moving a ticket in a project.
@@ -37,6 +45,7 @@ type projectDetail struct {
 	Labels       []labelResult          `json:"labels"`
 	DocFolders   []docFolderResult      `json:"doc_folders"`
 	DeleteImpact workspace.DeleteImpact `json:"delete_impact"`
+	IssueSync    []*issuesync.Sync      `json:"github_issue_sync"`
 }
 
 type docFolderResult struct {
@@ -77,12 +86,12 @@ type projectGetIn struct {
 	ID string `json:"id" jsonschema:"The project's id, from project_list."`
 }
 
-func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
+func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders, s IssueSyncs) mcptool.Tool {
 	return mcptool.New("project_get", "Get project",
 		"Returns one project with what filing and moving its tickets needs: its status columns in board "+
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
 			"(each with the body_template a new ticket fills), labels with colors, repositories "+
-			"(each with its role, app or tests), where its tests live, and its doc folders (the default Main first, "+
+			"(each with its role, app or tests) and their GitHub issue syncs, where its tests live, and its doc folders (the default Main first, "+
 			"where a new doc goes unless doc_create names another). It also returns delete_impact, the tickets, repositories, "+
 			"and services that block deleting it, and its setup: whether the project "+
 			"wizard was finished and which steps were done or skipped. "+
@@ -92,11 +101,11 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in projectGetIn) (any, error) {
-			return projectView(ctx, w, t, d, in.ID)
+			return projectView(ctx, w, t, d, s, in.ID)
 		})
 }
 
-func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, folders DocFolders, id string) (projectDetail, error) {
+func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, folders DocFolders, syncs IssueSyncs, id string) (projectDetail, error) {
 	p, err := getProject(ctx, w, id)
 	if err != nil {
 		return projectDetail{}, err
@@ -112,6 +121,9 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 		return d, err
 	}
 	if d.DocFolders, err = projectDocFolders(ctx, folders, id); err != nil {
+		return d, err
+	}
+	if d.IssueSync, err = syncs.Syncs(ctx, id); err != nil {
 		return d, err
 	}
 	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
@@ -197,6 +209,7 @@ type projectUpdateIn struct {
 	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (in the repository that deploys), separate (in a tests repository), or an empty string to withdraw the answer."`
 	AddRepos      []repoAddIn        `json:"add_repos,omitempty" jsonschema:"Repositories to attach; a repository belongs to one project only."`
 	RemoveRepos   []repoRefIn        `json:"remove_repos,omitempty" jsonschema:"Repositories of this project to detach."`
+	IssueSync     *issueSyncIn       `json:"github_issue_sync,omitempty" jsonschema:"One repository's GitHub issue sync: its matching issues become tickets that follow them."`
 	Statuses      *statusChanges     `json:"statuses,omitempty" jsonschema:"Status columns to create, change, or delete."`
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
@@ -233,6 +246,13 @@ type repoAddIn struct {
 	Name        string `json:"name" jsonschema:"The repository name."`
 	ConnectorID string `json:"connector_id,omitempty" jsonschema:"The git connector that hosts it. Defaults to github."`
 	Role        string `json:"role,omitempty" jsonschema:"app (the default, the repository stacks build from) or tests (a tests repository, never deployed; attaching one records the tests location as separate)."`
+}
+
+type issueSyncIn struct {
+	repoRefIn
+	Enabled *bool   `json:"enabled,omitempty" jsonschema:"true turns it on, false off."`
+	Label   *string `json:"label,omitempty" jsonschema:"The label that links an issue; nexul by default."`
+	Mode    *string `json:"mode,omitempty" jsonschema:"label, the default, or all issues."`
 }
 
 type repoRefIn struct {
@@ -308,10 +328,10 @@ type projectUpdateResult struct {
 	Project projectDetail `json:"project"`
 }
 
-func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
+func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders, s IssueSyncs) mcptool.Tool {
 	return mcptool.New("project_update", "Update project",
 		"Changes a project's name, icon, prefix (only when it has none), place in the workspace, and tests "+
-			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
+			"location; attaches and detaches repositories and sets their GitHub issue sync; creates, changes, reorders (position), and deletes its "+
 			"status columns, categories, and ticket types; makes, colors, and deletes labels; creates, renames, and deletes doc "+
 			"folders (doc_update moves a doc between them); and finishes or reopens its setup "+
 			"and marks project wizard steps done or skipped. The changes apply in the order the fields are listed here, creates "+
@@ -326,12 +346,12 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) m
 			if _, err := getProject(ctx, w, in.ID); err != nil {
 				return nil, err
 			}
-			u := projectUpdate{w: w, t: t, folders: d, id: in.ID}
+			u := projectUpdate{w: w, t: t, folders: d, syncs: s, id: in.ID}
 			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
 			}
-			view, err := projectView(ctx, w, t, d, in.ID)
+			view, err := projectView(ctx, w, t, d, s, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -344,6 +364,7 @@ type projectUpdate struct {
 	w       *workspace.Service
 	t       *tickets.Service
 	folders DocFolders
+	syncs   IssueSyncs
 	id      string
 }
 
@@ -366,6 +387,12 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 		}})
 	}
 	steps = append(steps, u.repoSteps(in)...)
+	if in.IssueSync != nil {
+		steps = append(steps, step{"github_issue_sync", "", func(ctx context.Context) error {
+			sync := in.IssueSync
+			return discard(u.syncs.Set(ctx, u.id, issuesync.Input{Owner: sync.Owner, Repo: sync.Name, Label: sync.Label, Mode: sync.Mode, Enabled: sync.Enabled}))
+		}})
+	}
 	steps = append(steps, u.statusSteps(in.Statuses)...)
 	steps = append(steps, u.categorySteps(in.Categories)...)
 	steps = append(steps, u.ticketTypeSteps(in.TicketTypes)...)

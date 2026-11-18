@@ -687,6 +687,11 @@ with only the workspace's Owners, which takes membership alone. Never renamed
 or deleted.
 _Avoid_: Private message, PM
 
+**External author**:
+Someone outside Nexul whose words a conversation mirrors, such as a GitHub commenter on a linked issue: the message
+keeps the login and avatar it came with and where it came from, is never a member, and mentions nobody.
+_Avoid_: Guest, bot (a bot is driven through its own webhook URL)
+
 **Bot**:
 A named poster inside one conversation that outside systems drive through
 a webhook URL: the URL is the credential and the binding, the payload is
@@ -814,6 +819,19 @@ checked out, reported with the terminal result); a deploy that failed before
 the checkout retries its ref, and one that recorded neither cannot be retried.
 The failed deploy stays in the history and `deploy.retried` names the new one.
 _Avoid_: Redeploy (that pulls an image again), re-run
+
+**Issue sync**:
+A project's link from one of its repositories' GitHub issues to its tickets, switched on per repository by an owner.
+In label mode, the default, an issue carrying the sync's label (`nexul`) becomes one **linked issue**; in all mode every
+issue does. GitHub wins for what it sends: title, body, labels but the trigger label, the first assignee who is a
+member as developer, closing (to done, never out of it), and comments. Removing the label **pauses** the link and keeps
+the ticket; adding it back resumes it.
+_Avoid_: Issue import (the one-shot copy), mirror, two-way sync (this is GitHub to Nexul only)
+
+**Linked issue**:
+The one GitHub issue a ticket follows through an issue sync, and the one ticket an issue fills. A deleted or
+transferred issue drops its link and leaves the ticket.
+_Avoid_: Source issue, external ticket
 
 **Tests repository**:
 A second repository a project may attach to hold its tests. Never deployed:
@@ -1133,7 +1151,7 @@ _Avoid_: Done (a status column's name), closed, completed
 The three people on a ticket. The developer builds it and the tester checks
 it, one person each and both optional. The reporter filed it, is set once,
 and shows as Nexul on behalf of a person when an agent or automation filed
-it.
+it, or as the GitHub login that opened its linked issue.
 _Avoid_: Assignee, owner, creator
 
 **Due date** (ticket):
@@ -1519,7 +1537,10 @@ one hostname through a gateway to a container.
 folders, with `@` cross-references to tickets and other docs.
 
 **Git provider** — the abstraction over GitHub and future providers: branches,
-PRs, webhooks.
+PRs, issues, webhooks.
+
+**Issue sync** (`issuesync`) — each repository's issue sync and its linked issues: turns `git.issue` and
+`git.issue_comment` into ticket and ticket-thread changes, and sweeps for what a missed delivery left behind.
 
 **Integrations** — the platform for external services: scoped tokens, signed
 webhooks, the store.

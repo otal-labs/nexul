@@ -48,6 +48,7 @@ type RegistryOptions struct {
 	Memories      *memories.Service
 	Templates     *templates.Service
 	Tickets       *tickets.Service
+	IssueSync     composite.IssueSyncs
 	Topology      *topology.Service
 	Deploy        *deploy.Service
 	Reviews       *codereview.Service
@@ -119,7 +120,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		templates.MCPTools(opts.Templates),
 		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
 		tickets.MCPTools(opts.Tickets),
-		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs),
+		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs, opts.IssueSync),
 		workspace.MCPTools(opts.Workspace),
 		workspace.NotificationMCPTools(opts.Notifications),
 		topology.MCPTools(opts.Topology),

@@ -112,7 +112,7 @@ const MessageRowImpl = ({ message, author, isOwn, continuation = false, question
   if (message.deleted_at) return null;
 
   const isSystem = message.author_kind === "system";
-  const isBot = message.author_kind === "bot";
+  const isBot = message.author_kind === "bot" || message.author_kind === "external";
   const isAgent = message.author_kind === "agent";
   const canEditOrDelete = isOwn && !isAgent;
   const align: MessageAlign = canEditOrDelete ? "end" : "start";

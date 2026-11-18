@@ -310,10 +310,10 @@ func (g gitProviderRouter) UpdateWebhook(ctx context.Context, owner, name, hookI
 	return p.UpdateWebhook(ctx, owner, name, hookID)
 }
 
-func (g gitProviderRouter) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) ([]*gitprovider.Issue, int, error) {
+func (g gitProviderRouter) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) (gitprovider.IssuePage, error) {
 	p, err := g.resolve(ctx, owner, name)
 	if err != nil {
-		return nil, 0, err
+		return gitprovider.IssuePage{}, err
 	}
 	return p.ListIssues(ctx, owner, name, opts)
 }

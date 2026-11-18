@@ -10,13 +10,16 @@ import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { formatMessageTime } from "@/lib/time";
 import type { Message } from "@/models/Chat";
 
-// The 32pt face beside a run of someone's messages: a person's avatar, a bot's picture, the Nexul glyph for the Agent.
+// The 32pt face beside a run of someone's messages: a person's avatar, a bot's or an outsider's picture, the Nexul glyph
+// for the Agent.
 export const MessageAvatar = ({ message }: { message: Message }) => {
   const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
   return (
     <>
       {message.author_kind === "user" && <PersonAvatar person={resolvePerson(message.author_id)} size={32} />}
-      {message.author_kind === "bot" && <BotAvatar src={message.author_avatar_url} name={message.author_name || "Bot"} size={32} />}
+      {(message.author_kind === "bot" || message.author_kind === "external") && (
+        <BotAvatar src={message.author_avatar_url} name={message.author_name || "Bot"} size={32} />
+      )}
       {message.author_kind === "agent" && <BotAvatar src={undefined} name="Agent" size={32} />}
     </>
   );
@@ -26,7 +29,10 @@ export const MessageAvatar = ({ message }: { message: Message }) => {
 export const MessageAuthorLine = ({ message }: { message: Message }) => {
   const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
   const isBot = message.author_kind === "bot";
-  const name = (isBot && (message.author_name || "Bot")) || (message.author_kind === "agent" && "Agent") || personLabel(resolvePerson(message.author_id));
+  const external = message.author_kind === "external";
+  const name =
+    ((isBot || external) && (message.author_name || "Bot")) || (message.author_kind === "agent" && "Agent") || personLabel(resolvePerson(message.author_id));
+  const via = external && message.via === "github" ? "on GitHub" : `via ${message.via}`;
   return (
     <View className="flex-row items-center gap-2">
       <Text numberOfLines={1} className="shrink text-row font-semibold">
@@ -38,7 +44,7 @@ export const MessageAuthorLine = ({ message }: { message: Message }) => {
         </View>
       )}
       <Text className="font-mono text-micro text-muted-foreground">{formatMessageTime(message.created_at)}</Text>
-      {message.via && <Text numberOfLines={1} className="shrink text-xs text-muted-foreground">via {message.via}</Text>}
+      {message.via && <Text numberOfLines={1} className="shrink text-xs text-muted-foreground">{via}</Text>}
       {message.edited_at && <Text className="text-xs text-muted-foreground">(edited)</Text>}
     </View>
   );

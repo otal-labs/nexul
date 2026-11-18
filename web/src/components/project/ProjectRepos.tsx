@@ -1,6 +1,7 @@
 import { PlusIcon } from "lucide-react";
 import { EnterList } from "@/components/EnterList";
 import { AddRepoForm } from "@/components/project/AddRepoForm";
+import { IssuesPermissionLine } from "@/components/project/IssuesPermissionLine";
 import { RepoRow } from "@/components/project/RepoRow";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -13,6 +14,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useFetchIssueSyncs } from "@/hooks/IssueSyncHooks";
 import { AddProjectRepoFormSchema, type AddProjectRepoFormData } from "@/models/Project";
 
 interface ProjectReposProps {
@@ -25,6 +27,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
   const canReadStacks = useAreaAccess(projectId)?.("stacks") ?? false;
   const { data: services } = useFetchServices(projectId, canReadStacks);
+  const { data: syncs } = useFetchIssueSyncs(projectId);
   const buildsFrom = (repo: { owner: string; name: string }) =>
     services?.filter((s) => s.build_source?.repo_owner === repo.owner && s.build_source?.repo_name === repo.name).length;
 
@@ -42,7 +45,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
     <SettingsCard
       id="repositories"
       title="Attached"
-      description="Where this project's code lives. A tests repository is never deployed."
+      description="Where this project's code lives. A tests repository is never deployed. Issues turns a repository's labelled GitHub issues into tickets."
       footer={
         <ActionButton permission="projects:write" projectId={projectId} verb="add repositories" variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
           Add repo
@@ -59,6 +62,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
               <RepoRow key={`${repo.owner}/${repo.name}`} projectId={projectId} repo={repo} services={buildsFrom(repo)} onLeave={prepareGlide} />
             ))}
           </EnterList>
+          {syncs?.filter((s) => s.enabled).map((s) => <IssuesPermissionLine key={`${s.owner}/${s.repo}`} sync={s} />)}
         </div>
       )}
     </SettingsCard>

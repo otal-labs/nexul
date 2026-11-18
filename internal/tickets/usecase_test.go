@@ -1319,3 +1319,28 @@ func TestListByPR_Errors(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 }
+
+// countingRooms counts the editing-room resets a write runs through.
+type countingRooms struct{ resets int }
+
+func (r *countingRooms) Reset(ctx context.Context, _ string, write func(context.Context) error) error {
+	r.resets++
+	return write(ctx)
+}
+
+func TestReplaceText_ResetsTheOpenEditorEvenForATitleAlone(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	rooms := &countingRooms{}
+	s.SetLiveSessions(rooms)
+	created, err := s.Create(t.Context(), "p-1", "ticket", "body", "", "", CreateOptions{GitHubReporter: "bob-gh"})
+	require.NoError(t, err)
+	assert.Equal(t, Reporter{Kind: ReporterKindGitHub, Login: "bob-gh"}, created.Reporter)
+
+	_, err = s.UpdateTicket(t.Context(), created.ID, "Renamed here", "body")
+	require.NoError(t, err)
+	assert.Zero(t, rooms.resets, "a rename in Nexul leaves the room be")
+	got, err := s.ReplaceText(t.Context(), created.ID, "Renamed on GitHub", "body")
+	require.NoError(t, err)
+	assert.Equal(t, "Renamed on GitHub", got.Title)
+	assert.Equal(t, 1, rooms.resets, "an outside rename reloads every open editor")
+}

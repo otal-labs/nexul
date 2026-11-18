@@ -219,3 +219,13 @@ describe("MessageRow for a bot", () => {
     }
   });
 });
+
+describe("an outside author's message", () => {
+  it("shows the GitHub login and avatar it came with, never as a bot or a member", () => {
+    renderBot(botMessage({ author_id: "github:bob-gh", author_kind: "external", author_name: "bob-gh", via: "github", body: "Same on iPad" }));
+    expect(screen.getByText("bob-gh")).toBeInTheDocument();
+    expect(screen.getByText("on GitHub")).toBeInTheDocument();
+    expect(screen.getByText("Same on iPad")).toBeInTheDocument();
+    expect(screen.queryByText("Bot")).not.toBeInTheDocument();
+  });
+});

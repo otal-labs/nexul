@@ -14,13 +14,21 @@ import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
+// A bot names the bot behind an override; an outside author says where they wrote it.
+const viaLabel = (message: ChatMessage): string => {
+  if (message.author_kind !== "external") return `via ${message.via}`;
+  return message.via === "github" ? "on GitHub" : `on ${message.via}`;
+};
+
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
   <MessageHeader className="gap-2 px-0">
     <span className="min-w-0 truncate text-xs font-semibold text-foreground">{message.author_name || "Bot"}</span>
-    <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
-      Bot
-    </Badge>
-    {message.via && <span className="shrink-0">via {message.via}</span>}
+    {message.author_kind === "bot" && (
+      <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
+        Bot
+      </Badge>
+    )}
+    {message.via && <span className="shrink-0">{viaLabel(message)}</span>}
     <span className="shrink-0 font-mono" title={formatFullTime(message.created_at)}>
       {formatClockTime(message.created_at)}
     </span>
@@ -47,7 +55,8 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
   );
 };
 
-// A bot's post under the name and avatar it posted with; the BOT tag keeps a post calling itself "GitHub" from passing for a person.
+// A bot's post, or an outsider's such as a GitHub comment, under the name and avatar it came with; the BOT tag keeps a
+// post calling itself "GitHub" from passing for a person.
 export const BotMessageRow = ({ message, continuation }: { message: ChatMessage; continuation: boolean }) => (
   <BotMessageIdContext value={message.id}>
     <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent">

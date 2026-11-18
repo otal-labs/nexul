@@ -40,12 +40,17 @@ func TestListIssues(t *testing.T) {
 			assert.Equal(t, "/repos/acme/app/issues", r.URL.Path)
 			query = r.URL.RawQuery
 			w.Header().Set("Link", `<http://x/repos/acme/app/issues?page=3>; rel="next"`)
+			w.Header().Set("X-RateLimit-Remaining", "4321")
+			w.Header().Set("X-RateLimit-Reset", "1800000000")
 			_, _ = fmt.Fprint(w, "["+issueJSON(1, false)+","+issueJSON(2, true)+","+issueJSON(3, false)+"]") // test server: write errors are irrelevant
 		}))
 		since := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
-		got, next, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{State: "all", Labels: []string{"bug", "ui"}, Since: since, Page: 2})
+		p, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{State: "all", Labels: []string{"bug", "ui"}, Since: since, Page: 2})
 		require.NoError(t, err)
-		assert.Equal(t, 3, next)
+		got := p.Issues
+		assert.Equal(t, 3, p.NextPage)
+		assert.Equal(t, 4321, p.Rate.Remaining)
+		assert.True(t, time.Unix(1800000000, 0).Equal(p.Rate.Reset), "the sweep pauses until the reset")
 		require.Len(t, got, 2)
 		assert.Equal(t, []int{1, 3}, []int{got[0].Number, got[1].Number})
 		assert.Equal(t, gitprovider.Issue{
@@ -58,14 +63,14 @@ func TestListIssues(t *testing.T) {
 		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = fmt.Fprint(w, "[]") // test server: write errors are irrelevant
 		}))
-		got, next, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
+		p, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
 		require.NoError(t, err)
-		assert.Empty(t, got)
-		assert.Zero(t, next)
+		assert.Empty(t, p.Issues)
+		assert.Zero(t, p.NextPage)
 	})
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		c := newTestClient(t, errorHandler(http.StatusNotFound))
-		_, _, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
+		_, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
 		assertErrorIs(t, err, apperrs.ErrNotFound)
 	})
 }
@@ -249,7 +254,7 @@ func TestMapErr_RateLimitsAreRetryableWithTheirWait(t *testing.T) {
 				w.WriteHeader(tt.status)
 				_, _ = fmt.Fprint(w, cmp.Or(tt.body, `{"message":"api error"}`)) // test server: write errors are irrelevant
 			}))
-			_, _, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
+			_, err := c.ListIssues(t.Context(), "acme", "app", gitprovider.IssueOpts{})
 			require.Error(t, err)
 			if !tt.limited {
 				assert.ErrorIs(t, err, tt.sentinel)

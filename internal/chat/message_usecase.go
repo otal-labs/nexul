@@ -173,6 +173,48 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	return m, nil
 }
 
+// ExternalPost is a message by someone outside Nexul, mirrored onto a conversation, such as a GitHub comment.
+type ExternalPost struct {
+	// ID is derived by the poster from the outside message, so posting it again changes nothing.
+	ID, ConversationID string
+	// Via names where it was written, such as github; Login is the author there.
+	Via, Login, AvatarURL, Body string
+}
+
+// ExternalAuthorID is the author id an external message carries: where it was written and the login there.
+func ExternalAuthorID(via, login string) string { return via + ":" + login }
+
+// PostExternalMessage posts p as the server, unchecked; its mentions are never parsed, so an outsider's @Agent starts
+// nothing, and posting the same id again is a no-op.
+func (s *Service) PostExternalMessage(ctx context.Context, p ExternalPost) (*Message, error) {
+	via, login := strings.TrimSpace(p.Via), strings.TrimSpace(p.Login)
+	if via == "" || login == "" || strings.TrimSpace(p.ID) == "" {
+		return nil, fmt.Errorf("%w: an external message needs its id, where it came from and its author", apperrs.ErrInvalid)
+	}
+	m, err := s.newMessage(p.ConversationID, ExternalAuthorID(via, login), p.Body, AuthorExternal)
+	if err != nil {
+		return nil, err
+	}
+	m.ID, m.Mentions, m.Via, m.AuthorName, m.AuthorAvatarURL = strings.TrimSpace(p.ID), []Mention{}, via, login, strings.TrimSpace(p.AvatarURL)
+	_, err = s.create(ctx, m)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return m, nil
+	}
+	return m, err
+}
+
+// EditExternalMessage changes an external message's body as its author did outside; its mentions stay unparsed.
+func (s *Service) EditExternalMessage(ctx context.Context, messageID, authorID, body string) (*Message, error) {
+	current, err := s.repo.GetMessage(ctx, strings.TrimSpace(messageID))
+	if err != nil {
+		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
+	}
+	if current.AuthorKind != AuthorExternal {
+		return nil, fmt.Errorf("%w: message %s is not an external one", apperrs.ErrInvalid, messageID)
+	}
+	return s.editMessage(ctx, messageID, authorID, body, func(string) []Mention { return []Mention{} })
+}
+
 // ErrBotStopped refuses a bot's post because its creator may not post where it posts, whether they left, were denied,
 // or hold no role (ADR 0150); never not found, so the URL still reads as the bot's.
 var ErrBotStopped = fmt.Errorf("%w: the bot's creator may not post here", apperrs.ErrForbidden)
@@ -388,6 +430,10 @@ func (s *Service) MembersOnly(ctx context.Context, conversationID string) (bool,
 
 // EditMessage edits a message's body in place; only its author may edit it, and never a deleted one.
 func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body string) (*Message, error) {
+	return s.editMessage(ctx, messageID, authorID, body, ParseMentions)
+}
+
+func (s *Service) editMessage(ctx context.Context, messageID, authorID, body string, mentions func(string) []Mention) (*Message, error) {
 	messageID = strings.TrimSpace(messageID)
 	if messageID == "" {
 		return nil, fmt.Errorf("%w: message id is required", apperrs.ErrInvalid)
@@ -417,7 +463,7 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 	now := s.now().UTC()
 	updated := *current
 	updated.Body = body
-	updated.Mentions = ParseMentions(body)
+	updated.Mentions = mentions(body)
 	updated.EditedAt = &now
 	updated.UpdatedAt = now
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated, MembersOnly: membersOnly}}

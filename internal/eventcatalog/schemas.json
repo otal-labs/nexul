@@ -8722,7 +8722,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -8892,7 +8893,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9050,7 +9052,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9233,7 +9236,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9404,7 +9408,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9633,7 +9638,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9808,7 +9814,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -9947,7 +9954,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -10086,7 +10094,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {
@@ -10336,7 +10345,8 @@
                 "enum": [
                   "user",
                   "user:mcp",
-                  "automation"
+                  "automation",
+                  "github"
                 ]
               },
               "login": {

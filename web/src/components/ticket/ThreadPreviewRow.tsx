@@ -25,7 +25,7 @@ const lineOf = (body: string): string => {
 
 const nameOf = (message: Message, author: Person): string => {
   if (message.author_kind === "agent") return "Agent";
-  if (message.author_kind === "bot") return message.author_name ?? author.login;
+  if (message.author_kind === "bot" || message.author_kind === "external") return message.author_name ?? author.login;
   return personLabel(author);
 };
 

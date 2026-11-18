@@ -23,8 +23,8 @@ type GitProvider interface {
 	GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)
 	// GetFile returns a file's decoded content at ref; an empty ref resolves to the repo's default branch.
 	GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
-	// ListIssues returns one page of issues, pull requests left out, and the next page number, 0 after the last.
-	ListIssues(ctx context.Context, owner, name string, opts IssueOpts) ([]*Issue, int, error)
+	// ListIssues returns one page of issues, pull requests left out, the next page number and the rate limit left.
+	ListIssues(ctx context.Context, owner, name string, opts IssueOpts) (IssuePage, error)
 	GetIssue(ctx context.Context, owner, name string, number int) (*Issue, error)
 	CreateIssue(ctx context.Context, owner, name string, in IssueInput) (*Issue, error)
 	UpdateIssue(ctx context.Context, owner, name string, number int, patch IssuePatch) (*Issue, error)

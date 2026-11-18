@@ -660,6 +660,7 @@ func TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp(t *testing.T) 
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
 	conv.history = append(conv.history,
 		ConversationMessage{AuthorID: "b-ci", AuthorKind: "bot", AuthorName: "GitHub Actions", Via: "CI", Body: "build failed", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "github:bob-gh", AuthorKind: "external", AuthorName: "bob-gh", Via: "github", Body: "same here", CreatedAt: minuteOf(34)},
 		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
 	)
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
@@ -667,6 +668,7 @@ func TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp(t *testing.T) 
 	turns := h.started()
 	require.Len(t, turns, 2)
 	assert.Contains(t, turns[1].prompts.Incremental, "GitHub Actions (bot): build failed")
+	assert.Contains(t, turns[1].prompts.Incremental, "bob-gh (on github): same here", "a GitHub comment is no harness relay")
 	assert.NotContains(t, turns[1].prompts.Full, "b-ci")
 }
 

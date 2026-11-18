@@ -8,9 +8,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -116,6 +118,7 @@ type fixture struct {
 	projects *workspace.Service
 	reviews  *codereview.Service
 	folders  *docFolders
+	syncs    *issuesync.Service
 }
 
 // newFixture seeds project REF with three columns, two types, a category, and tickets REF-1 (todo) and REF-2 (done).
@@ -160,7 +163,8 @@ func newFixture(t *testing.T) fixture {
 		{ID: "f-main", ProjectID: "p-1", Name: "Main", IsDefault: true},
 		{ID: "f-web", ProjectID: "p-2", Name: "Main", IsDefault: true},
 	}}
-	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews, folders: folders}
+	syncs := issuesync.NewService(issuesync.Deps{Repo: &syncRepo{}, Gate: ownerGate{w}, Repos: syncRepos{ws}})
+	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews, folders: folders, syncs: syncs}
 }
 
 func must(t *testing.T, err error) {
@@ -203,7 +207,7 @@ func (f fixture) ticketTools() []mcptool.Tool {
 }
 
 func (f fixture) projectTools() []mcptool.Tool {
-	return ProjectTools(f.projects, f.tickets, f.folders)
+	return ProjectTools(f.projects, f.tickets, f.folders, f.syncs)
 }
 
 func call(t *testing.T, ctx context.Context, tools []mcptool.Tool, name, args string) (any, error) {
@@ -957,4 +961,57 @@ func dueWithin(f tickets.TicketFilter, t *tickets.Ticket) bool {
 		return true
 	}
 	return t.DueOn != "" && t.DueOn >= f.DueFrom && (f.DueTo == "" || t.DueOn <= f.DueTo)
+}
+
+// syncRepo keeps issue syncs only; project tools never touch links.
+type syncRepo struct {
+	issuesync.LinkStore
+	issuesync.CommentStore
+	syncs []*issuesync.Sync
+}
+
+func (r *syncRepo) GetSync(_ context.Context, owner, repo string) (*issuesync.Sync, error) {
+	for _, s := range r.syncs {
+		if s.Owner == owner && s.Repo == repo {
+			cp := *s
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (r *syncRepo) SyncsOfProject(_ context.Context, projectID string) ([]*issuesync.Sync, error) {
+	var out []*issuesync.Sync
+	for _, s := range r.syncs {
+		if s.ProjectID == projectID {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+func (r *syncRepo) EnabledSyncs(context.Context) ([]*issuesync.Sync, error) { return nil, nil }
+
+func (r *syncRepo) SaveSync(_ context.Context, s *issuesync.Sync) error {
+	for i, have := range r.syncs {
+		if have.Owner == s.Owner && have.Repo == s.Repo {
+			r.syncs[i] = s
+			return nil
+		}
+	}
+	r.syncs = append(r.syncs, s)
+	return nil
+}
+
+func (r *syncRepo) MarkSwept(context.Context, string, string, time.Time) error { return nil }
+
+// syncRepos answers from the workspace's attached repositories, as the composition root does.
+type syncRepos struct{ ws *workspace.Service }
+
+func (r syncRepos) HasRepo(ctx context.Context, projectID, owner, repo string) (bool, error) {
+	ref, err := r.ws.GetRepoByFullName(ctx, owner, repo)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	return err == nil && ref.ProjectID == projectID, err
 }

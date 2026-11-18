@@ -76,7 +76,7 @@ Which domains this covers, as the tree stands:
   `docs`, `memories`, `pairing`, `plays`, `repository`, `roles`, `runner`,
   `templates`, `tenancy`, `tickets`, `topology`, `workspace`.
 - No `events.go` yet: `attachments`, `automations`, `connectors`,
-  `integrations`. The file is added with the
+  `integrations`, and `issuesync`, which only consumes, in `consumers.go`. The file is added with the
   domain's first published event, never before, because an empty catalog entry
   is a contract nobody asked for.
 - Thin variants: `mentions` has no `repo.go` (it reads through other
@@ -307,7 +307,7 @@ type GitProvider interface {
     DeleteWebhook(ctx context.Context, owner, name, hookID string) error
     GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)
     GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
-    ListIssues(ctx context.Context, owner, name string, opts IssueOpts) ([]*Issue, int, error)
+    ListIssues(ctx context.Context, owner, name string, opts IssueOpts) (IssuePage, error)
     GetIssue(ctx context.Context, owner, name string, number int) (*Issue, error)
     CreateIssue(ctx context.Context, owner, name string, in IssueInput) (*Issue, error)
     UpdateIssue(ctx context.Context, owner, name string, number int, patch IssuePatch) (*Issue, error)

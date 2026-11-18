@@ -163,6 +163,8 @@ type CreateOptions struct {
 	ViaMCP        bool
 	OriginID      string
 	OriginUnknown bool
+	// GitHubReporter files the ticket as reported by this GitHub login, for an issue it follows.
+	GitHubReporter string
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
@@ -225,7 +227,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		DeveloperID: dev.ID,
 		Tester:      tester.Login,
 		TesterID:    tester.ID,
-		Reporter:    s.reporter(ctx, opt.ViaMCP),
+		Reporter:    s.reporter(ctx, opt),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -336,8 +338,13 @@ func (s *Service) defaultBody(ctx context.Context, body string, opt CreateOption
 	return template, nil
 }
 
-// reporter prefers the automation behind an automation token; a person acting through MCP is recorded as user:mcp.
-func (s *Service) reporter(ctx context.Context, viaMCP bool) Reporter {
+// reporter is a GitHub issue's login when given, else the automation behind an automation token; a person acting
+// through MCP is recorded as user:mcp.
+func (s *Service) reporter(ctx context.Context, opt CreateOptions) Reporter {
+	if login := strings.TrimSpace(opt.GitHubReporter); login != "" {
+		return Reporter{Kind: ReporterKindGitHub, Login: login}
+	}
+	viaMCP := opt.ViaMCP
 	actor, ok := identity.ActorFromCtx(ctx)
 	if ok && actor.Automation != nil {
 		return Reporter{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
@@ -642,11 +649,18 @@ func (s *Service) ApplyEdits(ctx context.Context, id string, edits []textedit.Ed
 
 // UpdateTicket keeps title non-empty like Create; body may be cleared.
 func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ticket, error) {
-	return s.updateTicket(ctx, id, title, body, 0)
+	return s.updateTicket(ctx, id, title, body, 0, false)
+}
+
+// ReplaceText is UpdateTicket for a title and body written outside Nexul, such as a GitHub issue's: it resets the
+// ticket's open editing room even for a title alone, since editors hold the title outside the room and would write the
+// old one back.
+func (s *Service) ReplaceText(ctx context.Context, id, title, body string) (*Ticket, error) {
+	return s.updateTicket(ctx, id, title, body, 0, true)
 }
 
 // updateTicket is UpdateTicket that records the version a restore copied the body from, zero for an ordinary save.
-func (s *Service) updateTicket(ctx context.Context, id, title, body string, restoredFrom int) (*Ticket, error) {
+func (s *Service) updateTicket(ctx context.Context, id, title, body string, restoredFrom int, outside bool) (*Ticket, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -674,7 +688,7 @@ func (s *Service) updateTicket(ctx context.Context, id, title, body string, rest
 	write := func(ctx context.Context) error {
 		return s.repo.UpdateTicket(ctx, id, title, body, changes, credit, evt)
 	}
-	if err := s.fence(ctx, id, body != current.Body, write); err != nil {
+	if err := s.fence(ctx, id, outside || body != current.Body, write); err != nil {
 		return nil, fmt.Errorf("update ticket %s: %w", id, err)
 	}
 	return &updated, nil

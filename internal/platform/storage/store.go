@@ -90,6 +90,7 @@ type Store struct {
 	Pairing               *PairingRepo
 	InstanceTemplates     *InstanceTemplatesRepo
 	Welcome               *WelcomeRepo
+	IssueSync             *IssueSyncRepo
 }
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
@@ -175,6 +176,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Pairing:               &PairingRepo{db: db, w: w, q: q},
 		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
 		Welcome:               &WelcomeRepo{db: db, w: w, q: q},
+		IssueSync:             &IssueSyncRepo{db: db, w: w, q: q},
 	}
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { GithubMark } from "@/components/ProviderMarks";
+import { RepoIssuesSwitch } from "@/components/project/RepoIssuesSwitch";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { SettingsListRow } from "@/components/settings/SettingsListRow";
 import { useRemoveProjectRepo } from "@/hooks/ProjectHooks";
@@ -44,7 +45,12 @@ export const RepoRow = ({ projectId, onLeave, repo, services }: RepoRowProps) =>
       lead={<GithubMark className="size-3.5 text-muted-foreground" />}
       name={<span className="truncate font-mono text-row" title={repo.full_name}>{repo.full_name}</span>}
       meta={tests ? "Tests, never deployed" : "App"}
-      count={services !== undefined && countLabel(services, "service")}
+      count={
+        <span className="flex items-center gap-3">
+          {services !== undefined && countLabel(services, "service")}
+          <RepoIssuesSwitch projectId={projectId} repo={repo} />
+        </span>
+      }
       actions={
         <RowActionsMenu
           subject={repo.full_name}
