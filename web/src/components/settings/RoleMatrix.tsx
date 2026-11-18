@@ -43,7 +43,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
               <RoleMatrixHead key={role.id} role={role} workspaceId={workspaceId} holders={holdersOf(role.id)} />
             ))}
             {/* The heads fade under this slot like the cells do; its control sits above the names, clear of the counts and menus under it. */}
-            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 pt-2.5 align-top")}>
+            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 border-b-transparent pt-2.5 align-top")}>
               {hidden > 0 && (
                 <button
                   type="button"

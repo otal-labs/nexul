@@ -1442,11 +1442,11 @@ roles by name and description. From 1024px the tab opens on the
 first role after the Owner, and below it the list is the page; below 1024px
 a muted "Roles" link with a chevron leads the open pane back to the list. The
 open role is one page, its header on the list header's line and pinned to the
-pane's top on `panel-opaque` (`sticky-crumbs`) so its section links stay in reach. Its header is the name (16px semibold, the crown before
+pane's top from 1024px on `panel-opaque` (`sticky-crumbs`) so its section links stay in reach; narrower, it scrolls with the pane so the holders get the height. Its header is the name (16px semibold, the crown before
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
-mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12,
+mono, then "up to" (dropped below 1024px, where the header scrolls with the pane instead of staying pinned) and the highest level it holds as its glyph and word ("In projects 10/12,
 up to Delete"), so the count never reads as the level's, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
@@ -1490,7 +1490,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named over its description on one line (whole in its tooltip), each row as tall as its content, with the role's tally on its line. Compare roles
+role named with the role's tally on its line, over its description on one line across the row (whole in its tooltip), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1504,8 +1504,8 @@ with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 no role holds" toggle on the band, so what tells the roles apart leads. A cell is the level as a
-`LevelGlyph`, three slots on every row with a level the area lacks drawn as an
-outline, and its word; a cell the role has no access in
+`LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row, a level the area lacks drawn as an
+outline in its own slot, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
 baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and
@@ -1583,7 +1583,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium over the
-role's description in muted 12px on one line (whole in its tooltip), and the role's tally trailing, the box and the
+role's description in muted 12px on one line across the row's full width (whole in its tooltip), and the role's tally trailing the name, the box and the
 tally on the name's line however tall the description makes the row (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
@@ -1591,7 +1591,7 @@ reason. With nothing ticked a `warning` triangle and one muted line settle in
 (`settle-in`): a warning for a member, "Pick at least one role" on an
 invitation, whose Create link waits for one. A role is shown elsewhere as a
 chip: a neutral `rounded-full` hairline pill at 20px, `foreground` at 4%, 11px
-medium, never tinted; three then a mono `+N` with the rest in its tooltip, and
+medium in `muted-foreground` so it sits under the name, never tinted; three then a mono `+N` with the rest in its tooltip, and
 a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
 `web/src/components/role/` are the reference.
 

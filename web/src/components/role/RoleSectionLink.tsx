@@ -37,7 +37,8 @@ export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkPr
         <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
         {top > 0 && (
           <span>
-            up to <LevelGlyph level={top} className="mx-1 align-middle" />
+            <span className="max-lg:hidden">up to </span>
+            <LevelGlyph level={top} className="mr-1 -translate-y-px align-middle lg:ml-1" />
             <span className="text-foreground">{levelName(top)}</span>
           </span>
         )}

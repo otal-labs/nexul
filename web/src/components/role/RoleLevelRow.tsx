@@ -21,7 +21,7 @@ export const RoleLevelRow = ({ domain, permissions }: RoleLevelRowProps) => {
         {extras.length > 0 && <span className="block truncate text-xs text-muted-foreground">Also {extras.join(", ")}</span>}
       </dt>
       <dd className={cn("w-20 shrink-0 text-xs whitespace-nowrap", level === 0 ? "text-muted-foreground" : "text-foreground")}>
-        <LevelGlyph level={level} rungs={domain.levels.length} align="end" className="mr-1.5 align-middle" />
+        <LevelGlyph level={level} rungs={domain.levels.length} className="mr-1.5 -translate-y-px align-middle" />
         {rungName(domain.domain, level)}
       </dd>
     </div>

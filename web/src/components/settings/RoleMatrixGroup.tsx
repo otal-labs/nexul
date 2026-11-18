@@ -43,7 +43,7 @@ const AreaCell = ({ domain, permissions }: { domain: PermissionDomain; permissio
       {none && <span aria-label="None" className="text-xs text-muted-foreground/70">&mdash;</span>}
       {!none && (
         <span className={cn("flex items-center gap-1.5 text-xs whitespace-nowrap", level === 0 ? "text-muted-foreground/70" : "text-foreground")}>
-          <LevelGlyph level={level} rungs={domain.levels.length} align="end" />
+          <LevelGlyph level={level} rungs={domain.levels.length} />
           <span>
             {rungName(domain.domain, level)}
             {extras.length > 0 && (

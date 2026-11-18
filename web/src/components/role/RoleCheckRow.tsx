@@ -22,7 +22,14 @@ export const RoleCheckRow = ({ choice, domains, checked, onToggle }: RoleCheckRo
       {/* Box and tally sit on the name's 20px line, not the middle of a row a description makes taller. */}
       <Checkbox id={id} checked={checked} disabled={!givable} onCheckedChange={() => onToggle(role.id)} className="mt-0.5" />
       <label htmlFor={id} className={cn("min-w-0 flex-1", givable && "cursor-pointer")}>
-        <span className={cn("block truncate text-sm font-medium", !givable && "text-muted-foreground")}>{role.name}</span>
+        <span className="flex items-start justify-between gap-3">
+          <span className={cn("min-w-0 truncate text-sm font-medium", !givable && "text-muted-foreground")}>{role.name}</span>
+          {givable && (
+            <span className="mt-0.5 flex shrink-0">
+              <RoleTally domains={domains} permissions={role.permissions} />
+            </span>
+          )}
+        </span>
         {role.description && <span className="block truncate text-xs leading-4.5 text-muted-foreground" title={role.description}>{role.description}</span>}
         {!givable && (
           <span className="mt-0.5 flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -31,11 +38,6 @@ export const RoleCheckRow = ({ choice, domains, checked, onToggle }: RoleCheckRo
           </span>
         )}
       </label>
-      {givable && (
-        <span className="mt-0.5 flex shrink-0">
-          <RoleTally domains={domains} permissions={role.permissions} />
-        </span>
-      )}
     </li>
   );
 };
