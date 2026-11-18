@@ -13,6 +13,7 @@ export type ImportState = (typeof ImportState)[keyof typeof ImportState];
 export interface ImportPerson {
   login?: string;
   email?: string;
+  username?: string;
   name: string;
   member: string;
 }
@@ -36,6 +37,8 @@ export interface ImportReport {
   tickets: number;
   comments: number;
   docs: number;
+  // Records the source keeps archived, counted but not imported.
+  archived?: number;
   people: ImportPerson[];
   statuses: ImportStatusMatch[];
   skipped: number;
@@ -68,13 +71,23 @@ export interface Import {
 export const importOpen = (imp: Import): boolean =>
   imp.state === ImportState.Scanning || imp.state === ImportState.Ready || imp.state === ImportState.Importing;
 
+// A text field a source asks for: what in it to read, or its credential.
+export interface ImportField {
+  label: string;
+  placeholder: string;
+  hint: string;
+}
+
 export interface ImportSource {
   id: string;
   label: string;
   // What it brings in, under the picker.
   hint: string;
-  // What the form asks for: one of the project's repositories, or a secret with the pages or team to read.
-  asks: "repository" | "pages" | "team";
+  // What the form asks for: one of the project's repositories, or a secret with the pages, team, or link to read.
+  asks: "repository" | "pages" | "team" | "link";
+  // For a source that asks for a link: what in it to read, and its credential.
+  from?: ImportField;
+  credential?: ImportField;
 }
 
 // The sources the server reads; each new source is one entry here and one on the server.
@@ -84,6 +97,22 @@ export const IMPORT_SOURCES: ImportSource[] = [
     label: "GitHub issues",
     hint: "One repository attached to the project: its issues, comments, labels and first assignee.",
     asks: "repository",
+  },
+  {
+    id: "trello",
+    label: "Trello board",
+    asks: "link",
+    hint: "One board: its open lists as columns, and its cards with their checklists, comments, labels, files and due dates.",
+    from: { label: "Board", placeholder: "https://trello.com/b/…", hint: "Its URL or short link; empty takes your only open board." },
+    credential: { label: "API key and token", placeholder: "key:token", hint: "Your Trello API key and a token, joined by a colon." },
+  },
+  {
+    id: "asana",
+    label: "Asana project",
+    asks: "link",
+    hint: "One project: its sections as columns, and its tasks and their subtasks with comments, tags, files and due dates.",
+    from: { label: "Asana project", placeholder: "https://app.asana.com/…", hint: "Its URL or id; empty takes your only project." },
+    credential: { label: "Personal access token", placeholder: "Token", hint: "From the Asana developer console." },
   },
   {
     id: "notion",

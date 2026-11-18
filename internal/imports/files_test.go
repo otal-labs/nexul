@@ -27,11 +27,22 @@ func TestFetch_ReadsAnAllowedFileWithoutTheCredential(t *testing.T) {
 		auth = r.Header.Get("Authorization") + r.Header.Get("Cookie")
 		_, _ = w.Write([]byte("png bytes")) // test server: write errors are irrelevant
 	}))
-	name, data, err := f.Fetch(t.Context(), srv.URL+"/assets/shot.png", []string{host})
+	name, data, err := f.Fetch(t.Context(), srv.URL+"/assets/shot.png", []string{host}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "shot.png", name)
 	assert.Equal(t, []byte("png bytes"), data)
 	assert.Empty(t, auth)
+}
+
+func TestFetch_SendsTheHeaderTheSourceSignedWith(t *testing.T) {
+	var auth string
+	f, srv, host := tlsFetcher(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte("bytes")) // test server: write errors are irrelevant
+	}))
+	_, _, err := f.Fetch(t.Context(), srv.URL+"/download/a.pdf", []string{host}, http.Header{"Authorization": {"OAuth k"}})
+	require.NoError(t, err)
+	assert.Equal(t, "OAuth k", auth)
 }
 
 func TestFetch_RefusesWhatIsNotTheSourcesToGive(t *testing.T) {
@@ -72,11 +83,11 @@ func TestFetch_RefusesWhatIsNotTheSourcesToGive(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := f.Fetch(t.Context(), tt.url, tt.hosts)
+			_, _, err := f.Fetch(t.Context(), tt.url, tt.hosts, nil)
 			assert.ErrorIs(t, err, tt.want)
 		})
 	}
-	_, _, err := f.Fetch(t.Context(), srv.URL+"/missing", []string{host})
+	_, _, err := f.Fetch(t.Context(), srv.URL+"/missing", []string{host}, nil)
 	assert.ErrorContains(t, err, "404")
 }
 

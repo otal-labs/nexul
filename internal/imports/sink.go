@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -51,6 +53,9 @@ func (k *sink) Ticket(ctx context.Context, t Ticket) error {
 	}
 	if ok && item.State != ItemCreated {
 		return nil
+	}
+	if t.Body, err = k.parentLine(ctx, t); err != nil {
+		return err
 	}
 	if !ok {
 		_, before, err := k.s.repo.Imported(ctx, k.imp.WorkspaceID, k.imp.Source, KindTicket, t.SourceID)
@@ -180,6 +185,22 @@ func (k *sink) category(ctx context.Context, name string) (string, error) {
 	return c.ID, nil
 }
 
+// parentLine is the body with a line naming the key of the ticket it is a subtask of, when that one came in.
+func (k *sink) parentLine(ctx context.Context, t Ticket) (string, error) {
+	if t.Parent == "" {
+		return t.Body, nil
+	}
+	parentID, ok, err := k.s.repo.Imported(ctx, k.imp.WorkspaceID, k.imp.Source, KindTicket, t.Parent)
+	if err != nil || !ok {
+		return t.Body, err
+	}
+	key, err := k.s.desk.Key(ctx, parentID)
+	if err != nil {
+		return "", fmt.Errorf("read the key of %s's parent: %w", t.SourceID, err)
+	}
+	return withLine(t.Body, "Subtask of "+key), nil
+}
+
 // bodyOf is the ticket's body, naming an assignee no member of the project maps to, so who held it is not lost.
 func (k *sink) bodyOf(t Ticket) string {
 	if t.Assignee.Zero() || memberFor(k.members, t.Assignee) != "" {
@@ -200,7 +221,7 @@ func (k *sink) copyFilesTo(ctx context.Context, urls []string, attach func(name 
 		if _, done := copied[u]; done {
 			continue
 		}
-		name, data, err := k.s.files.Fetch(ctx, u, k.info.FileHosts)
+		name, data, err := k.s.files.Fetch(ctx, u, k.info.FileHosts, k.fileHeader(u))
 		if err != nil {
 			k.s.log.InfoContext(ctx, "import kept a file as a link", "import_id", k.imp.ID, "error", err)
 			k.imp.Report.FilesLinked++
@@ -216,6 +237,18 @@ func (k *sink) copyFilesTo(ctx context.Context, urls []string, attach func(name 
 		k.imp.Report.FilesCopied++
 	}
 	return copied
+}
+
+// fileHeader is what the source signs a download of rawURL with, nil for a URL that is not its own API's.
+func (k *sink) fileHeader(rawURL string) http.Header {
+	if k.info.FileHeader == nil {
+		return nil
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil
+	}
+	return k.info.FileHeader(k.imp.Credential, u)
 }
 
 // column is where a status lands, adding the column the first time the project lacks it.

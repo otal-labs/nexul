@@ -99,7 +99,7 @@ func notionStub(t *testing.T) *httptest.Server {
 // stubDownloads fetches from the stub over plain HTTP, where the real fetcher keeps to Notion's HTTPS hosts.
 type stubDownloads struct{}
 
-func (stubDownloads) Fetch(ctx context.Context, rawURL string, _ []string) (string, []byte, error) {
+func (stubDownloads) Fetch(ctx context.Context, rawURL string, _ []string, _ http.Header) (string, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", nil, err

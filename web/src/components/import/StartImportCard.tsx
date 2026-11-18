@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
+import { ImportTextRow } from "@/components/import/ImportTextRow";
 import { LinearImportRows } from "@/components/import/LinearImportRows";
 import { NotionImportRows } from "@/components/import/NotionImportRows";
 import { useStartImport } from "@/hooks/ImportHooks";
@@ -18,12 +19,14 @@ export const StartImportCard = () => {
   const [token, setToken] = useState("");
   const [pages, setPages] = useState("");
   const [team, setTeam] = useState("");
+  const [link, setLink] = useState("");
   const { data: projects } = useFetchProjects();
-  const asks = IMPORT_SOURCES.find((s) => s.id === source)?.asks;
+  const sourceInfo = IMPORT_SOURCES.find((s) => s.id === source);
+  const asks = sourceInfo?.asks;
   const asksRepository = asks === "repository";
   const { data: repos } = useFetchProjectRepos(asksRepository && projectId ? projectId : undefined);
   const start = useStartImport();
-  const sourceHint = IMPORT_SOURCES.find((s) => s.id === source)?.hint;
+  const sourceHint = sourceInfo?.hint;
   // A project with one repository imports it; with several, the person names one.
   const repository = repos?.length === 1 ? repos[0]!.full_name : picked;
   const ready = asksRepository
@@ -31,7 +34,7 @@ export const StartImportCard = () => {
     : projectId !== "" && token.trim() !== "";
   const input = asksRepository
     ? { source, project_id: projectId, from: repository }
-    : { source, project_id: projectId, from: (asks === "team" ? team : pages).trim(), credential: token.trim() };
+    : { source, project_id: projectId, from: { team, pages, link, repository: "" }[asks ?? "repository"].trim(), credential: token.trim() };
 
   return (
     <SettingsCard
@@ -68,9 +71,9 @@ export const StartImportCard = () => {
           label="Project"
           htmlFor="import-project"
           description={
-            asksRepository
-              ? "Tickets land in its columns; a status it lacks becomes a new column."
-              : "Docs land in a folder per root page, made if the project lacks one."
+            asks === "pages"
+              ? "Docs land in a folder per root page, made if the project lacks one."
+              : "Tickets land in its columns; a status it lacks becomes a new column."
           }
         >
           <Select
@@ -94,6 +97,10 @@ export const StartImportCard = () => {
         </SettingsRow>
         {asks === "pages" && <NotionImportRows token={token} pages={pages} onToken={setToken} onPages={setPages} />}
         {asks === "team" && <LinearImportRows token={token} team={team} onToken={setToken} onTeam={setTeam} />}
+        {sourceInfo?.from && <ImportTextRow id="import-from" field={sourceInfo.from} value={link} onChange={setLink} />}
+        {sourceInfo?.credential && (
+          <ImportTextRow id="import-credential" field={sourceInfo.credential} value={token} onChange={setToken} secret />
+        )}
         {repos && repos.length === 0 && (
           <SettingsRow label="Repository" description="This project has no repository. Attach one in its settings first." />
         )}

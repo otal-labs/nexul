@@ -7,10 +7,12 @@ sidebar:
 
 An import copies another tool's records into one [project](/docs/guide/projects-and-repositories/) as tickets or docs. It reads first and writes only once you confirm, so you see how many records there are and where people and statuses will land before anything changes.
 
-It reads three sources today, and more will follow on the same page:
+It reads five sources:
 
 - **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee.
 - **Linear**: one team, with each issue's comments, labels, priority, project, due date, assignee, files and blocking links.
+- **Trello boards**: one board's open lists and cards, with checklists, comments, labels, uploaded files, members and due dates.
+- **Asana projects**: one project's sections and tasks, with their subtasks, comments, tags, files, assignees and due dates.
 - **Notion pages**, into docs.
 
 Only the workspace's Owner can run an import.
@@ -18,13 +20,20 @@ Only the workspace's Owner can run an import.
 ## Run one
 
 1. Open **Configuration → Import**.
-2. Pick the source and the project. For GitHub, a project with several repositories asks which one, and a project with none needs one [attached](/docs/guide/projects-and-repositories/) first. For Linear, paste a personal API key and name the team by its key, such as `ENG`; leave the team empty when the key reaches only one.
-3. Press **Scan**. Nexul counts the issues and comments and works out how they map. The page updates by itself.
+2. Pick the source and the project. For GitHub, a project with several repositories asks which one, and a project with none needs one [attached](/docs/guide/projects-and-repositories/) first. For Linear, paste a personal API key and name the team by its key, such as `ENG`; leave the team empty when the key reaches only one. For Trello and Asana, paste the board's or project's URL and your token; see [Tokens](#tokens).
+3. Press **Scan**. Nexul counts the records and works out how they map; an Asana scan counts tasks but not their comments. The page updates by itself.
 4. Check the summary, then press **Import**. Progress shows as it goes, and **Cancel import** stops it at any point.
 
 A scan waits 24 hours to be confirmed, then cancels itself. A workspace runs one import at a time.
 
-GitHub issues are read as Nexul's [GitHub App](/docs/guide/github-app/), so this import needs no token.
+## Tokens
+
+GitHub issues are read as Nexul's [GitHub App](/docs/guide/github-app/), so that import needs no token.
+
+- **Trello** takes your API key and a token, joined by a colon as `key:token`. Leave the board empty to import your only open board; with several, the scan lists them so you can paste one.
+- **Asana** takes a personal access token. Leave the project empty to import your only project; with several workspaces or projects, the scan lists them so you can paste a project's URL or id.
+
+A token is stored encrypted while the import runs and deleted the moment it ends. Nexul sends it only to the tool it came from.
 
 A Linear import reads with the personal API key you paste in, which you create in Linear's security settings. Nexul keeps it sealed while the import runs and deletes it when the import ends; it is never shown again or sent anywhere but Linear.
 
@@ -40,6 +49,23 @@ A repository whose [issue sync](/docs/guide/projects-and-repositories/#sync-gith
 - **Comments.** Each comment lands in the ticket's thread under its author's name on GitHub, with when they wrote it. Nobody can edit it, and it mentions nobody.
 - **Labels.** Each label carries over.
 - **Files.** Images and files people dropped into issues and comments are copied into the ticket, up to 10 MB each. A larger file, or one GitHub won't serve without signing in, stays a link.
+
+### From Trello
+
+- **Tickets.** Each card on an open list becomes a ticket with its name and description, its checklists as task lists, a list of its attachments, and a line linking back to the card.
+- **Statuses.** Each open list becomes a column of the same name: the first is a backlog column, one named like done, complete or shipped is a done column, and the rest are in progress.
+- **Archived.** Archived cards and lists, and the cards on archived lists, are counted in the summary and left out.
+- **People.** Trello gives no emails, so the card's first member becomes the ticket's developer when a member who can open the project has their Trello username as login, or else is the only member with their full name. Anyone unmatched stays unassigned, and the body says who held it.
+- **Comments, labels and due dates.** Comments land in the ticket's thread under their author's name on Trello. Labels carry over, and one with no name takes its colour. The card's due date becomes the ticket's.
+- **Files.** Files uploaded to the card are copied into the ticket, up to 10 MB each; links stay links.
+
+### From Asana
+
+- **Tickets.** Each task becomes a ticket with its name, notes, a list of its attachments and a line linking back to it. Each subtask, one level deep, becomes its own ticket with a "Subtask of" line naming its parent's key.
+- **Statuses.** Sections become columns by the same rule as Trello's lists. A completed task goes to the done column.
+- **People.** The assignee becomes the ticket's developer when a member who can open the project signs in with the same email.
+- **Comments, tags and due dates.** Comments land in the ticket's thread under their author's name on Asana. Tags become labels, and the due date carries over.
+- **Files.** Files Asana holds are copied into the ticket, up to 10 MB each; files linked from Google Drive, Dropbox and similar stay links.
 
 ### From Linear
 
@@ -80,4 +106,4 @@ Records that could not come in are listed with the reason, up to 200, and the co
 
 ## From an agent
 
-An agent runs the same import through one [MCP tool](/docs/guide/mcp-server/), `import_run`: with `source` and `project_id` it starts a scan, with the import's `id` it returns progress, and `confirm` or `cancel` act on it.
+An agent runs the same import through one [MCP tool](/docs/guide/mcp-server/), `import_run`: with `source` (`github`, `linear`, `trello`, `asana` or `notion`), `project_id` and, for every source but GitHub, `credential`, it starts a scan; with the import's `id` it returns progress, and `confirm` or `cancel` act on it.

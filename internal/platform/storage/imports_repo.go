@@ -228,7 +228,7 @@ func (r *ImportsRepo) People(ctx context.Context, workspaceID string) ([]imports
 	var out []imports.Member
 	for _, row := range rows {
 		if len(out) == 0 || out[len(out)-1].UserID != row.UserID {
-			out = append(out, imports.Member{UserID: row.UserID, Login: row.UserLogin})
+			out = append(out, imports.Member{UserID: row.UserID, Login: row.UserLogin, Names: memberNames(row.UserName, row.UserDisplayName)})
 		}
 		m := &out[len(out)-1]
 		login := strings.ToLower(strings.TrimSpace(row.IdentityLogin))
@@ -241,6 +241,18 @@ func (r *ImportsRepo) People(ctx context.Context, workspaceID string) ([]imports
 		}
 	}
 	return out, nil
+}
+
+// memberNames are the names a member goes by, without blanks or repeats.
+func memberNames(names ...string) []string {
+	var out []string
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n != "" && !slices.Contains(out, n) {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func (r *ImportsRepo) seal(credential string) (sql.NullString, error) {

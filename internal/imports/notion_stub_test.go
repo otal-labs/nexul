@@ -236,7 +236,7 @@ func (s *stubNotion) one(w http.ResponseWriter, v map[string]any) {
 // stubFiles downloads from the stub over plain HTTP, as Fetcher does over HTTPS from the source's hosts.
 type stubFiles struct{}
 
-func (stubFiles) Fetch(ctx context.Context, rawURL string, _ []string) (string, []byte, error) {
+func (stubFiles) Fetch(ctx context.Context, rawURL string, _ []string, _ http.Header) (string, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", nil, err

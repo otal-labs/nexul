@@ -1,7 +1,10 @@
 package imports
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -54,6 +57,56 @@ func TestSink_FilesEachTicketWithItsCommentsFilesAndPeople(t *testing.T) {
 	assert.Equal(t, "Untitled 2", second.Title)
 	assert.Empty(t, second.Developer)
 	assert.Equal(t, "Assigned in Fake to Zed Z", second.Body)
+}
+
+func TestSink_NamesTheParentsKeyAndKeepsTheDueDate(t *testing.T) {
+	src := fakeSource{tickets: []Ticket{
+		{SourceID: "p", Title: "Parent", DueOn: "2026-12-01"},
+		{SourceID: "s", Title: "Child", Body: "Notes", Parent: "p"},
+		{SourceID: "o", Title: "Orphan", Parent: "never-came-in"},
+	}}
+	svc, repo, desk := newDeskService(src, newFakeDesk())
+	runToEnd(t, svc, repo)
+	assert.Equal(t, "2026-12-01", desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "p")].DueOn)
+	assert.Equal(t, "Notes\n\nSubtask of REF-Parent", desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "s")].Body)
+	assert.Empty(t, desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "o")].Body, "a parent that never came in is not named")
+}
+
+// headerFiles records the header each download was signed with.
+type headerFiles struct{ got map[string]http.Header }
+
+func (f headerFiles) Fetch(_ context.Context, rawURL string, _ []string, header http.Header) (string, []byte, error) {
+	f.got[rawURL] = header
+	return "f", []byte("bytes"), nil
+}
+
+type signedSource struct{ fakeSource }
+
+func (signedSource) Info() Info {
+	return Info{Title: "Signed", FileHosts: []string{"api.example.com", "elsewhere.example.com"}, FileHeader: func(credential string, u *url.URL) http.Header {
+		if u.Host != "api.example.com" {
+			return nil
+		}
+		return http.Header{"Authorization": {"Token " + credential}}
+	}}
+}
+
+func TestSink_SignsADownloadFromTheSourcesOwnAPIAlone(t *testing.T) {
+	files := headerFiles{got: map[string]http.Header{}}
+	src := signedSource{fakeSource{tickets: []Ticket{{SourceID: "1", Title: "One", Files: []string{"https://api.example.com/f", "https://elsewhere.example.com/f"}}}}}
+	repo := newFakeRepo()
+	svc := NewService(Deps{
+		Repo: repo, Owners: fakeOwners{owner: testOwner}, Projects: fakeProjects{testProject: testWorkspace},
+		Board: &fakeBoard{}, People: fakePeople{}, Desk: newFakeDesk(), Files: files, Sources: map[string]Source{"fake": src},
+	})
+	imp, err := svc.Start(as(testOwner), Start{Source: "fake", ProjectID: testProject, Credential: "s3cret"})
+	require.NoError(t, err)
+	svc.Pass(t.Context())
+	_, err = svc.Confirm(as(testOwner), imp.ID)
+	require.NoError(t, err)
+	svc.Pass(t.Context())
+	assert.Equal(t, http.Header{"Authorization": {"Token s3cret"}}, files.got["https://api.example.com/f"])
+	assert.Nil(t, files.got["https://elsewhere.example.com/f"])
 }
 
 func TestSink_ARerunSkipsWhatAnEarlierImportBroughtIn(t *testing.T) {
