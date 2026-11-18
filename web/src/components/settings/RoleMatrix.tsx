@@ -1,5 +1,5 @@
 import { microheaderClass } from "@/components/Microheader";
-import { fadeEndCell, fillerCell, snapScroller, stickyCell } from "@/components/accessgrid/gridStyles";
+import { fadeEndCell, matrixFadeWidth, snapScroller, stickyCell } from "@/components/accessgrid/gridStyles";
 import { ScrollEndFade } from "@/components/ScrollEndFade";
 import { RoleMatrixGroup } from "@/components/settings/RoleMatrixGroup";
 import { RoleMatrixHead } from "@/components/settings/RoleMatrixHead";
@@ -32,8 +32,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf }: RoleMatri
             {ordered.map((role) => (
               <RoleMatrixHead key={role.id} role={role} workspaceId={workspaceId} holders={holdersOf(role.id)} />
             ))}
-            <th aria-hidden className={cn(fillerCell, "sticky top-0 z-20 bg-card")} />
-            <th aria-hidden className={cn(fadeEndCell, "top-0 z-20 bg-card")} />
+            <th aria-hidden className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 bg-card")} />
           </tr>
         </thead>
         {ROLE_SECTIONS.map((section) => (

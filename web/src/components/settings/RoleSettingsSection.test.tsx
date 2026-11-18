@@ -55,7 +55,8 @@ const matrixRow = (area: string) =>
   within(screen.getByRole("rowheader", { name: area }).closest("tr")!)
     .getAllByRole("cell")
     .filter((cell) => !cell.hasAttribute("aria-hidden"))
-    .map((cell) => cell.textContent || within(cell).queryByLabelText("Yes")?.getAttribute("aria-label") || "");
+    // What a screen reader hears: a labelled mark (a check, a dash for None or No) by its label, anything else by its text.
+    .map((cell) => cell.querySelector("[aria-label]")?.getAttribute("aria-label") ?? cell.textContent ?? "");
 
 const rowNames = () =>
   within(screen.getByRole("tabpanel"))
