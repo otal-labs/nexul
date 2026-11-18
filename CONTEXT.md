@@ -909,9 +909,10 @@ later import of the same source skips everything an earlier one brought in. `imp
 _Avoid_: Migration, sync (an import runs once; sync keeps going)
 
 **Import source**:
-The tool an import reads (GitHub issues and Notion pages; Linear, Trello and Asana to follow). It only reads and describes
-what it finds; the import maps people by GitHub login or email, statuses onto columns by name or kind, and copies files
-from the source's own hosts.
+The tool an import reads (GitHub issues, a Linear team and Notion pages; Trello and Asana to follow). It only reads
+and describes what it finds; the import maps people by GitHub login or email, statuses onto columns by name or kind, the
+source's projects onto categories and its blocking relations onto blocked-by links, and copies files from the source's
+own hosts.
 _Avoid_: Connector (a connector is a credential Nexul keeps), adapter
 
 **Imported ticket**:

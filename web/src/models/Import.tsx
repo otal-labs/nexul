@@ -43,6 +43,7 @@ export interface ImportReport {
   files_linked: number;
   // Source blocks with no counterpart here, brought in as text or links.
   unsupported: number;
+  relations_skipped: number;
   failures: ImportFailure[];
   error?: string;
 }
@@ -72,8 +73,8 @@ export interface ImportSource {
   label: string;
   // What it brings in, under the picker.
   hint: string;
-  // What the form asks for: one of the project's repositories, or an integration secret and the pages to start from.
-  asks: "repository" | "pages";
+  // What the form asks for: one of the project's repositories, or a secret with the pages or team to read.
+  asks: "repository" | "pages" | "team";
 }
 
 // The sources the server reads; each new source is one entry here and one on the server.
@@ -89,6 +90,12 @@ export const IMPORT_SOURCES: ImportSource[] = [
     label: "Notion pages",
     hint: "The pages shared with an internal integration, as docs: one folder per root page, with their images and database rows.",
     asks: "pages",
+  },
+  {
+    id: "linear",
+    label: "Linear",
+    hint: "One team: its issues with their comments, labels, priority, project, due date, assignee, files and blocking links.",
+    asks: "team",
   },
 ];
 

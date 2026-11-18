@@ -80,6 +80,7 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 		ReporterAutomationID:   t.Reporter.AutomationID,
 		ReporterAutomationName: t.Reporter.AutomationName,
 		ReporterSource:         t.Reporter.Source,
+		DueOn:                  t.DueOn,
 		CreatedAt:              t.CreatedAt.Unix(),
 		UpdatedAt:              t.UpdatedAt.Unix(),
 	})

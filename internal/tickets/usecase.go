@@ -177,6 +177,8 @@ type ImportedTicket struct {
 	ID     string
 	Source string
 	Labels []string
+	// DueOn is the record's due date as YYYY-MM-DD, empty for none.
+	DueOn string
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
@@ -206,7 +208,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
-	if err := s.checkFoundIn(ctx, opt); err != nil {
+	if err := s.checkOptions(ctx, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	dev, err := s.requirePerson(ctx, projectID, RoleDeveloper, strings.TrimSpace(developer))
@@ -306,7 +308,23 @@ func (s *Service) firstColumn(ctx context.Context, projectID string) (Status, er
 	return Status(first), nil
 }
 
-// imported gives a ticket an import files its derived id, its labels, and a reporter naming the source.
+// checkOptions holds a new bug to its found-in (ADR 0064) and an import's due date to a day.
+func (s *Service) checkOptions(ctx context.Context, opt CreateOptions) error {
+	if err := s.checkFoundIn(ctx, opt); err != nil {
+		return err
+	}
+	return checkImported(opt.Import)
+}
+
+func checkImported(imp *ImportedTicket) error {
+	if imp == nil || strings.TrimSpace(imp.DueOn) == "" {
+		return nil
+	}
+	_, err := parseDay("due_on", strings.TrimSpace(imp.DueOn))
+	return err
+}
+
+// imported gives a ticket an import files its derived id, its labels, its due date, and a reporter naming the source.
 func (t *Ticket) imported(imp *ImportedTicket) {
 	if imp == nil {
 		return
@@ -314,6 +332,7 @@ func (t *Ticket) imported(imp *ImportedTicket) {
 	t.ID = cmp.Or(strings.TrimSpace(imp.ID), t.ID)
 	t.Reporter.Kind, t.Reporter.Source = ActorKindImport, imp.Source
 	t.Labels = normalizeLabels(imp.Labels)
+	t.DueOn = strings.TrimSpace(imp.DueOn)
 }
 
 // normalizeLabels trims labels and drops empty and repeated ones, ignoring case, keeping the first spelling.

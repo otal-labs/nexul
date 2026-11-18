@@ -4865,6 +4865,9 @@
               "skipped": {
                 "type": "integer"
               },
+              "relations_skipped": {
+                "type": "integer"
+              },
               "files_copied": {
                 "type": "integer"
               },
@@ -4913,6 +4916,7 @@
               "people",
               "statuses",
               "skipped",
+              "relations_skipped",
               "files_copied",
               "files_linked",
               "unsupported",

@@ -30,6 +30,7 @@ const report = {
   files_copied: 0,
   files_linked: 0,
   unsupported: 0,
+  relations_skipped: 0,
   failures: [],
 };
 
@@ -86,6 +87,29 @@ const renderSection = (
 
 describe("ImportSection", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("scans a Linear team with the API key it is given", async () => {
+    const user = userEvent.setup();
+    mocks.post.mockResolvedValue({ data: anImport({ source: "linear", state: "scanning", total: 0 }) });
+    renderSection([]);
+
+    const scan = await screen.findByRole("button", { name: "Scan" });
+    await pickOption(user, "Source", "Linear");
+    await pickOption(user, "Project", "Atlas");
+    expect(scan).toBeDisabled();
+    await user.type(screen.getByLabelText("API key"), "lin_api_test");
+    await user.type(screen.getByLabelText("Team"), "ENG");
+    await user.click(scan);
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/imports", {
+        source: "linear",
+        project_id: "p-1",
+        from: "ENG",
+        credential: "lin_api_test",
+      }),
+    );
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/projects/p-1/repos");
+  });
 
   it("scans the picked project's one repository", async () => {
     const user = userEvent.setup();

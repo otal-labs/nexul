@@ -198,8 +198,8 @@ func (q *Queries) CountProjectTicketsByType(ctx context.Context, projectID sql.N
 }
 
 const createTicket = `-- name: CreateTicket :exec
-INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, reporter_source, created_at, updated_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, reporter_source, due_on, created_at, updated_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTicketParams struct {
@@ -220,6 +220,7 @@ type CreateTicketParams struct {
 	ReporterAutomationID   string
 	ReporterAutomationName string
 	ReporterSource         string
+	DueOn                  string
 	CreatedAt              int64
 	UpdatedAt              int64
 	FinishedAt             sql.NullInt64
@@ -244,6 +245,7 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) erro
 		arg.ReporterAutomationID,
 		arg.ReporterAutomationName,
 		arg.ReporterSource,
+		arg.DueOn,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.FinishedAt,

@@ -23,6 +23,8 @@ type sink struct {
 	cols    []Column
 	// folders are the doc folders this run has found or made, by name.
 	folders map[string]string
+	// cats is the project's categories, read the first time a ticket names one.
+	cats []Category
 }
 
 var _ Sink = (*sink)(nil)
@@ -79,9 +81,14 @@ func (k *sink) create(ctx context.Context, t Ticket) (Item, error) {
 	if err != nil {
 		return Item{}, err
 	}
+	categoryID, err := k.category(ctx, t.Category)
+	if err != nil {
+		return Item{}, err
+	}
 	nt := NewTicket{
 		ID: k.id(KindTicket, t.SourceID), ProjectID: k.imp.ProjectID, Title: ticketTitle(t), Body: k.bodyOf(t),
 		Status: col.ID, Developer: memberFor(k.members, t.Assignee), Source: k.imp.Source, Labels: t.Labels,
+		CategoryID: categoryID, DueOn: t.DueOn,
 	}
 	err = k.s.desk.FileTicket(ctx, nt)
 	if err != nil && !errors.Is(err, apperrs.ErrConflict) {
@@ -115,7 +122,62 @@ func (k *sink) fill(ctx context.Context, ticketID string, t Ticket) error {
 			return fmt.Errorf("copy comment %s: %w", c.SourceID, err)
 		}
 	}
+	return k.link(ctx, ticketID, t)
+}
+
+// link makes each blocked-by link whose other end is already in; the record that comes in second makes it.
+func (k *sink) link(ctx context.Context, ticketID string, t Ticket) error {
+	for _, sid := range t.BlockedBy {
+		if err := k.linkTo(ctx, sid, func(other string) error { return k.s.desk.Block(ctx, ticketID, other) }); err != nil {
+			return err
+		}
+	}
+	for _, sid := range t.Blocks {
+		if err := k.linkTo(ctx, sid, func(other string) error { return k.s.desk.Block(ctx, other, ticketID) }); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// linkTo makes one link to the ticket an import brought sourceID in as, if any import has.
+func (k *sink) linkTo(ctx context.Context, sourceID string, makeLink func(other string) error) error {
+	other, ok, err := k.s.repo.Imported(ctx, k.imp.WorkspaceID, k.imp.Source, KindTicket, sourceID)
+	if err != nil || !ok {
+		return err
+	}
+	err = makeLink(other)
+	// A cycle, or an end deleted since, leaves that one link out rather than the ticket.
+	if err != nil && !errors.Is(err, apperrs.ErrConflict) && !errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("link a blocker: %w", err)
+	}
+	return nil
+}
+
+// category is the id of the project's category of that name, ignoring case, adding it the first time; "" for none.
+func (k *sink) category(ctx context.Context, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	if k.cats == nil {
+		cats, err := k.s.board.Categories(ctx, k.imp.ProjectID)
+		if err != nil {
+			return "", fmt.Errorf("list categories: %w", err)
+		}
+		k.cats = append([]Category{}, cats...)
+	}
+	for _, c := range k.cats {
+		if strings.EqualFold(strings.TrimSpace(c.Name), name) {
+			return c.ID, nil
+		}
+	}
+	c, err := k.s.board.AddCategory(ctx, k.imp.ProjectID, name)
+	if err != nil {
+		return "", fmt.Errorf("add category %s: %w", name, err)
+	}
+	k.cats = append(k.cats, c)
+	return c.ID, nil
 }
 
 // bodyOf is the ticket's body, naming an assignee no member of the project maps to, so who held it is not lost.

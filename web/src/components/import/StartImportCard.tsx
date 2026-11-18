@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
+import { LinearImportRows } from "@/components/import/LinearImportRows";
 import { NotionImportRows } from "@/components/import/NotionImportRows";
 import { useStartImport } from "@/hooks/ImportHooks";
 import { useFetchProjectRepos, useFetchProjects } from "@/hooks/ProjectHooks";
@@ -16,8 +17,10 @@ export const StartImportCard = () => {
   const [picked, setPicked] = useState("");
   const [token, setToken] = useState("");
   const [pages, setPages] = useState("");
+  const [team, setTeam] = useState("");
   const { data: projects } = useFetchProjects();
-  const asksRepository = IMPORT_SOURCES.find((s) => s.id === source)?.asks === "repository";
+  const asks = IMPORT_SOURCES.find((s) => s.id === source)?.asks;
+  const asksRepository = asks === "repository";
   const { data: repos } = useFetchProjectRepos(asksRepository && projectId ? projectId : undefined);
   const start = useStartImport();
   const sourceHint = IMPORT_SOURCES.find((s) => s.id === source)?.hint;
@@ -28,7 +31,7 @@ export const StartImportCard = () => {
     : projectId !== "" && token.trim() !== "";
   const input = asksRepository
     ? { source, project_id: projectId, from: repository }
-    : { source, project_id: projectId, from: pages.trim(), credential: token.trim() };
+    : { source, project_id: projectId, from: (asks === "team" ? team : pages).trim(), credential: token.trim() };
 
   return (
     <SettingsCard
@@ -89,7 +92,8 @@ export const StartImportCard = () => {
             </SelectContent>
           </Select>
         </SettingsRow>
-        {!asksRepository && <NotionImportRows token={token} pages={pages} onToken={setToken} onPages={setPages} />}
+        {asks === "pages" && <NotionImportRows token={token} pages={pages} onToken={setToken} onPages={setPages} />}
+        {asks === "team" && <LinearImportRows token={token} team={team} onToken={setToken} onTeam={setTeam} />}
         {repos && repos.length === 0 && (
           <SettingsRow label="Repository" description="This project has no repository. Attach one in its settings first." />
         )}

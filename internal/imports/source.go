@@ -44,8 +44,10 @@ type Scan struct {
 	Tickets  int
 	Comments int
 	Docs     int
-	People   []Person
-	Statuses []StatusRef
+	// RelationsSkipped counts links between records an import has no place for, such as Linear's related or duplicate.
+	RelationsSkipped int
+	People           []Person
+	Statuses         []StatusRef
 }
 
 // Sink takes the records a source reads.
@@ -110,7 +112,15 @@ type Ticket struct {
 	Status   StatusRef
 	Labels   []string
 	Assignee Person
-	Comments []Comment
+	// Category is the name of the project category it goes in, added the first time the project lacks it.
+	Category string
+	// DueOn is its due date as YYYY-MM-DD.
+	DueOn string
+	// BlockedBy and Blocks are the source ids of records it waits on and that wait on it; a link is made once both
+	// ends are in, whichever comes second.
+	BlockedBy []string
+	Blocks    []string
+	Comments  []Comment
 	// Files are the file URLs in Body and the comments to copy into attachments.
 	Files []string
 }

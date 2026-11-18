@@ -674,6 +674,14 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, Reporter{Kind: ActorKindImport, Source: "github"}, tk.Reporter)
 		assert.True(t, tk.Reporter.Imported())
 	})
+	t.Run("an import carries its due date, and refuses one that is not a day", func(t *testing.T) {
+		s := newTestService(newFakeRepo())
+		tk, err := s.Create(context.Background(), "p-1", "Imported", "", "", "", CreateOptions{Import: &ImportedTicket{DueOn: "2026-12-24"}})
+		require.NoError(t, err)
+		assert.Equal(t, "2026-12-24", tk.DueOn)
+		_, err = s.Create(context.Background(), "p-1", "Imported", "", "", "", CreateOptions{Import: &ImportedTicket{DueOn: "Dec 24"}})
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
 	t.Run("an import into a column that does not exist is refused", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
 		_, err := s.Create(context.Background(), "p-1", "Imported", "", "", "", CreateOptions{Status: "gone", Import: &ImportedTicket{}})

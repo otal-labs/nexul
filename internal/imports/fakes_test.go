@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -176,13 +177,24 @@ func (p fakeProjects) WorkspaceOf(_ context.Context, projectID string) (string, 
 	return ws, nil
 }
 
-type fakeBoard struct{ cols []Column }
+type fakeBoard struct {
+	cols []Column
+	cats []Category
+}
 
 func (b *fakeBoard) Columns(context.Context, string) ([]Column, error) { return b.cols, nil }
 
 func (b *fakeBoard) AddColumn(_ context.Context, _, name string, kind StatusKind) (Column, error) {
 	c := Column{ID: "col-" + name, Name: name, Kind: kind}
 	b.cols = append(b.cols, c)
+	return c, nil
+}
+
+func (b *fakeBoard) Categories(context.Context, string) ([]Category, error) { return b.cats, nil }
+
+func (b *fakeBoard) AddCategory(_ context.Context, _, name string) (Category, error) {
+	c := Category{ID: "cat-" + name, Name: name}
+	b.cats = append(b.cats, c)
 	return c, nil
 }
 
@@ -224,10 +236,12 @@ type fakeDesk struct {
 	lostAfterFile string
 	// refuseComments answers every comment as invalid.
 	refuseComments bool
+	// blocks is each ticket id and the ids it waits on.
+	blocks map[string][]string
 }
 
 func newFakeDesk() *fakeDesk {
-	return &fakeDesk{tickets: map[string]NewTicket{}, comments: map[string][]NewComment{}, files: map[string]string{}, filed: map[string]int{}}
+	return &fakeDesk{tickets: map[string]NewTicket{}, comments: map[string][]NewComment{}, files: map[string]string{}, filed: map[string]int{}, blocks: map[string][]string{}}
 }
 
 func (d *fakeDesk) FileTicket(_ context.Context, t NewTicket) error {
@@ -276,6 +290,15 @@ func (d *fakeDesk) Attach(_ context.Context, _, name string, _ []byte) (string, 
 	id := "att-" + name
 	d.files[id] = name
 	return id, nil
+}
+
+func (d *fakeDesk) Block(_ context.Context, ticketID, blockerID string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !slices.Contains(d.blocks[ticketID], blockerID) {
+		d.blocks[ticketID] = append(d.blocks[ticketID], blockerID)
+	}
+	return nil
 }
 
 // fakeFiles serves every URL under files.example.com, and refuses anything over its size.
