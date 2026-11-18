@@ -82,7 +82,7 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("-mx-6 -my-1 min-h-0 flex-1 overflow-y-auto px-6 py-1", className)}
+      className={cn("scroll-edge -mx-6 -my-1 min-h-0 flex-1 overflow-y-auto px-6 py-1", className)}
       {...props}
     />
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { EnterList } from "@/components/EnterList";
+import { ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { RoleListRow } from "@/components/role/RoleListRow";
 import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
@@ -22,15 +23,18 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   const seesTeam = useSeesTeam();
   const { data: team } = useFetchTeam(seesTeam);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const needle = search.trim().toLowerCase();
+  const matches = (role: Role) => !needle || `${role.name} ${role.description}`.toLowerCase().includes(needle);
   const owners = roles.filter((role) => role.is_owner_role);
   const others = roles.filter((role) => !role.is_owner_role);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ListPaneHeader title="Roles" count={roles.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} />
+      <ListPaneHeader title="Roles" count={roles.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} search={search} onSearch={setSearch} />
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Roles">
-          {[...owners, ...others].map((role) => (
+          {[...owners, ...others].filter(matches).map((role) => (
             <RoleListRow
               key={role.id}
               id={role.id}
@@ -42,6 +46,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
             />
           ))}
         </EnterList>
+        {needle && ![...owners, ...others].some(matches) && <ListPaneNoMatch onClear={() => setSearch("")} />}
       </div>
       <div className="shrink-0 overflow-y-hidden border-t border-border pt-3 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Overview">

@@ -18,8 +18,9 @@ export const RoleCheckRow = ({ choice, domains, checked, onToggle }: RoleCheckRo
   const { role, givable, reason } = choice;
   const id = `role-${role.id}`;
   return (
-    <li className="flex min-h-11 items-center gap-3 py-2.5">
-      <Checkbox id={id} checked={checked} disabled={!givable} onCheckedChange={() => onToggle(role.id)} />
+    <li className="flex min-h-11 items-start gap-3 py-2.5">
+      {/* Box and tally sit on the name's 20px line, not the middle of a row a description makes taller. */}
+      <Checkbox id={id} checked={checked} disabled={!givable} onCheckedChange={() => onToggle(role.id)} className="mt-0.5" />
       <label htmlFor={id} className={cn("min-w-0 flex-1", givable && "cursor-pointer")}>
         <span className={cn("block truncate text-sm font-medium", !givable && "text-muted-foreground")}>{role.name}</span>
         {role.description && <span className="block text-xs leading-4.5 text-muted-foreground">{role.description}</span>}
@@ -30,7 +31,11 @@ export const RoleCheckRow = ({ choice, domains, checked, onToggle }: RoleCheckRo
           </span>
         )}
       </label>
-      {givable && <RoleTally domains={domains} permissions={role.permissions} />}
+      {givable && (
+        <span className="mt-0.5 flex shrink-0">
+          <RoleTally domains={domains} permissions={role.permissions} />
+        </span>
+      )}
     </li>
   );
 };

@@ -91,6 +91,7 @@ export const RoleHoldersSection = () => {
       {capped && holders && (
         <RoleFoldButton open={false} onToggle={() => setAll(true)} label={`Show all ${holders.length}`} className="-ml-2" />
       )}
+      {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="-ml-2" />}
       <RoleInvitationsSection />
     </section>
   );

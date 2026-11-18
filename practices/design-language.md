@@ -1435,8 +1435,9 @@ description with the holder count in mono on the title's baseline (left out at
 none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
 a hairline so they stay in view however many roles there are, two one-line rows at
 the list's 32px pitch and on its gutter, Compare roles and No roles. The Owner's row
-reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role. Before a row is picked the
-open pane is the placeholder, "Select a role" over the role count; below 1024px
+reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role, and its search field narrows the
+roles by name and description. From 1024px the tab opens on the
+first role after the Owner, and below it the list is the page; below 1024px
 a muted "Roles" link with a chevron leads the open pane back to the list. The
 open role is one page, its header on the list header's line. Its header is the name (16px semibold, the crown before
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
@@ -1453,7 +1454,8 @@ name never wraps the row) at its right, or a lock and the reason under it when t
 more than they do. Past eight holders a find field (with a clear button) leads the
 list, the count reading "2 of 33" while it narrows, a search with no match a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
-allows stays in reach; a search shows every match. Each holder
+allows stays in reach, and a "Show fewer" line folds them back; a search shows
+every match. Each holder
 is a hairline row, at least 56px, lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
 over a muted line holding only what says something: Online or when they were
@@ -1469,20 +1471,21 @@ fading where it scrolls; it stays open so several can be added in a row, each on
 a toast. A link made here shows once above the holders. A count of zero is never shown
 beside a heading whose line already says nobody holds the role. The open links giving
 the role list under them as Invited, on the holders' grid: a link mark on a
-`surface-2` disc in the avatar's slot, "Invite link" over who made it and when it
-expires, the other roles it gives as chips beside that, and a `…` holding Revoke link, which asks first. What it allows follows: one microheader per
+`surface-2` disc in the avatar's slot, "Invite link" and when it expires as its
+title (what tells two links apart), over who made it and the other roles it
+gives as chips, and a `…` holding Revoke link, which asks first. What it allows follows: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
 own once the pane is 42rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
-muted line under it, and the level as a `LevelGlyph` and its word in a fixed
-80px slot on the right, the glyph aligned to its end so a shorter ladder's empty
-slot sits before it and every glyph meets its word at the same x; a yes-or-no
+muted line under it, and the level as its word in a fixed 80px slot on the right,
+on the name's baseline (the glyph stays in the header and the matrix); a yes-or-no
 permission reads Yes with a check, or a muted No. The areas a role has no
 access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
-outline Give a role that opens the roles the viewer may give, each named over
-its description. Compare roles
+outline Give a role that opens the roles the viewer may give in a popover that
+keeps to the room it has, scrolls with a fade and leads with a find field, each
+role named over its description. Compare roles
 takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1572,8 +1575,9 @@ Roles checklist. Wherever several roles are picked at once (each workspace of
 an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
-least 44px, the whole row the checkbox's label, the name in 14px medium and the
-role's tally trailing (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
+least 44px, the whole row the checkbox's label, the name in 14px medium over the
+role's description in muted 12px, and the role's tally trailing, the box and the
+tally on the name's line however tall the description makes the row (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in

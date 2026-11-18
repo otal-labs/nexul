@@ -1,5 +1,6 @@
 import { ShieldIcon } from "lucide-react";
-import { useParams } from "react-router";
+import { useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
@@ -13,6 +14,7 @@ import { RolesListPane } from "@/components/role/RolesListPane";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useSeesTeam } from "@/hooks/AccessHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { COMPARE_ROLES, NO_ROLES } from "@/models/Role";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -26,6 +28,14 @@ export const RolesAndPeopleSection = () => {
   const selected = roles?.find((role) => role.id === roleId);
   const count = roles?.length ?? 0;
   const special = roleId === NO_ROLES && seesTeam;
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
+  const first = roles?.find((role) => !role.is_owner_role) ?? roles?.[0];
+  // From 1024px, where the list and the role sit side by side, the tab opens on a role instead of an empty pane.
+  useEffect(() => {
+    if (roleId || !first || !window.matchMedia?.("(min-width: 1024px)").matches) return;
+    void navigate(wsPath(`/access/roles/${first.id}`), { replace: true });
+  }, [roleId, first, navigate, wsPath]);
 
   return (
     <div className="min-h-0 flex-1">

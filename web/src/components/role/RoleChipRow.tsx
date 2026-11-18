@@ -3,32 +3,40 @@ import { cn } from "@/lib/utils";
 import type { TeamRole } from "@/models/Team";
 
 const SHOWN = 3;
+// A name longer than this can't show whole beside others, so it goes to the count instead.
+const WHOLE = 22;
 
-// Below these widths of its line the row shows one chip fewer, so every chip it shows stays whole and the rest go to the count.
-const HIDE_THIRD = "@max-[26rem]:hidden";
-const HIDE_SECOND = "@max-[17rem]:hidden";
-
-const Count = ({ roles, className }: { roles: TeamRole[]; className?: string }) => (
-  <span className={cn("shrink-0 font-mono text-micro text-muted-foreground tabular-nums", className)} title={roles.map((role) => role.name).join(", ")}>
-    +{roles.length}
-  </span>
-);
+// Each band of the line's width shows one chip fewer than the band above it.
+const BANDS = [
+  { visible: 3, chip: "", count: "@max-[26rem]:hidden" },
+  { visible: 2, chip: "@max-[26rem]:hidden", count: "hidden @max-[26rem]:inline @max-[17rem]:hidden" },
+  { visible: 1, chip: "@max-[17rem]:hidden", count: "hidden @max-[17rem]:inline" },
+];
 
 // A person's roles on one line, set on the line's baseline: as many whole chips as fit, up to three, then the rest as a mono
-// count with every name in its tooltip. Only a lone chip too long for the line truncates.
+// count with every hidden name in its tooltip. Only a lone chip too long for the line truncates.
 export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
-  const shown = roles.slice(0, SHOWN);
+  const whole = roles.filter((role) => role.name.length <= WHOLE);
+  const shown = (whole.length > 0 ? whole : roles).slice(0, SHOWN);
   return (
     <span className="@container flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden">
       {roles.length === 0 && <NoRolesChip />}
       {shown.map((role, index) => (
-        <span key={role.id} className={cn("flex min-w-0", index > 0 && "shrink-0", index === 1 && HIDE_SECOND, index === 2 && HIDE_THIRD)}>
+        <span key={role.id} className={cn("flex min-w-0", index > 0 && "shrink-0", index > 0 && BANDS[3 - index]?.chip)}>
           <RoleChip name={role.name} />
         </span>
       ))}
-      {roles.length > 3 && <Count roles={roles.slice(3)} className="@max-[26rem]:hidden" />}
-      {roles.length >= 3 && <Count roles={roles.slice(2)} className="hidden @max-[26rem]:inline @max-[17rem]:hidden" />}
-      {roles.length >= 2 && <Count roles={roles.slice(1)} className="hidden @max-[17rem]:inline" />}
+      {BANDS.map((band) => {
+        const visible = shown.slice(0, band.visible);
+        const hidden = roles.filter((role) => !visible.includes(role));
+        return (
+          hidden.length > 0 && (
+            <span key={band.visible} className={cn("shrink-0 font-mono text-micro text-muted-foreground tabular-nums", band.count)} title={hidden.map((role) => role.name).join(", ")}>
+              +{hidden.length}
+            </span>
+          )
+        );
+      })}
     </span>
   );
 };

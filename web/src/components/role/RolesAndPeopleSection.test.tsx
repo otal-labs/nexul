@@ -237,12 +237,12 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
     renderAt("/acme/access/roles/r-dev");
 
     const links = within(await screen.findByRole("list", { name: "Open invitation links" }));
-    await user.click(links.getByRole("button", { name: /Actions for Invite link by/ }));
+    await user.click(links.getByRole("button", { name: /Actions for Invite link/ }));
     await user.click(await screen.findByRole("button", { name: "Revoke link" }));
     await user.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(mocks.delete).not.toHaveBeenCalled();
 
-    await user.click(links.getByRole("button", { name: /Actions for Invite link by/ }));
+    await user.click(links.getByRole("button", { name: /Actions for Invite link/ }));
     await user.click(await screen.findByRole("button", { name: "Revoke link" }));
     await user.click(await screen.findAllByRole("button", { name: "Revoke link" }).then((buttons) => buttons.at(-1)!));
     expect(mocks.delete).toHaveBeenCalledWith("/api/invitations/inv-1");
@@ -263,7 +263,7 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
 });
 
 describe("RolesAndPeopleSection, a long list of holders", () => {
-  it("shows a role's first eight holders, all of them on Show all, and every match while searching", async () => {
+  it("shows a role's first eight holders, all of them on Show all and eight again on Show fewer, and every match while searching", async () => {
     serve();
     const crowd = Array.from({ length: 12 }, (_, i) => person(`p${i}`, `Person ${String(i).padStart(2, "0")}`, ["r-dev"]));
     const served = mocks.get.getMockImplementation()!;
@@ -278,5 +278,7 @@ describe("RolesAndPeopleSection, a long list of holders", () => {
     await user.clear(screen.getByRole("textbox", { name: "Find a person" }));
     await user.click(screen.getByRole("button", { name: "Show all 14" }));
     expect(list.getAllByRole("listitem")).toHaveLength(14);
+    await user.click(screen.getByRole("button", { name: "Show fewer" }));
+    expect(list.getAllByRole("listitem")).toHaveLength(8);
   });
 });

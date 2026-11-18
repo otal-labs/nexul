@@ -49,7 +49,7 @@ export const RowActionsMenu = ({ subject, actions, projectId }: RowActionsMenuPr
             </Button>
           </TooltipTrigger>
         </PopoverTrigger>
-        <TooltipContent>More actions</TooltipContent>
+        <TooltipContent>Actions for {subject}</TooltipContent>
       </Tooltip>
       <PopoverContent align="end" className="w-auto min-w-40 max-w-64 p-1">
         <div className="flex flex-col">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChannelsCard } from "@/components/accessgrid/ChannelsCard";
 import { ProjectsCard } from "@/components/accessgrid/ProjectsCard";
 import { ProjectsReadback } from "@/components/accessgrid/ProjectsReadback";
+import { HeaderFacts } from "@/components/HeaderFacts";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
@@ -32,12 +33,12 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
     useAccessDraftStore.getState().clear();
     toast.success("Access is set", { description: "People see their projects now. Change it any time on the Access page." });
   };
-  const facts = `${countLabel(grid.projects.length, "project", "projects")} · ${countLabel(grid.roles.length, "role", "roles")}`;
+  const facts = [countLabel(grid.projects.length, "project", "projects"), countLabel(grid.roles.length, "role", "roles")];
 
   return (
     <>
       <div className="mb-8 shrink-0">
-        <PageHeader crumbs={[crumb]} title="Who's in each project" meta={<span>{facts}</span>} />
+        <PageHeader crumbs={[crumb]} title="Who's in each project" meta={<HeaderFacts parts={facts} />} />
         <p className="mt-5 max-w-2xl text-sm text-pretty text-muted-foreground">
           This update rebuilt permissions, so every project starts with nobody in it and only Owners can see them. Choose who's in each
           project; you can change it any time on the Access page.

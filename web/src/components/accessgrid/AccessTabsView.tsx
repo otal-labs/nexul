@@ -1,5 +1,6 @@
 import { AccessChannelsTab } from "@/components/accessgrid/AccessChannelsTab";
 import { AccessProjectsTab } from "@/components/accessgrid/AccessProjectsTab";
+import { HeaderFacts } from "@/components/HeaderFacts";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { RolesAndPeopleSection } from "@/components/role/RolesAndPeopleSection";
@@ -30,13 +31,11 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
     owner && grid.channels.length > 0 && countLabel(grid.channels.length, "public channel", "public channels"),
     // The grids list the roles that can be ticked, never the Owner's, so the count adds it back to match the roles list.
     countLabel(grid.roles.length + 1, "role", "roles"),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ];
 
   return (
     <>
-      <PageHeader className="mb-6 shrink-0" crumbs={[crumb]} title="Access" meta={<span>{facts}</span>} />
+      <PageHeader className="mb-6 shrink-0" crumbs={[crumb]} title="Access" meta={<HeaderFacts parts={facts} />} />
       <PageTabs
         label="Access"
         className="min-h-0 flex-1"
