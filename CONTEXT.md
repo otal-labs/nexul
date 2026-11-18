@@ -909,7 +909,7 @@ later import of the same source skips everything an earlier one brought in. `imp
 _Avoid_: Migration, sync (an import runs once; sync keeps going)
 
 **Import source**:
-The tool an import reads (GitHub issues first; Linear, Trello, Asana and Notion to follow). It only reads and describes
+The tool an import reads (GitHub issues and Notion pages; Linear, Trello and Asana to follow). It only reads and describes
 what it finds; the import maps people by GitHub login or email, statuses onto columns by name or kind, and copies files
 from the source's own hosts.
 _Avoid_: Connector (a connector is a credential Nexul keeps), adapter
@@ -918,6 +918,12 @@ _Avoid_: Connector (a connector is a credential Nexul keeps), adapter
 A ticket an import filed: its reporter is `import` with the source's name, and its comments are external messages. It
 notifies nobody and starts no auto play when it arrives; after that it is an ordinary ticket.
 _Avoid_: Synced ticket
+
+**Imported doc**:
+A doc an import wrote, in a folder named after the root page it came from. Its links to other imported pages are doc
+mentions, and its source's files are attachments. An import that fails or is cancelled archives the docs it wrote but
+never filled, and a later import writes them again.
+_Avoid_: Synced doc, Notion page (once it is in, it is a doc)
 
 **External message**:
 A message written in another tool and copied into a thread by an import, shown under its author's name there and the

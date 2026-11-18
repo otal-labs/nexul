@@ -12,7 +12,7 @@ interface ImportHistoryRowProps {
 export const ImportHistoryRow = ({ imp }: ImportHistoryRowProps) => {
   const { data: projects } = useFetchProjects();
   const project = projects?.find((p) => p.id === imp.project_id)?.name;
-  const counts = `${imp.done.toLocaleString()} of ${imp.total.toLocaleString()} in${imp.report.skipped > 0 ? `, ${imp.report.skipped.toLocaleString()} already here` : ""}`;
+  const counts = `${imp.done.toLocaleString()} of ${imp.total.toLocaleString()} in${imp.report.skipped > 0 ? `, ${imp.report.skipped.toLocaleString()} already here` : ""}${imp.report.unsupported > 0 ? `, ${imp.report.unsupported.toLocaleString()} blocks as text or links` : ""}`;
   return (
     <li className="py-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">

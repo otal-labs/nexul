@@ -15,18 +15,18 @@ func MCPTools(svc *Service) []mcptool.Tool {
 
 type importRunIn struct {
 	ID         string `json:"id,omitempty" jsonschema:"An import's id: alone it reads progress; with confirm or cancel it acts."`
-	Source     string `json:"source,omitempty" jsonschema:"Where to import from: github, one attached repository's issues."`
+	Source     string `json:"source,omitempty" jsonschema:"Where to import from: github, one attached repository's issues; notion, the pages shared with an integration."`
 	ProjectID  string `json:"project_id,omitempty" jsonschema:"The project to import into, from project_list."`
-	From       string `json:"from,omitempty" jsonschema:"What in the source to import: for github a repository as owner/name, omitted when the project has one."`
-	Credential string `json:"credential,omitempty" jsonschema:"The source's API key or token; github needs none. Sealed until the import ends, then deleted, and never returned."`
+	From       string `json:"from,omitempty" jsonschema:"What to import: for github owner/name, omitted when the project has one; for notion page links, omitted for all top pages."`
+	Credential string `json:"credential,omitempty" jsonschema:"The source's token, such as a Notion integration secret; github needs none. Sealed, deleted when the import ends, never returned."`
 	Confirm    bool   `json:"confirm,omitempty" jsonschema:"With id: write a scanned import that is ready."`
 	Cancel     bool   `json:"cancel,omitempty" jsonschema:"With id: stop the import; what it already wrote stays."`
 }
 
 func importRunTool(svc *Service) mcptool.Tool {
 	return mcptool.New("import_run", "Run import",
-		"Imports another tool's records into a project as tickets with their comments, labels, assignee, status and "+
-			"files; only the workspace's Owner may. With source and project_id it starts a scan that counts what would come "+
+		"Imports another tool's records into a project: issues as tickets with their comments, labels, assignee, status "+
+			"and files, pages as docs; only the workspace's Owner may. With source and project_id it starts a scan that counts what would come "+
 			"in and how people and statuses map, and returns the import; with that id it returns progress, and confirm "+
 			"writes it once its state is ready, within 24 hours. A re-run skips what an earlier import brought in, and "+
 			"nothing imported notifies anyone or starts an auto play.",

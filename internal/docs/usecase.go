@@ -83,6 +83,12 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 // CreateInFolder persists a new doc (v1) in folderID, or the project's default folder when empty, enqueuing
 // doc.created and granting the creator full permissions.
 func (s *Service) CreateInFolder(ctx context.Context, projectID, folderID, title, body string) (*Doc, error) {
+	return s.CreateWithID(ctx, ids.New(), projectID, folderID, title, body)
+}
+
+// CreateWithID is CreateInFolder with the doc's id chosen by the caller, as an import derives it; a doc that already
+// has the id is ErrConflict.
+func (s *Service) CreateWithID(ctx context.Context, id, projectID, folderID, title, body string) (*Doc, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required — create a project before creating docs", apperrs.ErrInvalid)
@@ -108,7 +114,7 @@ func (s *Service) CreateInFolder(ctx context.Context, projectID, folderID, title
 	}
 	now := s.now().UTC()
 	d := &Doc{
-		ID:        ids.New(),
+		ID:        id,
 		ProjectID: projectID,
 		FolderID:  folderID,
 		Title:     title,

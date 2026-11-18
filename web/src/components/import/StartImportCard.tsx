@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
+import { NotionImportRows } from "@/components/import/NotionImportRows";
 import { useStartImport } from "@/hooks/ImportHooks";
 import { useFetchProjectRepos, useFetchProjects } from "@/hooks/ProjectHooks";
 import { IMPORT_SOURCES } from "@/models/Import";
@@ -13,25 +14,33 @@ export const StartImportCard = () => {
   const [source, setSource] = useState(IMPORT_SOURCES[0]!.id);
   const [projectId, setProjectId] = useState("");
   const [picked, setPicked] = useState("");
+  const [token, setToken] = useState("");
+  const [pages, setPages] = useState("");
   const { data: projects } = useFetchProjects();
-  const { data: repos } = useFetchProjectRepos(projectId || undefined);
+  const asksRepository = IMPORT_SOURCES.find((s) => s.id === source)?.asks === "repository";
+  const { data: repos } = useFetchProjectRepos(asksRepository && projectId ? projectId : undefined);
   const start = useStartImport();
   const sourceHint = IMPORT_SOURCES.find((s) => s.id === source)?.hint;
   // A project with one repository imports it; with several, the person names one.
-  const from = repos?.length === 1 ? repos[0]!.full_name : picked;
-  const ready = projectId !== "" && !!repos && repos.length > 0 && from !== "";
+  const repository = repos?.length === 1 ? repos[0]!.full_name : picked;
+  const ready = asksRepository
+    ? projectId !== "" && !!repos && repos.length > 0 && repository !== ""
+    : projectId !== "" && token.trim() !== "";
+  const input = asksRepository
+    ? { source, project_id: projectId, from: repository }
+    : { source, project_id: projectId, from: pages.trim(), credential: token.trim() };
 
   return (
     <SettingsCard
       id="import-start"
       title="Import into a project"
-      description="Brings another tool's records in as tickets. A scan counts them and shows how people and statuses map before anything is written; a re-run skips what came in before."
+      description="Brings another tool's records in as tickets or docs. A scan counts them and shows how people and statuses map before anything is written; a re-run skips what came in before."
       footer={
         <Button
           className="ml-auto"
           disabled={!ready}
           loading={start.isPending}
-          onClick={() => start.mutate({ source, project_id: projectId, from })}
+          onClick={() => start.mutate(input)}
         >
           Scan
         </Button>
@@ -55,7 +64,11 @@ export const StartImportCard = () => {
         <SettingsRow
           label="Project"
           htmlFor="import-project"
-          description="Tickets land in its columns; a status it lacks becomes a new column."
+          description={
+            asksRepository
+              ? "Tickets land in its columns; a status it lacks becomes a new column."
+              : "Docs land in a folder per root page, made if the project lacks one."
+          }
         >
           <Select
             value={projectId}
@@ -76,6 +89,7 @@ export const StartImportCard = () => {
             </SelectContent>
           </Select>
         </SettingsRow>
+        {!asksRepository && <NotionImportRows token={token} pages={pages} onToken={setToken} onPages={setPages} />}
         {repos && repos.length === 0 && (
           <SettingsRow label="Repository" description="This project has no repository. Attach one in its settings first." />
         )}

@@ -29,6 +29,7 @@ const report = {
   skipped: 0,
   files_copied: 0,
   files_linked: 0,
+  unsupported: 0,
   failures: [],
 };
 
@@ -106,6 +107,34 @@ describe("ImportSection", () => {
       }),
     );
     expect(await screen.findByText("Scanning")).toBeInTheDocument();
+  });
+
+  it("scans Notion with the integration secret and the root pages", async () => {
+    const user = userEvent.setup();
+    mocks.post.mockResolvedValue({ data: anImport({ source: "notion", state: "scanning", total: 0 }) });
+    renderSection([]);
+
+    await pickOption(user, "Source", "Notion pages");
+    await pickOption(user, "Project", "Atlas");
+    const scan = screen.getByRole("button", { name: "Scan" });
+    expect(scan).toBeDisabled();
+    await user.type(screen.getByLabelText("Integration secret"), "ntn_example");
+    await user.type(screen.getByLabelText("Root pages"), "https://www.notion.so/Handbook-1f2e");
+    await user.click(scan);
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/imports", {
+        source: "notion",
+        project_id: "p-1",
+        from: "https://www.notion.so/Handbook-1f2e",
+        credential: "ntn_example",
+      }),
+    );
+  });
+
+  it("offers a Notion scan's docs to import", async () => {
+    renderSection([anImport({ source: "notion", total: 8, report: { ...report, tickets: 0, comments: 0, docs: 8, people: [], statuses: [] } })]);
+    expect(await screen.findByText("8 docs")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import 8 docs" })).toBeInTheDocument();
   });
 
   it("asks which repository when the project has several", async () => {

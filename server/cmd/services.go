@@ -391,6 +391,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Board:    importBoard{svc: workspaceSvc},
 		People:   importPeople{store: store.Imports, projects: store.Projects, access: accessSvc},
 		Desk:     importDesk{tickets: ticketsSvc, chat: chatSvc, attachments: attachmentsSvc, types: store.TicketTypes, projects: store.Projects},
+		Shelf:    importShelf{docs: docsSvc, attachments: attachmentsSvc},
 		Sources:  importSources(gitRouter, workspaceSvc, store.IssueSync),
 		Log:      logger,
 	})

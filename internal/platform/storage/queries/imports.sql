@@ -46,3 +46,9 @@ SELECT u.id AS user_id, u.login AS user_login, i.provider, i.login AS identity_l
 FROM workspace_members m JOIN users u ON u.id = m.user_id JOIN user_identities i ON i.user_id = u.id
 WHERE m.workspace_id = ?
 ORDER BY u.id, i.provider;
+
+-- name: ListImportItemsInState :many
+SELECT * FROM import_items WHERE import_id = ? AND kind = ? AND state = ? ORDER BY source_id;
+
+-- name: DeleteImportSourceID :exec
+DELETE FROM import_source_ids WHERE workspace_id = ? AND source = ? AND kind = ? AND source_id = ?;

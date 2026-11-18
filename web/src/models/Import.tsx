@@ -41,6 +41,8 @@ export interface ImportReport {
   skipped: number;
   files_copied: number;
   files_linked: number;
+  // Source blocks with no counterpart here, brought in as text or links.
+  unsupported: number;
   failures: ImportFailure[];
   error?: string;
 }
@@ -70,6 +72,8 @@ export interface ImportSource {
   label: string;
   // What it brings in, under the picker.
   hint: string;
+  // What the form asks for: one of the project's repositories, or an integration secret and the pages to start from.
+  asks: "repository" | "pages";
 }
 
 // The sources the server reads; each new source is one entry here and one on the server.
@@ -78,6 +82,13 @@ export const IMPORT_SOURCES: ImportSource[] = [
     id: "github",
     label: "GitHub issues",
     hint: "One repository attached to the project: its issues, comments, labels and first assignee.",
+    asks: "repository",
+  },
+  {
+    id: "notion",
+    label: "Notion pages",
+    hint: "The pages shared with an internal integration, as docs: one folder per root page, with their images and database rows.",
+    asks: "pages",
   },
 ];
 

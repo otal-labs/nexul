@@ -52,6 +52,14 @@ type Scan struct {
 type Sink interface {
 	// Ticket files one ticket with its comments and files, or skips it when an import already brought it in.
 	Ticket(ctx context.Context, t Ticket) error
+	// Doc writes one doc with its files, or skips it when an import already brought it in.
+	Doc(ctx context.Context, d Doc) error
+	// DocLink is the in-app link of the doc a source record becomes, so a body can link a doc not written yet.
+	DocLink(sourceID string) string
+	// Skip reports whether a record of kind is already in, counting it as skipped, so a source need not read it again.
+	Skip(ctx context.Context, kind, sourceID string) (bool, error)
+	// Fail records a record the source could not read, with why, and carries on.
+	Fail(ctx context.Context, kind, sourceID, title string, cause error) error
 	// Checkpoint records where a resumed import starts reading again; everything before it has gone to the sink.
 	Checkpoint(ctx context.Context, cursor string) error
 }
@@ -114,4 +122,18 @@ type Comment struct {
 	Author    Person
 	AvatarURL string
 	At        time.Time
+}
+
+// Doc is one record that becomes a doc.
+type Doc struct {
+	// SourceID is stable in the source, so a later import of it is skipped.
+	SourceID string
+	// Folder names the doc folder it lands in, made the first time the project lacks one of that name.
+	Folder string
+	Title  string
+	// Body is markdown; links to files the source hosts are copied and pointed at the copies.
+	Body  string
+	Files []string
+	// Unsupported counts the source blocks the body carries as text or links.
+	Unsupported int
 }

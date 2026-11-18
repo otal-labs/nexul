@@ -52,4 +52,8 @@ type ItemRepo interface {
 	Imported(ctx context.Context, workspaceID, source, kind, sourceID string) (string, bool, error)
 	// Record writes the item, and on its first write past failed the workspace's source id for it, in one transaction.
 	Record(ctx context.Context, workspaceID, source string, item Item) error
+	// Unfilled is this import's records of kind that were created and never filled.
+	Unfilled(ctx context.Context, importID, kind string) ([]Item, error)
+	// Forget records the item as failed and drops its workspace source id, so a later import brings it in again.
+	Forget(ctx context.Context, workspaceID, source string, item Item) error
 }

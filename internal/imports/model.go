@@ -75,6 +75,8 @@ type Report struct {
 	// FilesCopied went into attachments; FilesLinked stayed links, too large or not downloadable.
 	FilesCopied int `json:"files_copied"`
 	FilesLinked int `json:"files_linked"`
+	// Unsupported are source blocks with no counterpart here, brought in as text or links instead.
+	Unsupported int `json:"unsupported"`
 	// Failures names up to MaxListedFailures records that did not come in; Import.Failed counts them all.
 	Failures []Failure `json:"failures"`
 	// Error is why a failed import stopped.

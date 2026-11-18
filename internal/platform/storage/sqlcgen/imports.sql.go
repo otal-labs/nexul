@@ -67,6 +67,27 @@ func (q *Queries) CreateImport(ctx context.Context, arg CreateImportParams) erro
 	return err
 }
 
+const deleteImportSourceID = `-- name: DeleteImportSourceID :exec
+DELETE FROM import_source_ids WHERE workspace_id = ? AND source = ? AND kind = ? AND source_id = ?
+`
+
+type DeleteImportSourceIDParams struct {
+	WorkspaceID string
+	Source      string
+	Kind        string
+	SourceID    string
+}
+
+func (q *Queries) DeleteImportSourceID(ctx context.Context, arg DeleteImportSourceIDParams) error {
+	_, err := q.db.ExecContext(ctx, deleteImportSourceID,
+		arg.WorkspaceID,
+		arg.Source,
+		arg.Kind,
+		arg.SourceID,
+	)
+	return err
+}
+
 const getImport = `-- name: GetImport :one
 SELECT id, workspace_id, project_id, source, source_from, state, created_by, credential_encrypted, total, done, failed, report_json, created_at, updated_at FROM imports WHERE id = ?
 `
@@ -138,6 +159,46 @@ func (q *Queries) GetImportSourceID(ctx context.Context, arg GetImportSourceIDPa
 	var nexul_id string
 	err := row.Scan(&nexul_id)
 	return nexul_id, err
+}
+
+const listImportItemsInState = `-- name: ListImportItemsInState :many
+SELECT import_id, kind, source_id, nexul_id, state, error FROM import_items WHERE import_id = ? AND kind = ? AND state = ? ORDER BY source_id
+`
+
+type ListImportItemsInStateParams struct {
+	ImportID string
+	Kind     string
+	State    string
+}
+
+func (q *Queries) ListImportItemsInState(ctx context.Context, arg ListImportItemsInStateParams) ([]ImportItem, error) {
+	rows, err := q.db.QueryContext(ctx, listImportItemsInState, arg.ImportID, arg.Kind, arg.State)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ImportItem
+	for rows.Next() {
+		var i ImportItem
+		if err := rows.Scan(
+			&i.ImportID,
+			&i.Kind,
+			&i.SourceID,
+			&i.NexulID,
+			&i.State,
+			&i.Error,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listImportPeople = `-- name: ListImportPeople :many
