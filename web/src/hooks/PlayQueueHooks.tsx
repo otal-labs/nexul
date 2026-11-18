@@ -16,9 +16,12 @@ import { followEach, type LiveFollower } from "@/lib/live";
 export const getPlayQueueKey = "getPlayQueue";
 export const getPlayQueuedKey = "getPlayQueued";
 
+// A longer delay overflows the timer, which then fires every millisecond.
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 // The rolling day freeing a paused target sends no frame, so the query looks again once its oldest counted run leaves.
 const lookAgainWhenFreed = (queue: PlayQueue | undefined): number | false =>
-  queue?.paused_until ? Math.max(Date.parse(queue.paused_until) - Date.now(), 0) + 1000 : false;
+  queue?.paused_until ? Math.min(Math.max(Date.parse(queue.paused_until) - Date.now(), 0) + 1000, MAX_TIMER_MS) : false;
 
 // A ticket's or doc's auto runs and whether they are paused; the queue frames keep it live.
 export const useFetchPlayQueue = (targetType: PlayType, targetId: string) =>
