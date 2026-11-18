@@ -17,15 +17,159 @@ type linkKey struct {
 }
 
 type fakeRepo struct {
-	mu       sync.Mutex
-	syncs    map[string]Sync
-	links    map[linkKey]Link
-	comments map[int64]CommentLink
-	swept    []string
+	mu            sync.Mutex
+	syncs         map[string]Sync
+	links         map[linkKey]Link
+	comments      map[int64]CommentLink
+	swept         []string
+	ticketPushes  map[string]TicketPush
+	commentPushes map[string]CommentPush
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{syncs: map[string]Sync{}, links: map[linkKey]Link{}, comments: map[int64]CommentLink{}}
+	return &fakeRepo{
+		syncs: map[string]Sync{}, links: map[linkKey]Link{}, comments: map[int64]CommentLink{},
+		ticketPushes: map[string]TicketPush{}, commentPushes: map[string]CommentPush{},
+	}
+}
+
+func (r *fakeRepo) GetLinkByTicket(_ context.Context, ticketID string) (Link, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, l := range r.links {
+		if l.TicketID == ticketID {
+			return l, nil
+		}
+	}
+	return Link{}, apperrs.ErrNotFound
+}
+
+func (r *fakeRepo) GetCommentLinkByMessage(_ context.Context, messageID string) (CommentLink, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, c := range r.comments {
+		if c.MessageID == messageID {
+			return c, nil
+		}
+	}
+	return CommentLink{}, apperrs.ErrNotFound
+}
+
+func (r *fakeRepo) QueueTicketPush(_ context.Context, p TicketPush) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old, ok := r.ticketPushes[p.TicketID]
+	if ok {
+		p.Create = p.Create || old.Create
+		p.Tried = old.Tried
+	}
+	r.ticketPushes[p.TicketID] = p
+	return nil
+}
+
+func (r *fakeRepo) QueueCommentPush(_ context.Context, p CommentPush) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if old, ok := r.commentPushes[p.MessageID]; ok {
+		p.Tried = old.Tried
+	}
+	r.commentPushes[p.MessageID] = p
+	return nil
+}
+
+func (r *fakeRepo) DueTicketPushes(_ context.Context, now time.Time, limit int) ([]TicketPush, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []TicketPush
+	for _, p := range r.ticketPushes {
+		if !p.Due.After(now) {
+			out = append(out, p)
+		}
+	}
+	slices.SortFunc(out, func(a, b TicketPush) int { return a.Due.Compare(b.Due) })
+	return out[:min(limit, len(out))], nil
+}
+
+func (r *fakeRepo) DueCommentPushes(_ context.Context, now time.Time, limit int) ([]CommentPush, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []CommentPush
+	for _, p := range r.commentPushes {
+		if !p.Due.After(now) {
+			out = append(out, p)
+		}
+	}
+	slices.SortFunc(out, func(a, b CommentPush) int { return a.Due.Compare(b.Due) })
+	return out[:min(limit, len(out))], nil
+}
+
+func (r *fakeRepo) NextPushDue(context.Context) (time.Time, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var next time.Time
+	for _, p := range r.ticketPushes {
+		if next.IsZero() || p.Due.Before(next) {
+			next = p.Due
+		}
+	}
+	for _, p := range r.commentPushes {
+		if next.IsZero() || p.Due.Before(next) {
+			next = p.Due
+		}
+	}
+	return next, !next.IsZero(), nil
+}
+
+func (r *fakeRepo) DeferTicketPush(_ context.Context, p TicketPush, was time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cur, ok := r.ticketPushes[p.TicketID]
+	if !ok {
+		return nil
+	}
+	if !cur.Due.Equal(was) {
+		p.Due = cur.Due
+	}
+	r.ticketPushes[p.TicketID] = p
+	return nil
+}
+
+func (r *fakeRepo) DeferCommentPush(_ context.Context, p CommentPush, was time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cur, ok := r.commentPushes[p.MessageID]
+	if !ok {
+		return nil
+	}
+	if !cur.Due.Equal(was) {
+		p.Due = cur.Due
+	}
+	r.commentPushes[p.MessageID] = p
+	return nil
+}
+
+func (r *fakeRepo) DoneTicketPush(_ context.Context, p TicketPush) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if cur, ok := r.ticketPushes[p.TicketID]; ok && cur.Due.Equal(p.Due) {
+		delete(r.ticketPushes, p.TicketID)
+	}
+	return nil
+}
+
+func (r *fakeRepo) DoneCommentPush(_ context.Context, p CommentPush) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if cur, ok := r.commentPushes[p.MessageID]; ok && cur.Due.Equal(p.Due) {
+		delete(r.commentPushes, p.MessageID)
+	}
+	return nil
+}
+
+func (r *fakeRepo) waiting() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.ticketPushes) + len(r.commentPushes)
 }
 
 func (r *fakeRepo) GetSync(_ context.Context, owner, repo string) (Sync, error) {
@@ -140,7 +284,7 @@ type fakeTicket struct {
 	Stage     Stage
 }
 
-// fakeDesk is the tickets side: Desk, Board, Notes and Comments in one.
+// fakeDesk is the tickets side: Desk, Board, Notes, Comments and Source in one.
 type fakeDesk struct {
 	mu       sync.Mutex
 	tickets  map[string]*fakeTicket
@@ -150,10 +294,54 @@ type fakeDesk struct {
 	edits    int
 	deleted  []string
 	fail     error
+	// thread holds the messages written in Nexul, as Source reads them; threads maps a conversation to its ticket.
+	thread  map[string]Mirror
+	threads map[string]string
 }
 
 func newFakeDesk() *fakeDesk {
-	return &fakeDesk{tickets: map[string]*fakeTicket{}, notes: map[string]string{}, messages: map[string]string{}}
+	return &fakeDesk{
+		tickets: map[string]*fakeTicket{}, notes: map[string]string{}, messages: map[string]string{},
+		thread: map[string]Mirror{}, threads: map[string]string{"c-1": "t-1"},
+	}
+}
+
+// githubLogins maps a member's login to the GitHub login they sign in with.
+var githubLogins = map[string]string{"bob": "bob-gh"}
+
+func (d *fakeDesk) Ticket(_ context.Context, id string) (Outbound, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	t, ok := d.tickets[id]
+	if !ok {
+		return Outbound{}, apperrs.ErrNotFound
+	}
+	f := TicketFields{Title: t.Fields.Title, Body: t.Fields.Body, Closed: t.Stage == StageDone, Labels: slices.Clone(t.Fields.Labels)}
+	if gh := githubLogins[t.Developer]; gh != "" {
+		f.Assignees = []string{gh}
+	}
+	return Outbound{ProjectID: "p-1", Fields: f}, nil
+}
+
+func (d *fakeDesk) Message(_ context.Context, id string) (Mirror, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	m, ok := d.thread[id]
+	if !ok {
+		return Mirror{}, apperrs.ErrNotFound
+	}
+	return m, nil
+}
+
+func (d *fakeDesk) ThreadOf(_ context.Context, conversationID string) (string, error) {
+	return d.threads[conversationID], nil
+}
+
+// edit changes a ticket as a person does in Nexul.
+func (d *fakeDesk) edit(id string, change func(*fakeTicket)) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	change(d.tickets[id])
 }
 
 func (d *fakeDesk) File(_ context.Context, _ string, f TicketFields, developer, reporter string) (string, error) {
@@ -293,6 +481,7 @@ type fixture struct {
 	repo   *fakeRepo
 	desk   *fakeDesk
 	issues *fakeIssues
+	github *fakeGitHub
 	now    time.Time
 }
 
@@ -305,10 +494,12 @@ func newFixture(syncs ...Sync) *fixture {
 	for _, s := range syncs {
 		f.repo.syncs[s.Owner+"/"+s.Repo] = s
 	}
+	f.github = &fakeGitHub{issues: f.issues, now: func() time.Time { return f.now }}
 	f.svc = New(Deps{
 		Repo: f.repo, Desk: f.desk, Board: f.desk, Notes: f.desk, Comments: f.desk,
 		People: fakePeople{"bob-gh": "bob"}, Issues: f.issues, Bot: fakeBot("nexul-app[bot]"),
-		Repos: fakeRepos{"acme/app": "p-1", "acme/other": "p-2"}, Now: func() time.Time { return f.now },
+		Repos: fakeRepos{"acme/app": "p-1", "acme/other": "p-2"}, Source: f.desk, IssueWriter: f.github, CommentWriter: f.github,
+		Now: func() time.Time { return f.now },
 	})
 	return f
 }
@@ -335,4 +526,105 @@ func later(d time.Duration) func(*Issue) { return func(i *Issue) { i.UpdatedAt =
 
 func closed(reason string) func(*Issue) {
 	return func(i *Issue) { i.State, i.StateReason = "closed", reason }
+}
+
+// fakeGitHub records every write; fail answers the next writes with an error, and accept makes a failed create land
+// anyway, as a timed-out request GitHub accepted does.
+type fakeGitHub struct {
+	mu      sync.Mutex
+	issues  *fakeIssues
+	now     func() time.Time
+	updates []IssueWrite
+	creates []IssueWrite
+	posted  []string
+	edited  []string
+	removed []int64
+	fail    []error
+	accept  bool
+	nextID  int64
+}
+
+func (g *fakeGitHub) failure() error {
+	if len(g.fail) == 0 {
+		return nil
+	}
+	err := g.fail[0]
+	g.fail = g.fail[1:]
+	return err
+}
+
+func (g *fakeGitHub) issue(number int, w IssueWrite) Issue {
+	state := "open"
+	if w.Closed {
+		state = "closed"
+	}
+	return Issue{ID: 9000 + int64(number), Number: number, Title: w.Title, Body: w.Body, State: state, Labels: w.Labels, Assignees: w.Assignees, UpdatedAt: g.now()}
+}
+
+func (g *fakeGitHub) CreateIssue(_ context.Context, _, _ string, w IssueWrite) (Issue, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	err := g.failure()
+	if err != nil && !g.accept {
+		return Issue{}, err
+	}
+	g.creates = append(g.creates, w)
+	i := g.issue(40+len(g.creates), w)
+	i.State = "open"
+	g.issues.mu.Lock()
+	g.issues.pages[1] = append(g.issues.pages[1], i)
+	g.issues.mu.Unlock()
+	return i, err
+}
+
+func (g *fakeGitHub) UpdateIssue(_ context.Context, _, _ string, number int, w IssueWrite) (Issue, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if err := g.failure(); err != nil {
+		return Issue{}, err
+	}
+	g.updates = append(g.updates, w)
+	return g.issue(number, w), nil
+}
+
+func (g *fakeGitHub) CreateComment(_ context.Context, _, _ string, number int, body string) (Comment, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	err := g.failure()
+	if err != nil && !g.accept {
+		return Comment{}, err
+	}
+	g.nextID++
+	c := Comment{ID: 7000 + g.nextID, Body: body, Author: "nexul-app[bot]", UpdatedAt: g.now()}
+	g.posted = append(g.posted, body)
+	g.issues.mu.Lock()
+	g.issues.comments[number] = append(g.issues.comments[number], c)
+	g.issues.mu.Unlock()
+	return c, err
+}
+
+func (g *fakeGitHub) UpdateComment(_ context.Context, _, _ string, _ int64, body string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if err := g.failure(); err != nil {
+		return err
+	}
+	g.edited = append(g.edited, body)
+	return nil
+}
+
+func (g *fakeGitHub) DeleteComment(_ context.Context, _, _ string, id int64) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if err := g.failure(); err != nil {
+		return err
+	}
+	g.removed = append(g.removed, id)
+	return nil
+}
+
+func (g *fakeGitHub) writes() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return len(g.updates) + len(g.creates) + len(g.posted) + len(g.edited) + len(g.removed)
 }

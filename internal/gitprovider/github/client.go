@@ -590,7 +590,7 @@ func mapErr(err error) error {
 		return apperrors.Retryable(err)
 	}
 	switch ghe.Response.StatusCode {
-	case http.StatusNotFound:
+	case http.StatusNotFound, http.StatusGone:
 		return apperrors.ErrNotFound
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return apperrors.ErrUnauthorized

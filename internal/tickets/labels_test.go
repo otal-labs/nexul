@@ -55,6 +55,31 @@ func TestRemoveLabel(t *testing.T) {
 	})
 }
 
+func TestLabels_PublishWhatChanged(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	ctx := t.Context()
+	created, err := s.Create(ctx, "p-1", "ticket", "", "", "")
+	require.NoError(t, err)
+	_, err = s.AddLabel(ctx, created.ID, "bug")
+	require.NoError(t, err)
+	_, err = s.AddLabel(ctx, created.ID, "bug")
+	require.NoError(t, err)
+	_, err = s.RemoveLabel(ctx, created.ID, "bug")
+	require.NoError(t, err)
+	_, err = s.RemoveLabel(ctx, created.ID, "bug")
+	require.NoError(t, err)
+
+	evts := repo.eventsFor(TopicLabelsChanged)
+	require.Len(t, evts, 2, "a label already on the ticket, or never on it, publishes nothing")
+	added := evts[0].Payload.(LabelsChangedEvent)
+	assert.Equal(t, []string{"bug"}, added.Added)
+	assert.Equal(t, []string{"bug"}, added.Ticket.Labels)
+	removed := evts[1].Payload.(LabelsChangedEvent)
+	assert.Equal(t, []string{"bug"}, removed.Removed)
+	assert.Empty(t, removed.Ticket.Labels)
+}
+
 func TestListLabels(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)

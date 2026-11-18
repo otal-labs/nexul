@@ -93,17 +93,24 @@ type Gate interface {
 
 // Deps are the Service's seams; Gate may be nil in tests, which leaves the calls ungated.
 type Deps struct {
-	Repo     Repo
-	Desk     Desk
-	Board    Board
-	Notes    Notes
-	Comments Comments
-	People   People
-	Issues   Issues
-	Bot      Bot
-	Repos    Repos
-	Gate     Gate
-	Now      func() time.Time
+	Repo          Repo
+	Desk          Desk
+	Board         Board
+	Notes         Notes
+	Comments      Comments
+	People        People
+	Issues        Issues
+	Bot           Bot
+	Repos         Repos
+	Gate          Gate
+	Source        Source
+	IssueWriter   IssueWriter
+	CommentWriter CommentWriter
+	Now           func() time.Time
+	// Quiet is how long a ticket's changes rest before they are written; zero is the default, Quiet.
+	Quiet time.Duration
+	// Retry is the wait after GitHub first fails a write, doubling with each failure; zero is 30 seconds.
+	Retry time.Duration
 }
 
 // rateFloor is the remaining requests under which the sweep stops until the limit resets, leaving the rest to
@@ -113,10 +120,9 @@ const rateFloor = 200
 // Service applies GitHub issues to tickets.
 type Service struct {
 	d Deps
-	// mu serializes applying issues, so a webhook and the sweep never both file a ticket for one issue.
-	mu sync.Mutex
-	// resting maps an owner to when its rate limit resets, while the sweep waits for it.
-	resting map[string]time.Time
+	// mu serializes applying issues and writing them, so a webhook, the sweep and a write never interleave on one issue.
+	mu   sync.Mutex
+	pace *pacer
 }
 
 // New builds the Service.
@@ -124,7 +130,13 @@ func New(d Deps) *Service {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
-	return &Service{d: d, resting: map[string]time.Time{}}
+	if d.Quiet == 0 {
+		d.Quiet = Quiet
+	}
+	if d.Retry == 0 {
+		d.Retry = pushRetry
+	}
+	return &Service{d: d, pace: newPacer()}
 }
 
 func (s *Service) require(ctx context.Context, projectID string, action permissions.Action) error {
@@ -235,9 +247,45 @@ func (s *Service) apply(ctx context.Context, sy Sync, i Issue, action string) er
 		return nil
 	}
 	if !linked {
-		return s.file(ctx, sy, i)
+		return s.fileOrClaim(ctx, sy, i)
 	}
 	return s.follow(ctx, sy, link, i, action, covered)
+}
+
+// fileOrClaim links an issue Nexul made to the ticket its marker names, when its own link was lost before it was
+// stored; any other issue files a new ticket.
+func (s *Service) fileOrClaim(ctx context.Context, sy Sync, i Issue) error {
+	ticketID := markedTicket(i.Body)
+	if ticketID == "" {
+		return s.file(ctx, sy, i)
+	}
+	out, err := s.d.Source.Ticket(ctx, ticketID)
+	if errors.Is(err, apperrs.ErrNotFound) || (err == nil && out.ProjectID != sy.ProjectID) {
+		return s.file(ctx, sy, i)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.d.Repo.GetLinkByTicket(ctx, ticketID)
+	if err == nil {
+		return s.file(ctx, sy, i)
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return err
+	}
+	link := Link{Owner: sy.Owner, Repo: sy.Repo, IssueNumber: i.Number, IssueID: i.ID, TicketID: ticketID, IssueUpdatedAt: i.UpdatedAt, LinkedAt: s.d.Now().UTC()}
+	link.InboundHash = Hash(FieldsFromIssue(i, sy.trigger()))
+	return s.inStep(ctx, sy, link)
+}
+
+// inStep stores link with the ticket as it stands, so the changes just applied to it are never written back.
+func (s *Service) inStep(ctx context.Context, sy Sync, link Link) error {
+	f, err := s.outbound(ctx, link.TicketID, sy)
+	if err != nil {
+		return err
+	}
+	link.TicketHash = Hash(f)
+	return s.d.Repo.PutLink(ctx, link)
 }
 
 // follow applies a linked issue: a label-mode issue without its label pauses, and one with it again resumes.
@@ -273,7 +321,7 @@ func (s *Service) follow(ctx context.Context, sy Sync, link Link, i Issue, actio
 		return err
 	}
 	link.InboundHash, link.IssueUpdatedAt = h, i.UpdatedAt
-	return s.d.Repo.PutLink(ctx, link)
+	return s.inStep(ctx, sy, link)
 }
 
 func (s *Service) file(ctx context.Context, sy Sync, i Issue) error {
@@ -293,10 +341,12 @@ func (s *Service) file(ctx context.Context, sy Sync, i Issue) error {
 	if err := s.d.Repo.PutLink(ctx, link); err != nil {
 		return err
 	}
-	if !f.Closed {
-		return nil
+	if f.Closed {
+		if err := s.state(ctx, link, f, "", i.UpdatedAt); err != nil {
+			return err
+		}
 	}
-	return s.state(ctx, link, f, "", i.UpdatedAt)
+	return s.inStep(ctx, sy, link)
 }
 
 // developer is the first assignee a project member holds; the rest, and logins nobody holds, are ignored.

@@ -170,6 +170,12 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 
 	mustSubscribe(ctx, bus, "issuesync.issue", gitprovider.TopicIssue, "", svc.issueSyncSvc.HandleIssueEvent)
 	mustSubscribe(ctx, bus, "issuesync.comment", gitprovider.TopicIssueComment, "", svc.issueSyncSvc.HandleCommentEvent)
+	for _, topic := range []string{tickets.TopicUpdated, tickets.TopicStatusChanged, tickets.TopicDeveloperChanged, tickets.TopicLabelsChanged} {
+		mustSubscribe(ctx, bus, "issuesync.push."+topic, topic, "", svc.issueSyncSvc.HandleTicketEvent)
+	}
+	mustSubscribe(ctx, bus, "issuesync.push."+chat.TopicMessageCreated, chat.TopicMessageCreated, "", svc.issueSyncSvc.HandleMessageEvent)
+	mustSubscribe(ctx, bus, "issuesync.push."+chat.TopicMessageUpdated, chat.TopicMessageUpdated, "", svc.issueSyncSvc.HandleMessageEvent)
+	mustSubscribe(ctx, bus, "issuesync.push."+chat.TopicMessageDeleted, chat.TopicMessageDeleted, "", svc.issueSyncSvc.HandleMessageDeletedEvent)
 
 	// deploy owns these directly: branch deploy rules are service config, not automation code.
 	mustSubscribe(ctx, bus, "deploy.branch_push", gitprovider.TopicPush, "", pushesRunnersMayClone(svc.gitRouter, svc.deploySvc.HandlePush))

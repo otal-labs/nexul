@@ -128,6 +128,11 @@ func TestUpdateIssue(t *testing.T) {
 		_, err := c.UpdateIssue(t.Context(), "acme", "app", 12, gitprovider.IssuePatch{})
 		assertErrorIs(t, err, apperrs.ErrUnauthorized)
 	})
+	t.Run("a deleted issue's gone maps to ErrNotFound", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusGone))
+		_, err := c.UpdateIssue(t.Context(), "acme", "app", 12, gitprovider.IssuePatch{})
+		assertErrorIs(t, err, apperrs.ErrNotFound)
+	})
 }
 
 func TestListIssueComments(t *testing.T) {

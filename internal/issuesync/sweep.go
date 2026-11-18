@@ -113,6 +113,13 @@ func (s *Service) sweepIssue(ctx context.Context, sy Sync, i Issue, since time.T
 		return err
 	}
 	for _, c := range comments {
+		mine, err := s.fromBot(ctx, c.Author)
+		if err != nil {
+			return err
+		}
+		if mine {
+			continue
+		}
 		// shortcut: the sweep adds missed comments only; an edit missed with its webhook waits for the next edit.
 		if err := s.comment(ctx, link, "created", c); err != nil {
 			return err
@@ -124,11 +131,9 @@ func (s *Service) sweepIssue(ctx context.Context, sy Sync, i Issue, since time.T
 // rest reports whether the sweep waits for owner's rate limit to reset, starting the wait once fewer than rateFloor
 // requests are left.
 func (s *Service) rest(ctx context.Context, owner, repo string) (bool, error) {
-	now := s.d.Now()
-	if until, ok := s.resting[owner]; ok && now.Before(until) {
+	if !s.pace.restingUntil(owner, s.d.Now()).IsZero() {
 		return true, nil
 	}
-	delete(s.resting, owner)
 	rate, err := s.d.Issues.RateLimit(ctx, owner, repo)
 	if err != nil {
 		s.restOnLimit(owner, err)
@@ -137,14 +142,16 @@ func (s *Service) rest(ctx context.Context, owner, repo string) (bool, error) {
 	if rate.Remaining >= rateFloor {
 		return false, nil
 	}
-	s.resting[owner] = rate.Reset
+	s.pace.rest(owner, rate.Reset)
 	return true, nil
 }
 
-// restOnLimit starts owner's wait when GitHub refused a call for its rate limit.
-func (s *Service) restOnLimit(owner string, err error) {
+// restOnLimit starts owner's wait when GitHub refused a call for its rate limit, and reports whether it did.
+func (s *Service) restOnLimit(owner string, err error) bool {
 	var limited *apperrs.RetryAfterError
-	if errors.As(err, &limited) {
-		s.resting[owner] = s.d.Now().Add(limited.Wait)
+	if !errors.As(err, &limited) {
+		return false
 	}
+	s.pace.rest(owner, s.d.Now().Add(limited.Wait))
+	return true
 }

@@ -103,10 +103,10 @@ type Repo interface {
 	UpdateDoc(ctx context.Context, id, docID string, changes []Change, evts ...eventbus.OutboxEvent) error
 	// SetPosition orders a ticket within its current (status, category) pair (ADR 0002).
 	SetPosition(ctx context.Context, id string, position int) error
-	// AddLabel attaches a cross-cutting tag; a duplicate is a no-op.
-	AddLabel(ctx context.Context, id, label string, changes []Change) error
-	// RemoveLabel detaches a tag; a missing label is a no-op.
-	RemoveLabel(ctx context.Context, id, label string, changes []Change) error
+	// AddLabel attaches a cross-cutting tag, enqueueing evts with it; a duplicate is a no-op that enqueues nothing.
+	AddLabel(ctx context.Context, id, label string, changes []Change, evts ...eventbus.OutboxEvent) error
+	// RemoveLabel detaches a tag, enqueueing evts with it; a missing label is a no-op that enqueues nothing.
+	RemoveLabel(ctx context.Context, id, label string, changes []Change, evts ...eventbus.OutboxEvent) error
 	// ListLabelNames returns the distinct labels on the tickets scope keeps, sorted.
 	ListLabelNames(ctx context.Context, scope TicketScope) ([]string, error)
 	// ListLabels returns a ticket's labels.

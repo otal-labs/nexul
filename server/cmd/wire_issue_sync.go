@@ -11,9 +11,11 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/issuesync"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -22,24 +24,46 @@ import (
 )
 
 var (
-	_ issuesync.Desk     = issueDesk{}
-	_ issuesync.Board    = issueDesk{}
-	_ issuesync.Notes    = issueThread{}
-	_ issuesync.Comments = issueThread{}
-	_ issuesync.People   = issuePeople{}
-	_ issuesync.Issues   = issueReader{}
-	_ issuesync.Bot      = issueBot{}
-	_ issuesync.Repos    = issueRepos{}
+	_ issuesync.Desk          = issueDesk{}
+	_ issuesync.Board         = issueDesk{}
+	_ issuesync.Notes         = issueThread{}
+	_ issuesync.Comments      = issueThread{}
+	_ issuesync.People        = issuePeople{}
+	_ issuesync.Issues        = issueReader{}
+	_ issuesync.Bot           = issueBot{}
+	_ issuesync.Repos         = issueRepos{}
+	_ issuesync.Source        = issueSource{}
+	_ issuesync.IssueWriter   = issueWriter{}
+	_ issuesync.CommentWriter = issueWriter{}
 )
 
-func newIssueSync(store *storage.Store, t *tickets.Service, c *chat.Service, w *workspace.Service, a *access.Service, git gitProviderRouter, appConfigs connectors.AppConfigStore) *issuesync.Service {
+func issueSyncDeps(store *storage.Store, t *tickets.Service, c *chat.Service, w *workspace.Service, a *access.Service, git gitProviderRouter, appConfigs connectors.AppConfigStore) issuesync.Deps {
 	desk := issueDesk{tickets: t, statuses: store.Statuses, types: store.TicketTypes}
 	thread := issueThread{tickets: t, chat: c, projects: store.Projects, users: store.Users}
-	return issuesync.New(issuesync.Deps{
+	writer := issueWriter{forRepo: git.appForRepo}
+	return issuesync.Deps{
 		Repo: store.IssueSync, Desk: desk, Board: desk, Notes: thread, Comments: thread,
 		People: issuePeople{users: store.Users, access: a}, Issues: issueReader{git: git},
 		Bot: issueBot{configs: appConfigs}, Repos: issueRepos{workspace: w}, Gate: a,
-	})
+		Source:      issueSource{tickets: t, statuses: store.Statuses, chat: store.Chat, users: store.Users, instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL},
+		IssueWriter: writer, CommentWriter: writer,
+	}
+}
+
+// appForRepo is the App's installation for owner/name, which Nexul writes issues as so its own echoes are known by
+// their sender; there is nothing to write as before an App is set up.
+func (g gitProviderRouter) appForRepo(ctx context.Context, owner, name string) (gitprovider.GitProvider, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	app, err := g.githubApp(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if app == nil {
+		return nil, fmt.Errorf("%w: write to %s/%s: the GitHub App is not set up", apperrs.ErrInvalid, owner, name)
+	}
+	return app.ForRepo(ctx, owner, name)
 }
 
 // issueDesk adapts tickets to the sync's Desk and Board seams (ADR 0017); it runs from event consumers and the sweep,
@@ -236,7 +260,14 @@ func (p issuePeople) Member(ctx context.Context, projectID, githubLogin string) 
 
 // issueReader reads a synced repository's issues as the router resolves it, the App's installation once a key is set.
 type issueReader struct {
-	git gitProviderRouter
+	git issueGit
+}
+
+// issueGit is the slice of the router the reader needs, narrow enough to point at a stub GitHub in tests.
+type issueGit interface {
+	ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) ([]*gitprovider.Issue, int, error)
+	ListIssueComments(ctx context.Context, owner, name string, number int, since time.Time) ([]*gitprovider.IssueComment, error)
+	resolve(ctx context.Context, owner, name string) (gitprovider.GitProvider, error)
 }
 
 func (r issueReader) ListIssues(ctx context.Context, owner, repo string, q issuesync.IssueQuery) ([]issuesync.Issue, int, error) {
@@ -246,10 +277,7 @@ func (r issueReader) ListIssues(ctx context.Context, owner, repo string, q issue
 	}
 	out := make([]issuesync.Issue, 0, len(issues))
 	for _, i := range issues {
-		out = append(out, issuesync.Issue{
-			ID: i.ID, Number: i.Number, Title: i.Title, Body: i.Body, State: i.State, StateReason: i.StateReason,
-			Labels: i.Labels, Assignees: i.Assignees, Author: i.Author, HTMLURL: i.HTMLURL, UpdatedAt: i.UpdatedAt,
-		})
+		out = append(out, toSyncIssue(i))
 	}
 	return out, next, nil
 }
@@ -306,4 +334,181 @@ func (r issueRepos) ProjectOf(ctx context.Context, owner, repo string) (string, 
 		return "", err
 	}
 	return ref.ProjectID, nil
+}
+
+// issueSource reads tickets and their thread's messages as GitHub takes them: markdown whose instance links are
+// absolute and whose mentions are GitHub logins, never a Nexul login, which can be a person's email.
+type issueSource struct {
+	tickets     *tickets.Service
+	statuses    *storage.StatusesRepo
+	chat        *storage.ChatRepo
+	users       *storage.UsersRepo
+	instanceURL func(context.Context) (string, error)
+}
+
+func (s issueSource) Ticket(ctx context.Context, ticketID string) (issuesync.Outbound, error) {
+	t, err := s.tickets.Get(ctx, ticketID)
+	if err != nil {
+		return issuesync.Outbound{}, err
+	}
+	done, err := ticketDone(ctx, s.statuses, t)
+	if err != nil {
+		return issuesync.Outbound{}, err
+	}
+	body, err := s.markdown(ctx, t.Body)
+	if err != nil {
+		return issuesync.Outbound{}, err
+	}
+	f := issuesync.TicketFields{Title: t.Title, Body: body, Closed: done, Labels: t.Labels}
+	if gh := s.githubLogin(ctx, t.DeveloperID, ""); gh != "" {
+		f.Assignees = []string{gh}
+	}
+	return issuesync.Outbound{ProjectID: t.ProjectID, Fields: f}, nil
+}
+
+func (s issueSource) Message(ctx context.Context, messageID string) (issuesync.Mirror, error) {
+	m, err := s.chat.GetMessage(ctx, messageID)
+	if err != nil {
+		return issuesync.Mirror{}, err
+	}
+	out := issuesync.Mirror{Person: m.AuthorKind == chat.AuthorUser, Deleted: m.DeletedAt != nil}
+	if !out.Person || out.Deleted {
+		return out, nil
+	}
+	author, err := s.users.GetUserByID(ctx, m.AuthorID)
+	if err != nil {
+		return issuesync.Mirror{}, err
+	}
+	body, err := s.markdown(ctx, m.Body)
+	if err != nil {
+		return issuesync.Mirror{}, err
+	}
+	who := "**" + personName(author) + "**"
+	if gh := s.githubLogin(ctx, author.ID, ""); gh != "" {
+		who += " (@" + gh + ")"
+	}
+	out.Body = who + " wrote in Nexul:\n\n" + body
+	return out, nil
+}
+
+func (s issueSource) ThreadOf(ctx context.Context, conversationID string) (string, error) {
+	c, err := s.chat.GetConversation(ctx, conversationID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil || c.Kind != chat.KindTicketThread {
+		return "", err
+	}
+	return c.TicketID, nil
+}
+
+// markdown renders a stored body for GitHub; the instance URL is read per body, as settings can change it at any time.
+func (s issueSource) markdown(ctx context.Context, body string) (string, error) {
+	md, err := richtext.ToMarkdown(body)
+	if err != nil {
+		return "", err
+	}
+	base, err := s.instanceURL(ctx)
+	if err != nil {
+		return "", err
+	}
+	return richtext.ForOutside(md, base, func(userID, login string) string { return s.githubLogin(ctx, userID, login) }), nil
+}
+
+// githubLogin is the GitHub login of the person with userID, else Nexul login, empty when they sign in without GitHub;
+// a failed read names nobody, so a mention falls back to a link instead of failing the write.
+func (s issueSource) githubLogin(ctx context.Context, userID, login string) string {
+	if userID == "" && login != "" {
+		u, err := s.users.GetUserByLogin(ctx, login)
+		if err != nil {
+			return ""
+		}
+		userID = u.ID
+	}
+	if userID == "" {
+		return ""
+	}
+	identities, err := s.users.ListIdentities(ctx, userID)
+	if err != nil {
+		return ""
+	}
+	for _, id := range identities {
+		if id.Provider == auth.ProviderGitHub {
+			return id.Login
+		}
+	}
+	return ""
+}
+
+// issueWriter writes issues and comments as the GitHub App's installation for the repository.
+type issueWriter struct {
+	forRepo func(ctx context.Context, owner, name string) (gitprovider.GitProvider, error)
+}
+
+func (w issueWriter) CreateIssue(ctx context.Context, owner, repo string, in issuesync.IssueWrite) (issuesync.Issue, error) {
+	p, err := w.forRepo(ctx, owner, repo)
+	if err != nil {
+		return issuesync.Issue{}, err
+	}
+	i, err := p.CreateIssue(ctx, owner, repo, gitprovider.IssueInput{Title: in.Title, Body: in.Body, Labels: in.Labels, Assignees: in.Assignees})
+	if err != nil {
+		return issuesync.Issue{}, err
+	}
+	return toSyncIssue(i), nil
+}
+
+func (w issueWriter) UpdateIssue(ctx context.Context, owner, repo string, number int, in issuesync.IssueWrite) (issuesync.Issue, error) {
+	p, err := w.forRepo(ctx, owner, repo)
+	if err != nil {
+		return issuesync.Issue{}, err
+	}
+	state, reason := "open", "reopened"
+	if in.Closed {
+		state, reason = "closed", "completed"
+	}
+	patch := gitprovider.IssuePatch{Title: &in.Title, Body: &in.Body, State: &state, StateReason: &reason, Labels: &in.Labels}
+	if in.Assignees != nil {
+		patch.Assignees = &in.Assignees
+	}
+	i, err := p.UpdateIssue(ctx, owner, repo, number, patch)
+	if err != nil {
+		return issuesync.Issue{}, err
+	}
+	return toSyncIssue(i), nil
+}
+
+func (w issueWriter) CreateComment(ctx context.Context, owner, repo string, number int, body string) (issuesync.Comment, error) {
+	p, err := w.forRepo(ctx, owner, repo)
+	if err != nil {
+		return issuesync.Comment{}, err
+	}
+	c, err := p.CreateIssueComment(ctx, owner, repo, number, body)
+	if err != nil {
+		return issuesync.Comment{}, err
+	}
+	return issuesync.Comment{ID: c.ID, Body: c.Body, Author: c.Author, AuthorAvatarURL: c.AuthorAvatarURL, UpdatedAt: c.UpdatedAt}, nil
+}
+
+func (w issueWriter) UpdateComment(ctx context.Context, owner, repo string, commentID int64, body string) error {
+	p, err := w.forRepo(ctx, owner, repo)
+	if err != nil {
+		return err
+	}
+	_, err = p.UpdateIssueComment(ctx, owner, repo, commentID, body)
+	return err
+}
+
+func (w issueWriter) DeleteComment(ctx context.Context, owner, repo string, commentID int64) error {
+	p, err := w.forRepo(ctx, owner, repo)
+	if err != nil {
+		return err
+	}
+	return p.DeleteIssueComment(ctx, owner, repo, commentID)
+}
+
+func toSyncIssue(i *gitprovider.Issue) issuesync.Issue {
+	return issuesync.Issue{
+		ID: i.ID, Number: i.Number, Title: i.Title, Body: i.Body, State: i.State, StateReason: i.StateReason,
+		Labels: i.Labels, Assignees: i.Assignees, Author: i.Author, HTMLURL: i.HTMLURL, UpdatedAt: i.UpdatedAt,
+	}
 }

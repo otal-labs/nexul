@@ -10,6 +10,70 @@ import (
 	"database/sql"
 )
 
+const deferCommentPush = `-- name: DeferCommentPush :exec
+UPDATE github_comment_pushes
+SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = ?3, attempts = ?4
+WHERE message_id = ?5
+`
+
+type DeferCommentPushParams struct {
+	Was       int64
+	Due       int64
+	TriedAt   sql.NullInt64
+	Attempts  int64
+	MessageID string
+}
+
+func (q *Queries) DeferCommentPush(ctx context.Context, arg DeferCommentPushParams) error {
+	_, err := q.db.ExecContext(ctx, deferCommentPush,
+		arg.Was,
+		arg.Due,
+		arg.TriedAt,
+		arg.Attempts,
+		arg.MessageID,
+	)
+	return err
+}
+
+const deferIssuePush = `-- name: DeferIssuePush :exec
+UPDATE github_issue_pushes
+SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = ?3, attempts = ?4
+WHERE ticket_id = ?5
+`
+
+type DeferIssuePushParams struct {
+	Was      int64
+	Due      int64
+	TriedAt  sql.NullInt64
+	Attempts int64
+	TicketID string
+}
+
+func (q *Queries) DeferIssuePush(ctx context.Context, arg DeferIssuePushParams) error {
+	_, err := q.db.ExecContext(ctx, deferIssuePush,
+		arg.Was,
+		arg.Due,
+		arg.TriedAt,
+		arg.Attempts,
+		arg.TicketID,
+	)
+	return err
+}
+
+const deleteCommentPush = `-- name: DeleteCommentPush :exec
+DELETE FROM github_comment_pushes WHERE message_id = ? AND due_at = ?
+`
+
+type DeleteCommentPushParams struct {
+	MessageID string
+	DueAt     int64
+}
+
+func (q *Queries) DeleteCommentPush(ctx context.Context, arg DeleteCommentPushParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCommentPush, arg.MessageID, arg.DueAt)
+	return err
+}
+
 const deleteIssueCommentLink = `-- name: DeleteIssueCommentLink :exec
 DELETE FROM github_comment_links WHERE github_comment_id = ?
 `
@@ -43,6 +107,98 @@ func (q *Queries) DeleteIssueLink(ctx context.Context, arg DeleteIssueLinkParams
 	return err
 }
 
+const deleteIssuePush = `-- name: DeleteIssuePush :exec
+DELETE FROM github_issue_pushes WHERE ticket_id = ? AND due_at = ?
+`
+
+type DeleteIssuePushParams struct {
+	TicketID string
+	DueAt    int64
+}
+
+func (q *Queries) DeleteIssuePush(ctx context.Context, arg DeleteIssuePushParams) error {
+	_, err := q.db.ExecContext(ctx, deleteIssuePush, arg.TicketID, arg.DueAt)
+	return err
+}
+
+const dueCommentPushes = `-- name: DueCommentPushes :many
+SELECT message_id, ticket_id, due_at, tried_at, attempts FROM github_comment_pushes WHERE due_at <= ? ORDER BY due_at, message_id LIMIT ?
+`
+
+type DueCommentPushesParams struct {
+	DueAt int64
+	Limit int64
+}
+
+func (q *Queries) DueCommentPushes(ctx context.Context, arg DueCommentPushesParams) ([]GithubCommentPush, error) {
+	rows, err := q.db.QueryContext(ctx, dueCommentPushes, arg.DueAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GithubCommentPush
+	for rows.Next() {
+		var i GithubCommentPush
+		if err := rows.Scan(
+			&i.MessageID,
+			&i.TicketID,
+			&i.DueAt,
+			&i.TriedAt,
+			&i.Attempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dueIssuePushes = `-- name: DueIssuePushes :many
+SELECT ticket_id, owner, repo, create_issue, due_at, tried_at, attempts FROM github_issue_pushes WHERE due_at <= ? ORDER BY due_at, ticket_id LIMIT ?
+`
+
+type DueIssuePushesParams struct {
+	DueAt int64
+	Limit int64
+}
+
+func (q *Queries) DueIssuePushes(ctx context.Context, arg DueIssuePushesParams) ([]GithubIssuePush, error) {
+	rows, err := q.db.QueryContext(ctx, dueIssuePushes, arg.DueAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GithubIssuePush
+	for rows.Next() {
+		var i GithubIssuePush
+		if err := rows.Scan(
+			&i.TicketID,
+			&i.Owner,
+			&i.Repo,
+			&i.CreateIssue,
+			&i.DueAt,
+			&i.TriedAt,
+			&i.Attempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getIssueCommentLink = `-- name: GetIssueCommentLink :one
 SELECT github_comment_id, message_id, ticket_id FROM github_comment_links WHERE github_comment_id = ?
 `
@@ -54,8 +210,19 @@ func (q *Queries) GetIssueCommentLink(ctx context.Context, githubCommentID int64
 	return i, err
 }
 
+const getIssueCommentLinkByMessage = `-- name: GetIssueCommentLinkByMessage :one
+SELECT github_comment_id, message_id, ticket_id FROM github_comment_links WHERE message_id = ?
+`
+
+func (q *Queries) GetIssueCommentLinkByMessage(ctx context.Context, messageID string) (GithubCommentLink, error) {
+	row := q.db.QueryRowContext(ctx, getIssueCommentLinkByMessage, messageID)
+	var i GithubCommentLink
+	err := row.Scan(&i.GithubCommentID, &i.MessageID, &i.TicketID)
+	return i, err
+}
+
 const getIssueLink = `-- name: GetIssueLink :one
-SELECT owner, repo, issue_number, issue_id, ticket_id, sync_paused, last_inbound_hash, last_outbound_hash, issue_updated_at, linked_at FROM github_issue_links WHERE owner = ? AND repo = ? AND issue_number = ?
+SELECT owner, repo, issue_number, issue_id, ticket_id, sync_paused, last_inbound_hash, last_outbound_hash, issue_updated_at, linked_at, last_ticket_hash FROM github_issue_links WHERE owner = ? AND repo = ? AND issue_number = ?
 `
 
 type GetIssueLinkParams struct {
@@ -78,6 +245,30 @@ func (q *Queries) GetIssueLink(ctx context.Context, arg GetIssueLinkParams) (Git
 		&i.LastOutboundHash,
 		&i.IssueUpdatedAt,
 		&i.LinkedAt,
+		&i.LastTicketHash,
+	)
+	return i, err
+}
+
+const getIssueLinkByTicket = `-- name: GetIssueLinkByTicket :one
+SELECT owner, repo, issue_number, issue_id, ticket_id, sync_paused, last_inbound_hash, last_outbound_hash, issue_updated_at, linked_at, last_ticket_hash FROM github_issue_links WHERE ticket_id = ?
+`
+
+func (q *Queries) GetIssueLinkByTicket(ctx context.Context, ticketID string) (GithubIssueLink, error) {
+	row := q.db.QueryRowContext(ctx, getIssueLinkByTicket, ticketID)
+	var i GithubIssueLink
+	err := row.Scan(
+		&i.Owner,
+		&i.Repo,
+		&i.IssueNumber,
+		&i.IssueID,
+		&i.TicketID,
+		&i.SyncPaused,
+		&i.LastInboundHash,
+		&i.LastOutboundHash,
+		&i.IssueUpdatedAt,
+		&i.LinkedAt,
+		&i.LastTicketHash,
 	)
 	return i, err
 }
@@ -176,6 +367,28 @@ func (q *Queries) ListIssueSyncsByProject(ctx context.Context, projectID string)
 	return items, nil
 }
 
+const nextCommentPushDue = `-- name: NextCommentPushDue :one
+SELECT MIN(due_at) FROM github_comment_pushes
+`
+
+func (q *Queries) NextCommentPushDue(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, nextCommentPushDue)
+	var min interface{}
+	err := row.Scan(&min)
+	return min, err
+}
+
+const nextIssuePushDue = `-- name: NextIssuePushDue :one
+SELECT MIN(due_at) FROM github_issue_pushes
+`
+
+func (q *Queries) NextIssuePushDue(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, nextIssuePushDue)
+	var min interface{}
+	err := row.Scan(&min)
+	return min, err
+}
+
 const putIssueCommentLink = `-- name: PutIssueCommentLink :exec
 INSERT INTO github_comment_links (github_comment_id, message_id, ticket_id) VALUES (?, ?, ?)
 ON CONFLICT(github_comment_id) DO NOTHING
@@ -193,12 +406,12 @@ func (q *Queries) PutIssueCommentLink(ctx context.Context, arg PutIssueCommentLi
 }
 
 const putIssueLink = `-- name: PutIssueLink :exec
-INSERT INTO github_issue_links (owner, repo, issue_number, issue_id, ticket_id, sync_paused, last_inbound_hash, last_outbound_hash, issue_updated_at, linked_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO github_issue_links (owner, repo, issue_number, issue_id, ticket_id, sync_paused, last_inbound_hash, last_outbound_hash, last_ticket_hash, issue_updated_at, linked_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(owner, repo, issue_number) DO UPDATE SET
   issue_id = excluded.issue_id, ticket_id = excluded.ticket_id, sync_paused = excluded.sync_paused,
   last_inbound_hash = excluded.last_inbound_hash, last_outbound_hash = excluded.last_outbound_hash,
-  issue_updated_at = excluded.issue_updated_at
+  last_ticket_hash = excluded.last_ticket_hash, issue_updated_at = excluded.issue_updated_at
 `
 
 type PutIssueLinkParams struct {
@@ -210,6 +423,7 @@ type PutIssueLinkParams struct {
 	SyncPaused       int64
 	LastInboundHash  string
 	LastOutboundHash string
+	LastTicketHash   string
 	IssueUpdatedAt   int64
 	LinkedAt         int64
 }
@@ -224,6 +438,7 @@ func (q *Queries) PutIssueLink(ctx context.Context, arg PutIssueLinkParams) erro
 		arg.SyncPaused,
 		arg.LastInboundHash,
 		arg.LastOutboundHash,
+		arg.LastTicketHash,
 		arg.IssueUpdatedAt,
 		arg.LinkedAt,
 	)
@@ -257,6 +472,48 @@ func (q *Queries) PutIssueSync(ctx context.Context, arg PutIssueSyncParams) erro
 		arg.Mode,
 		arg.Enabled,
 		arg.LastSweptAt,
+	)
+	return err
+}
+
+const queueCommentPush = `-- name: QueueCommentPush :exec
+INSERT INTO github_comment_pushes (message_id, ticket_id, due_at) VALUES (?, ?, ?)
+ON CONFLICT(message_id) DO UPDATE SET due_at = excluded.due_at, attempts = 0
+`
+
+type QueueCommentPushParams struct {
+	MessageID string
+	TicketID  string
+	DueAt     int64
+}
+
+func (q *Queries) QueueCommentPush(ctx context.Context, arg QueueCommentPushParams) error {
+	_, err := q.db.ExecContext(ctx, queueCommentPush, arg.MessageID, arg.TicketID, arg.DueAt)
+	return err
+}
+
+const queueIssuePush = `-- name: QueueIssuePush :exec
+INSERT INTO github_issue_pushes (ticket_id, owner, repo, create_issue, due_at) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(ticket_id) DO UPDATE SET
+  owner = excluded.owner, repo = excluded.repo, create_issue = MAX(create_issue, excluded.create_issue),
+  due_at = excluded.due_at, attempts = 0
+`
+
+type QueueIssuePushParams struct {
+	TicketID    string
+	Owner       string
+	Repo        string
+	CreateIssue int64
+	DueAt       int64
+}
+
+func (q *Queries) QueueIssuePush(ctx context.Context, arg QueueIssuePushParams) error {
+	_, err := q.db.ExecContext(ctx, queueIssuePush,
+		arg.TicketID,
+		arg.Owner,
+		arg.Repo,
+		arg.CreateIssue,
+		arg.DueAt,
 	)
 	return err
 }

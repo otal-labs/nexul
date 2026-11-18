@@ -9713,6 +9713,194 @@
       "ticket"
     ]
   },
+  "ticket.labels_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "developer_id": {
+            "type": "string",
+            "description": "The developer's user id; empty when there is none or nobody has signed in with the developer's login."
+          },
+          "tester": {
+            "type": "string"
+          },
+          "tester_id": {
+            "type": "string",
+            "description": "The tester's user id; empty when there is none or nobody has signed in with the tester's login."
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation",
+                  "github",
+                  "import"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "description": "The tool an imported ticket came from, such as github; empty for any other reporter."
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "due_on": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "developer_id",
+          "tester",
+          "tester_id",
+          "reporter",
+          "due_on",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Labels this change added."
+      },
+      "removed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Labels this change removed."
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who changed the labels: a member, or an automation.",
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A label was added to a ticket or removed from it; a label already on it, or never on it, publishes nothing.",
+    "required": [
+      "ticket",
+      "added",
+      "removed"
+    ]
+  },
   "ticket.link_created": {
     "type": "object",
     "properties": {

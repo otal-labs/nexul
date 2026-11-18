@@ -78,7 +78,11 @@ follows the issue's title, body, labels, first assignee who is a member, and
 open or closed state, and its comments arrive on the ticket's thread from an
 external author. Removing the label pauses the issue, adding it back resumes
 it, and a deleted or transferred issue stops syncing while its ticket stays. A
-done ticket never leaves done because its issue reopened.
+done ticket never leaves done because its issue reopened. It runs both ways:
+the ticket's title, body, labels, developer and done state, and the messages
+people write on its thread, are written back to the issue by the GitHub App
+once the ticket's changes rest, and adding the label to a ticket with no issue
+creates one.
 _Avoid_: Import (a one-shot copy), mirror, GitHub ticket
 
 **Due date**:
@@ -1539,8 +1543,10 @@ learns what a webhook is.
 
 **Issue sync** (`issuesync`) — a repository's GitHub issues linked to its
 project's tickets: the sync settings, the issue and comment links, the
-consumer of `git.issue` and `git.issue_comment`, and the sweep that catches
-missed deliveries. It reaches tickets and chat only through seams it declares.
+consumer of `git.issue` and `git.issue_comment`, the sweep that catches
+missed deliveries, and the push loop that writes ticket changes and thread
+messages back to GitHub. It reaches tickets and chat only through seams it
+declares.
 
 **Calendar** — meetings, their invitees and replies, repeats, and the
 reminders before each meeting and the day before a ticket's due date.

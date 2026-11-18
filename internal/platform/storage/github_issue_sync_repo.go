@@ -81,11 +81,23 @@ func (r *IssueSyncRepo) GetLink(ctx context.Context, owner, repo string, number 
 	if err != nil {
 		return issuesync.Link{}, fmt.Errorf("get issue link %s/%s#%d: %w", owner, repo, number, notFoundIfNoRows(err))
 	}
+	return toIssueLink(row), nil
+}
+
+func (r *IssueSyncRepo) GetLinkByTicket(ctx context.Context, ticketID string) (issuesync.Link, error) {
+	row, err := r.q.GetIssueLinkByTicket(ctx, ticketID)
+	if err != nil {
+		return issuesync.Link{}, fmt.Errorf("get issue link of ticket %s: %w", ticketID, notFoundIfNoRows(err))
+	}
+	return toIssueLink(row), nil
+}
+
+func toIssueLink(row sqlcgen.GithubIssueLink) issuesync.Link {
 	return issuesync.Link{
 		Owner: row.Owner, Repo: row.Repo, IssueNumber: int(row.IssueNumber), IssueID: row.IssueID, TicketID: row.TicketID,
-		Paused: row.SyncPaused != 0, InboundHash: row.LastInboundHash, OutboundHash: row.LastOutboundHash,
+		Paused: row.SyncPaused != 0, InboundHash: row.LastInboundHash, OutboundHash: row.LastOutboundHash, TicketHash: row.LastTicketHash,
 		IssueUpdatedAt: time.Unix(row.IssueUpdatedAt, 0).UTC(), LinkedAt: time.Unix(row.LinkedAt, 0).UTC(),
-	}, nil
+	}
 }
 
 func (r *IssueSyncRepo) PutLink(ctx context.Context, l issuesync.Link) error {
@@ -93,7 +105,7 @@ func (r *IssueSyncRepo) PutLink(ctx context.Context, l issuesync.Link) error {
 		err := r.q.WithTx(tx).PutIssueLink(ctx, sqlcgen.PutIssueLinkParams{
 			Owner: l.Owner, Repo: l.Repo, IssueNumber: int64(l.IssueNumber), IssueID: l.IssueID, TicketID: l.TicketID,
 			SyncPaused: int64(boolInt(l.Paused)), LastInboundHash: l.InboundHash, LastOutboundHash: l.OutboundHash,
-			IssueUpdatedAt: l.IssueUpdatedAt.Unix(), LinkedAt: l.LinkedAt.Unix(),
+			LastTicketHash: l.TicketHash, IssueUpdatedAt: l.IssueUpdatedAt.Unix(), LinkedAt: l.LinkedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("put issue link %s/%s#%d: %w", l.Owner, l.Repo, l.IssueNumber, classifyWriteErr(err))
@@ -142,6 +154,147 @@ func (r *IssueSyncRepo) DeleteCommentLink(ctx context.Context, commentID int64) 
 		}
 		return nil
 	})
+}
+
+func (r *IssueSyncRepo) GetCommentLinkByMessage(ctx context.Context, messageID string) (issuesync.CommentLink, error) {
+	row, err := r.q.GetIssueCommentLinkByMessage(ctx, messageID)
+	if err != nil {
+		return issuesync.CommentLink{}, fmt.Errorf("get comment link of message %s: %w", messageID, notFoundIfNoRows(err))
+	}
+	return issuesync.CommentLink{GitHubCommentID: row.GithubCommentID, MessageID: row.MessageID, TicketID: row.TicketID}, nil
+}
+
+func (r *IssueSyncRepo) QueueTicketPush(ctx context.Context, p issuesync.TicketPush) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).QueueIssuePush(ctx, sqlcgen.QueueIssuePushParams{
+			TicketID: p.TicketID, Owner: p.Owner, Repo: p.Repo, CreateIssue: int64(boolInt(p.Create)), DueAt: p.Due.UnixMilli(),
+		})
+		if err != nil {
+			return fmt.Errorf("queue issue push of ticket %s: %w", p.TicketID, classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *IssueSyncRepo) QueueCommentPush(ctx context.Context, p issuesync.CommentPush) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).QueueCommentPush(ctx, sqlcgen.QueueCommentPushParams{MessageID: p.MessageID, TicketID: p.TicketID, DueAt: p.Due.UnixMilli()})
+		if err != nil {
+			return fmt.Errorf("queue comment push of message %s: %w", p.MessageID, classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *IssueSyncRepo) DueTicketPushes(ctx context.Context, now time.Time, limit int) ([]issuesync.TicketPush, error) {
+	rows, err := r.q.DueIssuePushes(ctx, sqlcgen.DueIssuePushesParams{DueAt: now.UnixMilli(), Limit: int64(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list due issue pushes: %w", err)
+	}
+	out := make([]issuesync.TicketPush, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, issuesync.TicketPush{
+			TicketID: row.TicketID, Owner: row.Owner, Repo: row.Repo, Create: row.CreateIssue != 0,
+			Due: time.UnixMilli(row.DueAt).UTC(), Tried: fromMilli(row.TriedAt), Attempts: int(row.Attempts),
+		})
+	}
+	return out, nil
+}
+
+func (r *IssueSyncRepo) DueCommentPushes(ctx context.Context, now time.Time, limit int) ([]issuesync.CommentPush, error) {
+	rows, err := r.q.DueCommentPushes(ctx, sqlcgen.DueCommentPushesParams{DueAt: now.UnixMilli(), Limit: int64(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list due comment pushes: %w", err)
+	}
+	out := make([]issuesync.CommentPush, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, issuesync.CommentPush{
+			MessageID: row.MessageID, TicketID: row.TicketID, Due: time.UnixMilli(row.DueAt).UTC(), Tried: fromMilli(row.TriedAt), Attempts: int(row.Attempts),
+		})
+	}
+	return out, nil
+}
+
+func (r *IssueSyncRepo) NextPushDue(ctx context.Context) (time.Time, bool, error) {
+	tickets, err := r.q.NextIssuePushDue(ctx)
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf("next issue push due: %w", err)
+	}
+	comments, err := r.q.NextCommentPushDue(ctx)
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf("next comment push due: %w", err)
+	}
+	t, tok, err := optionalInt(tickets)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	c, cok, err := optionalInt(comments)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if !tok && !cok {
+		return time.Time{}, false, nil
+	}
+	if !tok || (cok && c < t) {
+		t = c
+	}
+	return time.UnixMilli(t).UTC(), true, nil
+}
+
+func (r *IssueSyncRepo) DeferTicketPush(ctx context.Context, p issuesync.TicketPush, was time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).DeferIssuePush(ctx, sqlcgen.DeferIssuePushParams{
+			Was: was.UnixMilli(), Due: p.Due.UnixMilli(), TriedAt: toMilli(p.Tried), Attempts: int64(p.Attempts), TicketID: p.TicketID,
+		})
+		if err != nil {
+			return fmt.Errorf("defer issue push of ticket %s: %w", p.TicketID, err)
+		}
+		return nil
+	})
+}
+
+func (r *IssueSyncRepo) DeferCommentPush(ctx context.Context, p issuesync.CommentPush, was time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).DeferCommentPush(ctx, sqlcgen.DeferCommentPushParams{
+			Was: was.UnixMilli(), Due: p.Due.UnixMilli(), TriedAt: toMilli(p.Tried), Attempts: int64(p.Attempts), MessageID: p.MessageID,
+		})
+		if err != nil {
+			return fmt.Errorf("defer comment push of message %s: %w", p.MessageID, err)
+		}
+		return nil
+	})
+}
+
+func (r *IssueSyncRepo) DoneTicketPush(ctx context.Context, p issuesync.TicketPush) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteIssuePush(ctx, sqlcgen.DeleteIssuePushParams{TicketID: p.TicketID, DueAt: p.Due.UnixMilli()}); err != nil {
+			return fmt.Errorf("drop issue push of ticket %s: %w", p.TicketID, err)
+		}
+		return nil
+	})
+}
+
+func (r *IssueSyncRepo) DoneCommentPush(ctx context.Context, p issuesync.CommentPush) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteCommentPush(ctx, sqlcgen.DeleteCommentPushParams{MessageID: p.MessageID, DueAt: p.Due.UnixMilli()}); err != nil {
+			return fmt.Errorf("drop comment push of message %s: %w", p.MessageID, err)
+		}
+		return nil
+	})
+}
+
+func toMilli(t time.Time) sql.NullInt64 {
+	if t.IsZero() {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: t.UnixMilli(), Valid: true}
+}
+
+func fromMilli(v sql.NullInt64) time.Time {
+	if !v.Valid {
+		return time.Time{}
+	}
+	return time.UnixMilli(v.Int64).UTC()
 }
 
 func toIssueSyncs(rows []sqlcgen.GithubIssueSync) []issuesync.Sync {
