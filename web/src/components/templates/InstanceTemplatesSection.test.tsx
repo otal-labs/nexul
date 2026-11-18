@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceTemplatesSection } from "@/components/templates/InstanceTemplatesSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { Template } from "@/models/Template";
+import { MEMORY_TEMPLATE_SKELETON, type Template } from "@/models/Template";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn() }));
 
@@ -42,6 +42,8 @@ const templates: Template[] = [
   template({ kind: "ticket_body", key: "bug", name: "bug", body: "## Steps", default_body: "## Steps", follows: false }),
   template({ kind: "agent_prompt", key: "intro", name: "Intro", body: "You are the Agent.", default_body: "You are the Agent.", follows: false }),
   template({ kind: "agent_prompt", key: "footer", name: "Footer", body: "Reply when done.", default_body: "Reply when done.", follows: false }),
+  template({ kind: "memory", key: "writing-tickets", name: "Writing tickets", body: "---", default_body: "---", follows: false }),
+  template({ kind: "memory", key: "01k-added", name: "Releases", body: "---", default_body: "", follows: false, edited: true, added: true }),
 ];
 
 // The target the clone dialog reads before overwriting; edited decides whether it asks first.
@@ -103,6 +105,10 @@ describe("InstanceTemplatesSection", () => {
     const prompt = within(screen.getByRole("region", { name: "Agent prompt" }));
     expect(prompt.getByText("Intro")).toBeInTheDocument();
     expect(prompt.getByText("Footer")).toBeInTheDocument();
+    const memories = within(screen.getByRole("region", { name: "Memories" }));
+    expect(memories.getByText("Writing tickets")).toBeInTheDocument();
+    expect(memories.getByText("Added")).toBeInTheDocument();
+    expect(memories.queryByRole("button", { name: "Delete Writing tickets" })).not.toBeInTheDocument();
   });
 
   it("saves an edited instance template", async () => {
@@ -136,6 +142,26 @@ describe("InstanceTemplatesSection", () => {
     await user.click(await screen.findByRole("button", { name: "Reset" }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/templates/interview", { params: { key: "" } });
+  });
+
+  it("adds a default memory from the SKILL.md skeleton and deletes one the instance added after a confirm", async () => {
+    mocks.put.mockResolvedValue({ data: {} });
+    mocks.post.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "New default memory" }));
+    const field = screen.getByLabelText("Memory (SKILL.md)");
+    expect(field).toHaveValue(MEMORY_TEMPLATE_SKELETON);
+    expect(screen.queryByRole("button", { name: "Reset to default" })).not.toBeInTheDocument();
+    await user.type(field, "Tag from master.");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(mocks.put).toHaveBeenCalledWith("/api/templates/memory", { key: "", body: `${MEMORY_TEMPLATE_SKELETON}Tag from master.` });
+    await vi.waitFor(() => expect(screen.queryByLabelText("Memory (SKILL.md)")).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Delete Releases" }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(mocks.post).toHaveBeenCalledWith("/api/templates/delete", { kind: "memory", key: "01k-added" });
   });
 
   it("clones an instance template over a workspace's", async () => {
