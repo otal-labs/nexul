@@ -296,7 +296,7 @@ func (s *Service) update(ctx context.Context, sync *Sync, link *Link, action str
 	}
 	// Every state a delivery leaves records its time, so an older one arriving later never undoes a pause or resume.
 	if !sync.Matches(issue.Labels) {
-		if link.Paused {
+		if link.Paused && !issue.UpdatedAt.After(link.IssueUpdatedAt) {
 			return nil
 		}
 		link.Paused, link.IssueUpdatedAt = true, issue.UpdatedAt.UTC()

@@ -385,6 +385,17 @@ func TestHandleIssue_OlderDeliveryArrivingLate_NeverUndoesAPauseOrResume(t *test
 		require.NoError(t, err)
 		assert.False(t, l.Paused, "the issue carries the label now")
 	})
+	t.Run("a late label after a second unlabel", func(t *testing.T) {
+		f := newFixture(t)
+		f.deliver(t, "opened", labelled())
+		f.deliver(t, "unlabeled", labelled(later(time.Minute), func(i *Issue) { i.Labels = []string{"bug"} }))
+		f.deliver(t, "unlabeled", labelled(later(3*time.Minute), func(i *Issue) { i.Labels = []string{"bug"} }))
+		f.deliver(t, "labeled", labelled(later(2*time.Minute), func(i *Issue) { i.Title = "stale" }))
+		l, err := f.repo.GetLink(t.Context(), "acme", "app", 7)
+		require.NoError(t, err)
+		assert.True(t, l.Paused)
+		assert.Equal(t, "Crash on save", f.ticket(t).Title)
+	})
 	t.Run("a late labelled edit after a pause", func(t *testing.T) {
 		f := newFixture(t)
 		f.deliver(t, "opened", labelled())
