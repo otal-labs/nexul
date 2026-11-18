@@ -3,8 +3,8 @@ import { UserPlus } from "lucide-react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { microheaderClass } from "@/components/Microheader";
+import { RoleFindField } from "@/components/role/RoleFindField";
 import { RolePersonOption } from "@/components/role/RolePersonOption";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam, useRoleHolders } from "@/hooks/TeamHooks";
@@ -48,7 +48,7 @@ export const RoleAddPeoplePopover = () => {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-2">
         <div className="flex flex-col gap-1.5">
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a person" aria-label="Find a person" className="h-8" />
+          <RoleFindField value={query} onChange={setQuery} placeholder="Find a person" label="Find a person" />
           <div className="scroll-edge flex max-h-72 flex-col gap-0.5 overflow-y-auto pb-2">
             {inWorkspace.length > 0 && <p className={cn(microheaderClass, "px-2 pt-1.5 pb-0.5")}>In {workspace.name}</p>}
             {inWorkspace.map((person) => (

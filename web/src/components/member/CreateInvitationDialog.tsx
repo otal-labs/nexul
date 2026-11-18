@@ -19,7 +19,7 @@ export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDial
   const create = async () => {
     await open<CreateInvitationFormData>({
       title: "Create invitation link",
-      description: "For someone without an account here: pick the roles the link gives, then send it yourself. It works once.",
+      description: "For someone without an account here. Pick the roles it gives; the link works once.",
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={onCreated} />,

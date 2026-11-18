@@ -615,8 +615,10 @@ row whose record already shows its details when open (Docs) is one line at
 empty at rest, the title truncated with its full text in the tooltip, then the
 mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
-`bg-accent` lift, never a boxed border; both fills round at 6px, and while the row has keyboard focus its
-edge steps 4px in so the focus ring stays whole. A row's actions are its right-click menu,
+`bg-accent` lift, never a boxed border; both fills round at 6px with 2px between rows so a hovered row never
+runs into the current one, and while the row has keyboard focus its edge steps
+4px in so the focus ring stays whole. A row the list scrolls to keeps clear of
+the bottom fade. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
 whoever may manage the record's access, then Delete in destructive), each item
@@ -1434,7 +1436,7 @@ in the header's count as in the page header's, each row its name over its
 description with the holder count in mono on the title's baseline (left out at
 none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
 a hairline so they stay in view however many roles there are, two one-line rows at
-the list's 32px pitch and on its gutter, Compare roles and No roles. The Owner's row
+the list's 32px pitch and on its gutter, Compare roles and No roles, each led by a muted mark. The Owner's row
 reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role, and its search field narrows the
 roles by name and description. From 1024px the tab opens on the
 first role after the Owner, and below it the list is the page; below 1024px
@@ -1443,8 +1445,8 @@ open role is one page, its header on the list header's line. Its header is the n
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
-mono and the highest level it holds as a `LevelGlyph` and its word ("In
-projects ▮▮▮ Delete 10/12"), with a small arrow down, each jumping to its section below the
+mono, then "up to" and the highest level it holds in words ("In projects 10/12,
+up to Delete"), so the count never reads as the level's, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
 Then People: the microheader with its count in mono beside it, never joined by
@@ -1471,9 +1473,10 @@ fading where it scrolls; it stays open so several can be added in a row, each on
 a toast. A link made here shows once above the holders. A count of zero is never shown
 beside a heading whose line already says nobody holds the role. The open links giving
 the role list under them as Invited, on the holders' grid: a link mark on a
-`surface-2` disc in the avatar's slot, "Invite link" and when it expires as its
-title (what tells two links apart), over who made it and the other roles it
-gives as chips, and a `…` holding Revoke link, which asks first. What it allows follows: one microheader per
+`surface-2` disc in the avatar's slot, when it expires as its title ("Expires in 7
+days", what tells two links apart), over who made it and the other roles it
+gives as chips, and a `…` holding Revoke link, which asks first. What it allows follows under its own heading, "What <role> can do", set 16px
+further down than the gaps above it: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
@@ -1485,7 +1488,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named over its description. Compare roles
+role named over its description with the role's tally on its line. Compare roles
 takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1493,12 +1496,14 @@ width, and holds the role matrix (below). `RolesAndPeopleSection` and
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
 read-only, in the access grid's frame: one column per role, the columns sharing the
 width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
-lie to the right, the Owner first
+lie to the right, and a "+5" control in its head while columns are hidden that scrolls
+them into view, the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects. A cell is the level as a
-`LevelGlyph`, aligned to its end, and its word; a cell the role has no access in
+`LevelGlyph`, three slots on every row with a level the area lacks drawn as an
+outline, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
 baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and

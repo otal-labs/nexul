@@ -25,7 +25,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "panel relative min-h-0 pb-(--radius-xl)",
+          "panel relative min-h-0 pb-[calc(var(--radius-xl)+var(--radius-gap))]",
           split && "lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
           hasSelection ? "hidden" : "block w-full",
         )}

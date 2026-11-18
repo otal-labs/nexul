@@ -74,7 +74,7 @@ describe("CreateInvitationForm", () => {
     expect(await screen.findByText("Roles in Acme")).toBeInTheDocument();
 
     expect(
-      screen.getByText("For someone without an account here: pick the roles the link gives, then send it yourself. It works once."),
+      screen.getByText("For someone without an account here. Pick the roles it gives; the link works once."),
     ).toBeInTheDocument();
     const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
     expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();

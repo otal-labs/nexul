@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Columns3, UserX } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
 import { ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
@@ -50,9 +51,9 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
       </div>
       <div className="shrink-0 overflow-y-hidden border-t border-border pt-3 [scrollbar-gutter:stable_both-edges]">
         <EnterList aria-label="Overview">
-          <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense selected={selectedId === COMPARE_ROLES} />
+          <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense icon={<Columns3 aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === COMPARE_ROLES} />
           {seesTeam && (
-            <RoleListRow id={NO_ROLES} name="No roles" line="" dense selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
+            <RoleListRow id={NO_ROLES} name="No roles" line="" dense icon={<UserX aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
           )}
         </EnterList>
       </div>

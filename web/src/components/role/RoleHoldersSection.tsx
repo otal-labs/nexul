@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Lock, Search, X } from "lucide-react";
+import { Lock } from "lucide-react";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
-import { Input } from "@/components/ui/input";
 import { CreatedInvitationLink } from "@/components/member/CreatedInvitationLink";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
+import { RoleFindField } from "@/components/role/RoleFindField";
 import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { RoleAddPeoplePopover } from "@/components/role/RoleAddPeoplePopover";
 import { RoleHolderRow } from "@/components/role/RoleHolderRow";
@@ -66,15 +66,7 @@ export const RoleHoldersSection = () => {
       {error && <ErrorDisplay error={error} />}
       {holders && holders.length === 0 && <EmptyRow flush>Nobody holds {role?.name} yet.</EmptyRow>}
       {holders && holders.length > FIND_FROM && (
-        <div className="relative max-w-xs">
-          <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Find among ${holders.length}`} aria-label="Find a person" className="h-8 pr-8 pl-8" />
-          {query && (
-            <button type="button" aria-label="Clear the search" onClick={() => setQuery("")} className="absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground">
-              <X aria-hidden className="size-3.5" />
-            </button>
-          )}
-        </div>
+        <RoleFindField value={query} onChange={setQuery} placeholder={`Find among ${holders.length}`} label="Find a person" className="max-w-xs" />
       )}
       {matched && holders && holders.length > 0 && matched.length === 0 && (
         <p role="status" className="flex min-h-14 items-center border-y border-border text-sm text-muted-foreground">

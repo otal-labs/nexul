@@ -29,7 +29,7 @@ const MatrixRow = ({ label, children }: { label: string; children: ReactNode }) 
       </span>
     </th>
     {children}
-    <td aria-hidden className={cn(fadeEndCell, matrixFadeWidth)} />
+    <td aria-hidden className={cn(fadeEndCell, matrixFadeWidth, "border-b-transparent")} />
   </tr>
 );
 

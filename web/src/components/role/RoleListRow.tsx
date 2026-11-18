@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CrownIcon } from "lucide-react";
 
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
@@ -13,9 +14,11 @@ interface RoleListRowProps {
   owner?: boolean;
   // One line at a 32px pitch, for the entries pinned under the roles.
   dense?: boolean;
+  // A mark before the name, for the pinned entries that aren't roles.
+  icon?: ReactNode;
 }
 
-export const RoleListRow = ({ id, name, line, selected, count, owner = false, dense = false }: RoleListRowProps) => {
+export const RoleListRow = ({ id, name, line, selected, count, owner = false, dense = false, icon }: RoleListRowProps) => {
   const wsPath = useWorkspacePath();
   return (
     <ListPaneRow
@@ -25,6 +28,7 @@ export const RoleListRow = ({ id, name, line, selected, count, owner = false, de
       selected={selected}
       metaOnTitleLine
       dense={dense}
+      {...(icon && { leading: icon })}
       {...(owner && { titleIcon: <CrownIcon aria-label="Owner" className="size-3.5 text-muted-foreground" /> })}
       {...(count ? { meta: <span className="font-mono text-micro text-muted-foreground tabular-nums">{count}</span> } : {})}
     />

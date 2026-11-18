@@ -31,8 +31,9 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
       .filter((role) => grant.workspace_id !== workspaceId || role.name !== openName)
       .map((role) => ({ id: `${grant.workspace_id}:${role.id}`, name: grant.workspace_id === workspaceId ? role.name : `${role.name} in ${grant.workspace_name}`, is_owner: false })),
   );
-  // Titled by when it stops working, which is what tells two links here apart.
-  const title = `Invite link, ${expires(invitation.expires_at)}`;
+  // Titled by when it stops working, which is what tells two links under Invited apart.
+  const when = expires(invitation.expires_at);
+  const title = when.charAt(0).toUpperCase() + when.slice(1);
   const revoke = async () => {
     const ok = await confirm({ title: "Revoke this invitation link?", message: "Whoever has it can no longer use it to sign up.", confirmLabel: "Revoke link" });
     if (ok) onRevoke(invitation.id);
@@ -55,7 +56,7 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
             )}
           </span>
         </span>
-        <RowActionsMenu subject={`${title}, by ${inviter}`} actions={[{ label: "Revoke link", destructive: true, permission: "members:write", verb: "revoke invitations", onSelect: () => void revoke() }]} />
+        <RowActionsMenu subject={`Invite link, ${when}, by ${inviter}`} actions={[{ label: "Revoke link", destructive: true, permission: "members:write", verb: "revoke invitations", onSelect: () => void revoke() }]} />
       </div>
     </li>
   );

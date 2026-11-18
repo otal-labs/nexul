@@ -22,7 +22,7 @@ interface RoleMatrixHeadProps {
 export const RoleMatrixHead = ({ role, workspaceId, holders }: RoleMatrixHeadProps) => {
   const { actions, dialogs } = useRoleActions(role, workspaceId, holders);
   return (
-    <th scope="col" className="sticky top-0 z-20 min-w-24 snap-start border-b border-border bg-card px-2 pt-3 pb-1.5 text-left align-bottom font-normal">
+    <th scope="col" data-role-head="" className="sticky top-0 z-20 min-w-24 snap-start border-b border-border bg-card px-2 pt-3 pb-1.5 text-left align-bottom font-normal">
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="line-clamp-3 text-xs leading-tight font-medium text-balance break-words text-foreground">
