@@ -222,66 +222,90 @@ func (w *notionWriter) blocks(bs []notionBlock) string {
 }
 
 func (w *notionWriter) block(blk notionBlock) (string, listKind) {
+	for _, convert := range []func(notionBlock) (string, listKind, bool){w.textBlock, w.mediaBlock, w.containerBlock} {
+		if md, kind, ok := convert(blk); ok {
+			return md, kind
+		}
+	}
+	w.unsupported++
+	return "", listNone
+}
+
+// textBlock converts the blocks that are rich text: paragraphs, headings, list items, toggles, quotes and callouts.
+func (w *notionWriter) textBlock(blk notionBlock) (string, listKind, bool) {
 	c := blk.Content
 	switch blk.Type {
-	case "paragraph":
-		return joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children)), listNone
+	case "paragraph", "toggle":
+		return joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children)), listNone, true
 	case "heading_1", "heading_2", "heading_3":
 		level, _ := strconv.Atoi(strings.TrimPrefix(blk.Type, "heading_"))
-		return joinBlocks(strings.Repeat("#", level)+" "+strings.ReplaceAll(w.text(c.RichText), "\\\n", " "), w.blocks(blk.Children)), listNone
+		return joinBlocks(strings.Repeat("#", level)+" "+strings.ReplaceAll(w.text(c.RichText), "\\\n", " "), w.blocks(blk.Children)), listNone, true
 	case "bulleted_list_item":
-		return listItem("- ", w.text(c.RichText), w.blocks(blk.Children)), listBullet
+		return listItem("- ", w.text(c.RichText), w.blocks(blk.Children)), listBullet, true
 	case "numbered_list_item":
-		return listItem("1. ", w.text(c.RichText), w.blocks(blk.Children)), listNumber
+		return listItem("1. ", w.text(c.RichText), w.blocks(blk.Children)), listNumber, true
 	case "to_do":
 		box := "- [ ] "
 		if c.Checked {
 			box = "- [x] "
 		}
-		return listItem(box, w.text(c.RichText), w.blocks(blk.Children)), listTodo
-	case "toggle":
-		return joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children)), listNone
+		return listItem(box, w.text(c.RichText), w.blocks(blk.Children)), listTodo, true
 	case "quote":
-		return quoted(joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children))), listNone
+		return quoted(joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children))), listNone, true
 	case "callout":
 		text := w.text(c.RichText)
 		if c.Icon != nil && c.Icon.Emoji != "" {
 			text = c.Icon.Emoji + " " + text
 		}
-		return quoted(joinBlocks(text, w.blocks(blk.Children))), listNone
+		return quoted(joinBlocks(text, w.blocks(blk.Children))), listNone, true
+	}
+	return "", listNone, false
+}
+
+// mediaBlock converts code, dividers, images, files and links; embeds and equations are counted as unsupported.
+func (w *notionWriter) mediaBlock(blk notionBlock) (string, listKind, bool) {
+	c := blk.Content
+	switch blk.Type {
 	case "code":
-		return fenced(strings.ToLower(c.Language), plainOf(c.RichText)), listNone
+		return fenced(strings.ToLower(c.Language), plainOf(c.RichText)), listNone, true
 	case "divider":
-		return "---", listNone
+		return "---", listNone, true
 	case "image":
-		return "![" + escapeMarkdown(plainOf(c.Caption)) + "](" + w.fileURL(c) + ")", listNone
+		return "![" + escapeMarkdown(plainOf(c.Caption)) + "](" + w.fileURL(c) + ")", listNone, true
 	case "file", "pdf", "video", "audio":
 		u := w.fileURL(c)
-		return "[" + escapeMarkdown(fileLabel(c, u)) + "](" + u + ")", listNone
+		return "[" + escapeMarkdown(fileLabel(c, u)) + "](" + u + ")", listNone, true
 	case "bookmark", "link_preview":
-		return linkTo(firstNonEmpty(plainOf(c.Caption), c.URL), c.URL), listNone
+		return linkTo(firstNonEmpty(plainOf(c.Caption), c.URL), c.URL), listNone, true
 	case "embed":
 		w.unsupported++
-		return linkTo(firstNonEmpty(plainOf(c.Caption), c.URL), c.URL), listNone
+		return linkTo(firstNonEmpty(plainOf(c.Caption), c.URL), c.URL), listNone, true
 	case "equation":
 		w.unsupported++
-		return fenced("", c.Expression), listNone
+		return fenced("", c.Expression), listNone, true
+	}
+	return "", listNone, false
+}
+
+// containerBlock converts tables, child pages and databases, and flattens columns and synced blocks.
+func (w *notionWriter) containerBlock(blk notionBlock) (string, listKind, bool) {
+	c := blk.Content
+	switch blk.Type {
 	case "table":
-		return w.table(blk), listNone
+		return w.table(blk), listNone, true
 	case "child_page":
-		return w.pageLink(blk.ID, c.Title), listNone
+		return w.pageLink(blk.ID, c.Title), listNone, true
 	case "link_to_page":
-		return w.pageLink(firstNonEmpty(c.PageID, c.DatabaseID), ""), listNone
+		return w.pageLink(firstNonEmpty(c.PageID, c.DatabaseID), ""), listNone, true
 	case "child_database":
-		return w.database(blk.ID, c.Title), listNone
+		return w.database(blk.ID, c.Title), listNone, true
 	case "synced_block", "column_list":
 		w.unsupported++
-		return w.flat(blk.Children), listNone
+		return w.flat(blk.Children), listNone, true
 	case "column":
-		return w.flat(blk.Children), listNone
+		return w.flat(blk.Children), listNone, true
 	}
-	w.unsupported++
-	return "", listNone
+	return "", listNone, false
 }
 
 // flat renders a container's blocks one after another, as a column's or a synced block's content.
@@ -489,58 +513,61 @@ func (w *notionWriter) rowTable(props map[string]notionProperty) string {
 }
 
 func (w *notionWriter) property(p notionProperty) string {
+	if f, ok := propertyText[p.Type]; ok {
+		return f(p)
+	}
 	switch p.Type {
 	case "rich_text":
 		return w.text(p.RichText)
-	case "number":
-		return number(p.Number)
-	case "select":
-		return nameOf(p.Select)
-	case "status":
-		return nameOf(p.Status)
-	case "multi_select":
-		return names(p.MultiSelect)
-	case "people":
-		return names(p.People)
-	case "date":
-		if p.Date == nil {
-			return ""
-		}
-		return strings.TrimSuffix(p.Date.Start+" → "+p.Date.End, " → ")
-	case "checkbox":
-		if p.Checkbox {
-			return "Yes"
-		}
-		return "No"
-	case "url":
-		return linkIfAny(p.URL)
-	case "email":
-		return escapeMarkdown(deref(p.Email))
-	case "phone_number":
-		return escapeMarkdown(deref(p.PhoneNumber))
 	case "files":
 		return w.propertyFiles(p.Files)
 	case "relation":
 		return w.relations(p)
-	case "formula":
-		return formula(p)
-	case "created_time":
-		return p.CreatedTime
-	case "last_edited_time":
-		return p.LastEditedTime
-	case "created_by":
-		return nameOf(p.CreatedBy)
-	case "last_edited_by":
-		return nameOf(p.LastEditedBy)
-	case "unique_id":
-		if p.UniqueID == nil {
-			return ""
-		}
-		return strings.TrimPrefix(deref(p.UniqueID.Prefix)+"-"+number(p.UniqueID.Number), "-")
 	case "rollup":
 		return w.rollup(p)
 	}
 	return ""
+}
+
+// propertyText renders the property types that need nothing from the import.
+var propertyText = map[string]func(notionProperty) string{
+	"number":           func(p notionProperty) string { return number(p.Number) },
+	"select":           func(p notionProperty) string { return nameOf(p.Select) },
+	"status":           func(p notionProperty) string { return nameOf(p.Status) },
+	"multi_select":     func(p notionProperty) string { return names(p.MultiSelect) },
+	"people":           func(p notionProperty) string { return names(p.People) },
+	"date":             dateText,
+	"checkbox":         func(p notionProperty) string { return yesNo(p.Checkbox) },
+	"url":              func(p notionProperty) string { return linkIfAny(p.URL) },
+	"email":            func(p notionProperty) string { return escapeMarkdown(deref(p.Email)) },
+	"phone_number":     func(p notionProperty) string { return escapeMarkdown(deref(p.PhoneNumber)) },
+	"formula":          formula,
+	"created_time":     func(p notionProperty) string { return p.CreatedTime },
+	"last_edited_time": func(p notionProperty) string { return p.LastEditedTime },
+	"created_by":       func(p notionProperty) string { return nameOf(p.CreatedBy) },
+	"last_edited_by":   func(p notionProperty) string { return nameOf(p.LastEditedBy) },
+	"unique_id":        uniqueID,
+}
+
+func dateText(p notionProperty) string {
+	if p.Date == nil {
+		return ""
+	}
+	return strings.TrimSuffix(p.Date.Start+" → "+p.Date.End, " → ")
+}
+
+func uniqueID(p notionProperty) string {
+	if p.UniqueID == nil {
+		return ""
+	}
+	return strings.TrimPrefix(deref(p.UniqueID.Prefix)+"-"+number(p.UniqueID.Number), "-")
+}
+
+func yesNo(b bool) string {
+	if b {
+		return "Yes"
+	}
+	return "No"
 }
 
 func (w *notionWriter) propertyFiles(files []notionFile) string {
@@ -595,10 +622,7 @@ func formula(p notionProperty) string {
 	case "number":
 		return number(f.Number)
 	case "boolean":
-		if f.Boolean != nil && *f.Boolean {
-			return "Yes"
-		}
-		return "No"
+		return yesNo(f.Boolean != nil && *f.Boolean)
 	}
 	return ""
 }

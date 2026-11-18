@@ -4871,6 +4871,9 @@
               "files_linked": {
                 "type": "integer"
               },
+              "unsupported": {
+                "type": "integer"
+              },
               "failures": {
                 "type": "array",
                 "items": {
@@ -4912,6 +4915,7 @@
               "skipped",
               "files_copied",
               "files_linked",
+              "unsupported",
               "failures"
             ]
           },
