@@ -39,6 +39,15 @@ describe("useFetchPlayQueue", () => {
     expect(api.get).toHaveBeenCalledTimes(2);
   });
 
+  it("waits out a pause too long for a timer instead of asking every millisecond", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: playQueue({ paused: true, auto_runs: 5, paused_until: "2099-01-01T00:00:00Z" }) });
+    const { result } = renderHook(() => useFetchPlayQueue("ticket", "t-1"), { wrapper });
+    await waitFor(() => expect(result.current.data?.paused).toBe(true));
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(api.get).toHaveBeenCalledTimes(1);
+  });
+
   it("never asks about an interview, which has no queue", () => {
     renderHook(() => useFetchPlayQueue("interview", "p-1"), { wrapper });
     expect(api.get).not.toHaveBeenCalled();
