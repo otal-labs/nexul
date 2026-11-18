@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -18,15 +19,15 @@ type pairingProjectRemotes struct {
 	projects projectRepoLister
 }
 
-func (a pairingProjectRemotes) ProjectRemotes(ctx context.Context, projectID string) ([]string, error) {
+func (a pairingProjectRemotes) ProjectRemotes(ctx context.Context, projectID string) ([]pairing.ProjectRemote, error) {
 	repos, err := a.projects.ListRepos(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]string, 0, len(repos))
+	out := make([]pairing.ProjectRemote, 0, len(repos))
 	for _, r := range repos {
 		if r.ConnectorID == "github" {
-			out = append(out, "github.com/"+strings.ToLower(r.FullName))
+			out = append(out, pairing.ProjectRemote{Remote: "github.com/" + strings.ToLower(r.FullName), App: r.Role == workspace.RepoRoleApp})
 		}
 	}
 	return out, nil

@@ -16,9 +16,9 @@ import (
 var placementNow = time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 
 // fakeRemotes is each project's repositories as T3 names a checkout's remote.
-type fakeRemotes map[string][]string
+type fakeRemotes map[string][]ProjectRemote
 
-func (f fakeRemotes) ProjectRemotes(_ context.Context, projectID string) ([]string, error) {
+func (f fakeRemotes) ProjectRemotes(_ context.Context, projectID string) ([]ProjectRemote, error) {
 	return f[projectID], nil
 }
 
@@ -37,7 +37,9 @@ func newPlacementFixture(t *testing.T) *placementFixture {
 	}
 	svc := NewService(Config{
 		Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Now: func() time.Time { return placementNow },
-		Projects: fakeProjects{}, Repositories: fakeRemotes{"proj-1": {"github.com/acme/app"}}, Tokens: newFakeTokens(),
+		Projects: fakeProjects{}, Repositories: fakeRemotes{"proj-1": {
+			{Remote: "github.com/acme/app", App: true}, {Remote: "github.com/acme/e2e"}, {Remote: "github.com/acme/e2e-mobile"},
+		}}, Tokens: newFakeTokens(),
 	})
 	return &placementFixture{repo: repo, exch: exch, svc: svc}
 }
@@ -415,5 +417,41 @@ func listsT3Projects(ids ...string) func(context.Context, harness.Session) ([]ha
 			projects = append(projects, harness.Project{ID: id, Title: id})
 		}
 		return projects, nil
+	}
+}
+
+func TestCheckout_TheAppRepositoryWinsATie(t *testing.T) {
+	t.Parallel()
+	clone := func(id, repo string) harness.Project { return harness.Project{ID: id, Repository: repo} }
+	tests := []struct {
+		name     string
+		projects []harness.Project
+		want     string
+		why      PassOverReason
+	}{
+		{"one match", []harness.Project{clone("t3-app", "github.com/acme/app"), clone("t3-x", "")}, "t3-app", ""},
+		{"app plus tests", []harness.Project{clone("t3-e2e", "github.com/acme/e2e"), clone("t3-app", "github.com/Acme/App")}, "t3-app", ""},
+		{"two clones of the app", []harness.Project{clone("t3-app", "github.com/acme/app"), clone("t3-app-2", "github.com/acme/app"), clone("t3-e2e", "github.com/acme/e2e")},
+			"", PassOverAmbiguousCheckout},
+		{"two tests repositories and no app", []harness.Project{clone("t3-e2e", "github.com/acme/e2e"), clone("t3-mobile", "github.com/acme/e2e-mobile")},
+			"", PassOverAmbiguousCheckout},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newPlacementFixture(t)
+			f.add(t, "a", func(c *Computer) { c.Facts.Projects = tt.projects })
+
+			got, m, err := f.svc.checkout(t.Context(), &plan{req: RunRequest{UserID: "u1", ProjectID: "proj-1"}}, f.repo.computers["a"])
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+			if tt.why == "" {
+				assert.Nil(t, m)
+				return
+			}
+			require.NotNil(t, m)
+			assert.Equal(t, tt.why, m.pass.Why)
+		})
 	}
 }

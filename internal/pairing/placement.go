@@ -16,8 +16,15 @@ import (
 
 // ProjectRemotes reads the git remotes a project's checkout is found by on a computer (ADR 0165).
 type ProjectRemotes interface {
-	// ProjectRemotes returns each GitHub repository of projectID as T3 normalizes a remote: github.com/owner/name, lowercase.
-	ProjectRemotes(ctx context.Context, projectID string) ([]string, error)
+	// ProjectRemotes returns each GitHub repository of projectID, with its role.
+	ProjectRemotes(ctx context.Context, projectID string) ([]ProjectRemote, error)
+}
+
+// ProjectRemote is one repository of a project as T3 normalizes a remote: github.com/owner/name, lowercase.
+type ProjectRemote struct {
+	Remote string
+	// App is the repository the project deploys; it wins a checkout tie over a tests repository (ADR 0197).
+	App bool
 }
 
 // Room is how a computer's runs at once bears on where a run lands (ADR 0166).
@@ -73,7 +80,7 @@ type plan struct {
 	worktree  bool
 	placement Placement
 	clone     bool
-	remotes   []string
+	remotes   []ProjectRemote
 	readRepos bool
 }
 
@@ -379,21 +386,41 @@ func (s *Service) checkout(ctx context.Context, p *plan, c Computer) (string, *m
 	if err != nil {
 		return "", nil, err
 	}
-	var matches []string
+	var projects []harness.Project
 	if c.Facts != nil {
-		for _, hp := range c.Facts.Projects {
-			if hp.Repository != "" && slices.Contains(remotes, strings.ToLower(hp.Repository)) {
-				matches = append(matches, hp.ID)
-			}
-		}
+		projects = c.Facts.Projects
 	}
-	if len(matches) == 1 {
-		return matches[0], nil, nil
+	matched, several := matchCheckout(projects, remotes)
+	if matched != "" {
+		return matched, nil, nil
 	}
-	if len(matches) > 1 {
+	if several {
 		return "", missing(c, PassOverAmbiguousCheckout, c.Name+" has several checkouts of this project; pick one"), nil
 	}
 	return "", missing(c, PassOverNoCheckout, c.Name+" doesn't have this project"), nil
+}
+
+// matchCheckout is the one T3 project whose remote is a repository of the project, else the one whose repository is the
+// app; with several left it is "" and several.
+func matchCheckout(projects []harness.Project, remotes []ProjectRemote) (string, bool) {
+	var matches, apps []string
+	for _, hp := range projects {
+		i := slices.IndexFunc(remotes, func(r ProjectRemote) bool { return r.Remote == strings.ToLower(hp.Repository) })
+		if hp.Repository == "" || i < 0 {
+			continue
+		}
+		matches = append(matches, hp.ID)
+		if remotes[i].App {
+			apps = append(apps, hp.ID)
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0], false
+	}
+	if len(apps) == 1 {
+		return apps[0], false
+	}
+	return "", len(matches) > 1
 }
 
 func missing(c Computer, why PassOverReason, text string) *miss {
@@ -401,7 +428,7 @@ func missing(c Computer, why PassOverReason, text string) *miss {
 }
 
 // remotes reads the project's repositories once per run, on the first computer that needs them.
-func (s *Service) remotes(ctx context.Context, p *plan) ([]string, error) {
+func (s *Service) remotes(ctx context.Context, p *plan) ([]ProjectRemote, error) {
 	if p.readRepos || s.repositories == nil {
 		return p.remotes, nil
 	}
