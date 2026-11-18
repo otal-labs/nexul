@@ -1,11 +1,11 @@
 import { PageHeader } from "@/components/PageHeader";
-import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
+import { RolesAndPeopleSection } from "@/components/role/RolesAndPeopleSection";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { countLabel } from "@/models/AccessGrid";
 
-// The Access page for someone who edits roles but manages no project: the server refuses them the grids, so only Roles shows.
+// The Access page for someone who edits roles or gives them but manages no project: the server refuses them the grids, so only Roles and people shows.
 export const AccessRolesView = () => {
   const crumb = useWorkspaceCrumb();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
@@ -14,12 +14,12 @@ export const AccessRolesView = () => {
   return (
     <>
       <PageHeader
-        className="mb-6"
+        className="mb-6 shrink-0"
         crumbs={[crumb]}
         title="Access"
-        meta={roles && <span className="font-mono text-xs text-muted-foreground">{countLabel(roles.length, "role", "roles")}</span>}
+        meta={roles && <span className="font-mono text-xs text-muted-foreground">{countLabel(roles.filter((role) => !role.is_owner_role).length, "role", "roles")}</span>}
       />
-      <RoleSettingsSection />
+      <RolesAndPeopleSection />
     </>
   );
 };

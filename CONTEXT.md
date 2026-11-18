@@ -1257,9 +1257,10 @@ channel, as tick grids of projects and channels by roles. An Owner's first
 visit after the upgrade that rebuilt permissions opens it as the one-time setup
 "Who's in each project"; a workspace with no projects at that upgrade, and
 every one made later, starts set up. Shown to anyone who may manage a project's
-access or edit roles; only an Owner sees the channels grid. Its Roles tab is
-where a workspace's roles are defined, and a role editor who manages no project
-sees that tab alone.
+access, edit roles, or give them; only an Owner sees the channels grid. Its
+Roles and people tab lists the workspace's roles beside the open one, which
+shows who holds it, gives it (to someone here or by an invitation) and what it
+allows; someone who manages no project sees that tab alone.
 _Avoid_: Permissions page, project access, setup wizard (that is the instance's)
 
 **Private channel**:
@@ -1291,12 +1292,10 @@ _Avoid_: Allowlist status, membership status
 **Team**:
 Everyone registered on the instance and what each can reach: every account
 with its Account status, whether it is online or when it was last seen, and,
-per workspace, the Roles it holds, or none. A holder of
-`accounts:read` sees all of it, under Instance settings; someone who manages
-members in a workspace finds it in Configuration and sees only the workspaces
-they manage. A change
-inside a workspace always needs `members:write` there, and the Owner role is
-never given or taken through it. Nobody gives a role holding more than they
+per workspace, the Roles it holds, or none. A holder of `accounts:read` sees
+all of it, under Instance settings. Roles show there read-only: they are given
+and taken from each role on the workspace's Access page, which always needs
+`members:write` there, and the Owner role is never given or taken. Nobody gives a role holding more than they
 hold, or takes away one they couldn't give. Deleting a role takes it from
 everyone holding it, who may be left with none.
 _Avoid_: Members (one workspace's roster), registered accounts, users

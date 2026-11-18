@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), toast: vi.fn() }))
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorMessage: () => "refused" }));
 vi.mock("sonner", () => ({ toast: { success: mocks.toast, error: vi.fn() } }));
 vi.mock("@/components/settings/RoleSettingsSection", () => ({ RoleSettingsSection: () => <p>Roles card</p> }));
+vi.mock("@/components/role/RolesAndPeopleSection", () => ({ RolesAndPeopleSection: () => <p>Roles and people card</p> }));
 
 const grid = (over: Partial<AccessGrid> = {}): AccessGrid => ({
   workspace_id: "ws-1",
@@ -205,13 +206,13 @@ describe("AccessPage", () => {
     expect(screen.getByText(/No project matches/)).toBeInTheDocument();
   });
 
-  it("puts Roles between the grids for a role editor, at its own path", async () => {
+  it("puts Roles and people between the grids for a role editor, at its own path", async () => {
     serve(grid({ setup: { finished: true } }));
     const user = userEvent.setup();
     renderPage("/acme/access/roles");
 
-    expect(await screen.findByText("Roles card")).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Projects", "Roles", "Public channels"]);
+    expect(await screen.findByText("Roles and people card")).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Projects", "Roles and people", "Public channels"]);
     await user.click(screen.getByRole("tab", { name: "Projects" }));
     expect(await screen.findByRole("checkbox", { name: "Client in Storefront" })).toBeInTheDocument();
   });
@@ -225,11 +226,11 @@ describe("AccessPage", () => {
     expect(await screen.findByText("Roles card")).toBeInTheDocument();
   });
 
-  it("shows a role editor who manages no project the Roles card alone, without asking for the grids", async () => {
-    serve(grid({ setup: { finished: true } }), false, ["roles:write"]);
+  it.each([["roles:write"], ["members:write"]])("shows a %s holder who manages no project Roles and people alone, without asking for the grids", async (permission) => {
+    serve(grid({ setup: { finished: true } }), false, [permission]);
     renderPage();
 
-    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+    expect(await screen.findByText("Roles and people card")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Access" })).toBeInTheDocument();
     expect(await screen.findByText("2 roles")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();

@@ -158,3 +158,9 @@ export const invitationTitle = (details: InvitationPreview | undefined): string 
   if (details?.instance_name) return `Join ${details.instance_name}`;
   return "Your invitation";
 };
+
+// The open links that give a role in a workspace, among whatever else each gives.
+export const invitationsGiving = (invitations: ActiveInvitation[], workspaceId: string, roleId: string): ActiveInvitation[] =>
+  invitations.filter((invitation) =>
+    invitation.grants.some((grant) => grant.workspace_id === workspaceId && (grant.roles.length > 0 ? grant.roles.some((r) => r.id === roleId) : grant.role_id === roleId)),
+  );

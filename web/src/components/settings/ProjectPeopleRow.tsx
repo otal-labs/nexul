@@ -3,7 +3,7 @@ import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useProjectPeopleActions } from "@/hooks/useProjectPeopleActions";
-import { useCanOpenSection } from "@/hooks/AccessHooks";
+import { useSeesTeam } from "@/hooks/AccessHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import type { PermissionGrant } from "@/models/Permission";
 import { grantKey, projectEntity } from "@/models/PermissionPanel";
@@ -21,7 +21,7 @@ interface ProjectPeopleRowProps {
 export const ProjectPeopleRow = ({ project, grant, keptOut = false }: ProjectPeopleRowProps) => {
   const { targetOf } = usePanelTargets({ workspaceId: project.workspace_id });
   // Holder counts come from Team, so only a viewer who may read Team asks for it.
-  const { data: team } = useFetchTeam(useCanOpenSection("team"));
+  const { data: team } = useFetchTeam(useSeesTeam());
   const openPanel = usePermissionsDialog();
   const { remove } = useProjectPeopleActions(project);
   const target = targetOf(grantKey(grant));

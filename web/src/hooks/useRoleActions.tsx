@@ -14,7 +14,7 @@ const deleteMessage = (held: number): string => {
   return `${who} this role. Anyone left with no role stays a member and sees no project. Deleting it can't be undone.`;
 };
 
-// A role's menu (Edit, Duplicate, Clone to workspace, Delete) and the dialogs it opens, for its column head.
+// A role's menu (Edit, Duplicate, Clone to workspace, Delete), the dialogs it opens, and the editor on its own for an Edit button.
 export const useRoleActions = (role: Role, workspaceId: string, holders: TeamPerson[] | undefined) => {
   const { data: roles = [] } = useFetchWorkspaceRoles(workspaceId);
   const createRole = useCreateWorkspaceRole(workspaceId);
@@ -51,5 +51,5 @@ export const useRoleActions = (role: Role, workspaceId: string, holders: TeamPer
       {cloning && <CloneRoleDialog role={role} open onClose={() => setCloning(false)} />}
     </>
   );
-  return { actions, dialogs };
+  return { actions, dialogs, edit: () => setEditing(true) };
 };

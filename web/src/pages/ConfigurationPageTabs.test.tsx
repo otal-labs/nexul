@@ -9,7 +9,6 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "error" }));
-vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team card</p> }));
 
 // Every instance-level permission, as the Owner of some workspace holds them.
 const everythingAnywhere = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read"];
@@ -72,17 +71,4 @@ describe("ConfigurationPage sections", () => {
     expect(screen.queryByRole("heading", { level: 1, name: "Connectors" })).not.toBeInTheDocument();
   });
 
-  it("keeps Team among the workspace sections of a members:write holder without accounts:read", async () => {
-    renderPage("/acme/configuration/team", ["members:write"], ["members:write"]);
-
-    expect(await screen.findByText("Team card")).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent("/acme/configuration/team");
-  });
-
-  it("sends an accounts:read holder's Team to the instance-wide one on Settings, keeping the query", async () => {
-    renderPage("/acme/configuration/team?person=u-1");
-
-    expect(await screen.findByText("Settings page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location").textContent).toBe("/settings/team?person=u-1");
-  });
 });

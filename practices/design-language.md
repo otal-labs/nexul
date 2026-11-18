@@ -1419,7 +1419,37 @@ settings list mono is for identifiers only (handles, IPs, token prefixes, hostna
 and the words between names stay in the UI sans. A row's state sits on its second line, never on the title's: a Team
 row's presence, a connector's, which drops the word its tab already says.
 
-Role matrix. The Roles tab of the Access page compares every role at once,
+Roles and people. The Access page's Roles and people tab is a list pane (List
+pane, above) inside the tab: the roles, the Owner first with a muted crown and
+left out of the header's count as the page header leaves it out, each row its
+name over its description with the holder count in mono trailing (left out for
+a viewer the server shows no Team); then an Overview group of Compare roles and
+No roles. The `+` in the pane's
+header is New role. Before a row is picked the open pane is the placeholder,
+"Select a role" over the role count; below 1024px a muted "Roles" link with a
+chevron leads the open pane back to the list. The open role is one page: its
+name (16px semibold, the crown before the Owner's) over its description, with
+an outline Edit and the role's `…` menu at the right (none for the Owner); then
+People, a microheader with the count and, for whoever may give the role,
+outline Add people and Invite to <role> at its right, or a lock and the reason
+under it when the role holds more than they do; then each holder as a hairline
+row, about 56px, the 28px avatar and the name in 14px medium over a muted line
+of their presence and their other roles as chips, with a `…` holding Take
+<role>, View as <first name> and, in destructive, Remove from <workspace>, which
+asks first. An Owner's row has no menu. Add people is a popover of the people
+the viewer's Team shows, split under "In <workspace>" and "Not in <workspace>
+yet" microheaders, with a search field on top; it stays open so several can be
+added in a row, each one saving at once and saying so in a toast. A link made
+here shows once above the holders, and the open links giving the role list
+under them as Invited. What it allows follows: one microheader per editor
+section, its areas as hairline rows in two columns once the pane is 42rem
+wide, the name on the left (muted at None) and the level as a `LevelGlyph` and
+its word on the right, extra verbs after it, a yes-or-no permission as a check
+or a muted No. No roles is the same page with only the holders; Compare roles
+holds the role matrix (below). `RolesAndPeopleSection` and `RoleDetail` in
+`web/src/components/role/` are the reference.
+
+Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
 read-only, in the access grid's frame: one column per role, the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono, beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
@@ -1490,20 +1520,14 @@ the slider's strength.
 Person dialog. The Team's person dialog holds one browser-style tab per
 workspace the person is in: a row of tabs on a hairline that scrolls
 sideways, the selected tab bordered on three sides and joined to the panel
-below, no close button on a tab, and a ghost `+` after the last one that
-opens a popover to pick a workspace. A tab's panel is that workspace's Roles
-checklist (below), a muted line saying what follows from the roles, and
-"Remove from workspace"; a workspace the viewer can't manage, or an Owner,
-shows the roles as chips instead.
-Every change is held until Confirm: a tab with held changes shows a small
-`foreground` dot, the footer is Cancel and Confirm (disabled with nothing
-held), closing with held changes asks "Discard changes?", and a refused
-change shows as a destructive line above the footer while the rest stays
-held. Account actions (Disable, Remove account) sit at the footer's left and
-apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
-`web/src/components/team/` are the reference.
+below, and no close button on a tab. A tab's panel is that workspace's roles
+as chips, read-only, a muted line saying what follows from them, "Change on
+Access" (a link to that workspace's Roles and people tab, for whoever manages
+its members) and View as. The footer is the account actions (Disable, Remove
+account), which apply at once, and Close. `TeamPersonDialog` and
+`TeamWorkspaceTabs` in `web/src/components/team/` are the reference.
 
-Roles checklist. Wherever roles are given (the person dialog, each workspace of
+Roles checklist. Wherever several roles are picked at once (each workspace of
 an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at

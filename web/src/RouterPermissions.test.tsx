@@ -131,7 +131,9 @@ describe("route permissions", () => {
     { path: "/acme/access", anywhere: [], permissions: ["roles:write"], page: "Access" },
     { path: "/acme/access", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/acme/configuration", anywhere: ["instance:read"], permissions: [], page: null },
-    { path: "/acme/configuration", anywhere: ["members:write"], permissions: [], page: "Team" },
+    { path: "/acme/configuration", anywhere: ["members:write"], permissions: ["members:write"], page: null },
+    { path: "/acme/access", anywhere: ["members:write"], permissions: ["members:write"], page: "Access" },
+    { path: "/acme/access/roles/r-1", anywhere: [], permissions: ["roles:write"], page: "Access" },
     { path: "/settings", anywhere: ["connectors:read"], permissions: [], page: "Profile" },
     { path: "/acme/inbox", anywhere: [], permissions: [], page: "Inbox" },
   ])("$path with $permissions (anywhere: $anywhere) opens $page", async ({ path, anywhere, permissions, page }) => {

@@ -40,10 +40,8 @@ export const sectionLabels: Record<SettingsSection, string> = {
 export interface SettingsVisibility {
   // The instance sections whose permission the viewer holds in some workspace (models/Access.tsx).
   instanceSections: readonly InstanceSection[];
-  // Team opens to an accounts:read holder, who sees everyone in Settings, and to anyone who manages
-  // members in a workspace, who sees those workspaces in Configuration.
+  // Team opens to an accounts:read holder; who holds which role is set on each workspace's Access page (ADR 0198).
   showTeam: boolean;
-  teamIsInstanceWide: boolean;
   // Each gated workspace section renders only for its permission holder; the nav must not link to an empty section.
   showGeneral: boolean;
   showInterviewTemplate: boolean;
@@ -51,8 +49,8 @@ export interface SettingsVisibility {
 }
 
 // The sections the viewer may open, in nav order; the page falls back to the first when the URL names none of them.
-export const visibleSettingsSections = (visibility: SettingsVisibility): SettingsSection[] => {
-  const sections = SETTINGS_SECTIONS.filter((section) => {
+export const visibleSettingsSections = (visibility: SettingsVisibility): SettingsSection[] =>
+  SETTINGS_SECTIONS.filter((section) => {
     if (section === "team") return visibility.showTeam;
     if (INSTANCE_SECTIONS.includes(section)) return (visibility.instanceSections as readonly string[]).includes(section);
     if (section === "general") return visibility.showGeneral;
@@ -60,18 +58,9 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
     if (section === "mentions") return visibility.showMentionLayout;
     return true;
   });
-  if (visibility.teamIsInstanceWide || !sections.includes("team")) return sections;
-  // Without accounts:read, Team is a workspace-scoped section, so it sits with them ahead of Danger zone.
-  const workspaceOnly: SettingsSection[] = sections.filter((section) => section !== "team");
-  workspaceOnly.splice(workspaceOnly.indexOf("danger"), 0, "team");
-  return workspaceOnly;
-};
 
-// Instance sections live on the Settings page; Team is one of them only for an accounts:read holder.
-export const isInstanceSection = (section: SettingsSection, teamIsInstanceWide: boolean): boolean => {
-  if (section === "team") return teamIsInstanceWide;
-  return INSTANCE_SECTIONS.includes(section);
-};
+// Instance sections live on the Settings page.
+export const isInstanceSection = (section: SettingsSection): boolean => INSTANCE_SECTIONS.includes(section);
 
 interface SettingsNavProps {
   active: SettingsSection;

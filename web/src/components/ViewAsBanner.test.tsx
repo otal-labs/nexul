@@ -31,8 +31,11 @@ describe("ViewAsBanner", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("names who is being viewed and where, and Stop viewing ends the view and returns to Team settings", async () => {
-    useViewAsStore.getState().start({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "" });
+  it.each([
+    { from: "a role on the Access page", returnTo: "/acme/access/roles/r-dev", lands: "/acme/access/roles/r-dev" },
+    { from: "a view started before the page was remembered", returnTo: undefined, lands: "/settings/team" },
+  ])("names who is being viewed and where, and Stop viewing ends the view and returns to where it started: $from", async ({ returnTo, lands }) => {
+    useViewAsStore.getState().start({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice", name: "Alice", avatarUrl: "", ...(returnTo && { returnTo }) });
     renderBanner();
 
     expect(screen.getByRole("status")).toHaveTextContent("Viewing as Alice in Acme.");
@@ -40,6 +43,6 @@ describe("ViewAsBanner", () => {
 
     expect(useViewAsStore.getState().target).toBeNull();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    expect(screen.getByText("at /settings/team")).toBeInTheDocument();
+    expect(screen.getByText(`at ${lands}`)).toBeInTheDocument();
   });
 });

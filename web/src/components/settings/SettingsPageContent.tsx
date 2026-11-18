@@ -2,7 +2,6 @@ import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
 import { WorkspaceGeneralSection } from "@/components/settings/WorkspaceGeneralSection";
-import { TeamSection } from "@/components/team/TeamSection";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 
@@ -35,6 +34,5 @@ export const SettingsPageContent = ({ section, canManageWorkspace }: SettingsPag
     {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && <MentionsPanel canManageWorkspace={canManageWorkspace} />}
     {section === "danger" && <DangerZoneSection />}
-    {section === "team" && <TeamSection />}
   </>
 );

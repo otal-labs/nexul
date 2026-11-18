@@ -135,13 +135,6 @@ describe("Settings page instance sections", () => {
     expect(await screen.findByText("Settings failed")).toBeInTheDocument();
   });
 
-  it("sends a members:write holder without accounts:read from Team to the scoped one in Configuration", async () => {
-    renderPage("/settings/team?person=u-1", ["members:write"]);
-
-    expect(await screen.findByText("Configuration page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location").textContent).toBe("/acme/configuration/team?person=u-1");
-  });
-
   it("gives sign-in providers their own section, one tab each with Discord first", async () => {
     renderPage("/settings/sign-in");
 

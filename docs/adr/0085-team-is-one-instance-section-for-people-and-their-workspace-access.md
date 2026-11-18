@@ -64,3 +64,6 @@ The instance sections moved from Configuration to the Settings page on
 2026-09-30, where the group is called Instance settings and each entry shows
 only to a holder of its permission; Team's scoped variant stayed in
 Configuration.
+
+Amended by ADR 0198: Team is an instance section only, showing a person's roles read-only; who holds a role is set on each
+workspace's Access page, and Configuration has no Team.

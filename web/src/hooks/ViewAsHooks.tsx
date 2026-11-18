@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
@@ -27,6 +27,7 @@ interface ViewAsRequest {
 export const useStartViewAs = () => {
   const client = useQueryClient();
   const navigate = useNavigate();
+  const { pathname, search } = useLocation();
   const { data: workspaces } = useFetchWorkspaces();
   return useMutation({
     mutationFn: requires("members:view_as", async ({ workspaceId, userId }: ViewAsRequest) =>
@@ -39,6 +40,7 @@ export const useStartViewAs = () => {
         userId: grant.user_id,
         name: grant.name,
         avatarUrl: grant.avatar_url,
+        returnTo: `${pathname}${search}`,
       });
       useWorkspaceStore.getState().selectWorkspace(grant.workspace_id, slug);
       client.clear();
@@ -48,13 +50,14 @@ export const useStartViewAs = () => {
   });
 };
 
-// Team settings is where a view starts; /settings/team sends a workspace manager on to their Configuration Team.
+// Back to the page the view started from; a view started before that was remembered goes back to Team.
 export const useExitViewAs = () => {
   const client = useQueryClient();
   const navigate = useNavigate();
   return () => {
+    const returnTo = useViewAsStore.getState().target?.returnTo ?? "/settings/team";
     useViewAsStore.getState().exit();
     client.clear();
-    void navigate("/settings/team");
+    void navigate(returnTo);
   };
 };
