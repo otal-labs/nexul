@@ -1429,7 +1429,7 @@ and the words between names stay in the UI sans. A row's state sits on its secon
 row's presence, a connector's, which drops the word its tab already says.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
-pane, above) inside the tab: the roles, the Owner first with a muted crown, every role
+pane, above) inside the tab: the roles, the Owner first with a muted crown after its name, every role
 in the header's count as in the page header's, each row its name over its
 description with the holder count in mono on the title's baseline (left out at
 none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
@@ -1447,18 +1447,20 @@ projects ▮▮▮ Delete 10/12"), with a small arrow down, each jumping to its 
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
 Then People: the microheader with its count in mono beside it, never joined by
-a middle dot, and, for whoever may give the role, outline Add people and Invite
-at its right (Invite names the role only in its accessible name, so a long name
-never wraps the row), or a lock and the reason under it when the role holds
+a middle dot, and, for whoever may give the role, outline Add people and Invite by
+link (with a link mark, naming the role only in its accessible name, so a long
+name never wraps the row) at its right, or a lock and the reason under it when the role holds
 more than they do. Past eight holders a find field (with a clear button) leads the
 list, the count reading "2 of 33" while it narrows, a search with no match a
-hairline row of its own, and the list stops at its first eight with a "Show all 32" line under them, so what the role
+hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach; a search shows every match. Each holder
 is a hairline row, at least 56px, lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
 over a muted line holding only what says something: Online or when they were
-last seen, Disabled or Removed, and their other roles as chips that overhang
-the line instead of growing it; a row with none of these is the name alone. Its
+last seen as a status mark (as Team draws it), Disabled or Removed, and their
+other roles as chips that overhang the line instead of growing it, their text
+on the line's baseline, as many whole chips as fit (up to three) and the rest
+as a mono "+N"; a row with none of these is the name alone. Its
 `…` holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
 popover of the people the viewer's Team shows, split under "In <workspace>" and
@@ -1471,7 +1473,7 @@ the role list under them as Invited, on the holders' grid: a link mark on a
 expires, the other roles it gives as chips beside that, and a `…` holding Revoke link, which asks first. What it allows follows: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
-"No access" and a "Show 11" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
+"No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
 own once the pane is 42rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
 muted line under it, and the level as a `LevelGlyph` and its word in a fixed
 80px slot on the right, the glyph aligned to its end so a shorter ladder's empty
@@ -1487,10 +1489,10 @@ width, and holds the role matrix (below). `RolesAndPeopleSection` and
 
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
 read-only, in the access grid's frame: one column per role, the columns sharing the
-width the area column leaves (no filler) and ending in a 48px fade while more
+width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
 lie to the right, the Owner first
 with a crown, each head the name (cut like the grids' heads, three 13-character
-lines) over the holder count in mono (a muted dash, named Nobody, at none), beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
+lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects. A cell is the level as a
 `LevelGlyph`, aligned to its end, and its word; a cell the role has no access in

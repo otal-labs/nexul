@@ -50,7 +50,7 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
               By {inviter}, {expires(invitation.expires_at)}
             </span>
             {others.length > 0 && (
-              <span className="-my-0.5 flex min-w-0 overflow-x-clip">
+              <span className="-my-0.5 flex min-w-0 flex-1">
                 <RoleChipRow roles={others} />
               </span>
             )}

@@ -17,7 +17,7 @@ export const AccessRolesView = () => {
         className="mb-6 shrink-0"
         crumbs={[crumb]}
         title="Access"
-        meta={roles && <span className="font-mono text-xs text-muted-foreground">{countLabel(roles.length, "role", "roles")}</span>}
+        meta={roles && <span>{countLabel(roles.length, "role", "roles")}</span>}
       />
       <RolesAndPeopleSection />
     </>

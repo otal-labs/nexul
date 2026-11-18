@@ -186,7 +186,7 @@ describe("RolesAndPeopleSection", () => {
 
     expect(await screen.findByText(/Holds .*Delete.*, which you don't hold\./)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add people" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Invite to Admin" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Invite to Admin by link" })).not.toBeInTheDocument();
   });
 
   it("never gives or takes the Owner role, and leaves an Owner's row without a menu", async () => {

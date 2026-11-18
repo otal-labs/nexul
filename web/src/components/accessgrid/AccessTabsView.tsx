@@ -36,7 +36,7 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
 
   return (
     <>
-      <PageHeader className="mb-6 shrink-0" crumbs={[crumb]} title="Access" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
+      <PageHeader className="mb-6 shrink-0" crumbs={[crumb]} title="Access" meta={<span>{facts}</span>} />
       <PageTabs
         label="Access"
         className="min-h-0 flex-1"

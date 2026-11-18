@@ -3,6 +3,7 @@ import { RoleChipRow } from "@/components/role/RoleChipRow";
 import { RoleGivePopover } from "@/components/role/RoleGivePopover";
 import { rowClass } from "@/components/role/rowStyles";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useOpenRole } from "@/hooks/RoleHooks";
@@ -64,10 +65,10 @@ export const RoleHolderRow = ({ person }: RoleHolderRowProps) => {
           </span>
           {meta && (
             <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-              {seen && <span className="shrink-0">{presenceText(person)}</span>}
+              {seen && <SettingsStatus tone={person.online ? "success" : "muted"}>{presenceText(person)}</SettingsStatus>}
               <AccountStatusLabel status={person.status} />
               {others.length > 0 && (
-                <span className="-my-0.5 flex min-w-0 overflow-x-clip">
+                <span className="-my-0.5 flex min-w-0 flex-1">
                   <RoleChipRow roles={others} />
                 </span>
               )}

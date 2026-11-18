@@ -39,8 +39,8 @@ interface ListPaneRowProps {
 export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
   // On the title's line the meta sets inline in the title's line box, so a mono count sits on the title's baseline instead of
   // centring in it.
-  const onTitleLine = metaOnTitleLine && "mt-2 block h-lh text-row";
-  const titleLineBox = metaOnTitleLine && "mt-2 h-lh text-row";
+  const onTitleLine = metaOnTitleLine && cn("block h-lh text-row", dense ? "mt-1.5" : "mt-2");
+  const titleLineBox = metaOnTitleLine && cn("h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.

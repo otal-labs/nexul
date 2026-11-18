@@ -14,16 +14,19 @@ interface RoleMatrixProps {
   catalog: PermissionInfo[];
   workspaceId: string;
   holdersOf: (roleId: string) => TeamPerson[] | undefined;
+  // Off where the matrix grows with its page instead of scrolling inside a card, so no empty gutter runs down its right edge.
+  stableGutter?: boolean;
 }
 
 // Every area down, every role across, read-only, in the editor's sections; each head holds its role's menu.
-export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf }: RoleMatrixProps) => {
+export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutter = true }: RoleMatrixProps) => {
   const ordered = [...roles.filter((role) => role.is_owner_role), ...roles.filter((role) => !role.is_owner_role)];
   const everything = catalog.map((entry) => entry.value);
   const held = ordered.map((role) => (role.is_owner_role ? everything : role.permissions));
   return (
-    <div className={cn("-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint] [scrollbar-gutter:stable]", snapScroller)}>
-      <table className="w-full border-separate border-spacing-0 text-sm [&_tbody:last-child_tr:last-child>*]:border-b-0">
+    <div className={cn("-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint]", stableGutter && "[scrollbar-gutter:stable]", snapScroller)}>
+      {/* Fixed layout gives every role column one share of the width; the floor keeps each at least 96px, scrolling past it. */}
+      <table style={{ minWidth: `calc(15rem + ${ordered.length} * 6rem + 3rem)` }} className="w-full table-fixed border-separate border-spacing-0 text-sm [&_tbody:last-child_tr:last-child>*]:border-b-0">
         <thead>
           <tr>
             <th scope="col" className={cn(stickyCell, microheaderClass, "top-0 z-30 border-b border-border pr-3 pb-[9px] pl-6 text-left align-bottom")}>

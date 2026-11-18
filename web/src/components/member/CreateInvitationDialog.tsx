@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -29,8 +29,8 @@ export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDial
   };
 
   return (
-    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm", "aria-label": `Invite to ${role.name}`, title: `Invite to ${role.name}` })}>
-      Invite
+    <ActionButton permission="members:write" verb="invite people" icon={role ? Link2 : Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm", "aria-label": `Invite to ${role.name} by link`, title: `Invite to ${role.name} by link` })}>
+      {role ? "Invite by link" : "Invite"}
     </ActionButton>
   );
 };

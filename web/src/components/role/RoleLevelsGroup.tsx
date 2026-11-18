@@ -37,7 +37,7 @@ export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevel
         )}
         {held === 0 && <span className="text-xs text-muted-foreground">No access</span>}
         {held === 0 && none > 0 && (
-          <RoleFoldButton open={showNone} onToggle={() => setShowNone(!showNone)} label={`${showNone ? "Hide" : "Show"} ${none}`} />
+          <RoleFoldButton open={showNone} onToggle={() => setShowNone(!showNone)} label={`${showNone ? "Hide" : "Show"} ${none} areas`} />
         )}
       </div>
       {rows && (

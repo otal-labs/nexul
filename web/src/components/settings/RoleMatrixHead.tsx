@@ -32,7 +32,7 @@ export const RoleMatrixHead = ({ role, workspaceId, holders }: RoleMatrixHeadPro
         </TooltipTrigger>
         <TooltipContent>{role.name}</TooltipContent>
       </Tooltip>
-      <span className="mt-0.5 flex h-6 items-center justify-between font-mono text-micro text-muted-foreground tabular-nums">
+      <span className="mt-0.5 flex h-6 items-center gap-2 font-mono text-micro text-muted-foreground tabular-nums">
         {holders && (
           <span className="translate-y-px" aria-label={holdersLabel(holders.length)} title={holders.map((p) => p.display_name || p.login).join(", ")}>
             {holders.length === 0 ? "\u2014" : holders.length}

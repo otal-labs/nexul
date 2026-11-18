@@ -51,7 +51,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <span className="flex min-w-0 items-center gap-1.5 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
             <TeamSignInAccounts person={person} />
             {only && !several && (
-              <span className="-my-0.5 flex min-w-0">
+              <span className="-my-0.5 flex min-w-0 flex-1">
                 <RoleChipRow roles={heldRoles(only)} />
               </span>
             )}

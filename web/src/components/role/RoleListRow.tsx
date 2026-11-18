@@ -23,9 +23,9 @@ export const RoleListRow = ({ id, name, line, selected, count, owner = false, de
       title={name}
       snippet={line}
       selected={selected}
-      metaOnTitleLine={!dense}
+      metaOnTitleLine
       dense={dense}
-      {...(owner && { leading: <CrownIcon aria-label="Owner" className="size-3.5 text-muted-foreground" /> })}
+      {...(owner && { titleIcon: <CrownIcon aria-label="Owner" className="size-3.5 text-muted-foreground" /> })}
       {...(count ? { meta: <span className="font-mono text-micro text-muted-foreground tabular-nums">{count}</span> } : {})}
     />
   );

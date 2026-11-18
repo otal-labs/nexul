@@ -37,7 +37,7 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
   return (
     <>
       <div className="mb-8 shrink-0">
-        <PageHeader crumbs={[crumb]} title="Who's in each project" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
+        <PageHeader crumbs={[crumb]} title="Who's in each project" meta={<span>{facts}</span>} />
         <p className="mt-5 max-w-2xl text-sm text-pretty text-muted-foreground">
           This update rebuilt permissions, so every project starts with nobody in it and only Owners can see them. Choose who's in each
           project; you can change it any time on the Access page.

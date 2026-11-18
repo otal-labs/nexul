@@ -11,7 +11,7 @@ interface RolePersonOptionProps {
 
 export const RolePersonOption = ({ person, disabled, onPick }: RolePersonOptionProps) => (
   <button type="button" className={menuItemClass} disabled={disabled} onClick={() => onPick(person.id)}>
-    <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-5" />
+    <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-6" />
     <span className="min-w-0 flex-1 truncate">{personName(person)}</span>
   </button>
 );
