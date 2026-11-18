@@ -228,7 +228,7 @@ func (w *notionWriter) block(blk notionBlock) (string, listKind) {
 		return joinBlocks(lineStart(w.text(c.RichText)), w.blocks(blk.Children)), listNone
 	case "heading_1", "heading_2", "heading_3":
 		level, _ := strconv.Atoi(strings.TrimPrefix(blk.Type, "heading_"))
-		return joinBlocks(strings.Repeat("#", level)+" "+w.text(c.RichText), w.blocks(blk.Children)), listNone
+		return joinBlocks(strings.Repeat("#", level)+" "+strings.ReplaceAll(w.text(c.RichText), "\\\n", " "), w.blocks(blk.Children)), listNone
 	case "bulleted_list_item":
 		return listItem("- ", w.text(c.RichText), w.blocks(blk.Children)), listBullet
 	case "numbered_list_item":
@@ -662,12 +662,15 @@ var markdownEscaper = strings.NewReplacer(
 
 func escapeMarkdown(s string) string { return markdownEscaper.Replace(s) }
 
+// orderedStart is text that would read as an ordered list item, such as "1. ".
+var orderedStart = regexp.MustCompile(`^(\d+)([.)])(\s|$)`)
+
 // lineStart escapes a leading character that would make plain text a heading or a list.
 func lineStart(s string) string {
 	if s != "" && strings.ContainsRune("#-+=", rune(s[0])) {
 		return `\` + s
 	}
-	return s
+	return orderedStart.ReplaceAllString(s, `$1\$2$3`)
 }
 
 // cellText keeps a table cell on one line.
@@ -675,12 +678,18 @@ func cellText(s string) string {
 	return strings.TrimSpace(strings.NewReplacer("\\\n", " ", "\n", " ").Replace(s))
 }
 
-// listItem writes one item with its nested blocks indented under it.
+// listItem writes one item, its own later lines and its nested blocks indented under its marker.
 func listItem(marker, text, children string) string {
-	if children == "" {
-		return marker + text
+	pad := strings.Repeat(" ", len(marker))
+	first, rest, _ := strings.Cut(text, "\n")
+	item := marker + first
+	if rest != "" {
+		item += "\n" + indent(rest, pad)
 	}
-	return marker + text + "\n" + indent(children, strings.Repeat(" ", len(marker)))
+	if children == "" {
+		return item
+	}
+	return item + "\n" + indent(children, pad)
 }
 
 func indent(s, pad string) string {

@@ -53,6 +53,10 @@ func (s *recordingSink) Doc(_ context.Context, d Doc) error {
 
 func (s *recordingSink) DocLink(sourceID string) string { return "/docs/doc-" + sourceID }
 
+func (s *recordingSink) Skip(context.Context, string, string) (bool, error) { return false, nil }
+
+func (s *recordingSink) Fail(context.Context, string, string, string, error) error { return nil }
+
 func (s *recordingSink) Ticket(_ context.Context, t Ticket) error {
 	s.tickets = append(s.tickets, t)
 	return nil

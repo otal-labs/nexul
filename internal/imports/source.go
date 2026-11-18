@@ -56,6 +56,10 @@ type Sink interface {
 	Doc(ctx context.Context, d Doc) error
 	// DocLink is the in-app link of the doc a source record becomes, so a body can link a doc not written yet.
 	DocLink(sourceID string) string
+	// Skip reports whether a record of kind is already in, counting it as skipped, so a source need not read it again.
+	Skip(ctx context.Context, kind, sourceID string) (bool, error)
+	// Fail records a record the source could not read, with why, and carries on.
+	Fail(ctx context.Context, kind, sourceID, title string, cause error) error
 	// Checkpoint records where a resumed import starts reading again; everything before it has gone to the sink.
 	Checkpoint(ctx context.Context, cursor string) error
 }

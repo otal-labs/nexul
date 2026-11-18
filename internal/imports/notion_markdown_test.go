@@ -101,6 +101,27 @@ func TestNotionWriter_NestsListChildrenAndFlattensOthers(t *testing.T) {
 	assert.Equal(t, "Hello\n\nInside", testWriter().blocks(toggle))
 }
 
+func TestNotionWriter_KeepsLineBreaksInsideTheirBlock(t *testing.T) {
+	two := `"rich_text":[{"type":"text","plain_text":"one\ntwo","annotations":{}}]`
+	tests := []struct {
+		name, raw, want, node string
+	}{
+		{"a list item", `[{"type":"bulleted_list_item","bulleted_list_item":{` + two + `}}]`, "- one\\\n  two", "bulletList"},
+		{"a heading", `[{"type":"heading_2","heading_2":{` + two + `}}]`, "## one two", "heading"},
+		{"a paragraph that reads like a list", `[{"type":"paragraph","paragraph":{"rich_text":[{"type":"text","plain_text":"1. Not a list","annotations":{}}]}}]`, "1\\. Not a list", "paragraph"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := testWriter().blocks(blocksOf(t, tt.raw))
+			assert.Equal(t, tt.want, got)
+			doc, err := richtext.MarkdownToDoc(got)
+			require.NoError(t, err)
+			require.Len(t, doc.Content, 1)
+			assert.Equal(t, tt.node, doc.Content[0].Type)
+		})
+	}
+}
+
 func TestNotionWriter_TurnsUnsupportedBlocksIntoTextOrLinksAndCountsThem(t *testing.T) {
 	tests := []struct {
 		name string

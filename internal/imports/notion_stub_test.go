@@ -33,6 +33,8 @@ type stubNotion struct {
 	throttle int
 	requests int
 	seq      int
+	// unshared answers 404 for that page's content, as after someone removes the integration from it.
+	unshared string
 }
 
 func newStubNotion(t *testing.T) *stubNotion {
@@ -150,7 +152,12 @@ func (s *stubNotion) serve(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(r.URL.Path, "/v1/databases/"):
 		s.one(w, s.databases[strings.TrimPrefix(r.URL.Path, "/v1/databases/")])
 	case strings.HasSuffix(r.URL.Path, "/children"):
-		s.list(w, r, s.childrenOf(strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/blocks/"), "/children")))
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/blocks/"), "/children")
+		if id == s.unshared {
+			s.one(w, nil)
+			return
+		}
+		s.list(w, r, s.childrenOf(id))
 	case strings.HasPrefix(r.URL.Path, "/v1/blocks/"):
 		s.one(w, s.blocks[strings.TrimPrefix(r.URL.Path, "/v1/blocks/")])
 	default:
@@ -255,6 +262,8 @@ type fakeShelf struct {
 	files    map[string][]byte
 	// failBody answers SetDocBody with this error once.
 	failBody error
+	// onAttach runs as a file is stored, while its doc is still being filled.
+	onAttach func()
 	created  int
 }
 
@@ -300,6 +309,9 @@ func (f *fakeShelf) SetDocBody(_ context.Context, docID, title, body string) err
 }
 
 func (f *fakeShelf) AttachToDoc(_ context.Context, _, name string, data []byte) (string, error) {
+	if f.onAttach != nil {
+		f.onAttach()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := "att-" + name

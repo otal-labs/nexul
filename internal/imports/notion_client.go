@@ -124,8 +124,10 @@ func notionError(status int, data []byte) error {
 	switch {
 	case status == http.StatusUnauthorized:
 		return fmt.Errorf("%w: Notion refused the token; copy the internal integration secret again", apperrs.ErrUnauthorized)
-	case status == http.StatusNotFound || status == http.StatusForbidden:
+	case status == http.StatusNotFound:
 		return fmt.Errorf("%w: Notion has nothing shared with the integration there (%s)", apperrs.ErrNotFound, e.Code)
+	case status == http.StatusForbidden:
+		return fmt.Errorf("%w: Notion refused the integration; give it the Read content capability", apperrs.ErrForbidden)
 	case status == http.StatusTooManyRequests || status >= 500:
 		return fmt.Errorf("%w: Notion answered %d", apperrs.ErrRetryable, status)
 	}

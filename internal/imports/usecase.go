@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -100,6 +101,8 @@ type Service struct {
 	sources map[string]Source
 	log     *slog.Logger
 	now     func() time.Time
+	// writing is the import the loop is writing now; its own stop archives what it left unfilled.
+	writing atomic.Pointer[string]
 }
 
 // Deps are the Service's collaborators.
@@ -196,7 +199,9 @@ func (s *Service) Cancel(ctx context.Context, id string) (*Import, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.archiveUnfilled(ctx, moved)
+	if w := s.writing.Load(); w == nil || *w != moved.ID {
+		s.archiveUnfilled(ctx, moved)
+	}
 	return moved, nil
 }
 

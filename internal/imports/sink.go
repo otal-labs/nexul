@@ -219,6 +219,26 @@ func (k *sink) DocLink(sourceID string) string {
 	return "/docs/" + k.id(KindDoc, strings.TrimSpace(sourceID))
 }
 
+// Skip implements Sink.
+func (k *sink) Skip(ctx context.Context, kind, sourceID string) (bool, error) {
+	sourceID = strings.TrimSpace(sourceID)
+	item, ok, err := k.s.repo.Item(ctx, k.imp.ID, kind, sourceID)
+	if err != nil || ok {
+		return ok && item.State != ItemCreated, err
+	}
+	_, before, err := k.s.repo.Imported(ctx, k.imp.WorkspaceID, k.imp.Source, kind, sourceID)
+	if err != nil || !before {
+		return false, err
+	}
+	k.imp.Report.Skipped++
+	return true, k.counted(ctx, true)
+}
+
+// Fail implements Sink.
+func (k *sink) Fail(ctx context.Context, kind, sourceID, title string, cause error) error {
+	return k.failed(ctx, kind, strings.TrimSpace(sourceID), title, "", cause)
+}
+
 // Doc implements Sink.
 func (k *sink) Doc(ctx context.Context, d Doc) error {
 	d.SourceID = strings.TrimSpace(d.SourceID)

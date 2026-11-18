@@ -62,14 +62,7 @@ func (n *NotionSource) Import(ctx context.Context, job Job, sink Sink) error {
 		start = i + 1
 	}
 	for i := start; i < len(plan.order); i++ {
-		d, err := n.doc(ctx, job.Credential, plan, plan.nodes[plan.order[i]], sink)
-		if errors.Is(err, apperrs.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if err := sink.Doc(ctx, d); err != nil {
+		if err := n.handOver(ctx, job.Credential, plan, plan.nodes[plan.order[i]], sink); err != nil {
 			return err
 		}
 		if (i+1)%notionCheckpointEvery == 0 {
@@ -79,6 +72,22 @@ func (n *NotionSource) Import(ctx context.Context, job Job, sink Sink) error {
 		}
 	}
 	return nil
+}
+
+// handOver writes one page's doc, unless an import already brought it in, which costs no read of its blocks.
+func (n *NotionSource) handOver(ctx context.Context, token string, plan *notionPlan, node *notionNode, sink Sink) error {
+	skip, err := sink.Skip(ctx, KindDoc, node.id)
+	if err != nil || skip {
+		return err
+	}
+	d, err := n.doc(ctx, token, plan, node, sink)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return sink.Fail(ctx, KindDoc, node.id, node.title, fmt.Errorf("%w: the page is no longer shared with the integration", apperrs.ErrNotFound))
+	}
+	if err != nil {
+		return err
+	}
+	return sink.Doc(ctx, d)
 }
 
 // doc reads one page's blocks and writes its doc: a row opens with its properties, and links to pages in the import
@@ -300,6 +309,7 @@ func (p *notionPlan) pickRoots(from string) error {
 		}
 	}
 	if len(p.roots) > 0 {
+		p.roots = slices.DeleteFunc(p.roots, p.underAnotherRoot)
 		return nil
 	}
 	for id, node := range p.nodes {
@@ -314,6 +324,16 @@ func (p *notionPlan) pickRoots(from string) error {
 		return fmt.Errorf("%w: nothing is shared with the integration yet; in Notion, add it to the pages to import under Connections", apperrs.ErrInvalid)
 	}
 	return nil
+}
+
+// underAnotherRoot reports whether a picked root sits below another picked root, whose folder already takes it.
+func (p *notionPlan) underAnotherRoot(id string) bool {
+	for at, steps := p.nodes[id].parent, 0; at != "" && steps <= MaxNotionDepth*4; at, steps = p.nodes[at].parent, steps+1 {
+		if slices.Contains(p.roots, at) {
+			return true
+		}
+	}
+	return false
 }
 
 // walk orders the pages under each root, parents first, refusing a tree deeper than MaxNotionDepth.

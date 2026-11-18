@@ -94,12 +94,78 @@ func TestNotionImport_ARerunUpdatesNothing(t *testing.T) {
 	svc, repo := newNotionService(stub, shelf)
 	runNotion(t, svc, repo, "")
 	before := shelf.created
+	stub.requests = 0
 
 	again := runNotion(t, svc, repo, "")
 
 	assert.Equal(t, before, shelf.created)
 	assert.Equal(t, 8, again.Report.Skipped)
 	assert.Zero(t, again.Report.FilesCopied)
+	assert.Equal(t, 4, stub.requests, "a search and a database read for the scan and again for the import; no page is read again")
+}
+
+func TestNotionImport_CountsAPageUnsharedMidwayAsFailed(t *testing.T) {
+	stub, ids := handbook(t)
+	delete(stub.children, ids["grandchild"])
+	stub.children[ids["grandchild"]] = nil
+	svc, repo := newNotionService(stub, newFakeShelf())
+	imp, err := svc.Start(as(testOwner), Start{Source: SourceNotion, ProjectID: testProject, Credential: stubToken})
+	require.NoError(t, err)
+	svc.Pass(t.Context())
+	_, err = svc.Confirm(as(testOwner), imp.ID)
+	require.NoError(t, err)
+	stub.mu.Lock()
+	stub.unshared = ids["grandchild"]
+	stub.mu.Unlock()
+	svc.Pass(t.Context())
+
+	done := repo.stored(imp.ID)
+	assert.Equal(t, StateCompleted, done.State, done.Report.Error)
+	assert.Equal(t, 7, done.Done)
+	assert.Equal(t, 1, done.Failed)
+	require.Len(t, done.Report.Failures, 1)
+	assert.Equal(t, Failure{Kind: KindDoc, SourceID: ids["grandchild"], Title: "First week", Error: "the page is no longer shared with the integration"}, done.Report.Failures[0])
+}
+
+func TestNotionImport_ACancelWhileADocFillsLeavesThatDocIn(t *testing.T) {
+	stub := newStubNotion(t)
+	root := stub.page("", "Handbook")
+	stub.image(root, "logo.png")
+	stub.page(root, "Later")
+	shelf := newFakeShelf()
+	svc, repo := newNotionService(stub, shelf)
+	imp, err := svc.Start(as(testOwner), Start{Source: SourceNotion, ProjectID: testProject, Credential: stubToken})
+	require.NoError(t, err)
+	svc.Pass(t.Context())
+	_, err = svc.Confirm(as(testOwner), imp.ID)
+	require.NoError(t, err)
+	shelf.onAttach = func() {
+		shelf.onAttach = nil
+		_, err := svc.Cancel(as(testOwner), imp.ID)
+		require.NoError(t, err)
+	}
+
+	svc.Pass(t.Context())
+
+	assert.Equal(t, StateCancelled, repo.stored(imp.ID).State)
+	docID := derivedID(testWorkspace, SourceNotion, KindDoc, root)
+	assert.False(t, shelf.archived[docID], "the doc finished filling, so it stays")
+	_, before, err := repo.Imported(t.Context(), testWorkspace, SourceNotion, KindDoc, root)
+	require.NoError(t, err)
+	assert.True(t, before)
+	_, ok := shelf.byTitle("Later")
+	assert.False(t, ok, "nothing after the cancel is written")
+}
+
+func TestNotionImport_APickedRootUnderAnotherJoinsItsFolder(t *testing.T) {
+	stub, ids := handbook(t)
+	shelf := newFakeShelf()
+	svc, repo := newNotionService(stub, shelf)
+
+	imp := runNotion(t, svc, repo, ids["child"]+"\n"+ids["root"])
+
+	assert.Equal(t, 8, imp.Done)
+	assert.Equal(t, map[string]string{"handbook": "folder-handbook"}, shelf.folders)
 }
 
 func TestNotionImport_ImportsOnlyTheRootsItNames(t *testing.T) {
@@ -278,7 +344,7 @@ func TestNotionError_SaysWhatToFix(t *testing.T) {
 		want   error
 	}{
 		{401, apperrs.ErrUnauthorized},
-		{403, apperrs.ErrNotFound},
+		{403, apperrs.ErrForbidden},
 		{404, apperrs.ErrNotFound},
 		{429, apperrs.ErrRetryable},
 		{502, apperrs.ErrRetryable},

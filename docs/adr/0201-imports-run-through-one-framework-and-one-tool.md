@@ -44,7 +44,8 @@ database row under it a doc. Links between imported pages are written in one pas
 of everything shared with the integration, and a doc's id is derived, so a link names a doc before it exists. Blocks are
 read and converted page by page, so Notion's signed file links, which expire within the hour, are downloaded minutes
 after they are handed out. A doc written but never filled is archived when its import fails or is cancelled, and
-forgotten, so a re-run writes it again. The import form takes the integration secret without a ticker: nothing keeps the
-secret, and the scan is the check, failing with what to fix (a refused secret, nothing shared, a page not shared).
+forgotten, so a re-run writes it again. The import form takes the integration secret without a ticker: the secret is
+kept, sealed, only until the import ends, and the scan is the check, failing with what to fix (a refused secret, a
+missing capability, nothing shared, a page not shared). A re-run reads no page an earlier import brought in.
 
 Decided 2026-11-18.

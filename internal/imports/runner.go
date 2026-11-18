@@ -207,6 +207,8 @@ func (s *Service) write(ctx context.Context, src Source, imp *Import) error {
 		return fmt.Errorf("list columns: %w", err)
 	}
 	k := &sink{s: s, imp: imp, info: src.Info(), members: members, cols: cols}
+	s.writing.Store(&imp.ID)
+	defer s.writing.Store(nil)
 	if err := src.Import(ctx, s.job(imp), k); err != nil {
 		return err
 	}
