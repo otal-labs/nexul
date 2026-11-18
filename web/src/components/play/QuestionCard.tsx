@@ -1,10 +1,12 @@
 import { useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 
 import { QuestionAnsweredList } from "@/components/play/QuestionAnsweredList";
 import { QuestionStep } from "@/components/questions/QuestionStep";
 import { hasAnswer, optionValue, toggleOption, type AnswerValue } from "@nexul/client-core/question";
+import { useQuestionDock } from "@/hooks/useQuestionDock";
 import type { HarnessQuestion, QuestionAnswer, QuestionAnswers } from "@/models/Question";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +19,26 @@ interface QuestionCardProps {
   className?: string;
 }
 
-// A new question remounts the steps, so a step index left over from a longer one never points past its end.
-export const QuestionCard = (props: QuestionCardProps) => <QuestionSteps key={props.question.request_id} {...props} />;
+interface QuestionStepsProps extends QuestionCardProps {
+  docked: boolean;
+}
+
+// A new question remounts the steps, so a step index left over from a longer one never points past its end. An open
+// one moves into the thread's composer dock when there is one; answered, it stays in the transcript.
+export const QuestionCard = (props: QuestionCardProps) => {
+  const dock = useQuestionDock();
+  const docked = dock !== null && props.answer === undefined && props.onSubmit !== undefined;
+  const card = <QuestionSteps key={props.question.request_id} {...props} docked={docked} />;
+  return (
+    <>
+      {dock && docked && createPortal(card, dock)}
+      {!docked && card}
+    </>
+  );
+};
 
 // A stepped questionnaire: one question at a time, number keys pick, Enter confirms, the last step sends.
-const QuestionSteps = ({ question, answer, onSubmit, pending = false, className }: QuestionCardProps) => {
+const QuestionSteps = ({ question, answer, onSubmit, pending = false, className, docked }: QuestionStepsProps) => {
   const [index, setIndex] = useState(0);
   const [drafts, setDrafts] = useState<QuestionAnswers>({});
   const items = question.questions;
@@ -65,7 +82,12 @@ const QuestionSteps = ({ question, answer, onSubmit, pending = false, className 
       aria-label="Question from the Agent"
       tabIndex={0}
       onKeyDown={onKeyDown}
-      className={cn("rounded-lg border border-border bg-card p-3 outline-none", className)}
+      // Docked, it sits flush on the composer's frame, the two reading as one field.
+      className={cn(
+        "rounded-lg border border-border bg-card p-3 outline-none",
+        className,
+        docked && "max-w-none rounded-b-none border-input border-b-0 focus-visible:border-ring/60",
+      )}
     >
       {readOnly && <QuestionAnsweredList question={question} answer={answer} />}
       {!readOnly && item && (

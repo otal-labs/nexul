@@ -74,3 +74,21 @@ describe("ConversationHeader on the icon rail", () => {
     expect(await screen.findByRole("link", { name: /general/ })).toBeInTheDocument();
   });
 });
+
+describe("ConversationThread question dock", () => {
+  it("docks the Agent's open question on the composer, out of the scrolled transcript", async () => {
+    const question = { request_id: "req-1", questions: [{ id: "q1", text: "Proceed?", options: [{ label: "Yes" }, { label: "No" }] }] };
+    const body = "```nexul-question\n" + JSON.stringify(question) + "\n```";
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === "/api/chat/conversations/c-1/messages") {
+        return Promise.resolve({ data: [{ id: "m-1", conversation_id: "c-1", author_id: "agent", author_kind: "agent", body, created_at: "2026-11-18T10:00:00Z" }] });
+      }
+      return Promise.resolve({ data: responses[url] ?? [] });
+    });
+    renderThread({ kind: "ticket_thread", ticket_id: "t-1" });
+
+    const card = await screen.findByRole("group", { name: "Question from the Agent" });
+    const composer = screen.getByRole("textbox", { name: "Message" });
+    expect(card.parentElement?.parentElement).toContainElement(composer);
+  });
+});

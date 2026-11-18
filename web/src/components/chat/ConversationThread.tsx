@@ -1,5 +1,5 @@
 import { FileText, Hash, Lock, Ticket as TicketIcon, Users, Volume2, type LucideIcon } from "lucide-react";
-import { Suspense, useCallback, useRef } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
 
 import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 
@@ -27,6 +27,7 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useChannelPostRefusal } from "@/hooks/useChannelPosting";
+import { QuestionDockContext } from "@/hooks/useQuestionDock";
 import { cn } from "@/lib/utils";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { channelMention } from "@/models/Chat";
@@ -79,6 +80,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
   const stageBeside = useVoiceCallStore((s) => isCallActive && s.status === "connected" && !!s.room && !s.stageCollapsed);
   const postRefusal = useChannelPostRefusal(conversation);
+  const [questionDock, setQuestionDock] = useState<HTMLElement | null>(null);
 
   // Fires when the newest message is actually seen, not on open, so a scrolled-up chat keeps its unread count.
   const lastMarkedRef = useRef<string | null>(null);
@@ -124,6 +126,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           </ChatPaneState>
         )}
         {messages && (
+          <QuestionDockContext value={questionDock}>
           <MessageList
             // What counts as already seen restarts with each conversation.
             key={conversation.id}
@@ -136,12 +139,14 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
             onDelete={onDelete}
             onInterruptAgent={() => void interruptAgent.mutateAsync()}
           />
+          </QuestionDockContext>
         )}
         {postRefusal && <ReadOnlyComposer label={channelMention(conversation)} source={postRefusal} />}
         {!postRefusal && <ChatComposer
           workspaceId={workspaceId}
           conversationId={conversation.id}
           placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
+          dockRef={setQuestionDock}
           onSend={async (body, queue) => {
             await postMessage.mutateAsync({ body, queue });
           }}

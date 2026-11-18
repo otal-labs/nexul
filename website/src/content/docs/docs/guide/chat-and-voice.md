@@ -55,7 +55,7 @@ Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation
 
 ## Ask the agent
 
-Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation. If it needs a secret, such as an API key, a secret card asks for it: **Save securely** hands the value to T3 Code on the agent's computer, so it never shows in the conversation or gets stored in Nexul, and **Decline** says no. You can answer in T3 Code instead.
+Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, the question card waits on top of the message box until you answer it, then moves into the conversation with your answer. If it needs a secret, such as an API key, a secret card asks for it: **Save securely** hands the value to T3 Code on the agent's computer, so it never shows in the conversation or gets stored in Nexul, and **Decline** says no. You can answer in T3 Code instead.
 
 A mention sent while the agent is still busy goes straight into the turn it is working on, and that reply answers your message too, so you can correct it mid-run, a play run included. To have it wait its turn instead, press <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on a Mac); the composer reminds you while the agent works. A waiting message shows **Queued** under it until the agent reads it. Press **Steer** beside it to hand it over after all.
 
