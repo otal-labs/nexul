@@ -218,7 +218,7 @@ describe("useFetchActiveTrails / useTicketRunState", () => {
 });
 
 describe("the trail follower", () => {
-  it("writes each run frame into the run store, and refetches the run's views, its play's runs and health, and its project's active set only when its state moves", async () => {
+  it("writes each run frame into the run store, refetches the run's views, its play's runs and health, and its project's active set only when its state moves, and the run alone when it reads a memory", async () => {
     const client = seeded([
       [["getTrails", "ticket", "t-1"], []],
       [["getTrails", "ticket", "t-1", "steps"], []],
@@ -242,5 +242,9 @@ describe("the trail follower", () => {
     await followFrame(trailFollower, "play.run", { ...run, state: "running", activity }, settled);
     expect(usePlayRunStore.getState().frames["tr-1"]?.activity).toMatchObject({ tool: "Read", summary: "main.go" });
     expect(isStale(settled, ["getTrail", "tr-1"])).toBe(false);
+
+    const read = { kind: "tool_result", call_id: "c-2", tool: "mcp__nexul__memory_get", summary: '{"id":"m-1"}', at: "2026-09-18T10:00:01Z" };
+    await followFrame(trailFollower, "play.run", { ...run, state: "running", activity: read }, settled);
+    expect(isStale(settled, ["getTrail", "tr-1"])).toBe(true);
   });
 });

@@ -49,6 +49,7 @@ const interview: Memory = {
   created_at: "",
   updated_by: "u-1",
   updated_at: "",
+  last_read_at: null,
 };
 
 const renderPage = (entry = "/acme/projects/BE/interview", client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) =>

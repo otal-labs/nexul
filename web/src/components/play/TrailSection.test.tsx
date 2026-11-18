@@ -151,6 +151,7 @@ describe("TrailSection", () => {
     expect(dialog).toHaveTextContent("Working in this project");
     expect(dialog).toHaveTextContent("Keep the sensors as they are.");
     await waitFor(() => expect(dialog).toHaveTextContent("Started byonik97"));
+    expect(dialog).not.toHaveTextContent("Read by itself");
 
     expect(within(dialog).getByText("Started Fix with AI Keep the sensors as they are.", { normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();
     expect(within(dialog).getByText("Ran tests, all green.")).toBeInTheDocument();
@@ -165,6 +166,27 @@ describe("TrailSection", () => {
     expect(within(dialog).getByText("Arguments")).toBeVisible();
     expect(dialog).toHaveTextContent('"file_path": "main.go"');
     expect(within(dialog).getByText("Result")).toBeVisible();
+  });
+
+  it("lists what the run read by itself, each opening its memory, a deleted one as plain text, and nothing when it read nothing", async () => {
+    const user = userEvent.setup();
+    const found = trail({ found_memories: [{ id: "m-build", title: "Building a ticket", deleted: false }, { id: "m-gone", title: "Old release notes", deleted: true }] });
+    mockApi([found]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <TrailSection workspaceId="ws-1" targetType="ticket" targetId="t-1" />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Fix with AI/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Read by itself")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Building a ticket" })).toHaveAttribute("href", expect.stringContaining("/memories/p-1/m-build"));
+    expect(within(dialog).getByText("Old release notes")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: "Old release notes" })).not.toBeInTheDocument();
   });
 
   it("follows live frames: the row's state and latest step change without a refetch", async () => {

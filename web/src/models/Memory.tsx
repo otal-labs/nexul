@@ -19,6 +19,8 @@ export interface Memory {
   created_at: string;
   updated_by: string;
   updated_at: string;
+  /** When a play run last read it with memory_get; null while none has. */
+  last_read_at: string | null;
 }
 
 export const CreateMemoryFormSchema = z.object({

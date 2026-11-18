@@ -41,6 +41,7 @@ const memory: Memory = {
   created_at: "2026-09-16T12:00:00Z",
   updated_by: "user-1",
   updated_at: "2026-09-16T12:00:00Z",
+  last_read_at: null,
 };
 
 const renderDetail = async (overrides: Partial<React.ComponentProps<typeof MemoryDetail>> = {}, viewer = asOwner()) => {
@@ -145,6 +146,14 @@ describe("MemoryDetail", () => {
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Folder/ })).not.toBeInTheDocument();
     expect(await screen.findByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
+  });
+
+  it.each([
+    { read: null, line: "no run has read it yet" },
+    { read: new Date(Date.now() - 2 * 3_600_000).toISOString(), line: "read by a run 2h ago" },
+  ])("says when a run last read it: $line", async ({ read, line }) => {
+    await renderDetail({ memory: { ...memory, last_read_at: read } });
+    expect(await screen.findByText(line)).toBeInTheDocument();
   });
 
   it("says the decisions log is not sent every turn, and why", async () => {

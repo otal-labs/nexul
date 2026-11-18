@@ -14,7 +14,7 @@ import { conversationPlayTarget } from "@/models/Chat";
 import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type PlayRunsPage, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { isMemoryRead, isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type PlayRunsPage, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 import type { LiveFollower } from "@/lib/live";
@@ -303,11 +303,13 @@ export const useDocRunState = (projectId: string, docId: string): TrailState | u
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);
 
 export const trailFollower: LiveFollower = {
-  // Activity lines only move the store; a state change refetches the run, its target's and its play's runs, its project's
-  // active set, and the plays list whose rows read the play's run health.
+  // Activity only moves the store, and a memory read refetches the run too; a state change refetches the run, its target's
+  // and its play's runs, its project's active set, and the plays list whose rows read the play's run health.
   "play.run": (run: RunFrame & RunPlace, { client }) => {
     const previous = usePlayRunStore.getState().frames[run.trail_id]?.state;
     usePlayRunStore.getState().applyFrame(run);
+    const readMemory = run.activity !== null && isMemoryRead(run.activity);
+    if (previous === run.state && readMemory) return client.invalidateQueries({ queryKey: [getTrailKey, run.trail_id], exact: true });
     if (previous === run.state) return;
     return Promise.all([
       client.invalidateQueries({ queryKey: [getTrailsKey, run.target_type, run.target_id] }),

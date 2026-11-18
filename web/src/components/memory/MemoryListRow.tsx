@@ -49,6 +49,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
         to={wsPath(memoryPath(projectToken, memory.id))}
         title={memory.title}
         snippet={snippet}
+        detail={memory.last_read_at && <span className="font-mono tabular-nums">Read by a run {formatUpdatedAgo(memory.last_read_at)}</span>}
         selected={selected}
         metaOnTitleLine
         meta={<span className="font-mono text-xs text-muted-foreground tabular-nums">{formatUpdatedAgo(memory.updated_at)}</span>}
