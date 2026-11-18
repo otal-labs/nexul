@@ -21,7 +21,7 @@ const (
 	fixWithAIInstructions = "Build this ticket and carry it to the end.\n" +
 		"\n" +
 		"1. Read it with `ticket_get`, which lists its blockers and its linked branches and pull requests, and with `message_list` its thread and the thread of any blocker whose body opens with \"Needs a person\". Stop and say why if this ticket's own body opens with \"Needs a person\", or if a blocker is neither merged nor in a done column. If this ticket's pull request merged and no failed test report came after, build nothing and go to step 6.\n" +
-		"2. Work in the project checkout you are running in. Continue a linked branch of this repository whose pull request is absent or open; otherwise start a new branch `<ticket key>-<short-slug>` from the default branch. Fix what the latest failed test report names first.\n" +
+		"2. Work in the project checkout you are running in. If the ticket sits in a backlog column, move it to the first progress column with `ticket_update` before you start. Continue a linked branch of this repository whose pull request is absent or open; otherwise start a new branch `<ticket key>-<short-slug>` from the default branch. Fix what the latest failed test report names first.\n" +
 		"3. Build what the acceptance criteria ask (for a bug, its expected result), and nothing else.\n" +
 		"4. Prove it: run the project's tests and linters, where it has any, then watch each criterion hold in the running app or with a command.\n" +
 		"5. When every criterion holds, commit and push, open a pull request whose title starts with the ticket key unless one is already open, and link both to the ticket with `ticket_update`, passing `link_branch` and `link_pr`.\n" +
@@ -33,7 +33,7 @@ const (
 		"1. Read the doc with `doc_get`, its thread with `message_list`, and the project with `project_get`: its columns, ticket types and their body templates. Find what is already tracked with `ticket_list`, once by `doc_id` and once with a `query` for the doc's subject. On a re-run, create only what is missing.\n" +
 		"2. Ask nothing, and leave technical choices to the builder. A product decision the doc leaves open, or a choice the project's rules reserve for a person, becomes its own ticket: its body opens with \"Needs a person: <the decision>. Settle it on this thread, then move the ticket to done.\", and step 5 makes it the blocker of the tickets that wait on it.\n" +
 		"3. Slice vertically: each ticket is one outcome someone can see, through every layer it needs, small enough for one pull request. The first is the thinnest end-to-end path.\n" +
-		"4. Create them with `ticket_create` and the `doc_id`, each with the type that fits; `tickets` creates several of one type in one call. Fill the type's body template: every acceptance criterion is a result someone can observe, and \"How to verify\" names the proof for each; for a bug, the expected result is the criterion and the steps to reproduce are the proof, and `ticket_create` takes `origin_id`, the ticket it was found in, or `origin_unknown` true.\n" +
+		"4. Create them with `ticket_create`, the `doc_id` and `developer` `me`, each with the type that fits; `tickets` creates several of one type in one call. Fill the type's body template: every acceptance criterion is a result someone can observe, and \"How to verify\" names the proof for each; for a bug, the expected result is the criterion and the steps to reproduce are the proof, and `ticket_create` takes `origin_id`, the ticket it was found in, or `origin_unknown` true.\n" +
 		"5. Wire the order with `ticket_update` `add_blocker_ids`: a blocker only where a ticket cannot start before another lands. Leave them in the backlog.\n" +
 		"6. Check coverage both ways: every requirement in the doc is in a ticket's acceptance criteria or in your list of what you left out, and every ticket traces back to the doc.\n" +
 		"\n" +
@@ -367,8 +367,8 @@ type Builtin struct {
 	Description   string
 	Instructions  string
 	ShowWhenStage *Stage
-	// AutoPlay is seeded on the play switched off, so a workspace turns it on rather than composing it.
-	AutoPlay *AutoPlayInput
+	// AutoPlays are seeded on the play switched off, so a workspace turns them on rather than composing them.
+	AutoPlays []AutoPlayInput
 }
 
 // Builtins lists the seeded plays in seeding order; their instructions are the instance templates' code defaults.
@@ -377,7 +377,7 @@ func Builtins() []Builtin {
 	return []Builtin{
 		{Key: "fix-with-ai", Label: "Fix with AI", Type: TypeTicket, ShowWhenStage: &progress,
 			Description:  "Builds the ticket on its own branch, proves it, and opens a pull request; the project's memories say how it finishes.",
-			Instructions: fixWithAIInstructions},
+			Instructions: fixWithAIInstructions, AutoPlays: fixWithAIAutoPlays()},
 		{Key: "to-tickets-via-ai", Label: "To tickets via AI", Type: TypeDoc,
 			Description:  "Splits a doc into thin, ordered tickets, each with acceptance criteria, how to verify it, and its blockers.",
 			Instructions: toTicketsInstructions},
@@ -386,7 +386,7 @@ func Builtins() []Builtin {
 			Instructions: interviewInstructions},
 		{Key: "test-with-ai", Label: "Test with AI", Type: TypeTicket, ShowWhenStage: &testingStage,
 			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
-			Instructions: testWithAIInstructions},
+			Instructions: testWithAIInstructions, AutoPlays: testWithAIAutoPlays()},
 		{Key: DraftInterviewKey, Label: "Draft interview", Type: TypeInterview,
 			Description:  "Drafts answers to the Interview questions from this project's follow sources, for a person to confirm.",
 			Instructions: draftInterviewInstructions},
@@ -400,9 +400,9 @@ func Builtins() []Builtin {
 			Description:  "Audits a predecessor's code, or this project's own, against the interview memory and writes the findings as a doc.",
 			Instructions: auditInstructions},
 		{Key: DecisionsCheckKey, Label: decisionsCheckLabel, Type: TypeTicket, ShowWhenStage: &done,
-			Description: decisionsCheckDescription, Instructions: decisionsCheckInstructions, AutoPlay: decisionsCheckAutoPlay()},
+			Description: decisionsCheckDescription, Instructions: decisionsCheckInstructions, AutoPlays: []AutoPlayInput{decisionsCheckAutoPlay()}},
 		{Key: InvestigateCrashKey, Label: investigateCrashLabel, Type: TypeStack,
-			Description: investigateCrashDescription, Instructions: investigateCrashInstructions, AutoPlay: investigateCrashAutoPlay()},
+			Description: investigateCrashDescription, Instructions: investigateCrashInstructions, AutoPlays: []AutoPlayInput{investigateCrashAutoPlay()}},
 	}
 }
 
@@ -436,19 +436,18 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		if err := s.repo.Create(ctx, p, creation(ctx, p), s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
 			return fmt.Errorf("seed default play %q for workspace %s: %w", p.Label, workspaceID, err)
 		}
-		if err := s.seedAutoPlay(ctx, p, b.AutoPlay); err != nil {
-			return err
+		for _, in := range b.AutoPlays {
+			if err := s.seedAutoPlay(ctx, p, in); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (s *Service) seedAutoPlay(ctx context.Context, p *Play, in *AutoPlayInput) error {
-	if in == nil {
-		return nil
-	}
+func (s *Service) seedAutoPlay(ctx context.Context, p *Play, in AutoPlayInput) error {
 	a := &AutoPlay{ID: ids.New(), PlayID: p.ID, WorkspaceID: p.WorkspaceID, CreatedAt: p.CreatedAt, UpdatedAt: p.CreatedAt}
-	a.apply(*in)
+	a.apply(in)
 	if err := s.repo.CreateAutoPlay(ctx, a, s.event(TopicAutoPlayCreated, AutoPlayEvent{AutoPlay: *a})); err != nil {
 		return fmt.Errorf("seed the auto play of play %q for workspace %s: %w", p.Label, p.WorkspaceID, err)
 	}

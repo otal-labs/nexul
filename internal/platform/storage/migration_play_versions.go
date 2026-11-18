@@ -9,17 +9,18 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
-// migratedPlay is a built-in play whose instructions 0157 rewrote, with its newest kept version before that.
+// migratedPlay is a built-in play whose instructions a migration rewrote, with its newest kept version before that.
 type migratedPlay struct {
 	id, instructions string
 	newest           sql.NullInt64
 	newestBody       sql.NullString
 }
 
-// versionPlaysMigratedIn0157 adds the instructions 0157 gave a built-in play as its newest version, the seeded default,
-// sized and pruned as a save would, so its history and the version a run records end at the text it runs with.
-func versionPlaysMigratedIn0157(ctx context.Context, tx *sql.Tx) error {
-	changed, err := playsMigratedIn0157(ctx, tx)
+// versionRewrittenBuiltinPlays adds the instructions a migration's script gave a built-in play as its newest version,
+// the seeded default, sized and pruned as a save would, so its history and the version a run records end at the text it
+// runs with.
+func versionRewrittenBuiltinPlays(ctx context.Context, tx *sql.Tx) error {
+	changed, err := rewrittenBuiltinPlays(ctx, tx)
 	if err != nil {
 		return err
 	}
@@ -31,7 +32,7 @@ func versionPlaysMigratedIn0157(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func playsMigratedIn0157(ctx context.Context, tx *sql.Tx) (out []migratedPlay, err error) {
+func rewrittenBuiltinPlays(ctx context.Context, tx *sql.Tx) (out []migratedPlay, err error) {
 	// hand-written: a migration step reads the schema as of its own migration, which the generated queries don't
 	rows, err := tx.QueryContext(ctx, `
 SELECT p.id, p.instructions, v.version, v.body
@@ -61,7 +62,7 @@ func addMigratedVersion(ctx context.Context, tx *sql.Tx, p migratedPlay) error {
 		size = sizeOf(p.newestBody.String, p.instructions)
 	}
 	version := p.newest.Int64 + 1
-	// hand-written: see playsMigratedIn0157
+	// hand-written: see rewrittenBuiltinPlays
 	_, err := tx.ExecContext(ctx, `
 INSERT INTO play_instruction_versions (play_id, version, body, editor_ids, via, builtin_default, words_added, words_removed, created_at)
 VALUES (?, ?, ?, '[]', '', 1, ?, ?, CAST(strftime('%s', 'now') AS INTEGER))`,
@@ -69,7 +70,7 @@ VALUES (?, ?, ?, '[]', '', 1, ?, ?, CAST(strftime('%s', 'now') AS INTEGER))`,
 	if err != nil {
 		return fmt.Errorf("insert version %d: %w", version, err)
 	}
-	// hand-written: see playsMigratedIn0157
+	// hand-written: see rewrittenBuiltinPlays
 	res, err := tx.ExecContext(ctx, `DELETE FROM play_instruction_versions WHERE play_id = ? AND version <= ?`, p.id, version-plays.KeptInstructionVersions)
 	if err != nil {
 		return fmt.Errorf("prune versions: %w", err)
@@ -77,7 +78,7 @@ VALUES (?, ?, ?, '[]', '', 1, ?, ?, CAST(strftime('%s', 'now') AS INTEGER))`,
 	if n, err := res.RowsAffected(); err != nil || n == 0 {
 		return err
 	}
-	// hand-written: see playsMigratedIn0157; the new oldest kept version has no predecessor to be sized against
+	// hand-written: see rewrittenBuiltinPlays; the new oldest kept version has no predecessor to be sized against
 	_, err = tx.ExecContext(ctx, `
 UPDATE play_instruction_versions SET words_added = NULL, words_removed = NULL
 WHERE play_id = ?1 AND version = (SELECT MIN(version) FROM play_instruction_versions WHERE play_id = ?1)`, p.id)

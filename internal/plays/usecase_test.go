@@ -418,23 +418,49 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
 	assert.Len(t, list, 10)
-	assert.Len(t, repo.autoPlays, 2, "the decisions check's and the crash investigation's auto plays are seeded once")
+	assert.Len(t, repo.autoPlays, 5, "the seeded auto plays are seeded once")
 }
 
-func TestSeedDefaults_DecisionsCheckGetsItsAutoPlaySwitchedOff(t *testing.T) {
+func TestSeedDefaults_TicketPlaysGetTheirAutoPlaysSwitchedOff(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil))
 	require.NoError(t, s.SeedDefaults(context.Background(), workspaceID))
 
-	check, err := s.builtin(context.Background(), workspaceID, DecisionsCheckKey)
-	require.NoError(t, err)
-	require.Len(t, repo.autoPlays, 2)
-	a := repo.autoPlays[0]
-	done := StageDone
-	assert.Equal(t, []any{check.ID, workspaceID, false, MomentTicketEnteredStage, &done, RunOnCauser, LevelNormal, 0},
-		[]any{a.PlayID, a.WorkspaceID, a.Enabled, a.Moment, a.MomentStage, a.RunOn, a.Priority.Otherwise, a.OnceWithinMinutes})
-	assert.NoError(t, a.Validate(TypeTicket))
-	assert.Empty(t, a.Conditions.Groups, "no conditions: every ticket entering done")
+	type seeded struct {
+		key        string
+		moment     Moment
+		stage      *Stage
+		runOn      RunOn
+		rules      []Rule
+		oneAtATime bool
+	}
+	progress, testingStage, done := StageProgress, StageTesting, StageDone
+	want := []seeded{
+		{"fix-with-ai", MomentTicketEnteredStage, &progress, RunOnDeveloper, nil, false},
+		{"fix-with-ai", MomentTicketUnblocked, nil, RunOnDeveloper, []Rule{{Field: FieldStage, Op: OpIs, Values: []string{"backlog"}}}, true},
+		{"test-with-ai", MomentTicketEnteredStage, &testingStage, RunOnCauser, []Rule{{Field: FieldTester, Op: OpUnset}}, false},
+		{DecisionsCheckKey, MomentTicketEnteredStage, &done, RunOnCauser, nil, false},
+	}
+	keyOf := map[string]string{}
+	for _, k := range []string{"fix-with-ai", "test-with-ai", DecisionsCheckKey} {
+		p, err := s.builtin(context.Background(), workspaceID, k)
+		require.NoError(t, err)
+		keyOf[p.ID] = k
+	}
+	var got []seeded
+	for _, a := range repo.autoPlays {
+		if keyOf[a.PlayID] == "" {
+			continue
+		}
+		assert.Equal(t, []any{workspaceID, false, LevelNormal, 0}, []any{a.WorkspaceID, a.Enabled, a.Priority.Otherwise, a.OnceWithinMinutes}, "seeded off, normal priority")
+		require.NoError(t, a.Validate(TypeTicket))
+		var rules []Rule
+		for _, g := range a.Conditions.Groups {
+			rules = append(rules, g.Rules...)
+		}
+		got = append(got, seeded{keyOf[a.PlayID], a.Moment, a.MomentStage, a.RunOn, rules, a.OneAtATime})
+	}
+	assert.Equal(t, want, got)
 }
 
 func TestSeedDefaults_InvestigateACrashWaitsForAComputerBeforeItRuns(t *testing.T) {

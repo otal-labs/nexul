@@ -45,9 +45,9 @@ Every workspace starts with ten. They are ordinary plays: rename, edit, or delet
 
 | Play | Runs on | What it does |
 |---|---|---|
-| **Fix with AI** | a ticket in an In progress column | Builds the ticket on its own branch, proves each acceptance criterion, and opens a pull request with the computer's own GitHub sign-in. On a ticket that failed testing it carries on from the failed report. It finishes as the project's finishing memory says; with none, it leaves the pull request open and moves the card to review. |
+| **Fix with AI** | a ticket in an In progress column | Builds the ticket on its own branch, proves each acceptance criterion, and opens a pull request with the computer's own GitHub sign-in. A ticket still in a backlog column is moved to In progress first. On a ticket that failed testing it carries on from the failed report. It finishes as the project's finishing memory says; with none, it leaves the pull request open and moves the card to review. |
 | **Test with AI** | a ticket in a Testing column | Tests the ticket against its acceptance criteria, then passes or fails it. |
-| **To tickets via AI** | a doc | Splits the doc into thin, ordered tickets, each with acceptance criteria, how to verify it, and its blockers. It asks nothing: a decision only a person can make becomes a ticket of its own, whose body opens with "Needs a person: ...", and it blocks the tickets that wait on it. |
+| **To tickets via AI** | a doc | Splits the doc into thin, ordered tickets, each with acceptance criteria, how to verify it, and its blockers, and makes you their developer; reassign the ones someone else builds. It asks nothing: a decision only a person can make becomes a ticket of its own, whose body opens with "Needs a person: ...", and it blocks the tickets that wait on it. |
 | **Clarify via AI** | a doc | Asks the doc's authors about what it leaves open, a round at a time. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
 | **Update doc via AI** | a doc | Writes the answers to the doc's questions into it, without asking more. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
 | **Interview** | a project's Interview page | Asks follow-ups and writes the project's rules for agents. See [Interview](/docs/guide/interview/). |
@@ -101,6 +101,16 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computers busy)".
 
 On the ticket, the rail's **Plays** section shows what is waiting: each queued run with its person and why it waits (no computer can take it, computers busy, ticket busy, paused, or what to fix in their computer setup, with a link to where they fix it), and **Cancel** for that person or anyone with `autoplays:write`. The person it runs on also sees the reason for each of their computers, such as "laptop is offline; build-box is full (2 of 2 running)"; nobody else does. On the board, the ticket's card shows a clock beside its key while a run waits, until the run starts and the spinner takes its place. Once a ticket reaches the daily cap, it shows **Auto plays paused** with the runs today; the ticket's developer or anyone with `autoplays:write` can press **Resume**, or it resumes by itself as the day rolls on. What already happened sits in the ticket's thread at the time it happened: "Fix with AI skipped: no longer unblocked" when the ticket stopped matching before the run's turn came, or "Fix with AI didn't run" with the reason when there was nobody to run it on. **Run it** on the latest one runs the play on your own computer. A ticket with no thread yet shows these lines above **Start thread**. A doc shows the same: queued and paused beside its trail, skipped and didn't run in its thread, or beside its trail too while it has no thread.
+
+### The flow's auto plays
+
+Every workspace comes with three auto plays already set up, switched off, so a doc's tickets can build and test themselves once you turn them on:
+
+- **Fix with AI**, "When a ticket **enters In progress**", runs on the ticket's developer. It also builds again after a failed test, since a failed test report moves the ticket back to In progress.
+- **Fix with AI**, "When a ticket **becomes unblocked**", if the ticket is in a backlog column, runs on the ticket's developer, one run at a time. Its run moves the ticket to In progress, and the In progress auto play waits behind it and is skipped once the ticket has moved on, so a ticket is built once.
+- **Test with AI**, "When a ticket **enters Testing**", if the ticket has no tester, runs on whoever moved it there, which for a ticket built hands-off is the developer whose run moved it. A ticket with a named tester waits for that person.
+
+Turn on the ones you want under **Starts by itself** on each play. Then start the first ticket of a doc's tickets by moving it to In progress, or by pressing **Fix with AI** on it; the rest follow as their blockers land. The first two need the ticket to have a developer, which **To tickets via AI** sets to whoever ran it. **One run at a time** on the unblocked one builds tickets that a blocker frees together one after another, in the same checkout; switch it off under **Limits** if your computers start each run in its own worktree and you want them built side by side.
 
 ### On a schedule
 

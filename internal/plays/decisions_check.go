@@ -30,9 +30,9 @@ const decisionsCheckInstructions = "This ticket just reached done. Decide whethe
 
 // decisionsCheckAutoPlay is the decisions check's seeded auto play: whoever moves a ticket into done runs it, off until
 // a workspace switches it on.
-func decisionsCheckAutoPlay() *AutoPlayInput {
+func decisionsCheckAutoPlay() AutoPlayInput {
 	done := StageDone
-	return &AutoPlayInput{
+	return AutoPlayInput{
 		Moment: MomentTicketEnteredStage, MomentStage: &done, RunOn: RunOnCauser,
 		Conditions: Conditions{Match: MatchAll, Groups: []Group{}},
 		Priority:   Priority{Rules: []PriorityRule{}, Otherwise: LevelNormal},

@@ -20,8 +20,9 @@ var migrationFS embed.FS
 var goSteps = map[string]func(ctx context.Context, tx *sql.Tx) error{
 	"0142_version_change_size":         backfillVersionSizes,
 	"0144_memory_history":              backfillMemoryHistory,
-	"0157_starting_templates_one_flow": versionPlaysMigratedIn0157,
+	"0157_starting_templates_one_flow": versionRewrittenBuiltinPlays,
 	"0158_default_memories":            seedDefaultMemories,
+	"0159_seeded_flow_auto_plays":      versionRewrittenBuiltinPlays,
 }
 
 // Migrate applies every pending migration. Test helpers use this no-backup path directly; production boots

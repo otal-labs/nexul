@@ -487,6 +487,47 @@ func TestDispatch_OneRunPerTicket(t *testing.T) {
 	assert.Equal(t, []plays.QueueStatus{plays.QueueStarted, plays.QueueStarted}, statuses(r.queued(t, "t-1")))
 }
 
+// The seeded Fix with AI, both auto plays on: the unblocked run moving its ticket to progress sets off the other auto
+// play, which waits behind it and is skipped once the run has moved the ticket on.
+func TestQueue_SeededFixWithAI_AnUnblockedTicketBuildsOnce(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.SetStatus("st-backlog", plays.StageBacklog)
+	r.SetStatus("st-progress", plays.StageProgress)
+	r.SetStatus("st-testing", plays.StageTesting)
+	list, err := r.store.Plays.List(t.Context(), ws)
+	require.NoError(t, err)
+	fix := list[slices.IndexFunc(list, func(p *plays.Play) bool { return p.BuiltinKey == "fix-with-ai" })]
+	seeded, err := r.store.Plays.ListAutoPlays(t.Context(), []string{fix.ID})
+	require.NoError(t, err)
+	require.Len(t, seeded, 2)
+	for _, a := range seeded {
+		a.Enabled = true
+		require.NoError(t, r.store.Plays.UpdateAutoPlay(t.Context(), a))
+	}
+	r.ticket("t-1")
+	ticket := map[string]any{"id": "t-1", "project_id": project}
+	byRun := map[string]any{"kind": "user:mcp", "user_id": dev}
+
+	r.unblock(t, "t-1")
+	r.dispatch(t)
+	it := r.only(t, "t-1")
+	require.Equal(t, []any{plays.QueueStarted, dev, plays.MomentTicketUnblocked}, []any{it.Status, it.PersonID, it.Moment})
+
+	r.ticket("t-1", func(f *plays.Facts) { f.Stage = plays.StageProgress })
+	r.moment(t, "ticket.status_changed", map[string]any{"ticket": ticket, "from": "st-backlog", "to": "st-progress", "actor": byRun})
+	r.dispatch(t)
+	r.ticket("t-1", func(f *plays.Facts) { f.Stage = plays.StageTesting })
+	r.moment(t, "ticket.status_changed", map[string]any{"ticket": ticket, "from": "st-progress", "to": "st-testing", "actor": byRun})
+	r.endRuns(t, "t-1")
+	r.dispatch(t)
+
+	items := r.queued(t, "t-1")
+	require.Len(t, items, 2)
+	slices.SortFunc(items, func(a, b *plays.QueueItem) int { return strings.Compare(string(b.Moment), string(a.Moment)) })
+	assert.Equal(t, []any{plays.QueueStarted, plays.QueueSkipped}, []any{items[0].Status, items[1].Status})
+	assert.Contains(t, items[1].Reason, "no longer in progress")
+}
+
 func TestQueuedTargets_NamesTicketsWithARunWaiting_ToThoseWhoSeeIt(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")

@@ -2,6 +2,9 @@
 
 Amends ADR 0055, ADR 0103, ADR 0112 and ADR 0115.
 
+Amended by ADR 0195: the flow's auto plays come seeded, switched off; Fix with AI moves a backlog ticket to progress
+before it builds, and To tickets makes whoever ran it the developer of what it cuts.
+
 The texts every workspace and project starts from (the built-in plays' instructions, the Interview template, the
 ticket types' body templates and the Footer of every agent prompt) were long and missed what teams needed, so every
 project wrote the same rules again by hand in memories: merge when the checks pass and move the ticket; a run is not
