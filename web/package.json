@@ -80,7 +80,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "happy-dom": "^21.0.4",
-    "jsdom": "^30.1.3",
+    "jsdom": "^31.0.0",
     "playwright": "^1.65.0",
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.2",
