@@ -44,7 +44,7 @@ _Avoid_: Deleted workspace, disabled workspace
 The grouping inside a workspace that tickets, docs, project memories,
 repositories, and stacks belong to. Only the project wizard makes one
 (`project_create` over MCP runs the same use-case), and it arrives with its
-status columns, ticket types, and a starter memory. Nothing seeds one: a new
+status columns, ticket types, and the default memories. Nothing seeds one: a new
 workspace, the owner's first included, has none until the wizard runs.
 _Avoid_: Board, app, default project
 
@@ -314,10 +314,24 @@ with no ticket or doc names none. Memories sit in two folders, Main and
 Footer; a play run names its footer memories last, for the agent to read
 once the work is done and conclude the run, such as deciding which column
 the ticket now belongs in.
-Agents may write memories too. Every save that changes something appends a
-version with its author, the last 10 are kept, and any kept version can be
-restored. Cloned, never shared, to another project. Plural in the UI: "memories".
+A memory is the project's skill: an agent finds it by its when-to-use line,
+as it would a skill, but it lives in Nexul, where the team reads and edits it,
+and reaches every agent on every computer. A new project starts with the
+instance's Default memories. Agents may write memories too. Every save that
+changes something appends a version with its author, the last 10 are kept,
+and any kept version can be restored. Cloned, never shared, to another
+project. Plural in the UI: "memories".
 _Avoid_: Doc (docs are for clients and requirements), skill, note
+
+**Default memory**:
+One of the memories a new project starts with, copied once from the instance
+template of the same name and never rewritten: Writing a doc, Writing
+tickets, Building a ticket, Reviewing a change, and Finishing a ticket, the
+last always included and in Footer. Each template is a `SKILL.md`: frontmatter
+with `name`, `description` and the two switches, then the body. The instance
+adds its own and deletes those; the shipped ones reset. Computer setup installs
+no skill set beside Nexul's own skills: these are the defaults instead.
+_Avoid_: Starter memory, skill pack, preset
 
 **Interview**:
 How a project's rules for agents are established: what it is, which
@@ -1155,8 +1169,8 @@ _Avoid_: Ticket template, form, checklist
 **Instance template**:
 The instance's own version of a template that every workspace or project
 starts from: the Interview template, the mention chip template, each built-in
-play's instructions, each default ticket type's body template, and each
-Template role. The Intro
+play's instructions, each default ticket type's body template, each
+Template role, and each Default memory. The Intro
 and Footer every full Agent prompt opens and closes with are instance
 templates too, but live only at the instance, with nothing below. A template
 resolves code default, then instance template, then workspace or project; one

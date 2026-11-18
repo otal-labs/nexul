@@ -25,3 +25,5 @@ trust anchor.
 This is deliberately the one hard gate in the lifecycle. Elsewhere Nexul
 prefers a visible signal to a block, but a computer without the setup cannot
 run the loop at all, so letting it try only produces a worse failure later.
+
+Amended by ADR 0194: setup installs only Nexul's own skills; a project's process lives in its default memories.

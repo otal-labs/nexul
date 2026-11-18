@@ -33,3 +33,5 @@ owner never made. Also rejected: an "Infrastructure" project to hold the instanc
 nobody can use for work and one more thing to explain.
 
 Supersedes the default-project half of ADR 0052. Decided 2026-09-28.
+
+Amended by ADR 0194: a project starts with the instance's default memories, not a starter memory.
