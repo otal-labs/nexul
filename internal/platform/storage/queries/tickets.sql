@@ -1,6 +1,6 @@
 -- name: CreateTicket :exec
-INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, reporter_source, created_at, updated_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, reporter_source, due_on, created_at, updated_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTicket :one
 -- A developer or tester is a user id, read back with its login, or a login nobody has signed in with, read back as is.

@@ -33,10 +33,19 @@ type Column struct {
 	Kind StatusKind
 }
 
-// Board is the project's columns, which statuses map onto (ADR 0017: imports never imports workspace).
+// Category is one of a project's categories.
+type Category struct {
+	ID   string
+	Name string
+}
+
+// Board is the project's columns, which statuses map onto, and its categories (ADR 0017: imports never imports
+// workspace).
 type Board interface {
 	Columns(ctx context.Context, projectID string) ([]Column, error)
 	AddColumn(ctx context.Context, projectID, name string, kind StatusKind) (Column, error)
+	Categories(ctx context.Context, projectID string) ([]Category, error)
+	AddCategory(ctx context.Context, projectID, name string) (Category, error)
 }
 
 // Member is someone who can open the project, and the logins and emails their linked sign-ins carry, lowercased.
@@ -54,8 +63,8 @@ type People interface {
 
 // NewTicket is one ticket the import files; ID is derived, so filing it again is ErrConflict.
 type NewTicket struct {
-	ID, ProjectID, Title, Body, Status, Developer, Source string
-	Labels                                                []string
+	ID, ProjectID, Title, Body, Status, Developer, Source, CategoryID, DueOn string
+	Labels                                                                   []string
 }
 
 // NewComment is one comment copied into a ticket's thread; ID is derived, so posting it again is ErrConflict.
@@ -71,6 +80,8 @@ type Desk interface {
 	Comment(ctx context.Context, ticketID string, c NewComment) error
 	// Attach stores a file on the ticket and returns the attachment's id.
 	Attach(ctx context.Context, ticketID, name string, data []byte) (string, error)
+	// Block records that ticketID waits on blockerID; a link already there is no change.
+	Block(ctx context.Context, ticketID, blockerID string) error
 }
 
 // NewDoc is one doc the import writes; ID is derived, so writing it again is ErrConflict.

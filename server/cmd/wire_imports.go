@@ -27,6 +27,7 @@ func importSources(git gitprovider.GitProvider, workspaceSvc *workspace.Service,
 	return map[string]imports.Source{
 		imports.SourceGitHub: imports.NewGitHubSource(importGitHubIssues{git: git}, importProjectRepos{svc: workspaceSvc}, importIssueSyncs{repo: syncs}),
 		imports.SourceNotion: imports.NewNotionSource(imports.NewNotionClient("", nil, 3)),
+		imports.SourceLinear: imports.NewLinearSource(imports.LinearAPI, nil),
 	}
 }
 
@@ -70,7 +71,10 @@ func (d importDesk) FileTicket(ctx context.Context, t imports.NewTicket) error {
 	if err != nil {
 		return err
 	}
-	opt := tickets.CreateOptions{Status: tickets.Status(t.Status), Import: &tickets.ImportedTicket{ID: t.ID, Source: t.Source, Labels: t.Labels}}
+	opt := tickets.CreateOptions{
+		Status: tickets.Status(t.Status), CategoryID: t.CategoryID,
+		Import: &tickets.ImportedTicket{ID: t.ID, Source: t.Source, Labels: t.Labels, DueOn: t.DueOn},
+	}
 	for _, ty := range types {
 		if !tickets.IsBugType(ty.Name) {
 			opt.TypeID = ty.ID
@@ -189,7 +193,12 @@ func (f importShelf) ArchiveDoc(ctx context.Context, docID string) error {
 	return err
 }
 
-// importBoard reads and adds a project's status columns.
+func (d importDesk) Block(ctx context.Context, ticketID, blockerID string) error {
+	_, err := d.tickets.AddBlocker(ctx, ticketID, blockerID)
+	return err
+}
+
+// importBoard reads and adds a project's status columns and categories.
 type importBoard struct {
 	svc *workspace.Service
 }
@@ -212,6 +221,26 @@ func (b importBoard) AddColumn(ctx context.Context, projectID, name string, kind
 		return imports.Column{}, err
 	}
 	return imports.Column{ID: st.ID, Name: st.Name, Kind: imports.StatusKind(st.Kind)}, nil
+}
+
+func (b importBoard) Categories(ctx context.Context, projectID string) ([]imports.Category, error) {
+	cats, err := b.svc.ListCategoriesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]imports.Category, 0, len(cats))
+	for _, c := range cats {
+		out = append(out, imports.Category{ID: c.ID, Name: c.Name})
+	}
+	return out, nil
+}
+
+func (b importBoard) AddCategory(ctx context.Context, projectID, name string) (imports.Category, error) {
+	c, err := b.svc.CreateCategory(ctx, projectID, name, "")
+	if err != nil {
+		return imports.Category{}, err
+	}
+	return imports.Category{ID: c.ID, Name: c.Name}, nil
 }
 
 // importPeople is the project's workspace members who may open it, so a matched assignee can be its developer.

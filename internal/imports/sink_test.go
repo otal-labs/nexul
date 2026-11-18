@@ -145,3 +145,25 @@ func TestSink_ARerunNeverFilesATicketTwice(t *testing.T) {
 		})
 	}
 }
+
+func TestSink_GivesEachTicketItsCategoryAndDueDate_AndLinksABlockerWhicheverComesInSecond(t *testing.T) {
+	src := fakeSource{tickets: []Ticket{
+		{SourceID: "waits", Title: "Waits", Category: "Mobile", DueOn: "2026-12-01", BlockedBy: []string{"blocker", "elsewhere"}},
+		{SourceID: "blocker", Title: "Blocker", Category: "mobile", Blocks: []string{"waits", "later"}},
+		{SourceID: "later", Title: "Later", Category: "Web", BlockedBy: []string{"blocker"}},
+	}}
+	svc, repo, desk := newDeskService(src, newFakeDesk())
+	runToEnd(t, svc, repo)
+	again := runToEnd(t, svc, repo)
+	assert.Equal(t, 3, again.Report.Skipped)
+
+	waits := desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "waits")]
+	blocker := desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "blocker")]
+	later := desk.tickets[derivedID(testWorkspace, "fake", KindTicket, "later")]
+	assert.Equal(t, "2026-12-01", waits.DueOn)
+	assert.Equal(t, "cat-Mobile", waits.CategoryID)
+	assert.Equal(t, "cat-Mobile", blocker.CategoryID, "a category of the same name, ignoring case, is reused")
+	assert.Equal(t, "cat-Web", later.CategoryID)
+	assert.Equal(t, map[string][]string{waits.ID: {blocker.ID}, later.ID: {blocker.ID}}, desk.blocks,
+		"each link once, made by whichever end came in second; one to a record never imported is left out")
+}

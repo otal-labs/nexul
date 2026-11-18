@@ -7,14 +7,18 @@ sidebar:
 
 An import copies another tool's records into one [project](/docs/guide/projects-and-repositories/) as tickets or docs. It reads first and writes only once you confirm, so you see how many records there are and where people and statuses will land before anything changes.
 
-Today it reads **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee. It also reads **Notion pages** into docs. More tools will follow on the same page.
+It reads three sources today, and more will follow on the same page:
+
+- **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee.
+- **Linear**: one team, with each issue's comments, labels, priority, project, due date, assignee, files and blocking links.
+- **Notion pages**, into docs.
 
 Only the workspace's Owner can run an import.
 
 ## Run one
 
 1. Open **Configuration → Import**.
-2. Pick the source and the project. A project with several repositories asks which one; a project with none needs one [attached](/docs/guide/projects-and-repositories/) first.
+2. Pick the source and the project. For GitHub, a project with several repositories asks which one, and a project with none needs one [attached](/docs/guide/projects-and-repositories/) first. For Linear, paste a personal API key and name the team by its key, such as `ENG`; leave the team empty when the key reaches only one.
 3. Press **Scan**. Nexul counts the issues and comments and works out how they map. The page updates by itself.
 4. Check the summary, then press **Import**. Progress shows as it goes, and **Cancel import** stops it at any point.
 
@@ -22,9 +26,13 @@ A scan waits 24 hours to be confirmed, then cancels itself. A workspace runs one
 
 GitHub issues are read as Nexul's [GitHub App](/docs/guide/github-app/), so this import needs no token.
 
+A Linear import reads with the personal API key you paste in, which you create in Linear's security settings. Nexul keeps it sealed while the import runs and deletes it when the import ends; it is never shown again or sent anywhere but Linear.
+
 A repository whose [issue sync](/docs/guide/projects-and-repositories/#sync-github-issues-to-tickets) is on can't be imported: its issues are already tickets, and turning sync on brings the rest in. Import is for a one-time move; sync keeps the two in step.
 
 ## How records map
+
+### From GitHub
 
 - **Tickets.** Each issue becomes a ticket with its title and body, and a line at the end linking back to the issue and naming who opened it.
 - **Statuses.** An open issue lands in the project's first backlog column and a closed one in its first done column. A status the project has no column for gets a new column, which the summary marks as new.
@@ -32,6 +40,18 @@ A repository whose [issue sync](/docs/guide/projects-and-repositories/#sync-gith
 - **Comments.** Each comment lands in the ticket's thread under its author's name on GitHub, with when they wrote it. Nobody can edit it, and it mentions nobody.
 - **Labels.** Each label carries over.
 - **Files.** Images and files people dropped into issues and comments are copied into the ticket, up to 10 MB each. A larger file, or one GitHub won't serve without signing in, stays a link.
+
+### From Linear
+
+- **Tickets.** Each issue becomes a ticket with its title and description, and a line at the end linking back to the issue. A sub-issue comes in as its own ticket, with a "Sub-issue of" line naming its parent.
+- **Statuses.** Each workflow state lands in the column of the same name. A state the project has no column for gets a new column of the matching kind: triage, backlog and unstarted states are backlog, started is in progress, and completed and canceled are done. A canceled issue also gets the label `canceled`.
+- **Labels and priority.** Each label carries over, and the priority becomes a label: `priority:urgent`, `priority:high`, `priority:medium` or `priority:low`.
+- **Projects.** A Linear project becomes the [category](/docs/guide/docs-tickets-and-board/#the-board) of the same name, added the first time the project lacks it.
+- **Due dates and people.** The due date carries over, and the assignee becomes the developer when their email matches someone who can open the project.
+- **Comments and files.** Comments land in the thread under their author's name on Linear, and uploaded files are copied in as they are from GitHub.
+- **Blocking.** When one issue blocks another, the ticket waits on its blocker the way a [blocked-by link](/docs/guide/docs-tickets-and-board/#tickets) does. Other relations, such as related or duplicate, are counted in the summary and skipped.
+
+If Linear asks Nexul to slow down, the import waits and carries on by itself, from where it stopped.
 
 Importing tells nobody: no notification goes out and no [auto play](/docs/guide/plays/) starts for an imported ticket. Once it is in, it is an ordinary ticket.
 

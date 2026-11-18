@@ -72,6 +72,8 @@ type Report struct {
 	Statuses []StatusMatch `json:"statuses"`
 	// Skipped are records an earlier import already brought in.
 	Skipped int `json:"skipped"`
+	// RelationsSkipped are links between records that have no Nexul counterpart, such as Linear's duplicate.
+	RelationsSkipped int `json:"relations_skipped"`
 	// FilesCopied went into attachments; FilesLinked stayed links, too large or not downloadable.
 	FilesCopied int `json:"files_copied"`
 	FilesLinked int `json:"files_linked"`

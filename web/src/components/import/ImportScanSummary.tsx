@@ -21,6 +21,7 @@ export const ImportScanSummary = ({ id }: ImportScanSummaryProps) => {
           <span className="text-sm tabular-nums">
             {report.docs > 0 && `${report.docs.toLocaleString()} docs`}
             {report.docs === 0 && `${report.tickets.toLocaleString()} tickets · ${report.comments.toLocaleString()} comments`}
+            {report.relations_skipped > 0 && ` · ${report.relations_skipped.toLocaleString()} links with no counterpart, skipped`}
           </span>
         </SettingsRow>
       </SettingsRows>
