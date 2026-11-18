@@ -18,6 +18,7 @@ const nothing: SettingsVisibility = {
   showInterviewTemplate: false,
   showMentionLayout: false,
   showTeam: false,
+  showImport: false,
 };
 
 const everything: SettingsVisibility = {
@@ -26,6 +27,7 @@ const everything: SettingsVisibility = {
   showInterviewTemplate: true,
   showMentionLayout: true,
   showTeam: true,
+  showImport: true,
 };
 
 // What ConfigurationPage hands the nav: the visible sections with the instance ones taken out.
@@ -47,6 +49,7 @@ describe("SettingsNav", () => {
       "General",
       "Interview template",
       "Mention chips",
+      "Import",
       "Danger zone",
     ]);
     expect(nav.getByRole("link", { name: "General" })).toHaveAttribute("href", "/acme/configuration/general");

@@ -8,6 +8,7 @@ export const guideGroups = [
 		label: 'Work together',
 		items: [
 			guide('projects-and-repositories'),
+			guide('importing'),
 			guide('people-and-access'),
 			guide('welcome-wizard'),
 			guide('docs-tickets-and-board'),

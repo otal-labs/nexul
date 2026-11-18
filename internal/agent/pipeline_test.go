@@ -670,6 +670,25 @@ func TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp(t *testing.T) 
 	assert.NotContains(t, turns[1].prompts.Full, "b-ci")
 }
 
+// TestRunTurn_ImportedComment_IsNamedByItsAuthorThereAndKeptInTheFollowUp: a comment an import copied in reads under its
+// author's name in that tool, never its key, and its via names the tool, not a harness, so a follow-up still carries it.
+func TestRunTurn_ImportedComment_IsNamedByItsAuthorThereAndKeptInTheFollowUp(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "github:alice", AuthorKind: "external", AuthorName: "alice", Via: "github", Body: "seen on Safari too", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	assert.Contains(t, turns[1].prompts.Incremental, "alice (github): seen on Safari too")
+	assert.NotContains(t, turns[1].prompts.Full, "github:alice")
+}
+
 // --- memories index wiring ---------------------------------------------
 
 func TestRunTurn_PlainChat_NamesNoMemories(t *testing.T) {

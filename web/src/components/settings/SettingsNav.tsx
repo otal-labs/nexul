@@ -6,6 +6,7 @@ export const SETTINGS_SECTIONS = [
   "general",
   "interview",
   "mentions",
+  "import",
   "danger",
   "instance",
   "team",
@@ -28,6 +29,7 @@ export const sectionLabels: Record<SettingsSection, string> = {
   general: "General",
   interview: "Interview template",
   mentions: "Mention chips",
+  import: "Import",
   danger: "Danger zone",
   instance: "Instance",
   "sign-in": "Sign-in providers",
@@ -46,6 +48,8 @@ export interface SettingsVisibility {
   showGeneral: boolean;
   showInterviewTemplate: boolean;
   showMentionLayout: boolean;
+  // Import runs for the workspace's Owner alone, which no permission names.
+  showImport: boolean;
 }
 
 // The sections the viewer may open, in nav order; the page falls back to the first when the URL names none of them.
@@ -56,6 +60,7 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
     if (section === "general") return visibility.showGeneral;
     if (section === "interview") return visibility.showInterviewTemplate;
     if (section === "mentions") return visibility.showMentionLayout;
+    if (section === "import") return visibility.showImport;
     return true;
   });
 

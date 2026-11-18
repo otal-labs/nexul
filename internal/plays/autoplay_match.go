@@ -237,6 +237,10 @@ func (r *Runner) momentOf(ctx context.Context, topic string, p momentPayload) (m
 	case "ticket.unblocked":
 		ticket.name, ticket.targetID, ticket.projectID = MomentTicketUnblocked, p.TicketID, p.ProjectID
 	case "ticket.created":
+		// An imported ticket was filed long ago elsewhere, so nothing is waiting for it (ADR 0201).
+		if p.Ticket.Reporter.Kind == "import" {
+			return moment{}, false, nil
+		}
 		ticket.name = MomentTicketCreated
 		ticket.actor(p.Ticket.Reporter.Kind, "")
 		return r.withLogin(ctx, ticket, p.Ticket.Reporter.Login)

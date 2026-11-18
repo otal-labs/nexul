@@ -295,6 +295,11 @@ var routePermissions = map[string][]string{
 
 	"POST /api/crash-reports": {"tickets:write"},
 
+	// The workspace's Owner alone runs an import, which no catalog action names (ADR 0201).
+	"POST /api/imports":              none,
+	"POST /api/imports/{id}/cancel":  none,
+	"POST /api/imports/{id}/confirm": none,
+
 	"POST /api/tickets":                                 {"tickets:write"},
 	"POST /api/tickets/dev-status":                      {"tickets:read"},
 	"POST /api/tickets/labels/colors":                   {"tickets:read"},

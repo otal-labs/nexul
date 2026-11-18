@@ -464,6 +464,7 @@ func IssueFromGitHub(i *githubapi.Issue) Issue {
 		Author:      i.GetUser().GetLogin(),
 		HTMLURL:     i.GetHTMLURL(),
 		UpdatedAt:   i.GetUpdatedAt().Time,
+		Comments:    i.GetComments(),
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/imports"
 	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -75,6 +76,7 @@ type RegistryOptions struct {
 	Mentions    *mentions.Service
 	Chat        *chat.Service
 	Botwebhooks *botwebhook.Service
+	Imports     *imports.Service
 	Calendar    *calendar.Service
 	Plays       *plays.Service
 	PlayRuns    *plays.Runner
@@ -142,6 +144,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		mentions.MCPTools(opts.Mentions),
 		chat.MCPTools(opts.Chat),
 		botwebhook.MCPTools(opts.Botwebhooks),
+		imports.MCPTools(opts.Imports),
 		calendar.MCPTools(opts.Calendar),
 		pairing.MCPTools(opts.Pairing),
 		plays.MCPTools(opts.Plays),

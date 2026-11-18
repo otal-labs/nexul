@@ -1,0 +1,46 @@
+---
+title: Importing
+description: Bring another tool's records into a project as tickets, with their comments, labels, assignees and files.
+sidebar:
+  order: 10
+---
+
+An import copies another tool's records into one [project](/docs/guide/projects-and-repositories/) as tickets. It reads first and writes only once you confirm, so you see how many records there are and where people and statuses will land before anything changes.
+
+Today it reads **GitHub issues**: one repository attached to the project, with each issue's comments, labels and first assignee. More tools will follow on the same page.
+
+Only the workspace's Owner can run an import.
+
+## Run one
+
+1. Open **Configuration → Import**.
+2. Pick the source and the project. A project with several repositories asks which one; a project with none needs one [attached](/docs/guide/projects-and-repositories/) first.
+3. Press **Scan**. Nexul counts the issues and comments and works out how they map. The page updates by itself.
+4. Check the summary, then press **Import**. Progress shows as it goes, and **Cancel import** stops it at any point.
+
+A scan waits 24 hours to be confirmed, then cancels itself. A workspace runs one import at a time.
+
+GitHub issues are read as Nexul's [GitHub App](/docs/guide/github-app/), so this import needs no token.
+
+A repository whose [issue sync](/docs/guide/projects-and-repositories/#sync-github-issues-to-tickets) is on can't be imported: its issues are already tickets, and turning sync on brings the rest in. Import is for a one-time move; sync keeps the two in step.
+
+## How records map
+
+- **Tickets.** Each issue becomes a ticket with its title and body, and a line at the end linking back to the issue and naming who opened it.
+- **Statuses.** An open issue lands in the project's first backlog column and a closed one in its first done column. A status the project has no column for gets a new column, which the summary marks as new.
+- **People.** The first assignee becomes the ticket's developer when they are someone who can open the project, matched by the GitHub account linked to their sign-in, or by email for tools that give one. Anyone unmatched stays unassigned, and the ticket's body says "Assigned in GitHub to" them. The summary lists everyone and who they match.
+- **Comments.** Each comment lands in the ticket's thread under its author's name on GitHub, with when they wrote it. Nobody can edit it, and it mentions nobody.
+- **Labels.** Each label carries over.
+- **Files.** Images and files people dropped into issues and comments are copied into the ticket, up to 10 MB each. A larger file, or one GitHub won't serve without signing in, stays a link.
+
+Importing tells nobody: no notification goes out and no [auto play](/docs/guide/plays/) starts for an imported ticket. Once it is in, it is an ordinary ticket.
+
+## Running it again
+
+An import skips everything an earlier import brought into the workspace from the same source, so running it again only adds what is new. A ticket you edited since is never overwritten. If the server restarts during an import, it carries on where it stopped without creating anything twice.
+
+Records that could not come in are listed with the reason, up to 200, and the count goes on past that. Earlier imports stay listed under the form with what each brought in.
+
+## From an agent
+
+An agent runs the same import through one [MCP tool](/docs/guide/mcp-server/), `import_run`: with `source` and `project_id` it starts a scan, with the import's `id` it returns progress, and `confirm` or `cancel` act on it.

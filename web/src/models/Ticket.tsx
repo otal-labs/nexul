@@ -20,6 +20,8 @@ export const ReporterKind = {
   Automation: "automation",
   // A synced GitHub issue filed it; login is the issue's author on GitHub.
   GitHub: "github",
+  // An import filed it; source names the tool it came from.
+  Import: "import",
 } as const;
 
 export type ReporterKind = (typeof ReporterKind)[keyof typeof ReporterKind];
@@ -29,6 +31,7 @@ export interface TicketReporter {
   login?: string;
   automation_id?: string;
   automation_name?: string;
+  source?: string;
 }
 
 export const TicketRole = {
@@ -81,6 +84,7 @@ export const reporterName = (reporter: TicketReporter, nameOf: NameOf = asLogin)
 export const reporterOnBehalfOf = (reporter: TicketReporter, nameOf: NameOf = asLogin): string => {
   if (reporter.kind === ReporterKind.UserMCP) return reporter.login ? `from ${nameOf(reporter.login)}` : "";
   if (reporter.kind === ReporterKind.Automation) return reporter.automation_name ?? "";
+  if (reporter.kind === ReporterKind.Import) return reporter.source ? `imported from ${reporter.source}` : "imported";
   return "";
 };
 

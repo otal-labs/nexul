@@ -584,6 +584,15 @@ func TestHandleTicketCreated(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 	})
+	t.Run("an imported ticket tells nobody", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
+		payload := map[string]any{"ticket": map[string]any{
+			"id": "t-1", "body": "@onik97 please triage", "developer": "onik97", "reporter": map[string]any{"kind": "import", "source": "github"},
+		}}
+		require.NoError(t, HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload)))
+		assert.Empty(t, repo.notifsFor("u1"))
+	})
 	t.Run("fans out to developer and mentions", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"), notifUser("u3", "lena"))

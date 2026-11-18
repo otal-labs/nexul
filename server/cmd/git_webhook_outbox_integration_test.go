@@ -136,6 +136,6 @@ func TestGitWebhook_IssuesDelivery_RecordsOneGitIssueRowPerDelivery(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.JSONEq(t, `{"owner":"acme","repo":"app","action":"opened","issue":{"id":5001,"number":12,"title":"Login fails on Safari",
-		"body":"","state":"open","state_reason":"","labels":[],"assignees":[],"author":"alice","html_url":"","updated_at":"0001-01-01T00:00:00Z"},
+		"body":"","state":"open","state_reason":"","labels":[],"assignees":[],"author":"alice","html_url":"","updated_at":"0001-01-01T00:00:00Z","comments":0},
 		"sender":{"login":"alice","type":"User"}}`, string(events[0].Payload))
 }

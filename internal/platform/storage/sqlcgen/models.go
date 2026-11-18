@@ -542,6 +542,40 @@ type GithubUserLink struct {
 	ConnectedAt      int64
 }
 
+type Import struct {
+	ID                  string
+	WorkspaceID         string
+	ProjectID           string
+	Source              string
+	SourceFrom          string
+	State               string
+	CreatedBy           string
+	CredentialEncrypted sql.NullString
+	Total               int64
+	Done                int64
+	Failed              int64
+	ReportJson          string
+	CreatedAt           int64
+	UpdatedAt           int64
+}
+
+type ImportItem struct {
+	ImportID string
+	Kind     string
+	SourceID string
+	NexulID  string
+	State    string
+	Error    string
+}
+
+type ImportSourceID struct {
+	WorkspaceID string
+	Source      string
+	Kind        string
+	SourceID    string
+	NexulID     string
+}
+
 type InstanceBranding struct {
 	ID          int64
 	ProductName string
@@ -1316,6 +1350,7 @@ type Ticket struct {
 	ReporterAutomationID   string
 	ReporterAutomationName string
 	DueOn                  string
+	ReporterSource         string
 }
 
 type TicketBranchLink struct {

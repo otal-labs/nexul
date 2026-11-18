@@ -28,6 +28,7 @@ type Store struct {
 	ErrorRate             *ErrorRateRepo
 	RequestMinutes        *RequestMinutesRepo
 	CrashTickets          *CrashTicketsRepo
+	Imports               *ImportsRepo
 	StackWatchers         *StackWatchersRepo
 	Topology              *TopologyRepo
 	Runners               *RunnersRepo
@@ -114,6 +115,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		ErrorRate:             &ErrorRateRepo{db: db, w: w, q: q},
 		RequestMinutes:        &RequestMinutesRepo{db: db, w: w, q: q},
 		CrashTickets:          &CrashTicketsRepo{db: db, w: w, q: q},
+		Imports:               &ImportsRepo{db: db, w: w, q: q, encKey: encKey},
 		StackWatchers:         &StackWatchersRepo{db: db, w: w, q: q},
 		Topology:              &TopologyRepo{db: db, w: w, q: q},
 		Runners:               &RunnersRepo{db: db, w: w, q: q},

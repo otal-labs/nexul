@@ -16,6 +16,7 @@ import { deployFollower } from "@/hooks/DeployHooks";
 import { dnsFollower } from "@/hooks/DnsHooks";
 import { docFolderFollower } from "@/hooks/DocFolderHooks";
 import { docFollower } from "@/hooks/DocHooks";
+import { importFollower } from "@/hooks/ImportHooks";
 import { instanceUpgradeFollower } from "@/hooks/InstanceUpgradeHooks";
 import { brandingFollower } from "@/ee/hooks/BrandingHooks";
 import { licenseFollower } from "@/ee/hooks/LicenseHooks";
@@ -83,6 +84,7 @@ const followers: LiveFollower[] = [
   accessGridFollower,
   authFollower,
   botwebhookFollower,
+  importFollower,
   calendarFollower,
   categoryFollower,
   chatFollower,

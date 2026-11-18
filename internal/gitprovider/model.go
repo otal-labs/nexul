@@ -104,6 +104,7 @@ type Issue struct {
 	Author      string    `json:"author"`
 	HTMLURL     string    `json:"html_url"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Comments    int       `json:"comments" jsonschema:"How many comments the issue has."`
 }
 
 // IssueComment is a comment on an issue; it is also the git.issue_comment payload's comment.

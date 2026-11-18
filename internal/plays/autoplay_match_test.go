@@ -114,6 +114,7 @@ func TestMomentOf(t *testing.T) {
 			moment{name: MomentTicketUnblocked, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaMCP}, true},
 		{"created by an automation", "ticket.created", `{"ticket":{"id":"t-1","project_id":"p-1","reporter":{"kind":"automation"}}}`,
 			moment{name: MomentTicketCreated, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", automation: true, via: ViaWeb}, true},
+		{"imported, which nothing waits for", "ticket.created", `{"ticket":{"id":"t-1","project_id":"p-1","reporter":{"kind":"import","source":"github"}}}`, moment{}, false},
 		{"created by a person, named by login", "ticket.created", `{"ticket":{"id":"t-1","project_id":"p-1","reporter":{"kind":"user","login":"login-u-2"}}}`,
 			moment{name: MomentTicketCreated, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-2", via: ViaWeb}, true},
 		{"entered done", "ticket.status_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"st-progress","to":"st-done","actor":{"kind":"user","user_id":"u-1"}}`,
