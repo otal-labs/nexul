@@ -1,10 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -355,13 +357,13 @@ func (s issueSource) Ticket(ctx context.Context, ticketID string) (issuesync.Out
 	if err != nil {
 		return issuesync.Outbound{}, err
 	}
-	body, err := s.markdown(ctx, t.Body)
+	body, err := s.markdown(ctx, t.Body, false)
 	if err != nil {
 		return issuesync.Outbound{}, err
 	}
 	f := issuesync.TicketFields{Title: t.Title, Body: body, Closed: done, Labels: t.Labels}
-	if gh := s.githubLogin(ctx, t.DeveloperID, ""); gh != "" {
-		f.Assignees = []string{gh}
+	if dev, _ := s.person(ctx, t.DeveloperID, ""); dev.Login != "" {
+		f.Assignees = []string{dev.Login}
 	}
 	return issuesync.Outbound{ProjectID: t.ProjectID, Fields: f}, nil
 }
@@ -379,13 +381,14 @@ func (s issueSource) Message(ctx context.Context, messageID string) (issuesync.M
 	if err != nil {
 		return issuesync.Mirror{}, err
 	}
-	body, err := s.markdown(ctx, m.Body)
+	body, err := s.markdown(ctx, m.Body, true)
 	if err != nil {
 		return issuesync.Mirror{}, err
 	}
-	who := "**" + personName(author) + "**"
-	if gh := s.githubLogin(ctx, author.ID, ""); gh != "" {
-		who += " (@" + gh + ")"
+	shown, _ := s.person(ctx, author.ID, "")
+	who := "**" + cmp.Or(shown.Name, "A Nexul member") + "**"
+	if shown.Login != "" {
+		who += " (@" + shown.Login + ")"
 	}
 	out.Body = who + " wrote in Nexul:\n\n" + body
 	return out, nil
@@ -402,8 +405,9 @@ func (s issueSource) ThreadOf(ctx context.Context, conversationID string) (strin
 	return c.TicketID, nil
 }
 
-// markdown renders a stored body for GitHub; the instance URL is read per body, as settings can change it at any time.
-func (s issueSource) markdown(ctx context.Context, body string) (string, error) {
+// markdown renders a stored body for GitHub, with a chat message's plain @logins as mentions when bare; the instance
+// URL is read per body, as settings can change it at any time.
+func (s issueSource) markdown(ctx context.Context, body string, bare bool) (string, error) {
 	md, err := richtext.ToMarkdown(body)
 	if err != nil {
 		return "", err
@@ -412,32 +416,36 @@ func (s issueSource) markdown(ctx context.Context, body string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	return richtext.ForOutside(md, base, func(userID, login string) string { return s.githubLogin(ctx, userID, login) }), nil
+	return richtext.ForOutside(md, base, func(userID, login string) (richtext.Outsider, bool) { return s.person(ctx, userID, login) }, bare), nil
 }
 
-// githubLogin is the GitHub login of the person with userID, else Nexul login, empty when they sign in without GitHub;
-// a failed read names nobody, so a mention falls back to a link instead of failing the write.
-func (s issueSource) githubLogin(ctx context.Context, userID, login string) string {
-	if userID == "" && login != "" {
-		u, err := s.users.GetUserByLogin(ctx, login)
-		if err != nil {
-			return ""
-		}
-		userID = u.ID
+// person is who has userID, else Nexul login, as GitHub shows them: their GitHub login when they sign in with GitHub,
+// and the name they set, never their Nexul login, which can be an email; @Agent is the Agent. A failed read is nobody, so a mention stays as written instead of failing the write.
+func (s issueSource) person(ctx context.Context, userID, login string) (richtext.Outsider, bool) {
+	if userID == "" && strings.EqualFold(login, chat.AgentHandle) {
+		return richtext.Outsider{Name: chat.AgentHandle}, true
 	}
+	u, err := s.users.GetUserByID(ctx, userID)
 	if userID == "" {
-		return ""
+		u, err = s.users.GetUserByLogin(ctx, login)
 	}
-	identities, err := s.users.ListIdentities(ctx, userID)
 	if err != nil {
-		return ""
+		return richtext.Outsider{}, false
+	}
+	who := richtext.Outsider{Name: u.Name}
+	if u.DisplayName != nil && *u.DisplayName != "" {
+		who.Name = *u.DisplayName
+	}
+	identities, err := s.users.ListIdentities(ctx, u.ID)
+	if err != nil {
+		return who, true
 	}
 	for _, id := range identities {
 		if id.Provider == auth.ProviderGitHub {
-			return id.Login
+			who.Login = id.Login
 		}
 	}
-	return ""
+	return who, true
 }
 
 // issueWriter writes issues and comments as the GitHub App's installation for the repository.

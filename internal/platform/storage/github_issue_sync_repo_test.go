@@ -49,8 +49,12 @@ func TestIssueSyncRepo_Pushes_KeepALaterChangeAndTheFirstTry(t *testing.T) {
 	assert.Equal(t, now, left[0].Tried, "the first try is kept, so the retry looks for what it made")
 
 	backed := left[0]
-	backed.Due, backed.Attempts = later.Add(time.Minute), 2
+	backed.Due, backed.Attempts, backed.Tried = later.Add(time.Minute), 2, time.Time{}
 	require.NoError(t, s.IssueSync.DeferTicketPush(ctx, backed, later))
+	kept, err := s.IssueSync.DueTicketPushes(ctx, later.Add(time.Minute), 10)
+	require.NoError(t, err)
+	require.Len(t, kept, 1)
+	assert.Equal(t, now, kept[0].Tried, "a copy read before the first try was stored never clears it")
 	none, err := s.IssueSync.DueTicketPushes(ctx, later, 10)
 	require.NoError(t, err)
 	assert.Empty(t, none, "a deferred push waits for its new due")

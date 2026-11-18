@@ -41,7 +41,8 @@ type PushRepo interface {
 	DueCommentPushes(ctx context.Context, now time.Time, limit int) ([]CommentPush, error)
 	// NextPushDue is the earliest due of every waiting push, false when none waits.
 	NextPushDue(ctx context.Context) (time.Time, bool, error)
-	// DeferTicketPush stores p's tried and attempts, and its due unless the ticket was queued again since was.
+	// DeferTicketPush stores p's due unless the ticket was queued again since was, its tried unless one is stored, and
+	// its attempts unless more are stored, so a stale copy never loses a first try.
 	DeferTicketPush(ctx context.Context, p TicketPush, was time.Time) error
 	DeferCommentPush(ctx context.Context, p CommentPush, was time.Time) error
 	// DoneTicketPush drops p unless the ticket was queued again since p was read.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -278,6 +279,25 @@ func (s *Service) fileOrClaim(ctx context.Context, sy Sync, i Issue) error {
 	return s.inStep(ctx, sy, link)
 }
 
+// keepTrigger is f with the trigger label added back when the ticket carries it, as a ticket that made its issue does,
+// so an edit on GitHub never takes from the ticket the label that says why it syncs.
+func (s *Service) keepTrigger(ctx context.Context, sy Sync, ticketID string, f TicketFields) (TicketFields, error) {
+	t := sy.trigger()
+	if t == "" {
+		return f, nil
+	}
+	cur, err := s.d.Source.Ticket(ctx, ticketID)
+	if err != nil {
+		return TicketFields{}, err
+	}
+	i := slices.IndexFunc(cur.Fields.Labels, func(l string) bool { return strings.EqualFold(l, t) })
+	if i < 0 {
+		return f, nil
+	}
+	f.Labels = append(slices.Clone(f.Labels), cur.Fields.Labels[i])
+	return f, nil
+}
+
 // inStep stores link with the ticket as it stands, so the changes just applied to it are never written back.
 func (s *Service) inStep(ctx context.Context, sy Sync, link Link) error {
 	f, err := s.outbound(ctx, link.TicketID, sy)
@@ -314,7 +334,11 @@ func (s *Service) follow(ctx context.Context, sy Sync, link Link, i Issue, actio
 	if err != nil {
 		return err
 	}
-	if err := s.d.Desk.Apply(ctx, link.TicketID, f, dev); err != nil {
+	apply, err := s.keepTrigger(ctx, sy, link.TicketID, f)
+	if err != nil {
+		return err
+	}
+	if err := s.d.Desk.Apply(ctx, link.TicketID, apply, dev); err != nil {
 		return err
 	}
 	if err := s.state(ctx, link, f, action, i.UpdatedAt); err != nil {

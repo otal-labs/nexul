@@ -62,7 +62,7 @@ The ticket's reporter shows the issue's author on GitHub. Changes the GitHub App
 
 Changes made in Nexul go back to the issue, written by the GitHub App:
 
-- **Title, body, labels and the developer** follow about ten seconds after the last edit, so a burst of typing is one change on GitHub. Links to tickets, docs and attachments point at your Nexul address, and a mention of someone who signs in with GitHub becomes their `@handle`. The developer becomes the issue's one assignee only when they sign in with GitHub. Tester, due date and category stay in Nexul.
+- **Title, body, labels and the developer** follow about ten seconds after the last edit, so a burst of typing is one change on GitHub. Links to tickets, docs and attachments point at your Nexul address, and a mention of someone who signs in with GitHub becomes their `@handle`; anyone else shows by name. The developer becomes the issue's one assignee only when they sign in with GitHub. Tester, due date and category stay in Nexul.
 - **Moving the ticket to done** closes the issue as completed.
 - **Messages** people write on the ticket's thread appear on the issue as comments, headed with the writer's name, and their edits and deletions follow. Agent replies and notes stay in Nexul.
 - **Adding the `nexul` label** to a ticket with no issue creates one in the synced repository and links it.

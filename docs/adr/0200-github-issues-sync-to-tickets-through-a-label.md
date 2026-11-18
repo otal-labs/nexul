@@ -29,16 +29,21 @@ which consumes `git.issue` and `git.issue_comment` and reaches tickets and chat 
 - **Writing back.** A change to a linked ticket's title, body, labels, developer or stage queues a push, and every
   further change moves it to ten quiet seconds after the last; a loop woken by the commit that queues it, and by the
   next due push, writes it as one issue update, as the App's installation so the inbound bot check knows its echo.
-  The body is markdown whose instance links are absolute and whose person mentions are `@<github login>`, or links to
-  the person's page for someone without one; a Nexul login never reaches GitHub, since it can be an email. Labels are
-  set in full plus the trigger label, a done stage closes the issue as completed, and the developer becomes the one
-  assignee only with a GitHub login. Tester, due date and category stay in Nexul.
+  The body is markdown whose instance links are absolute and whose person mentions are `@<github login>`, or the
+  person's name, linked to their page, for someone without one; a Nexul login never reaches GitHub, since it can be
+  an email. A body mentions people only through links, so a plain `@handle` in it, often written on GitHub, stays as
+  written; in a message a plain `@login` is a member's mention, and one nobody in Nexul holds stays as written. Labels are set in full plus the trigger label, a
+  done stage closes the issue as completed, and the developer becomes the one assignee only with a GitHub login.
+  Tester, due date and category stay in Nexul. A ticket keeps the trigger label it carries through edits from
+  GitHub; removing it in Nexul changes nothing, since pausing is the issue's label and the way out is GitHub's.
 - **Comments back.** A person's message on a linked ticket's thread is posted as a comment headed with their name and
   GitHub login, and its edits and deletes follow through the comment links; agent replies, notes and mirrored GitHub
   comments never go back.
 - **No echo, either way.** Besides the inbound and outbound hashes, the link keeps the hash of the ticket as its issue
-  takes it whenever the two were last in step, after applying an issue as after writing one; a push whose ticket
-  hashes to any of the three writes nothing, so what GitHub changed never goes back out.
+  takes it whenever the two were last in step, after applying an issue as after writing one. A push writes nothing
+  when the ticket hashes to that alone: comparing it with the inbound or outbound hash too would drop a ticket put
+  back as it was before the last sync, which still differs from its issue now. Links stored before the ticket hash
+  existed fall back to the other two until their first sync.
 - **Creating issues.** Adding the trigger label to an unlinked ticket of a synced project creates its issue. The body
   carries a hidden `<!-- nexul:ticket:<id> -->`, and a comment `<!-- nexul:message:<id> -->`: a retry after a lost
   answer first looks for the marker among what changed since its first try, so a timed-out request GitHub accepted
@@ -50,7 +55,8 @@ which consumes `git.issue` and `git.issue_comment` and reaches tickets and chat 
 
 The cost: a timer polls GitHub, the one loop in the server that does not wait only on a commit, and an edit missed with
 its webhook waits for the issue's next change. A label rename on GitHub stops syncing until the sync's label follows it.
-An edit made in Nexul reaches GitHub ten seconds late, and one made while the issue changes on GitHub is overwritten
+Writes run one at a time under the lock that applies webhooks, so a slow GitHub delays inbound changes until each
+write's timeout. An edit made in Nexul reaches GitHub ten seconds late, and one made while the issue changes on GitHub is overwritten
 by GitHub's. Writing as the App means GitHub shows the App, not the person, as the author.
 
 Rejected: syncing every issue by default, which floods a busy repository's board; matching tickets by title, which

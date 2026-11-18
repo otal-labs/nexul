@@ -130,6 +130,10 @@ func (r *fakeRepo) DeferTicketPush(_ context.Context, p TicketPush, was time.Tim
 	if !cur.Due.Equal(was) {
 		p.Due = cur.Due
 	}
+	if !cur.Tried.IsZero() {
+		p.Tried = cur.Tried
+	}
+	p.Attempts = max(p.Attempts, cur.Attempts)
 	r.ticketPushes[p.TicketID] = p
 	return nil
 }
@@ -144,6 +148,10 @@ func (r *fakeRepo) DeferCommentPush(_ context.Context, p CommentPush, was time.T
 	if !cur.Due.Equal(was) {
 		p.Due = cur.Due
 	}
+	if !cur.Tried.IsZero() {
+		p.Tried = cur.Tried
+	}
+	p.Attempts = max(p.Attempts, cur.Attempts)
 	r.commentPushes[p.MessageID] = p
 	return nil
 }

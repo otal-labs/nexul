@@ -174,7 +174,8 @@ func sleep(ctx context.Context, wait time.Duration, committed <-chan struct{}) b
 }
 
 // Push writes every due ticket and comment and returns how long until the next is due, -1 when nothing waits; one
-// write's failure leaves the others to run.
+// write's failure leaves the others to run, and one that failed before it settled waits a retry, so a failing store
+// never spins the loop. A push already done or deferred is left as it is.
 func (s *Service) Push(ctx context.Context) (time.Duration, error) {
 	var errs []error
 	pushes, err := s.d.Repo.DueTicketPushes(ctx, s.d.Now(), pushBatch)
@@ -183,7 +184,7 @@ func (s *Service) Push(ctx context.Context) (time.Duration, error) {
 	}
 	for _, p := range pushes {
 		if err := s.pushTicket(ctx, p); err != nil {
-			errs = append(errs, fmt.Errorf("ticket %s: %w", p.TicketID, err))
+			errs = append(errs, fmt.Errorf("ticket %s: %w", p.TicketID, errors.Join(err, s.retryLater(ctx, p))))
 		}
 	}
 	comments, err := s.d.Repo.DueCommentPushes(ctx, s.d.Now(), pushBatch)
@@ -192,7 +193,7 @@ func (s *Service) Push(ctx context.Context) (time.Duration, error) {
 	}
 	for _, p := range comments {
 		if err := s.pushComment(ctx, p); err != nil {
-			errs = append(errs, fmt.Errorf("message %s: %w", p.MessageID, err))
+			errs = append(errs, fmt.Errorf("message %s: %w", p.MessageID, errors.Join(err, s.retryCommentLater(ctx, p))))
 		}
 	}
 	next, ok, err := s.d.Repo.NextPushDue(ctx)
@@ -203,6 +204,18 @@ func (s *Service) Push(ctx context.Context) (time.Duration, error) {
 		return -1, errors.Join(errs...)
 	}
 	return max(next.Sub(s.d.Now()), 0), errors.Join(errs...)
+}
+
+// retryLater moves a push that failed before it settled a retry away; it takes no attempts from p, so a newer change
+// queued meanwhile keeps its own count.
+func (s *Service) retryLater(ctx context.Context, p TicketPush) error {
+	p.Attempts = 0
+	return s.deferTicket(ctx, p, s.d.Retry, false)
+}
+
+func (s *Service) retryCommentLater(ctx context.Context, p CommentPush) error {
+	p.Attempts = 0
+	return s.deferComment(ctx, p, s.d.Retry, false)
 }
 
 // outbound is the ticket as sy's issue takes it, labels sorted and without the trigger label.
@@ -259,10 +272,15 @@ func (s *Service) pushTicket(ctx context.Context, p TicketPush) error {
 	return s.updateIssue(ctx, sy, p, link, f)
 }
 
-// updateIssue writes f to the linked issue, unless the ticket is as it was when the two were last in step.
+// updateIssue writes f to the linked issue, unless the ticket is as it was when the two were last in step. Only that
+// hash says so: a ticket put back as it was before the last sync still differs from its issue now.
 func (s *Service) updateIssue(ctx context.Context, sy Sync, p TicketPush, link Link, f TicketFields) error {
 	h := Hash(f)
-	if h == link.TicketHash || h == link.InboundHash || h == link.OutboundHash {
+	inStep := h == link.TicketHash
+	if link.TicketHash == "" {
+		inStep = h == link.InboundHash || h == link.OutboundHash
+	}
+	if inStep {
 		return s.d.Repo.DoneTicketPush(ctx, p)
 	}
 	if wait := s.pace.wait(p.Owner, s.d.Now(), false); wait > 0 {

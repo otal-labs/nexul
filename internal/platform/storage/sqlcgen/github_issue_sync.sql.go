@@ -12,7 +12,7 @@ import (
 
 const deferCommentPush = `-- name: DeferCommentPush :exec
 UPDATE github_comment_pushes
-SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = ?3, attempts = ?4
+SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = COALESCE(tried_at, ?3), attempts = MAX(attempts, CAST(?4 AS INTEGER))
 WHERE message_id = ?5
 `
 
@@ -37,7 +37,7 @@ func (q *Queries) DeferCommentPush(ctx context.Context, arg DeferCommentPushPara
 
 const deferIssuePush = `-- name: DeferIssuePush :exec
 UPDATE github_issue_pushes
-SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = ?3, attempts = ?4
+SET due_at = CASE WHEN due_at = ?1 THEN ?2 ELSE due_at END, tried_at = COALESCE(tried_at, ?3), attempts = MAX(attempts, CAST(?4 AS INTEGER))
 WHERE ticket_id = ?5
 `
 

@@ -64,7 +64,7 @@ SELECT MIN(due_at) FROM github_issue_pushes;
 
 -- name: DeferIssuePush :exec
 UPDATE github_issue_pushes
-SET due_at = CASE WHEN due_at = sqlc.arg(was) THEN sqlc.arg(due) ELSE due_at END, tried_at = sqlc.arg(tried_at), attempts = sqlc.arg(attempts)
+SET due_at = CASE WHEN due_at = sqlc.arg(was) THEN sqlc.arg(due) ELSE due_at END, tried_at = COALESCE(tried_at, sqlc.narg(tried_at)), attempts = MAX(attempts, CAST(sqlc.arg(attempts) AS INTEGER))
 WHERE ticket_id = sqlc.arg(ticket_id);
 
 -- name: DeleteIssuePush :exec
@@ -82,7 +82,7 @@ SELECT MIN(due_at) FROM github_comment_pushes;
 
 -- name: DeferCommentPush :exec
 UPDATE github_comment_pushes
-SET due_at = CASE WHEN due_at = sqlc.arg(was) THEN sqlc.arg(due) ELSE due_at END, tried_at = sqlc.arg(tried_at), attempts = sqlc.arg(attempts)
+SET due_at = CASE WHEN due_at = sqlc.arg(was) THEN sqlc.arg(due) ELSE due_at END, tried_at = COALESCE(tried_at, sqlc.narg(tried_at)), attempts = MAX(attempts, CAST(sqlc.arg(attempts) AS INTEGER))
 WHERE message_id = sqlc.arg(message_id);
 
 -- name: DeleteCommentPush :exec

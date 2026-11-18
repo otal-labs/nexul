@@ -1,6 +1,7 @@
 package issuesync
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -117,6 +118,61 @@ func TestPush_FieldMapping(t *testing.T) {
 	f.push(t)
 	require.Len(t, f.github.updates, 2)
 	assert.Nil(t, f.github.updates[1].Assignees, "a developer with no GitHub login leaves the assignees alone")
+}
+
+func TestPush_ATicketPutBackAsItWas_IsWrittenToo(t *testing.T) {
+	t.Run("renamed in Nexul, then back", func(t *testing.T) {
+		f := linkedFixture(t)
+		for _, title := range []string{"Renamed in Nexul", "Crash on save"} {
+			f.desk.edit("t-1", func(tk *fakeTicket) { tk.Fields.Title = title })
+			f.changed(t)
+			f.now = f.now.Add(Quiet)
+			f.push(t)
+		}
+		require.Len(t, f.github.updates, 2, "the issue was renamed, so putting the title back is a change to it")
+		assert.Equal(t, "Crash on save", f.github.updates[1].Title)
+	})
+	t.Run("changed on GitHub, then put back in Nexul", func(t *testing.T) {
+		f := linkedFixture(t)
+		f.desk.edit("t-1", func(tk *fakeTicket) { tk.Fields.Title = "Title A" })
+		f.changed(t)
+		f.now = f.now.Add(Quiet)
+		f.push(t)
+		handle(t, f, "edited", newIssue(withTitle("Title B"), later(3*time.Hour)))
+		require.Equal(t, "Title B", f.desk.only().Fields.Title)
+		f.desk.edit("t-1", func(tk *fakeTicket) { tk.Fields.Title = "Title A" })
+		f.changed(t)
+		f.now = f.now.Add(Quiet)
+		f.push(t)
+		require.Len(t, f.github.updates, 2)
+		assert.Equal(t, "Title A", f.github.updates[1].Title)
+	})
+}
+
+func TestHandleIssue_KeepsTheTriggerLabelOnATicketThatCarriesIt(t *testing.T) {
+	f := linkedFixture(t)
+	f.desk.edit("t-1", func(tk *fakeTicket) { tk.Fields.Labels = []string{"bug", "nexul"} })
+	handle(t, f, "edited", newIssue(withTitle("Edited on GitHub"), later(time.Minute)))
+	assert.ElementsMatch(t, []string{"bug", "nexul"}, f.desk.only().Fields.Labels)
+}
+
+func TestPush_StoreFailure_WaitsARetryInsteadOfSpinning(t *testing.T) {
+	f := linkedFixture(t)
+	f.desk.edit("t-1", func(tk *fakeTicket) { tk.Fields.Title = "Edited" })
+	f.changed(t)
+	delete(f.desk.tickets, "t-1")
+	f.desk.tickets["t-x"] = &fakeTicket{}
+	f.svc.d.Source = failingSource{f.desk}
+	f.now = f.now.Add(Quiet)
+	wait, err := f.svc.Push(t.Context())
+	require.Error(t, err)
+	assert.Equal(t, pushRetry, wait)
+}
+
+type failingSource struct{ *fakeDesk }
+
+func (failingSource) Ticket(context.Context, string) (Outbound, error) {
+	return Outbound{}, errors.New("database is locked")
 }
 
 func TestPush_OwnWriteComesBackAsNothing(t *testing.T) {
