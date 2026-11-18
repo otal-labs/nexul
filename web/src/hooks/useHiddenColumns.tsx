@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-// How many of a sideways scroller's columns (`[data-role-head]` cells) sit past its right edge, less the fade over it; it
+// How many of a sideways scroller's columns (`[data-role-head]` cells) start past its right edge less the fade, so none shows; it
 // follows the scroller as it scrolls and resizes.
 export const useHiddenColumns = (fade: number) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -10,7 +10,7 @@ export const useHiddenColumns = (fade: number) => {
     if (!scroller) return;
     const count = () => {
       const edge = scroller.getBoundingClientRect().right - fade;
-      setHidden([...scroller.querySelectorAll("[data-role-head]")].filter((head) => head.getBoundingClientRect().right > edge + 1).length);
+      setHidden([...scroller.querySelectorAll("[data-role-head]")].filter((head) => head.getBoundingClientRect().left >= edge - 1).length);
     };
     count();
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(count);

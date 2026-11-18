@@ -1381,6 +1381,11 @@ button.mention-chip:hover {
     0 24px,
     calc(100% - 40px) 100%;
 }
+/* A scroller holding a pinned band (`sticky-crumbs`) keeps only its bottom fade: the band draws its own fade under it, and the
+   top one would wash the band. */
+.scroll-edge:has(.sticky-crumbs) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-edge)), transparent);
+}
 /* A grouped list pins the group it is scrolled into; its top fade then runs under that opaque row instead of over it. */
 .sticky-group-head {
   position: sticky;

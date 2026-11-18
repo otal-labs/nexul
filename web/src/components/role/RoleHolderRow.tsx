@@ -11,6 +11,7 @@ import { useRoleHolders } from "@/hooks/TeamHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useStartViewAs } from "@/hooks/ViewAsHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { cn } from "@/lib/utils";
 import { heldRoles, type TeamPerson } from "@/models/Team";
 import { personName, presenceText } from "@/utils/TeamUtility";
 
@@ -60,12 +61,13 @@ export const RoleHolderRow = ({ person }: RoleHolderRowProps) => {
       <div className={rowClass}>
         <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-7" />
         <span className="min-w-0 flex-1">
-          <span dir="auto" className="block truncate text-sm font-medium" title={personName(person)}>
+          <span dir="auto" className={cn("block truncate text-sm font-medium", person.status !== "active" && "text-muted-foreground")} title={personName(person)}>
             {personName(person)}
           </span>
           {meta && (
             <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-              {seen && <SettingsStatus tone={person.online ? "success" : "muted"}>{presenceText(person)}</SettingsStatus>}
+              {person.online && <SettingsStatus tone="success">Online</SettingsStatus>}
+              {seen && !person.online && <span className="shrink-0">{presenceText(person)}</span>}
               <AccountStatusLabel status={person.status} />
               {others.length > 0 && (
                 <span className="-my-0.5 flex min-w-0 flex-1">

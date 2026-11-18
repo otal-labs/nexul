@@ -40,13 +40,13 @@ export const RoleGivePopover = ({ person }: RoleGivePopoverProps) => {
         </ActionButton>
       </PopoverTrigger>
       <PopoverContent align="end" className="flex max-h-[min(24rem,var(--radix-popover-content-available-height))] w-96 flex-col gap-1.5 p-2">
-        <RoleFindField value={query} onChange={setQuery} placeholder="Find a role" label="Find a role" />
+        <RoleFindField value={query} onChange={setQuery} placeholder="Search roles" label="Find a role" />
         <div className="scroll-edge flex min-h-0 flex-col gap-1 overflow-y-auto pb-2">
           {shown.map((choice) => (
             <button key={choice.role.id} type="button" className={cn(menuItemClass, "h-auto items-start gap-3 py-2.5")} disabled={holders.pending} onClick={() => holders.give(person, choice.role)}>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">{choice.role.name}</span>
-                {choice.role.description && <span className="block truncate text-xs text-muted-foreground">{choice.role.description}</span>}
+                <span className="block text-sm text-balance break-words">{choice.role.name}</span>
+                {choice.role.description && <span className="line-clamp-2 text-xs text-muted-foreground">{choice.role.description}</span>}
               </span>
               <span className="mt-0.5 flex shrink-0">
                 <RoleTally domains={domains} permissions={choice.role.permissions} />

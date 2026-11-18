@@ -17,7 +17,7 @@ export const RoleSectionLinks = ({ catalog, permissions }: RoleSectionLinksProps
     return { section, held, top, total: domains.abilities.length + domains.areas.length };
   });
   return (
-    <nav aria-label="What it allows" className="flex flex-wrap items-center gap-x-1">
+    <nav aria-label="What it allows" className="-ml-2 flex flex-wrap items-center gap-x-1">
       {reach.map(({ section, held, top, total }) => (
         <RoleSectionLink key={section.area} section={section} held={held} top={top} total={total} />
       ))}

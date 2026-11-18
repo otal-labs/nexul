@@ -16,18 +16,28 @@ interface RoleDetailHeaderProps {
   backAlways?: boolean;
 }
 
-// The open pane's title with its actions on the same line at every width, then one muted line; below 1024px, where the list
-// and the pane take turns, a link back to the list.
+// The open pane's title and actions on one line, then its line and reach, stuck to the pane's top so its links stay in reach.
+// Below 1024px a link back to the list leads it; a pane that also takes the list's place sets that link on the title's line.
+const backClass = "-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground lg:hidden";
+
 export const RoleDetailHeader = ({ title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <header className="space-y-1.5">
-      <Link to={wsPath("/access/roles")} className={cn("-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground", !backAlways && "lg:hidden")}>
-        <ChevronLeft aria-hidden className="size-4" />
-        Roles
-      </Link>
+    <header className="sticky-crumbs -mx-4 space-y-1.5 px-4 pb-3 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
+      {!backAlways && (
+        <Link to={wsPath("/access/roles")} className={backClass}>
+          <ChevronLeft aria-hidden className="size-4" />
+          Roles
+        </Link>
+      )}
       <div className="flex min-h-8 items-center justify-between gap-3">
-        <h2 className="min-w-0 text-base font-semibold text-balance break-words">
+        {backAlways && (
+          <Link to={wsPath("/access/roles")} aria-label="Back to roles" className={cn(backClass, "shrink-0 lg:inline-flex")}>
+            <ChevronLeft aria-hidden className="size-4" />
+            Roles
+          </Link>
+        )}
+        <h2 className="min-w-0 flex-1 text-base font-semibold text-balance break-words">
           {owner && <CrownIcon aria-hidden className="mr-1.5 inline size-4 -translate-y-px text-muted-foreground" />}
           {title}
         </h2>

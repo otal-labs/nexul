@@ -19,11 +19,13 @@ interface RoleMatrixProps {
   holdersOf: (roleId: string) => TeamPerson[] | undefined;
   // Off where the matrix grows with its page instead of scrolling inside a card, so no empty gutter runs down its right edge.
   stableGutter?: boolean;
+  // Leaves the Owner out where roles are compared: it holds everything, so its column tells nothing.
+  hideOwner?: boolean;
 }
 
 // Every area down, every role across, read-only, in the editor's sections; each head holds its role's menu.
-export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutter = true }: RoleMatrixProps) => {
-  const ordered = [...roles.filter((role) => role.is_owner_role), ...roles.filter((role) => !role.is_owner_role)];
+export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutter = true, hideOwner = false }: RoleMatrixProps) => {
+  const ordered = [...(hideOwner ? [] : roles.filter((role) => role.is_owner_role)), ...roles.filter((role) => !role.is_owner_role)];
   const everything = catalog.map((entry) => entry.value);
   const held = ordered.map((role) => (role.is_owner_role ? everything : role.permissions));
   // 48px is the end fade's width, which a column under it still counts as hidden behind.
@@ -40,7 +42,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
             {ordered.map((role) => (
               <RoleMatrixHead key={role.id} role={role} workspaceId={workspaceId} holders={holdersOf(role.id)} />
             ))}
-            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 border-b-transparent align-bottom")}>
+            <th className={cn(fadeEndCell, matrixFadeWidth, "top-0 z-20 align-bottom", hidden > 0 ? "border-l border-border bg-card" : "border-b-transparent")}>
               {hidden > 0 && (
                 <button
                   type="button"

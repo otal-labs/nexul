@@ -1441,7 +1441,8 @@ reads "Holds everything here" under its name, so every role row is one height. T
 roles by name and description. From 1024px the tab opens on the
 first role after the Owner, and below it the list is the page; below 1024px
 a muted "Roles" link with a chevron leads the open pane back to the list. The
-open role is one page, its header on the list header's line. Its header is the name (16px semibold, the crown before
+open role is one page, its header on the list header's line and pinned to the
+pane's top on `panel-opaque` (`sticky-crumbs`) so its section links stay in reach. Its header is the name (16px semibold, the crown before
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
@@ -1457,11 +1458,12 @@ more than they do. Past eight holders a find field (with a clear button) leads t
 list, the count reading "2 of 33" while it narrows, a search with no match a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach, and a "Show fewer" line folds them back; a search shows
-every match. Each holder
+every match. Holders run in name order. Each holder
 is a hairline row, at least 56px, lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
-over a muted line holding only what says something: Online or when they were
-last seen as a status mark (as Team draws it), Disabled or Removed, and their
+over a muted line holding only what says something: Online as a status mark,
+when they were last seen in plain words (a grey dot would say nothing), Disabled
+or Removed with the name muted too, and their
 other roles as chips that overhang the line instead of growing it, their text
 on the line's baseline, as many whole chips as fit (up to three) and the rest
 as a mono "+N"; a row with none of these is the name alone. Its
@@ -1475,7 +1477,7 @@ beside a heading whose line already says nobody holds the role. The open links g
 the role list under them as Invited, on the holders' grid: a link mark on a
 `surface-2` disc in the avatar's slot, when it expires as its title ("Expires in 7
 days", what tells two links apart), over who made it and the other roles it
-gives as chips, and a `…` holding Revoke link, which asks first. What it allows follows under its own heading, "What <role> can do", set 16px
+gives as chips, and a `…` holding Revoke link, which asks first; the links step aside while a search runs. What it allows follows under its own heading, "What <role> can do", set 16px
 further down than the gaps above it: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
@@ -1489,7 +1491,7 @@ in place, instantly. No roles is the same page with only the holders, each with 
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
 role named over its description with the role's tally on its line. Compare roles
-takes the list pane's place too, full width with the "Roles" link back at every
+leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
 

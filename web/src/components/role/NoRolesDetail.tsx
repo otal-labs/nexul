@@ -8,12 +8,13 @@ import { RoleHolderRow } from "@/components/role/RoleHolderRow";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { roleless } from "@/models/Team";
+import { personName } from "@/utils/TeamUtility";
 
 // The members holding no role, who see no project or play here until a role is given from its own page.
 export const NoRolesDetail = () => {
   const workspace = useSelectedWorkspace();
   const { data: team, error, isPending } = useFetchTeam();
-  const people = team && workspace ? roleless(team, workspace.id) : undefined;
+  const people = team && workspace ? roleless(team, workspace.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const name = workspace?.name ?? "this workspace";
 
   return (

@@ -20,12 +20,12 @@ export const RolesCompareDetail = () => {
 
   return (
     <Container className="space-y-6 py-6 sm:pr-3.5">
-      <RoleDetailHeader title="Compare roles" line="What each role can open and change here, area by area." backAlways />
+      <RoleDetailHeader title="Compare roles" line="What each role can open and change here, area by area. The Owner holds everything, so it isn't listed." backAlways />
       {(rolesPending || catalogPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card px-6 pb-6 shadow-card">
-          <RoleMatrix stableGutter={false} roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={(roleId) => team && roleHolders(team, workspaceId, roleId)} />
+        <div className="overflow-hidden rounded-lg border border-border bg-card px-6 pb-6 shadow-card">
+          <RoleMatrix stableGutter={false} hideOwner roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={(roleId) => team && roleHolders(team, workspaceId, roleId)} />
         </div>
       )}
     </Container>

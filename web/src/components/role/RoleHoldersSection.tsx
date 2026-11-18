@@ -31,7 +31,7 @@ export const RoleHoldersSection = () => {
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
-  const holders = team && role ? roleHolders(team, workspaceId, role.id) : undefined;
+  const holders = team && role ? roleHolders(team, workspaceId, role.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const changeable = role !== undefined && !role.is_owner_role;
   const needle = query.trim().toLowerCase();
   const matched = holders?.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle));
@@ -66,7 +66,7 @@ export const RoleHoldersSection = () => {
       {error && <ErrorDisplay error={error} />}
       {holders && holders.length === 0 && <EmptyRow flush>Nobody holds {role?.name} yet.</EmptyRow>}
       {holders && holders.length > FIND_FROM && (
-        <RoleFindField value={query} onChange={setQuery} placeholder={`Find among ${holders.length}`} label="Find a person" className="max-w-xs" />
+        <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
       )}
       {matched && holders && holders.length > 0 && matched.length === 0 && (
         <p role="status" className="flex min-h-14 items-center border-y border-border text-sm text-muted-foreground">
@@ -84,7 +84,7 @@ export const RoleHoldersSection = () => {
         <RoleFoldButton open={false} onToggle={() => setAll(true)} label={`Show all ${holders.length}`} className="-ml-2" />
       )}
       {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="-ml-2" />}
-      <RoleInvitationsSection />
+      {!needle && <RoleInvitationsSection />}
     </section>
   );
 };

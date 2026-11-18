@@ -30,8 +30,8 @@ const Probe = ({ rights }: { rights: number[] }) => {
 };
 
 describe("useHiddenColumns", () => {
-  it("counts the columns ending past the scroller's edge less its fade, and none when every column shows", () => {
-    const { unmount } = render(<Probe rights={[200, 300, 452, 460, 600]} />);
+  it("counts the columns starting past the scroller's edge less its fade, never one partly in view, and none when every column shows", () => {
+    const { unmount } = render(<Probe rights={[200, 300, 452, 560, 600]} />);
     expect(screen.getByRole("status").textContent).toBe("2");
     unmount();
     render(<Probe rights={[200, 300, 400]} />);
