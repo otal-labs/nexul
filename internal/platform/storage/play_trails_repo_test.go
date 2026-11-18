@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 func newTestTrail(id string, startedAt time.Time) *plays.Trail {
@@ -338,4 +340,47 @@ func TestPlayTrailsRepo_RunningOn_SeeksTheTargetIndex(t *testing.T) {
 	require.NoError(t, rows.Err())
 	assert.Contains(t, plan, "idx_play_trails_target", "the lookup reads only the target's own trails")
 	assert.NotContains(t, plan, "SCAN play_trails", "a save never scans every trail")
+}
+
+// TestPlayTrailsRepo_MemoryReads_KeepTheFirstReadOfEachMemoryOfTheRunsProject: a run's reads list in read order by the
+// memory's title now, a repeat or another project's memory writes nothing, a deleted memory keeps its last title, and
+// a deleted run takes its reads with it.
+func TestPlayTrailsRepo_MemoryReads_KeepTheFirstReadOfEachMemoryOfTheRunsProject(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	tr := newTestTrail("tr-1", time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC))
+	tr.WorkspaceID, tr.ProjectID = "workspace-default", "project-general"
+	require.NoError(t, s.PlayTrails.CreateTrail(ctx, tr))
+	build, review, elsewhere := newTestMemory("m-build", "project-general"), newTestMemory("m-review", "project-general"), newTestMemory("m-far", "project-far")
+	build.Title, review.Title = "Building a ticket", "Reviewing a change"
+	require.NoError(t, s.Projects.Create(ctx, &workspace.Project{ID: "project-far", Name: "Far", Prefix: "FAR", WorkspaceID: "workspace-default"}))
+	for _, m := range []*memories.Memory{build, review, elsewhere} {
+		require.NoError(t, s.Memories.Create(ctx, m, ""))
+	}
+	at := time.Date(2026, 9, 17, 9, 5, 0, 0, time.UTC)
+	for i, id := range []string{"m-review", "m-build", "m-review", "m-far", "m-missing"} {
+		require.NoError(t, s.PlayTrails.RecordMemoryRead(ctx, "tr-1", "project-general", id, at.Add(time.Duration(i)*time.Minute)))
+	}
+
+	reads, err := s.PlayTrails.ListMemoryReads(ctx, "tr-1")
+	require.NoError(t, err)
+	assert.Equal(t, []plays.FoundMemory{{ID: "m-review", Title: "Reviewing a change"}, {ID: "m-build", Title: "Building a ticket"}}, reads)
+	last, err := s.Memories.GetByID(ctx, "m-review")
+	require.NoError(t, err)
+	require.NotNil(t, last.LastReadAt)
+	assert.Equal(t, at, *last.LastReadAt, "the first read is the one kept")
+
+	review.Title = "Reviewing a pull request"
+	require.NoError(t, s.Memories.Update(ctx, review, ""))
+	require.NoError(t, s.Memories.Delete(ctx, "m-build"))
+	reads, err = s.PlayTrails.ListMemoryReads(ctx, "tr-1")
+	require.NoError(t, err)
+	assert.Equal(t, []plays.FoundMemory{{ID: "m-review", Title: "Reviewing a pull request"}, {ID: "m-build", Title: "Building a ticket", Deleted: true}}, reads)
+
+	_, err = s.db.ExecContext(ctx, `DELETE FROM play_trails WHERE id = 'tr-1'`)
+	require.NoError(t, err)
+	reads, err = s.PlayTrails.ListMemoryReads(ctx, "tr-1")
+	require.NoError(t, err)
+	assert.Empty(t, reads)
 }

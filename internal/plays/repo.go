@@ -104,6 +104,10 @@ type TrailRepo interface {
 	LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*Trail, error)
 	// LatestTrailInConversation returns the newest trail that ran in a conversation, ErrNotFound when none.
 	LatestTrailInConversation(ctx context.Context, conversationID string) (*Trail, error)
+	// RecordMemoryRead notes the run read memoryID at at, when it is a memory of projectID; a repeat read changes nothing.
+	RecordMemoryRead(ctx context.Context, trailID, projectID, memoryID string, at time.Time) error
+	// ListMemoryReads returns the memories the run read, in read order.
+	ListMemoryReads(ctx context.Context, trailID string) ([]FoundMemory, error)
 	// ListPlayRuns pages a play's runs inside scope, newest first, or with waiting its waiting runs, oldest first, and
 	// counts every match.
 	ListPlayRuns(ctx context.Context, playID string, scope RunScope, waiting bool, w paging.Window) ([]PlayRun, int, error)

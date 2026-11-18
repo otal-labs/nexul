@@ -31,6 +31,8 @@ type Memory struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedBy string    `json:"updated_by"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// LastReadAt is when a play run last read it with memory_get, nil when none has.
+	LastReadAt *time.Time `json:"last_read_at"`
 	// RestoredFrom is the version number a restore copied this save from; zero for any other save.
 	RestoredFrom int `json:"-"`
 }

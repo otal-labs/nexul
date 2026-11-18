@@ -1377,6 +1377,13 @@ type Topology struct {
 	UpdatedAt     int64
 }
 
+type TrailMemoryRead struct {
+	TrailID  string
+	MemoryID string
+	Title    string
+	ReadAt   int64
+}
+
 type User struct {
 	ID                string
 	Login             string

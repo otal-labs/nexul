@@ -101,27 +101,34 @@ func (q *Queries) GetInterviewTemplate(ctx context.Context, workspaceID string) 
 }
 
 const getMemory = `-- name: GetMemory :one
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE id = ?
+SELECT memories.id, memories.workspace_id, memories.project_id, memories.title, memories.when_to_use, memories.body, memories.always_included, memories.version, memories.created_by, memories.created_at, memories.updated_by, memories.updated_at, memories.kind, memories.footer, (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE id = ?
 `
 
-func (q *Queries) GetMemory(ctx context.Context, id string) (Memory, error) {
+type GetMemoryRow struct {
+	Memory     Memory
+	LastReadAt interface{}
+}
+
+func (q *Queries) GetMemory(ctx context.Context, id string) (GetMemoryRow, error) {
 	row := q.db.QueryRowContext(ctx, getMemory, id)
-	var i Memory
+	var i GetMemoryRow
 	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.ProjectID,
-		&i.Title,
-		&i.WhenToUse,
-		&i.Body,
-		&i.AlwaysIncluded,
-		&i.Version,
-		&i.CreatedBy,
-		&i.CreatedAt,
-		&i.UpdatedBy,
-		&i.UpdatedAt,
-		&i.Kind,
-		&i.Footer,
+		&i.Memory.ID,
+		&i.Memory.WorkspaceID,
+		&i.Memory.ProjectID,
+		&i.Memory.Title,
+		&i.Memory.WhenToUse,
+		&i.Memory.Body,
+		&i.Memory.AlwaysIncluded,
+		&i.Memory.Version,
+		&i.Memory.CreatedBy,
+		&i.Memory.CreatedAt,
+		&i.Memory.UpdatedBy,
+		&i.Memory.UpdatedAt,
+		&i.Memory.Kind,
+		&i.Memory.Footer,
+		&i.LastReadAt,
 	)
 	return i, err
 }
@@ -243,33 +250,40 @@ func (q *Queries) InsertMemoryVersion(ctx context.Context, arg InsertMemoryVersi
 }
 
 const listMemoriesByProject = `-- name: ListMemoriesByProject :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE project_id = ? ORDER BY created_at
+SELECT memories.id, memories.workspace_id, memories.project_id, memories.title, memories.when_to_use, memories.body, memories.always_included, memories.version, memories.created_by, memories.created_at, memories.updated_by, memories.updated_at, memories.kind, memories.footer, (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE project_id = ? ORDER BY created_at
 `
 
-func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullString) ([]Memory, error) {
+type ListMemoriesByProjectRow struct {
+	Memory     Memory
+	LastReadAt interface{}
+}
+
+func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullString) ([]ListMemoriesByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMemoriesByProject, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Memory
+	var items []ListMemoriesByProjectRow
 	for rows.Next() {
-		var i Memory
+		var i ListMemoriesByProjectRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.ProjectID,
-			&i.Title,
-			&i.WhenToUse,
-			&i.Body,
-			&i.AlwaysIncluded,
-			&i.Version,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedBy,
-			&i.UpdatedAt,
-			&i.Kind,
-			&i.Footer,
+			&i.Memory.ID,
+			&i.Memory.WorkspaceID,
+			&i.Memory.ProjectID,
+			&i.Memory.Title,
+			&i.Memory.WhenToUse,
+			&i.Memory.Body,
+			&i.Memory.AlwaysIncluded,
+			&i.Memory.Version,
+			&i.Memory.CreatedBy,
+			&i.Memory.CreatedAt,
+			&i.Memory.UpdatedBy,
+			&i.Memory.UpdatedAt,
+			&i.Memory.Kind,
+			&i.Memory.Footer,
+			&i.LastReadAt,
 		); err != nil {
 			return nil, err
 		}
@@ -285,33 +299,40 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullS
 }
 
 const listMemoriesByWorkspace = `-- name: ListMemoriesByWorkspace :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at
+SELECT memories.id, memories.workspace_id, memories.project_id, memories.title, memories.when_to_use, memories.body, memories.always_included, memories.version, memories.created_by, memories.created_at, memories.updated_by, memories.updated_at, memories.kind, memories.footer, (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at
 `
 
-func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]Memory, error) {
+type ListMemoriesByWorkspaceRow struct {
+	Memory     Memory
+	LastReadAt interface{}
+}
+
+func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]ListMemoriesByWorkspaceRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMemoriesByWorkspace, workspaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Memory
+	var items []ListMemoriesByWorkspaceRow
 	for rows.Next() {
-		var i Memory
+		var i ListMemoriesByWorkspaceRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.ProjectID,
-			&i.Title,
-			&i.WhenToUse,
-			&i.Body,
-			&i.AlwaysIncluded,
-			&i.Version,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedBy,
-			&i.UpdatedAt,
-			&i.Kind,
-			&i.Footer,
+			&i.Memory.ID,
+			&i.Memory.WorkspaceID,
+			&i.Memory.ProjectID,
+			&i.Memory.Title,
+			&i.Memory.WhenToUse,
+			&i.Memory.Body,
+			&i.Memory.AlwaysIncluded,
+			&i.Memory.Version,
+			&i.Memory.CreatedBy,
+			&i.Memory.CreatedAt,
+			&i.Memory.UpdatedBy,
+			&i.Memory.UpdatedAt,
+			&i.Memory.Kind,
+			&i.Memory.Footer,
+			&i.LastReadAt,
 		); err != nil {
 			return nil, err
 		}
@@ -327,7 +348,8 @@ func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID strin
 }
 
 const listMemoriesPage = `-- name: ListMemoriesPage :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?
+SELECT memories.id, memories.workspace_id, memories.project_id, memories.title, memories.when_to_use, memories.body, memories.always_included, memories.version, memories.created_by, memories.created_at, memories.updated_by, memories.updated_at, memories.kind, memories.footer, (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?
 `
 
 type ListMemoriesPageParams struct {
@@ -336,30 +358,36 @@ type ListMemoriesPageParams struct {
 	Offset    int64
 }
 
-func (q *Queries) ListMemoriesPage(ctx context.Context, arg ListMemoriesPageParams) ([]Memory, error) {
+type ListMemoriesPageRow struct {
+	Memory     Memory
+	LastReadAt interface{}
+}
+
+func (q *Queries) ListMemoriesPage(ctx context.Context, arg ListMemoriesPageParams) ([]ListMemoriesPageRow, error) {
 	rows, err := q.db.QueryContext(ctx, listMemoriesPage, arg.ProjectID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Memory
+	var items []ListMemoriesPageRow
 	for rows.Next() {
-		var i Memory
+		var i ListMemoriesPageRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.ProjectID,
-			&i.Title,
-			&i.WhenToUse,
-			&i.Body,
-			&i.AlwaysIncluded,
-			&i.Version,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedBy,
-			&i.UpdatedAt,
-			&i.Kind,
-			&i.Footer,
+			&i.Memory.ID,
+			&i.Memory.WorkspaceID,
+			&i.Memory.ProjectID,
+			&i.Memory.Title,
+			&i.Memory.WhenToUse,
+			&i.Memory.Body,
+			&i.Memory.AlwaysIncluded,
+			&i.Memory.Version,
+			&i.Memory.CreatedBy,
+			&i.Memory.CreatedAt,
+			&i.Memory.UpdatedBy,
+			&i.Memory.UpdatedAt,
+			&i.Memory.Kind,
+			&i.Memory.Footer,
+			&i.LastReadAt,
 		); err != nil {
 			return nil, err
 		}

@@ -56,7 +56,7 @@ func (r *MemoriesRepo) GetByID(ctx context.Context, id string) (*memories.Memory
 	if err != nil {
 		return nil, fmt.Errorf("get memory %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toMemory(row), nil
+	return withLastRead(row.Memory, row.LastReadAt)
 }
 
 func (r *MemoriesRepo) GetByProjectKind(ctx context.Context, projectID, kind string) (*memories.Memory, error) {
@@ -103,7 +103,7 @@ func (r *MemoriesRepo) ListByWorkspace(ctx context.Context, workspaceID string) 
 	if err != nil {
 		return nil, fmt.Errorf("list memories for workspace %s: %w", workspaceID, err)
 	}
-	return toMemoriesList(rows), nil
+	return readMemories(rows, func(row sqlcgen.ListMemoriesByWorkspaceRow) (sqlcgen.Memory, any) { return row.Memory, row.LastReadAt })
 }
 
 func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID string) ([]*memories.Memory, error) {
@@ -111,7 +111,7 @@ func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID string) ([]*
 	if err != nil {
 		return nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
-	return toMemoriesList(rows), nil
+	return readMemories(rows, func(row sqlcgen.ListMemoriesByProjectRow) (sqlcgen.Memory, any) { return row.Memory, row.LastReadAt })
 }
 
 // PageByProject reads one window of a project's memories, oldest first, and how many it has.
@@ -124,7 +124,8 @@ func (r *MemoriesRepo) PageByProject(ctx context.Context, projectID string, w pa
 	if err != nil {
 		return nil, 0, fmt.Errorf("count memories for project %s: %w", projectID, err)
 	}
-	return toMemoriesList(rows), int(total), nil
+	ms, err := readMemories(rows, func(row sqlcgen.ListMemoriesPageRow) (sqlcgen.Memory, any) { return row.Memory, row.LastReadAt })
+	return ms, int(total), err
 }
 
 func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia string, evts ...eventbus.OutboxEvent) error {
@@ -135,7 +136,7 @@ func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia
 		if err != nil {
 			return fmt.Errorf("update memory %s: %w", m.ID, notFoundIfNoRows(err))
 		}
-		m.Version = int(cur.Version) + 1
+		m.Version = int(cur.Memory.Version) + 1
 		n, err := q.UpdateMemory(ctx, sqlcgen.UpdateMemoryParams{
 			Title: m.Title, WhenToUse: m.WhenToUse, Body: m.Body,
 			AlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),
@@ -278,12 +279,30 @@ func toMemory(row sqlcgen.Memory) *memories.Memory {
 	}
 }
 
-func toMemoriesList(rows []sqlcgen.Memory) []*memories.Memory {
+// withLastRead is a memory row with its last read, the MAX a list reads beside it (NULL when no run has read it).
+func withLastRead(row sqlcgen.Memory, lastRead any) (*memories.Memory, error) {
+	m := toMemory(row)
+	at, ok, err := optionalInt(lastRead)
+	if err != nil {
+		return nil, fmt.Errorf("last read of memory %s: %w", row.ID, err)
+	}
+	if ok {
+		t := time.Unix(at, 0).UTC()
+		m.LastReadAt = &t
+	}
+	return m, nil
+}
+
+func readMemories[R any](rows []R, split func(R) (sqlcgen.Memory, any)) ([]*memories.Memory, error) {
 	out := make([]*memories.Memory, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toMemory(row))
+		m, err := withLastRead(split(row))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
 	}
-	return out
+	return out, nil
 }
 
 func enqueueMemoriesOutbox(ctx context.Context, tx *sql.Tx, evts []eventbus.OutboxEvent) error {

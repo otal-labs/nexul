@@ -223,6 +223,8 @@ type Trail struct {
 	Question *TrailQuestion `json:"question"`
 	// InstructionsVersion is the play's instructions version the run started with, nil on runs from before history.
 	InstructionsVersion *int `json:"instructions_version,omitempty"`
+	// FoundMemories are the memories the run read that it was not told to read, filled on one trail for a reader of its project's memories.
+	FoundMemories []FoundMemory `json:"found_memories,omitempty"`
 }
 
 // AppendActivity replaces the step sharing e's call id, else appends, keeping the newest MaxTrailActivityLines.

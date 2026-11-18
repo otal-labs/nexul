@@ -23,6 +23,7 @@ var goSteps = map[string]func(ctx context.Context, tx *sql.Tx) error{
 	"0157_starting_templates_one_flow": versionRewrittenBuiltinPlays,
 	"0158_default_memories":            seedDefaultMemories,
 	"0159_seeded_flow_auto_plays":      versionRewrittenBuiltinPlays,
+	"0160_trail_memory_reads":          backfillTrailMemoryReads,
 }
 
 // Migrate applies every pending migration. Test helpers use this no-backup path directly; production boots
