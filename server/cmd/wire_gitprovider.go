@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider"
@@ -299,4 +300,76 @@ func (g gitProviderRouter) GetFile(ctx context.Context, owner, name, ref, path s
 		return nil, err
 	}
 	return p.GetFile(ctx, owner, name, ref, path)
+}
+
+func (g gitProviderRouter) UpdateWebhook(ctx context.Context, owner, name, hookID string) error {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return err
+	}
+	return p.UpdateWebhook(ctx, owner, name, hookID)
+}
+
+func (g gitProviderRouter) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) ([]*gitprovider.Issue, int, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, 0, err
+	}
+	return p.ListIssues(ctx, owner, name, opts)
+}
+
+func (g gitProviderRouter) GetIssue(ctx context.Context, owner, name string, number int) (*gitprovider.Issue, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.GetIssue(ctx, owner, name, number)
+}
+
+func (g gitProviderRouter) CreateIssue(ctx context.Context, owner, name string, in gitprovider.IssueInput) (*gitprovider.Issue, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.CreateIssue(ctx, owner, name, in)
+}
+
+func (g gitProviderRouter) UpdateIssue(ctx context.Context, owner, name string, number int, patch gitprovider.IssuePatch) (*gitprovider.Issue, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.UpdateIssue(ctx, owner, name, number, patch)
+}
+
+func (g gitProviderRouter) ListIssueComments(ctx context.Context, owner, name string, number int, since time.Time) ([]*gitprovider.IssueComment, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.ListIssueComments(ctx, owner, name, number, since)
+}
+
+func (g gitProviderRouter) CreateIssueComment(ctx context.Context, owner, name string, number int, body string) (*gitprovider.IssueComment, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.CreateIssueComment(ctx, owner, name, number, body)
+}
+
+func (g gitProviderRouter) UpdateIssueComment(ctx context.Context, owner, name string, commentID int64, body string) (*gitprovider.IssueComment, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.UpdateIssueComment(ctx, owner, name, commentID, body)
+}
+
+func (g gitProviderRouter) DeleteIssueComment(ctx context.Context, owner, name string, commentID int64) error {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return err
+	}
+	return p.DeleteIssueComment(ctx, owner, name, commentID)
 }

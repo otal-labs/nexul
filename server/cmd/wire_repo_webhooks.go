@@ -40,7 +40,7 @@ func (h repoWebhooks) hookURL(ctx context.Context) (string, error) {
 	return strings.TrimRight(base, "/") + "/hooks/github", nil
 }
 
-// ensure registers the webhook unless one with this instance's URL already exists; another instance's hook is left alone.
+// ensure registers the webhook unless this instance's is there, whose events it brings up to date; another instance's hook is left alone.
 func (h repoWebhooks) ensure(ctx context.Context, owner, name string) error {
 	url, err := h.hookURL(ctx)
 	if err != nil {
@@ -51,9 +51,13 @@ func (h repoWebhooks) ensure(ctx context.Context, owner, name string) error {
 		return err
 	}
 	for _, hook := range hooks {
-		if hook.URL == url {
+		if hook.URL != url {
+			continue
+		}
+		if !hook.Stale {
 			return nil
 		}
+		return h.git.UpdateWebhook(ctx, owner, name, hook.ID)
 	}
 	_, err = h.git.CreateWebhook(ctx, owner, name, gitprovider.WebhookConfig{URL: url, Secret: h.secret})
 	return err

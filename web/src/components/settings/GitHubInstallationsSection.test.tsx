@@ -122,6 +122,16 @@ describe("GitHubInstallationsSection", () => {
     expect(screen.getByText("acme")).toBeInTheDocument();
   });
 
+  it("flags an installation that has not accepted the Issues permission, and only that one", async () => {
+    const behind = { ...installations[1], missing_permissions: ["issues"] };
+    stubApi(app, connected, [{ ...installations[0]!, missing_permissions: [] }, behind]);
+    renderSection();
+
+    expect(await screen.findByText("Issues permission missing")).toBeInTheDocument();
+    expect(screen.getAllByText("Issues permission missing")).toHaveLength(1);
+    expect(screen.getByText(/accept the change here under Manage/)).toBeInTheDocument();
+  });
+
   it("says so when the App is installed nowhere the viewer's GitHub can open, still offering to add one", async () => {
     stubApi(app, connected, []);
     renderSection();

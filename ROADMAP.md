@@ -496,8 +496,7 @@ without changing the core architecture.
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list
   has no manual ordering; MCP tools for automation versions and
-  secrets; the GitHub webhook subscribes only `pull_request`; permission
-  overwrites are wired for documents only, and the grid has no `comment`
+  secrets; permission overwrites are wired for documents only, and the grid has no `comment`
   action; the profile display-name override is read only by the wizard; a
   503 carries no `Retry-After`; no
   default automation posts deploy results to a chat channel, and automations

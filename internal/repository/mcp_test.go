@@ -85,7 +85,7 @@ func TestRepositoryList_Installations(t *testing.T) {
 	b, err := jsonx.Marshal(got)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":"","provider":"github"}],"total":1,"has_more":false,
-		"installations":[{"id":9,"account_id":19,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`, string(b))
+		"installations":[{"id":9,"account_id":19,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[],"missing_permissions":[]}]}`, string(b))
 }
 
 func TestRepositoryScan(t *testing.T) {

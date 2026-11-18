@@ -35,4 +35,4 @@ code nobody stands behind; editing the template's hints per project, which chang
 template; a GitHub issues source kind, which would ask every installation for the Issues permission to save a paste;
 and an audit that files tickets directly, which skips a person reading the findings first.
 
-Decided 2026-10-04.
+Decided 2026-10-04. The App asks every installation for Issues since ADR 0199, so the Issues reason for rejecting a GitHub issues source kind no longer holds.

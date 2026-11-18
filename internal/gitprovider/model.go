@@ -1,5 +1,7 @@
 package gitprovider
 
+import "time"
+
 // Repo is a git repository as seen through a provider.
 type Repo struct {
 	ID            int64  `json:"id"`
@@ -29,6 +31,8 @@ type Installation struct {
 	HTMLURL string
 	// Problem says why the git host refused to read this installation; the others read on.
 	Problem string
+	// MissingPermissions names what the App asks for that this installation has not accepted, such as "issues".
+	MissingPermissions []string
 }
 
 // PRState is the lifecycle state of a pull request.
@@ -68,6 +72,8 @@ type WebhookConfig struct {
 type Webhook struct {
 	ID  string
 	URL string
+	// Stale is true when the hook's events differ from the ones the receiver dispatches; UpdateWebhook fixes them.
+	Stale bool
 }
 
 // PRRef identifies a pull request for ticket linking.
@@ -83,4 +89,57 @@ type PRRef struct {
 type TreeEntry struct {
 	Path string
 	Type string
+}
+
+// Issue is a provider-neutral issue, never a pull request; it is also the git.issue payload's issue.
+type Issue struct {
+	ID          int64     `json:"id"`
+	Number      int       `json:"number"`
+	Title       string    `json:"title"`
+	Body        string    `json:"body"`
+	State       string    `json:"state" enum:"open,closed"`
+	StateReason string    `json:"state_reason" jsonschema:"Why it was closed or reopened (completed, not_planned, duplicate, reopened); empty when the host gives none."`
+	Labels      []string  `json:"labels" jsonschema:"Label names."`
+	Assignees   []string  `json:"assignees" jsonschema:"Assignee logins."`
+	Author      string    `json:"author"`
+	HTMLURL     string    `json:"html_url"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// IssueComment is a comment on an issue; it is also the git.issue_comment payload's comment.
+type IssueComment struct {
+	ID              int64     `json:"id"`
+	Body            string    `json:"body"`
+	Author          string    `json:"author"`
+	AuthorAvatarURL string    `json:"author_avatar_url"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// IssueOpts filters ListIssues; Page starts at 1, and 0 reads the first page.
+type IssueOpts struct {
+	// State is open, closed or all; empty reads open issues.
+	State  string
+	Labels []string
+	// Since keeps only issues updated at or after it; zero keeps all.
+	Since time.Time
+	Page  int
+}
+
+// IssueInput is a new issue.
+type IssueInput struct {
+	Title     string
+	Body      string
+	Labels    []string
+	Assignees []string
+}
+
+// IssuePatch changes an issue; a nil field keeps its value, and an empty list clears labels or assignees.
+type IssuePatch struct {
+	Title       *string
+	Body        *string
+	State       *string
+	StateReason *string
+	Labels      *[]string
+	Assignees   *[]string
 }

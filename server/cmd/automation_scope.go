@@ -109,7 +109,8 @@ var scopeRules = map[string]scopeRule{
 
 	"git.pr_opened": pullRequestScope, "git.pr_merged": pullRequestScope, "git.pr_closed": pullRequestScope,
 	"git.pr_review_submitted": repoScope, "git.pr_comment": pullRequestScope, "git.push": repoScope,
-	"git.branch_deleted": repoScope, "git.provider_event": providerEventScope, "review.status_changed": reviewScope,
+	"git.branch_deleted": repoScope, "git.issue": repoScope, "git.issue_comment": repoScope,
+	"git.provider_event": providerEventScope, "review.status_changed": reviewScope,
 
 	"notification.push_requested": pushScope, "access.grant.changed": grantScope,
 

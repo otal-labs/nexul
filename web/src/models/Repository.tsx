@@ -31,6 +31,8 @@ export interface Installation {
   workspaces: InstallationWorkspace[];
   // Why GitHub refused to read it, a suspension for one; the other installations still list.
   problem?: string;
+  // What the App asks for that the installation's owner has not accepted yet, such as "issues".
+  missing_permissions?: string[];
 }
 
 export interface InstallationWorkspace {

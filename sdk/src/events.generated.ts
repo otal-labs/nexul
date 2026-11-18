@@ -82,6 +82,8 @@ export interface EventPayloads {
   "doc.watchers.changed": { "doc": { "id": string; "project_id": string; "title": string; }; "user_id": string; "watching": boolean; };
   "due_date.reminder_due": { "ticket_id": string; "project_id": string; "workspace_id": string; "key": string; "title": string; "due_on": string; "user_ids": string[]; };
   "git.branch_deleted": { "owner": string; "repo": string; "branch": string; };
+  "git.issue": { "owner": string; "repo": string; "action": "opened" | "edited" | "closed" | "reopened" | "labeled" | "unlabeled" | "assigned" | "unassigned" | "deleted" | "transferred"; "issue": { "id": number; "number": number; "title": string; "body": string; "state": "open" | "closed"; "state_reason": string; "labels": string[]; "assignees": string[]; "author": string; "html_url": string; "updated_at": string; }; "sender": { "login": string; "type": string; }; };
+  "git.issue_comment": { "owner": string; "repo": string; "issue_number": number; "action": "created" | "edited" | "deleted"; "comment": { "id": number; "body": string; "author": string; "author_avatar_url": string; "created_at": string; "updated_at": string; }; "sender": { "login": string; "type": string; }; };
   "git.pr_closed": { "owner": string; "repo": string; "pr": { "number": number; "title": string; "body": string; "state": string; "merged": boolean; "head_sha": string; "base_branch": string; "author": string; "linked_ticket_ids": string[]; }; };
   "git.pr_comment": { "owner": string; "repo": string; "pr": { "number": number; }; "comment": { "body": string; "author": string; }; };
   "git.pr_merged": { "owner": string; "repo": string; "pr": { "number": number; "title": string; "body": string; "state": string; "merged": boolean; "head_sha": string; "base_branch": string; "author": string; "linked_ticket_ids": string[]; }; };
@@ -271,6 +273,8 @@ export const TOPICS: Topic[] = [
   "doc.watchers.changed",
   "due_date.reminder_due",
   "git.branch_deleted",
+  "git.issue",
+  "git.issue_comment",
   "git.pr_closed",
   "git.pr_comment",
   "git.pr_merged",
@@ -458,6 +462,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "doc.watchers.changed": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"user_id":"fixture-user_id","watching":false},
   "due_date.reminder_due": {"ticket_id":"fixture-ticket_id","project_id":"fixture-project_id","workspace_id":"fixture-workspace_id","key":"fixture-key","title":"fixture-title","due_on":"fixture-due_on","user_ids":["fixture-user_ids"]},
   "git.branch_deleted": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch"},
+  "git.issue": {"owner":"fixture-owner","repo":"fixture-repo","action":"opened","issue":{"id":1,"number":1,"title":"fixture-title","body":"fixture-body","state":"open","state_reason":"fixture-state_reason","labels":["fixture-labels"],"assignees":["fixture-assignees"],"author":"fixture-author","html_url":"fixture-html_url","updated_at":"2026-01-01T00:00:00Z"},"sender":{"login":"fixture-login","type":"fixture-type"}},
+  "git.issue_comment": {"owner":"fixture-owner","repo":"fixture-repo","issue_number":1,"action":"created","comment":{"id":1,"body":"fixture-body","author":"fixture-author","author_avatar_url":"fixture-author_avatar_url","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"sender":{"login":"fixture-login","type":"fixture-type"}},
   "git.pr_closed": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1,"title":"fixture-title","body":"fixture-body","state":"fixture-state","merged":false,"head_sha":"fixture-head_sha","base_branch":"fixture-base_branch","author":"fixture-author","linked_ticket_ids":["fixture-linked_ticket_ids"]}},
   "git.pr_comment": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1},"comment":{"body":"fixture-body","author":"fixture-author"}},
   "git.pr_merged": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1,"title":"fixture-title","body":"fixture-body","state":"fixture-state","merged":false,"head_sha":"fixture-head_sha","base_branch":"fixture-base_branch","author":"fixture-author","linked_ticket_ids":["fixture-linked_ticket_ids"]}},

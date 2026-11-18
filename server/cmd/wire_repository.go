@@ -79,7 +79,7 @@ func toRepositoryInstallations(installs []*gitprovider.Installation) []repositor
 		out = append(out, repository.Installation{
 			ID: i.ID, AccountID: i.AccountID, AccountLogin: i.AccountLogin, AccountType: i.AccountType,
 			AccountAvatarURL: i.AccountAvatarURL, RepositorySelection: i.RepositorySelection,
-			RepositoryCount: i.RepositoryCount, HTMLURL: i.HTMLURL, Problem: i.Problem,
+			RepositoryCount: i.RepositoryCount, HTMLURL: i.HTMLURL, Problem: i.Problem, MissingPermissions: i.MissingPermissions,
 		})
 	}
 	return out

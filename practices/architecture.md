@@ -303,10 +303,18 @@ type GitProvider interface {
     MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error)
     CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
     ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
+    UpdateWebhook(ctx context.Context, owner, name, hookID string) error
     DeleteWebhook(ctx context.Context, owner, name, hookID string) error
-    ListInstallationRepos(ctx context.Context) ([]*Repo, error)
     GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)
     GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
+    ListIssues(ctx context.Context, owner, name string, opts IssueOpts) ([]*Issue, int, error)
+    GetIssue(ctx context.Context, owner, name string, number int) (*Issue, error)
+    CreateIssue(ctx context.Context, owner, name string, in IssueInput) (*Issue, error)
+    UpdateIssue(ctx context.Context, owner, name string, number int, patch IssuePatch) (*Issue, error)
+    ListIssueComments(ctx context.Context, owner, name string, number int, since time.Time) ([]*IssueComment, error)
+    CreateIssueComment(ctx context.Context, owner, name string, number int, body string) (*IssueComment, error)
+    UpdateIssueComment(ctx context.Context, owner, name string, commentID int64, body string) (*IssueComment, error)
+    DeleteIssueComment(ctx context.Context, owner, name string, commentID int64) error
 }
 ```
 

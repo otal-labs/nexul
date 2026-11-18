@@ -5,6 +5,7 @@ import (
 	std "errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 var (
@@ -29,6 +30,18 @@ func Retryable(err error) error {
 func Fatal(err error) error {
 	return fmt.Errorf("%w: %w", ErrFatal, err)
 }
+
+// RetryAfterError is a Retryable failure that also says how long to wait first, such as a host's rate-limit reset.
+type RetryAfterError struct {
+	Wait time.Duration
+	Err  error
+}
+
+func (e *RetryAfterError) Error() string {
+	return fmt.Sprintf("retryable after %s: %v", e.Wait, e.Err)
+}
+
+func (e *RetryAfterError) Unwrap() []error { return []error{ErrRetryable, e.Err} }
 
 // Coded is an error carrying a stable machine code adapters report instead of the sentinel's generic one.
 type Coded struct {
