@@ -161,6 +161,32 @@ describe("ImportSection", () => {
     expect(screen.getByRole("button", { name: "Import 8 docs" })).toBeInTheDocument();
   });
 
+  it("scans a Trello board with its key and token, and drops the form once it starts", async () => {
+    const user = userEvent.setup();
+    mocks.post.mockResolvedValue({ data: anImport({ source: "trello", from: "abc", state: "scanning", total: 0 }) });
+    renderSection([]);
+    await pickOption(user, "Source", "Trello board");
+    await pickOption(user, "Project", "Atlas");
+    const scan = screen.getByRole("button", { name: "Scan" });
+    expect(scan).toBeDisabled();
+    await user.type(screen.getByLabelText("Board"), "https://trello.com/b/abc/roadmap");
+    const token = screen.getByLabelText("API key and token");
+    expect(token).toHaveAttribute("type", "password");
+    await user.type(token, "key:token");
+    await user.click(scan);
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/imports", {
+        source: "trello",
+        project_id: "p-1",
+        from: "https://trello.com/b/abc/roadmap",
+        credential: "key:token",
+      }),
+    );
+    expect(await screen.findByText("Scanning")).toBeInTheDocument();
+    expect(screen.queryByLabelText("API key and token")).not.toBeInTheDocument();
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/projects/p-1/repos");
+  });
+
   it("asks which repository when the project has several", async () => {
     const user = userEvent.setup();
     renderSection(
@@ -199,6 +225,11 @@ describe("ImportSection", () => {
     await user.click(screen.getByRole("button", { name: "Import 250 tickets" }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/imports/imp-1/confirm"));
     expect(await screen.findByRole("progressbar", { name: "Import progress" })).toBeInTheDocument();
+  });
+
+  it("counts what the source keeps archived and leaves out comments it could not count", async () => {
+    renderSection([anImport({ source: "trello", report: { ...report, comments: 0, archived: 4 } })]);
+    expect(await screen.findByText("250 tickets · 4 archived, not imported")).toBeInTheDocument();
   });
 
   it("lists an ended import with what it brought in and what failed", async () => {

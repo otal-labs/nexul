@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"path"
 	"slices"
 	"strings"
@@ -284,6 +285,12 @@ func (d *fakeDesk) Comment(_ context.Context, ticketID string, c NewComment) err
 	return nil
 }
 
+func (d *fakeDesk) Key(_ context.Context, ticketID string) (string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return "REF-" + d.tickets[ticketID].Title, nil
+}
+
 func (d *fakeDesk) Attach(_ context.Context, _, name string, _ []byte) (string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -304,7 +311,7 @@ func (d *fakeDesk) Block(_ context.Context, ticketID, blockerID string) error {
 // fakeFiles serves every URL under files.example.com, and refuses anything over its size.
 type fakeFiles struct{}
 
-func (fakeFiles) Fetch(_ context.Context, rawURL string, hosts []string) (string, []byte, error) {
+func (fakeFiles) Fetch(_ context.Context, rawURL string, hosts []string, _ http.Header) (string, []byte, error) {
 	if strings.Contains(rawURL, "huge") {
 		return "", nil, ErrTooLarge
 	}

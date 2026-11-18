@@ -202,17 +202,20 @@ func (q *Queries) ListImportItemsInState(ctx context.Context, arg ListImportItem
 }
 
 const listImportPeople = `-- name: ListImportPeople :many
-SELECT u.id AS user_id, u.login AS user_login, i.provider, i.login AS identity_login
+SELECT u.id AS user_id, u.login AS user_login, u.name AS user_name, CAST(COALESCE(u.display_name, '') AS TEXT) AS user_display_name,
+       i.provider, i.login AS identity_login
 FROM workspace_members m JOIN users u ON u.id = m.user_id JOIN user_identities i ON i.user_id = u.id
 WHERE m.workspace_id = ?
 ORDER BY u.id, i.provider
 `
 
 type ListImportPeopleRow struct {
-	UserID        string
-	UserLogin     string
-	Provider      string
-	IdentityLogin string
+	UserID          string
+	UserLogin       string
+	UserName        string
+	UserDisplayName string
+	Provider        string
+	IdentityLogin   string
 }
 
 // Every member of a workspace with each sign-in linked to their account, for matching an import's people.
@@ -228,6 +231,8 @@ func (q *Queries) ListImportPeople(ctx context.Context, workspaceID string) ([]L
 		if err := rows.Scan(
 			&i.UserID,
 			&i.UserLogin,
+			&i.UserName,
+			&i.UserDisplayName,
 			&i.Provider,
 			&i.IdentityLogin,
 		); err != nil {

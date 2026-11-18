@@ -31,11 +31,13 @@ const maxRedirects = 5
 // Files downloads one file a source links to.
 type Files interface {
 	// Fetch returns the file's name and bytes; ErrTooLarge past MaxFileSize, and an error for any host not in hosts.
-	Fetch(ctx context.Context, rawURL string, hosts []string) (name string, data []byte, err error)
+	// header signs the request when the source's own API serves the file, nil otherwise.
+	Fetch(ctx context.Context, rawURL string, hosts []string, header http.Header) (name string, data []byte, err error)
 }
 
-// Fetcher downloads over plain HTTPS: it never carries the source's credential, and every hop, redirects included,
-// must be one of the source's hosts, so a link in imported text cannot reach the instance's own network.
+// Fetcher downloads over plain HTTPS: it carries the source's credential only where the source signs the request for
+// its own API, Go drops that on a redirect to another domain, and every hop must be one of the source's hosts, so a
+// link in imported text cannot reach the instance's own network.
 type Fetcher struct {
 	client *http.Client
 }
@@ -44,7 +46,7 @@ type Fetcher struct {
 func NewFetcher() *Fetcher { return &Fetcher{client: &http.Client{Timeout: time.Minute}} }
 
 // Fetch implements Files.
-func (f *Fetcher) Fetch(ctx context.Context, rawURL string, hosts []string) (string, []byte, error) {
+func (f *Fetcher) Fetch(ctx context.Context, rawURL string, hosts []string, header http.Header) (string, []byte, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil || !allowedHost(u, hosts) {
 		return "", nil, errHost
@@ -62,6 +64,9 @@ func (f *Fetcher) Fetch(ctx context.Context, rawURL string, hosts []string) (str
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return "", nil, err
+	}
+	for k, v := range header {
+		req.Header[k] = v
 	}
 	resp, err := client.Do(req)
 	if err != nil {

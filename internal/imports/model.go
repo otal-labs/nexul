@@ -66,6 +66,8 @@ type Report struct {
 	Tickets  int `json:"tickets"`
 	Comments int `json:"comments"`
 	Docs     int `json:"docs"`
+	// Archived are records the source keeps archived, counted but not imported.
+	Archived int `json:"archived"`
 	// People are everyone the scan found, each with the member they map to, if any.
 	People []PersonMatch `json:"people"`
 	// Statuses are the source's statuses and the column each lands in.

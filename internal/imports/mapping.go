@@ -5,7 +5,8 @@ import (
 	"strings"
 )
 
-// memberFor is the login of the member a person maps to, by GitHub login first and then email; "" when nobody does.
+// memberFor is the login of the member a person maps to, by GitHub login, then email, then for a source with neither
+// a member's login and then their name, the name only when one member alone has it; "" when nobody does.
 func memberFor(members []Member, p Person) string {
 	login, email := strings.ToLower(strings.TrimSpace(p.Login)), strings.ToLower(strings.TrimSpace(p.Email))
 	for _, m := range members {
@@ -18,7 +19,32 @@ func memberFor(members []Member, p Person) string {
 			return m.Login
 		}
 	}
-	return ""
+	username := strings.TrimSpace(p.Username)
+	if username == "" || login != "" || email != "" {
+		return ""
+	}
+	for _, m := range members {
+		if strings.EqualFold(m.Login, username) {
+			return m.Login
+		}
+	}
+	return memberNamed(members, p.Name)
+}
+
+// memberNamed is the one member whose name is name, ignoring case; "" when none or several are.
+func memberNamed(members []Member, name string) string {
+	name = strings.TrimSpace(name)
+	found := ""
+	for _, m := range members {
+		if name == "" || !slices.ContainsFunc(m.Names, func(n string) bool { return strings.EqualFold(strings.TrimSpace(n), name) }) {
+			continue
+		}
+		if found != "" {
+			return ""
+		}
+		found = m.Login
+	}
+	return found
 }
 
 // matchPeople maps every person once, in the order the source found them.
@@ -95,10 +121,54 @@ func assignedLine(title string, p Person) string {
 }
 
 func personName(p Person) string {
-	for _, s := range []string{p.Name, p.Login, p.Email} {
+	for _, s := range []string{p.Name, p.Login, p.Username, p.Email} {
 		if strings.TrimSpace(s) != "" {
 			return s
 		}
 	}
 	return "someone"
 }
+
+// listStatus is where one of a board's lists or a project's sections lands, i counting the open ones in order: the
+// first is backlog, one named like done, complete or shipped is done, and the rest are in progress.
+func listStatus(i int, name string) StatusRef {
+	lower := strings.ToLower(name)
+	if strings.Contains(lower, "done") || strings.Contains(lower, "complete") || strings.Contains(lower, "shipped") {
+		return StatusRef{Name: name, Kind: StatusDone}
+	}
+	if i == 0 {
+		return StatusRef{Name: name, Kind: StatusBacklog}
+	}
+	return StatusRef{Name: name, Kind: StatusProgress}
+}
+
+// taskList is a checklist as task-list markdown.
+func taskList(title string, items []checkItem) string {
+	var b strings.Builder
+	b.WriteString("**" + strings.TrimSpace(title) + "**\n")
+	for _, it := range items {
+		mark := " "
+		if it.Done {
+			mark = "x"
+		}
+		b.WriteString("\n- [" + mark + "] " + strings.TrimSpace(it.Name))
+	}
+	return b.String()
+}
+
+type checkItem struct {
+	Name string
+	Done bool
+}
+
+// fileLinks is a body's list of a record's files, which the sink points at their copies.
+func fileLinks(files []fileLink) string {
+	var b strings.Builder
+	b.WriteString("**Attachments**\n")
+	for _, f := range files {
+		b.WriteString("\n- [" + strings.NewReplacer("[", "", "]", "").Replace(strings.TrimSpace(f.Name)) + "](" + f.URL + ")")
+	}
+	return b.String()
+}
+
+type fileLink struct{ Name, URL string }

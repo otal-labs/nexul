@@ -2,6 +2,8 @@ package imports
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -23,6 +25,9 @@ type Info struct {
 	Title string
 	// FileHosts are the hosts files may be downloaded from, redirects included; a file anywhere else stays a link.
 	FileHosts []string
+	// FileHeader, when set, signs a download from the source's own API with its credential; nil for any other URL,
+	// and a redirect to another domain drops it, so the credential only ever goes back to the service that issued it.
+	FileHeader func(credential string, u *url.URL) http.Header
 }
 
 // Job is what a source reads: the import's project, what in the source to read, the credential, and where to resume.
@@ -46,8 +51,10 @@ type Scan struct {
 	Docs     int
 	// RelationsSkipped counts links between records an import has no place for, such as Linear's related or duplicate.
 	RelationsSkipped int
-	People           []Person
-	Statuses         []StatusRef
+	// Archived are records the source keeps archived, counted but not imported.
+	Archived int
+	People   []Person
+	Statuses []StatusRef
 }
 
 // Sink takes the records a source reads.
@@ -66,11 +73,13 @@ type Sink interface {
 	Checkpoint(ctx context.Context, cursor string) error
 }
 
-// Person is someone in the source, matched to a member by Login (their GitHub login) or Email.
+// Person is someone in the source, matched to a member by Login (their GitHub login) or Email, or, for a source that
+// gives neither, by Username (a member's login) and then Name.
 type Person struct {
-	Login string `json:"login,omitempty"`
-	Email string `json:"email,omitempty"`
-	Name  string `json:"name"`
+	Login    string `json:"login,omitempty"`
+	Email    string `json:"email,omitempty"`
+	Username string `json:"username,omitempty"`
+	Name     string `json:"name"`
 }
 
 // Key identifies the person within one import.
@@ -78,11 +87,14 @@ func (p Person) Key() string {
 	if p.Login != "" {
 		return "login:" + strings.ToLower(p.Login)
 	}
-	return "email:" + strings.ToLower(p.Email)
+	if p.Email != "" {
+		return "email:" + strings.ToLower(p.Email)
+	}
+	return "username:" + strings.ToLower(p.Username)
 }
 
 // Zero reports whether the person names nobody.
-func (p Person) Zero() bool { return p.Login == "" && p.Email == "" }
+func (p Person) Zero() bool { return p.Login == "" && p.Email == "" && p.Username == "" }
 
 // StatusKind is the stage a source status maps to, one of the board's column kinds.
 type StatusKind string
@@ -120,7 +132,9 @@ type Ticket struct {
 	// ends are in, whichever comes second.
 	BlockedBy []string
 	Blocks    []string
-	Comments  []Comment
+	// Parent is the source id of the ticket this one is a subtask of, handed before it; the body names its key.
+	Parent   string
+	Comments []Comment
 	// Files are the file URLs in Body and the comments to copy into attachments.
 	Files []string
 }

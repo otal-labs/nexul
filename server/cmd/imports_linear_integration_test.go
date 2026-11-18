@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"path"
 	"slices"
@@ -21,7 +22,7 @@ import (
 // linearFiles serves every file on a host the source allows, as a signed Linear upload link would.
 type linearFiles struct{}
 
-func (linearFiles) Fetch(_ context.Context, rawURL string, hosts []string) (string, []byte, error) {
+func (linearFiles) Fetch(_ context.Context, rawURL string, hosts []string, _ http.Header) (string, []byte, error) {
 	for _, h := range hosts {
 		if strings.HasPrefix(rawURL, "https://"+h+"/") {
 			return path.Base(strings.SplitN(rawURL, "?", 2)[0]), []byte("png bytes"), nil

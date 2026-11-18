@@ -4805,6 +4805,9 @@
               "docs": {
                 "type": "integer"
               },
+              "archived": {
+                "type": "integer"
+              },
               "people": {
                 "type": "array",
                 "items": {
@@ -4814,6 +4817,9 @@
                       "type": "string"
                     },
                     "email": {
+                      "type": "string"
+                    },
+                    "username": {
                       "type": "string"
                     },
                     "name": {
@@ -4913,6 +4919,7 @@
               "tickets",
               "comments",
               "docs",
+              "archived",
               "people",
               "statuses",
               "skipped",

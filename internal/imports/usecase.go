@@ -48,12 +48,14 @@ type Board interface {
 	AddCategory(ctx context.Context, projectID, name string) (Category, error)
 }
 
-// Member is someone who can open the project, and the logins and emails their linked sign-ins carry, lowercased.
+// Member is someone who can open the project, the logins and emails their linked sign-ins carry, lowercased, and the
+// names they go by.
 type Member struct {
 	UserID       string
 	Login        string
 	GitHubLogins []string
 	Emails       []string
+	Names        []string
 }
 
 // People lists who can open a project, whom a source's people are matched against.
@@ -82,6 +84,8 @@ type Desk interface {
 	Attach(ctx context.Context, ticketID, name string, data []byte) (string, error)
 	// Block records that ticketID waits on blockerID; a link already there is no change.
 	Block(ctx context.Context, ticketID, blockerID string) error
+	// Key is a filed ticket's key, such as REF-12.
+	Key(ctx context.Context, ticketID string) (string, error)
 }
 
 // NewDoc is one doc the import writes; ID is derived, so writing it again is ErrConflict.

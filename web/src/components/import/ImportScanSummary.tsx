@@ -14,13 +14,20 @@ export const ImportScanSummary = ({ id }: ImportScanSummaryProps) => {
   if (!imp) return null;
   const { report } = imp;
   const unmatched = report.people.filter((p) => !p.member).length;
+  const found = [
+    `${report.tickets.toLocaleString()} tickets`,
+    report.comments > 0 ? `${report.comments.toLocaleString()} comments` : "",
+    report.archived ? `${report.archived.toLocaleString()} archived, not imported` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <div className="space-y-6">
       <SettingsRows>
         <SettingsRow label="Found" description="What an earlier import brought in is skipped.">
           <span className="text-sm tabular-nums">
             {report.docs > 0 && `${report.docs.toLocaleString()} docs`}
-            {report.docs === 0 && `${report.tickets.toLocaleString()} tickets · ${report.comments.toLocaleString()} comments`}
+            {report.docs === 0 && found}
             {report.relations_skipped > 0 && ` · ${report.relations_skipped.toLocaleString()} links with no counterpart, skipped`}
           </span>
         </SettingsRow>
@@ -50,7 +57,7 @@ export const ImportScanSummary = ({ id }: ImportScanSummaryProps) => {
           )}
           <ul className={`${settingsListClass} mt-2`}>
             {report.people.map((p) => (
-              <ImportPersonRow key={p.login ?? p.email ?? p.name} person={p} />
+              <ImportPersonRow key={p.login ?? p.email ?? p.username ?? p.name} person={p} />
             ))}
           </ul>
         </section>

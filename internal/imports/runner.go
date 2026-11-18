@@ -188,6 +188,7 @@ func (s *Service) scan(ctx context.Context, src Source, imp *Import) error {
 	next.Total = found.Tickets + found.Docs
 	next.Report.Tickets, next.Report.Comments, next.Report.Docs = found.Tickets, found.Comments, found.Docs
 	next.Report.RelationsSkipped = found.RelationsSkipped
+	next.Report.Archived = found.Archived
 	next.Report.People = matchPeople(members, found.People)
 	next.Report.Statuses = planStatuses(cols, found.Statuses)
 	next.State, next.UpdatedAt = StateReady, s.now().UTC()

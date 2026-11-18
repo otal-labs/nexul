@@ -28,6 +28,8 @@ func importSources(git gitprovider.GitProvider, workspaceSvc *workspace.Service,
 		imports.SourceGitHub: imports.NewGitHubSource(importGitHubIssues{git: git}, importProjectRepos{svc: workspaceSvc}, importIssueSyncs{repo: syncs}),
 		imports.SourceNotion: imports.NewNotionSource(imports.NewNotionClient("", nil, 3)),
 		imports.SourceLinear: imports.NewLinearSource(imports.LinearAPI, nil),
+		imports.SourceTrello: imports.NewTrelloSource(imports.TrelloAPI, nil),
+		imports.SourceAsana:  imports.NewAsanaSource(imports.AsanaAPI, nil),
 	}
 }
 
@@ -113,6 +115,18 @@ func (d importDesk) Comment(ctx context.Context, ticketID string, c imports.NewC
 		AvatarURL: c.AvatarURL, Body: c.Body, Via: c.Via, At: c.At,
 	})
 	return err
+}
+
+func (d importDesk) Key(ctx context.Context, ticketID string) (string, error) {
+	t, err := d.tickets.Get(ctx, ticketID)
+	if err != nil {
+		return "", err
+	}
+	project, err := d.projects.Get(ctx, t.ProjectID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s-%d", project.Prefix, t.Number), nil
 }
 
 func (d importDesk) Attach(ctx context.Context, ticketID, name string, data []byte) (string, error) {

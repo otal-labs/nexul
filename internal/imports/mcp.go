@@ -15,10 +15,10 @@ func MCPTools(svc *Service) []mcptool.Tool {
 
 type importRunIn struct {
 	ID         string `json:"id,omitempty" jsonschema:"An import's id: alone it reads progress; with confirm or cancel it acts."`
-	Source     string `json:"source,omitempty" jsonschema:"Where to import from: github, one attached repository's issues; linear, one team's; notion, the pages shared with an integration."`
+	Source     string `json:"source,omitempty" jsonschema:"Where to import from: github, one attached repository's issues; linear, one team's; trello, a board; asana, a project; notion, the pages shared with an integration."`
 	ProjectID  string `json:"project_id,omitempty" jsonschema:"The project to import into, from project_list."`
-	From       string `json:"from,omitempty" jsonschema:"What to import: for github owner/name, omitted when the project has one; for linear a team key, omitted when the key reaches one; for notion page links, omitted for all top pages."`
-	Credential string `json:"credential,omitempty" jsonschema:"The source's token: a Linear personal API key or a Notion integration secret; github needs none. Sealed, deleted when the import ends, never returned."`
+	From       string `json:"from,omitempty" jsonschema:"What to import, omitted when there is one: github owner/name; linear a team key; trello a board, asana a project, by URL or id; notion page links, omitted for all top pages."`
+	Credential string `json:"credential,omitempty" jsonschema:"The source's token: Linear personal API key, Trello key:token, Asana personal access token, Notion integration secret; github none. Sealed, deleted when the import ends, never returned."`
 	Confirm    bool   `json:"confirm,omitempty" jsonschema:"With id: write a scanned import that is ready."`
 	Cancel     bool   `json:"cancel,omitempty" jsonschema:"With id: stop the import; what it already wrote stays."`
 }
