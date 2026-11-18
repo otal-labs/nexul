@@ -386,6 +386,19 @@ func (r *UsersRepo) GetUserByLogin(ctx context.Context, login string) (*auth.Use
 	return userRow(r.q.GetUserByLogin(ctx, login))
 }
 
+// UserIDByIdentityLogin is the user who signs in with the provider account named login, ignoring case; found is false
+// when nobody does.
+func (r *UsersRepo) UserIDByIdentityLogin(ctx context.Context, provider auth.Provider, login string) (id string, found bool, err error) {
+	id, err = r.q.GetUserIDByIdentityLogin(ctx, sqlcgen.GetUserIDByIdentityLoginParams{Provider: string(provider), Login: login})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("find the %s account %s: %w", provider, login, err)
+	}
+	return id, true, nil
+}
+
 // ListUsers returns every workspace member, used by the notifications fan-out.
 func (r *UsersRepo) ListUsers(ctx context.Context) ([]*auth.User, error) {
 	rows, err := r.q.ListUsers(ctx)

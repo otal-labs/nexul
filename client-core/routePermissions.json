@@ -306,6 +306,7 @@
   "PUT /api/pairing/defaults": ["none"],
   "PUT /api/pairing/projects/{id}": ["none"],
   "PUT /api/permissions": ["permissions:write","plays:write","projects:access","stacks:write","channels:write","machines:write","none"],
+  "PUT /api/projects/{id}/issue-sync": ["projects:write"],
   "PUT /api/projects/{id}/setup": ["projects:write"],
   "PUT /api/projects/{id}/tests-location": ["projects:write"],
   "PUT /api/repositories/installations/{account}/workspaces/{workspaceID}": ["projects:create"],

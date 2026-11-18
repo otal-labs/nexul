@@ -282,6 +282,29 @@ func jsonLen(s string) int {
 	return len(raw)
 }
 
+// ExternalPost is a message from someone outside Nexul, such as a comment on a synced GitHub issue.
+type ExternalPost struct {
+	// ID derives from the source, so posting the same one again is ErrConflict.
+	ID, ConversationID string
+	// AuthorID names the author on their host, such as github:alice; Name and AvatarURL are what the message shows.
+	AuthorID, Name, AvatarURL, Body string
+	// Via names the host, such as github.
+	Via string
+}
+
+// PostExternalMessage posts p as the server, unchecked; its @handles name people elsewhere, so it mentions nobody.
+func (s *Service) PostExternalMessage(ctx context.Context, p ExternalPost) (*Message, error) {
+	m, err := s.newMessage(p.ConversationID, p.AuthorID, p.Body, AuthorExternal)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(p.ID) == "" || strings.TrimSpace(p.Name) == "" {
+		return nil, fmt.Errorf("%w: an external message needs its id and the name it shows", apperrs.ErrInvalid)
+	}
+	m.ID, m.Mentions, m.AuthorName, m.AuthorAvatarURL, m.Via = p.ID, []Mention{}, strings.TrimSpace(p.Name), strings.TrimSpace(p.AvatarURL), p.Via
+	return s.create(ctx, m)
+}
+
 // PostSystemMessage posts an inline system message attributed to the user it's for.
 func (s *Service) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) (*Message, error) {
 	return s.postMessage(ctx, conversationID, viaUserID, body, AuthorSystem)
@@ -418,6 +441,9 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 	updated := *current
 	updated.Body = body
 	updated.Mentions = ParseMentions(body)
+	if current.AuthorKind == AuthorExternal {
+		updated.Mentions = []Mention{}
+	}
 	updated.EditedAt = &now
 	updated.UpdatedAt = now
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated, MembersOnly: membersOnly}}

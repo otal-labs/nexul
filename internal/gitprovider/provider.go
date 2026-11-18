@@ -34,3 +34,8 @@ type GitProvider interface {
 	UpdateIssueComment(ctx context.Context, owner, name string, commentID int64, body string) (*IssueComment, error)
 	DeleteIssueComment(ctx context.Context, owner, name string, commentID int64) error
 }
+
+// RateReader is a GitProvider that can say how much of its rate limit is left, which reading costs none of it.
+type RateReader interface {
+	RateLimit(ctx context.Context) (Rate, error)
+}

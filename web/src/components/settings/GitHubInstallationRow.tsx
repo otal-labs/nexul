@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { GitHubInstallationWorkspaces } from "@/components/settings/GitHubInstallationWorkspaces";
+import { IssuesPermissionMissing } from "@/components/settings/IssuesPermissionMissing";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { Button } from "@/components/ui/button";
 import type { Installation } from "@/models/Repository";
@@ -33,14 +34,7 @@ export const GitHubInstallationRow = ({ installation }: GitHubInstallationRowPro
             Not readable
           </SettingsStatus>
         )}
-        {installation.missing_permissions?.includes("issues") && (
-          <div className="mt-1">
-            <SettingsStatus tone="warning">Issues permission missing</SettingsStatus>
-            <p className="text-xs text-muted-foreground">
-              Give the App Issues: Read and write in its settings on GitHub, then accept the change here under Manage.
-            </p>
-          </div>
-        )}
+        {installation.missing_permissions?.includes("issues") && <IssuesPermissionMissing accept="here under Manage" />}
         <GitHubInstallationWorkspaces installation={installation} />
       </div>
       <Button asChild variant="ghost" size="sm">

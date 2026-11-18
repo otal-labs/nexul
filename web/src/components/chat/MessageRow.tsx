@@ -1,7 +1,7 @@
 import { memo, useState, type ReactNode } from "react";
 
 import type { Person } from "@nexul/client-core/person";
-import { isNote } from "@nexul/client-core/chat";
+import { externalAuthor, isNote } from "@nexul/client-core/chat";
 
 import { AgentQueuedLine } from "@/components/chat/AgentQueuedLine";
 import { BotMessageRow } from "@/components/chat/BotMessageRow";
@@ -104,13 +104,14 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
 };
 
 // Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
-const MessageRowImpl = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
+const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
   const { open: confirmDelete } = useConfirmationDialog();
 
   if (message.deleted_at) return null;
 
+  const author = message.author_kind === "external" ? externalAuthor(message) : resolved;
   const isSystem = message.author_kind === "system";
   const isBot = message.author_kind === "bot";
   const isAgent = message.author_kind === "agent";

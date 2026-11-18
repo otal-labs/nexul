@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -22,9 +23,23 @@ type DocFolders interface {
 	DeleteFolder(ctx context.Context, id string) error
 }
 
-// ProjectTools are the project tools that also read and set label colors and doc folders, which tickets and docs own.
-func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders) []mcptool.Tool {
-	return []mcptool.Tool{projectGetTool(w, t, d), projectUpdateTool(w, t, d)}
+// IssueSyncs is the slice of the issue sync use-cases project_get and project_update read and change it through.
+type IssueSyncs interface {
+	Syncs(ctx context.Context, projectID string) ([]issuesync.Sync, error)
+	Set(ctx context.Context, projectID string, c issuesync.Change) (issuesync.Sync, error)
+}
+
+// projectReaders are what a project's view reads beyond the workspace and tickets.
+type projectReaders struct {
+	folders DocFolders
+	syncs   IssueSyncs
+}
+
+// ProjectTools are the project tools that also read and set label colors, doc folders and issue syncs, which
+// tickets, docs and issuesync own.
+func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders, syncs IssueSyncs) []mcptool.Tool {
+	r := projectReaders{folders: d, syncs: syncs}
+	return []mcptool.Tool{projectGetTool(w, t, r), projectUpdateTool(w, t, r)}
 }
 
 // projectDetail is everything an agent needs before filing or moving a ticket in a project.
@@ -36,7 +51,15 @@ type projectDetail struct {
 	TicketTypes  []ticketTypeResult     `json:"ticket_types"`
 	Labels       []labelResult          `json:"labels"`
 	DocFolders   []docFolderResult      `json:"doc_folders"`
+	IssueSyncs   []issueSyncResult      `json:"github_issue_sync"`
 	DeleteImpact workspace.DeleteImpact `json:"delete_impact"`
+}
+
+type issueSyncResult struct {
+	Repository string         `json:"repository"`
+	Label      string         `json:"label"`
+	Mode       issuesync.Mode `json:"mode"`
+	Enabled    bool           `json:"enabled"`
 }
 
 type docFolderResult struct {
@@ -77,13 +100,13 @@ type projectGetIn struct {
 	ID string `json:"id" jsonschema:"The project's id, from project_list."`
 }
 
-func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
+func projectGetTool(w *workspace.Service, t *tickets.Service, r projectReaders) mcptool.Tool {
 	return mcptool.New("project_get", "Get project",
 		"Returns one project with what filing and moving its tickets needs: its status columns in board "+
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
 			"(each with the body_template a new ticket fills), labels with colors, repositories "+
 			"(each with its role, app or tests), where its tests live, and its doc folders (the default Main first, "+
-			"where a new doc goes unless doc_create names another). It also returns delete_impact, the tickets, repositories, "+
+			"where a new doc goes unless doc_create names another), and its GitHub issue syncs. It also returns delete_impact, the tickets, repositories, "+
 			"and services that block deleting it, and its setup: whether the project "+
 			"wizard was finished and which steps were done or skipped. "+
 			"Who is in the project is set by its rules, which permission_overwrite_list "+
@@ -92,11 +115,11 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in projectGetIn) (any, error) {
-			return projectView(ctx, w, t, d, in.ID)
+			return projectView(ctx, w, t, r, in.ID)
 		})
 }
 
-func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, folders DocFolders, id string) (projectDetail, error) {
+func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, r projectReaders, id string) (projectDetail, error) {
 	p, err := getProject(ctx, w, id)
 	if err != nil {
 		return projectDetail{}, err
@@ -111,7 +134,10 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 	if d.Labels, err = projectLabels(ctx, t, id); err != nil {
 		return d, err
 	}
-	if d.DocFolders, err = projectDocFolders(ctx, folders, id); err != nil {
+	if d.DocFolders, err = projectDocFolders(ctx, r.folders, id); err != nil {
+		return d, err
+	}
+	if d.IssueSyncs, err = projectIssueSyncs(ctx, r.syncs, id); err != nil {
 		return d, err
 	}
 	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
@@ -188,6 +214,18 @@ func projectDocFolders(ctx context.Context, d DocFolders, projectID string) ([]d
 	return out, nil
 }
 
+func projectIssueSyncs(ctx context.Context, syncs IssueSyncs, projectID string) ([]issueSyncResult, error) {
+	all, err := syncs.Syncs(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]issueSyncResult, 0, len(all))
+	for _, s := range all {
+		out = append(out, issueSyncResult{Repository: s.Owner + "/" + s.Repo, Label: s.Label, Mode: s.Mode, Enabled: s.Enabled})
+	}
+	return out, nil
+}
+
 type projectUpdateIn struct {
 	ID            string             `json:"id" jsonschema:"The project's id, from project_list."`
 	Name          *string            `json:"name,omitempty" jsonschema:"A new display name."`
@@ -197,6 +235,7 @@ type projectUpdateIn struct {
 	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (in the repository that deploys), separate (in a tests repository), or an empty string to withdraw the answer."`
 	AddRepos      []repoAddIn        `json:"add_repos,omitempty" jsonschema:"Repositories to attach; a repository belongs to one project only."`
 	RemoveRepos   []repoRefIn        `json:"remove_repos,omitempty" jsonschema:"Repositories of this project to detach."`
+	IssueSync     *issueSyncIn       `json:"github_issue_sync,omitempty" jsonschema:"Syncs one of its GitHub repositories' issues to tickets."`
 	Statuses      *statusChanges     `json:"statuses,omitempty" jsonschema:"Status columns to create, change, or delete."`
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
@@ -204,6 +243,13 @@ type projectUpdateIn struct {
 	RemoveLabels  []string           `json:"remove_labels,omitempty" jsonschema:"Labels to delete; only a label no ticket in the project carries can go."`
 	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. The default folder, Main, takes new docs and can be renamed but never deleted."`
 	Setup         *setupIn           `json:"setup,omitempty" jsonschema:"The project wizard's record of this project, as project_get shows it under setup."`
+}
+
+type issueSyncIn struct {
+	Repository string  `json:"repository" jsonschema:"owner/name of one of its repositories."`
+	Enabled    *bool   `json:"enabled,omitempty" jsonschema:"true syncs it and links its open issues; false stops."`
+	Mode       *string `json:"mode,omitempty" jsonschema:"label (the default, issues carrying the label) or all."`
+	Label      *string `json:"label,omitempty" jsonschema:"The label, nexul by default; removing it from an issue pauses its sync."`
 }
 
 type setupIn struct {
@@ -268,13 +314,13 @@ type categoryChanges struct {
 
 type categoryCreateIn struct {
 	Name  string `json:"name" jsonschema:"The category's name."`
-	Color string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
+	Color string `json:"color,omitempty" jsonschema:"A display color."`
 }
 
 type categoryUpdateIn struct {
 	ID       string  `json:"id" jsonschema:"The category's id, from project_get."`
 	Name     *string `json:"name,omitempty" jsonschema:"A new name."`
-	Color    *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex; an empty string clears it."`
+	Color    *string `json:"color,omitempty" jsonschema:"A new color; an empty string clears it."`
 	Position *int    `json:"position,omitempty" jsonschema:"The category's place in the project's order, 0 for first."`
 }
 
@@ -286,21 +332,21 @@ type ticketTypeChanges struct {
 
 type ticketTypeCreateIn struct {
 	Name         string `json:"name" jsonschema:"The type's name. A type named bug requires a found-in on its tickets."`
-	Color        string `json:"color,omitempty" jsonschema:"A display color: cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
+	Color        string `json:"color,omitempty" jsonschema:"A display color."`
 	BodyTemplate string `json:"body_template,omitempty" jsonschema:"Markdown sections that pre-fill a new ticket of this type."`
 }
 
 type ticketTypeUpdateIn struct {
 	ID           string  `json:"id" jsonschema:"The ticket type's id, from project_get."`
 	Name         *string `json:"name,omitempty" jsonschema:"A new name."`
-	Color        *string `json:"color,omitempty" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex; an empty string clears it."`
+	Color        *string `json:"color,omitempty" jsonschema:"A new color; an empty string clears it."`
 	BodyTemplate *string `json:"body_template,omitempty" jsonschema:"A new body template in markdown; existing tickets are never rewritten, and an empty string clears it."`
 	Position     *int    `json:"position,omitempty" jsonschema:"The type's place in the project's order, 0 for first."`
 }
 
 type labelColorIn struct {
 	Label string `json:"label" jsonschema:"The label."`
-	Color string `json:"color" jsonschema:"cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex."`
+	Color string `json:"color" jsonschema:"Its color."`
 }
 
 type projectUpdateResult struct {
@@ -308,14 +354,14 @@ type projectUpdateResult struct {
 	Project projectDetail `json:"project"`
 }
 
-func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
+func projectUpdateTool(w *workspace.Service, t *tickets.Service, r projectReaders) mcptool.Tool {
 	return mcptool.New("project_update", "Update project",
 		"Changes a project's name, icon, prefix (only when it has none), place in the workspace, and tests "+
-			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
+			"location; attaches and detaches repositories and syncs their GitHub issues; creates, changes, reorders (position), and deletes its "+
 			"status columns, categories, and ticket types; makes, colors, and deletes labels; creates, renames, and deletes doc "+
 			"folders (doc_update moves a doc between them); and finishes or reopens its setup "+
 			"and marks project wizard steps done or skipped. The changes apply in the order the fields are listed here, creates "+
-			"before updates before deletes, and stop at the first failure. "+
+			"before updates before deletes, and stop at the first failure. Colors are cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex. "+
 			"Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
 			"shows it, with new ids.",
 		mcptool.Hints{Local: true},
@@ -326,12 +372,12 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) m
 			if _, err := getProject(ctx, w, in.ID); err != nil {
 				return nil, err
 			}
-			u := projectUpdate{w: w, t: t, folders: d, id: in.ID}
+			u := projectUpdate{w: w, t: t, folders: r.folders, syncs: r.syncs, id: in.ID}
 			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
 			}
-			view, err := projectView(ctx, w, t, d, in.ID)
+			view, err := projectView(ctx, w, t, r, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -344,6 +390,7 @@ type projectUpdate struct {
 	w       *workspace.Service
 	t       *tickets.Service
 	folders DocFolders
+	syncs   IssueSyncs
 	id      string
 }
 
@@ -366,6 +413,9 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 		}})
 	}
 	steps = append(steps, u.repoSteps(in)...)
+	if in.IssueSync != nil {
+		steps = append(steps, step{"github_issue_sync", "", func(ctx context.Context) error { return u.setIssueSync(ctx, *in.IssueSync) }})
+	}
 	steps = append(steps, u.statusSteps(in.Statuses)...)
 	steps = append(steps, u.categorySteps(in.Categories)...)
 	steps = append(steps, u.ticketTypeSteps(in.TicketTypes)...)
@@ -470,6 +520,20 @@ func (u projectUpdate) repoSteps(in projectUpdateIn) []step {
 		steps = append(steps, step{fmt.Sprintf("remove_repos[%d]", i), "project_get lists the project's repositories", func(ctx context.Context) error { return u.removeRepo(ctx, r) }})
 	}
 	return steps
+}
+
+func (u projectUpdate) setIssueSync(ctx context.Context, in issueSyncIn) error {
+	owner, name, ok := strings.Cut(in.Repository, "/")
+	if !ok {
+		return fmt.Errorf("%w: repository is owner/name; project_get lists the project's repositories", apperrs.ErrInvalid)
+	}
+	c := issuesync.Change{Owner: owner, Repo: name, Label: in.Label, Enabled: in.Enabled}
+	if in.Mode != nil {
+		mode := issuesync.Mode(*in.Mode)
+		c.Mode = &mode
+	}
+	_, err := u.syncs.Set(ctx, u.id, c)
+	return err
 }
 
 // removeRepo detaches only this project's repository; the use-case finds a repository by name in any project.

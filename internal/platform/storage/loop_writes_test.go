@@ -97,6 +97,9 @@ func TestLoopWrites_CoverEveryTableTheLoopsPassReads(t *testing.T) {
 		{"doc settle", SettleWrites, nil, func(ctx context.Context, s *Store) {
 			_, _, _ = s.Docs.NextSettleDue(ctx)
 		}},
+		{"github issue sweep", IssueSweepWrites, nil, func(ctx context.Context, s *Store) {
+			_, _ = s.IssueSync.ListEnabledSyncs(ctx)
+		}},
 		{"calendar reminders", ReminderWrites, nil, func(ctx context.Context, s *Store) {
 			_, _ = s.Meetings.RemindersDue(ctx, now)
 			_, _ = s.Meetings.Replacements(ctx, []string{"meeting-standup"})

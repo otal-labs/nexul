@@ -489,12 +489,41 @@ type EventSchema struct {
 	CreatedAt int64
 }
 
+type GithubCommentLink struct {
+	GithubCommentID int64
+	MessageID       string
+	TicketID        string
+}
+
 type GithubInstallationWorkspace struct {
 	AccountID    sql.NullInt64
 	AccountLogin string
 	WorkspaceID  string
 	AssignedAt   int64
 	GoneAt       sql.NullInt64
+}
+
+type GithubIssueLink struct {
+	Owner            string
+	Repo             string
+	IssueNumber      int64
+	IssueID          int64
+	TicketID         string
+	SyncPaused       int64
+	LastInboundHash  string
+	LastOutboundHash string
+	IssueUpdatedAt   int64
+	LinkedAt         int64
+}
+
+type GithubIssueSync struct {
+	ProjectID   string
+	Owner       string
+	Repo        string
+	Label       string
+	Mode        string
+	Enabled     int64
+	LastSweptAt sql.NullInt64
 }
 
 type GithubManifestRequest struct {

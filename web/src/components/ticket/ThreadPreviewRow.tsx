@@ -1,5 +1,6 @@
 import { Bot } from "lucide-react";
 
+import { externalAuthor } from "@nexul/client-core/chat";
 import { personLabel, type Person } from "@nexul/client-core/person";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
@@ -29,7 +30,8 @@ const nameOf = (message: Message, author: Person): string => {
   return personLabel(author);
 };
 
-export const ThreadPreviewRow = ({ message, author }: ThreadPreviewRowProps) => {
+export const ThreadPreviewRow = ({ message, author: resolved }: ThreadPreviewRowProps) => {
+  const author = message.author_kind === "external" ? externalAuthor(message) : resolved;
   const isAgent = message.author_kind === "agent";
   const isSystem = message.author_kind === "system";
   const line = lineOf(message.body);

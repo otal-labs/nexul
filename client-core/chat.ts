@@ -45,7 +45,7 @@ export interface ChatMention {
 }
 
 // Who or what posted a message.
-export type AuthorKind = "user" | "agent" | "system" | "bot";
+export type AuthorKind = "user" | "agent" | "system" | "bot" | "external";
 
 // Reaction is one emoji on a message and who reacted with it, earliest first.
 export interface Reaction {
@@ -110,10 +110,18 @@ export const isNote = (message: ChatMessage): boolean => message.author_kind ===
 
 const CONTINUATION_WINDOW_MS = 5 * 60_000;
 
+// Someone outside Nexul, such as a GitHub commenter, as the name and picture their message kept.
+export const externalAuthor = (message: ChatMessage): Person => ({
+  user_id: "",
+  login: message.author_name ?? "",
+  display_name: message.author_name ?? "",
+  avatar_url: message.author_avatar_url ?? "",
+});
+
 // The same bot under another name or avatar is a new author on screen, so it starts its own group.
 const sameAuthor = (prev: ChatMessage, curr: ChatMessage): boolean => {
   if (prev.author_kind !== curr.author_kind || prev.author_id !== curr.author_id) return false;
-  if (curr.author_kind === "bot") return prev.author_name === curr.author_name && prev.author_avatar_url === curr.author_avatar_url;
+  if (curr.author_kind === "bot" || curr.author_kind === "external") return prev.author_name === curr.author_name && prev.author_avatar_url === curr.author_avatar_url;
   return curr.author_kind === "user";
 };
 

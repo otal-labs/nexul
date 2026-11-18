@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
@@ -52,6 +53,7 @@ type RegistryOptions struct {
 	Deploy        *deploy.Service
 	Reviews       *codereview.Service
 	Workspace     *workspace.Service
+	IssueSync     *issuesync.Service
 	Notifications *workspace.NotificationService
 	Git           gitprovider.GitProvider
 	ChangeContext gitprovider.ChangeContextReader
@@ -119,7 +121,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		templates.MCPTools(opts.Templates),
 		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
 		tickets.MCPTools(opts.Tickets),
-		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs),
+		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs, opts.IssueSync),
 		workspace.MCPTools(opts.Workspace),
 		workspace.NotificationMCPTools(opts.Notifications),
 		topology.MCPTools(opts.Topology),

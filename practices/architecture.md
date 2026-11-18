@@ -82,7 +82,7 @@ Which domains this covers, as the tree stands:
 - Thin variants: `mentions` has no `repo.go` (it reads through other
   domains); `auth` has no `usecase.go`;
   `gitprovider` and `voice` have no `repo.go` but do publish events; `crashintake` has only a model, a use-case and
-  a handler, reading and writing through tickets and chat seams wired in the composition root. Each
+  a handler, reading and writing through tickets and chat seams wired in the composition root. `issuesync` has no `mcp.go`: project_get and project_update carry it from `internal/mcp/composite`. Each
   follows the layers it has and grows into the full shape when it needs one.
 - Protocol and infrastructure packages: `agent`, `collab`, `eventcatalog`,
   `harness`, `livekit`, `mcp`, `presence`, `push`, `t3client`, `t3clientv2`,

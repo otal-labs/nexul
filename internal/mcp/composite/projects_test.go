@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/issuesync"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -100,6 +101,9 @@ func TestProjectUpdate_Errors(t *testing.T) {
 		{"a repository of another project is invalid", asUser, true, `{"id":"p-2","remove_repos":[{"owner":"otal-labs","name":"nexul"}]}`, apperrs.ErrInvalid},
 		{"an unknown tests location is invalid", asUser, true, `{"id":"p-1","tests_location":"elsewhere"}`, apperrs.ErrInvalid},
 		{"a bogus label color is invalid", asUser, true, `{"id":"p-1","label_colors":[{"label":"urgent","color":"teal"}]}`, apperrs.ErrInvalid},
+		{"issue sync for a repository the project lacks is invalid", asUser, true, `{"id":"p-1","github_issue_sync":{"repository":"otal-labs/other","enabled":true}}`, apperrs.ErrInvalid},
+		{"issue sync for a repository that is not owner/name is invalid", asUser, true, `{"id":"p-1","github_issue_sync":{"repository":"nexul","enabled":true}}`, apperrs.ErrInvalid},
+		{"issue sync takes an owner", asUser, false, `{"id":"p-1","github_issue_sync":{"repository":"otal-labs/nexul","enabled":true}}`, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -192,6 +196,22 @@ func TestProjectUpdate_EveryField(t *testing.T) {
 	assert.Empty(t, d.TicketTypes)
 }
 
+func TestProjectUpdate_GitHubIssueSync(t *testing.T) {
+	f := newFixture(t)
+	f.w.repos["p-1"] = []workspace.RepoRef{{Owner: "otal-labs", Name: "nexul"}}
+	got, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","github_issue_sync":{"repository":"otal-labs/nexul","enabled":true}}`)
+	require.NoError(t, err)
+	res := got.(projectUpdateResult)
+	assert.Equal(t, []string{"github_issue_sync"}, res.Applied)
+	assert.Equal(t, []issueSyncResult{{Repository: "otal-labs/nexul", Label: "nexul", Mode: issuesync.ModeLabel, Enabled: true}}, res.Project.IssueSyncs)
+
+	_, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","github_issue_sync":{"repository":"otal-labs/nexul","mode":"all"}}`)
+	require.NoError(t, err)
+	view, err := call(t, t.Context(), f.projectTools(), "project_get", `{"id":"p-1"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []issueSyncResult{{Repository: "otal-labs/nexul", Label: "nexul", Mode: issuesync.ModeAll, Enabled: true}}, view.(projectDetail).IssueSyncs, "an omitted field keeps its value")
+}
+
 func TestProjectUpdate_FinishesSetup(t *testing.T) {
 	f := newFixture(t)
 	f.w.stacks["stack-1"] = "p-3"
@@ -224,7 +244,8 @@ func TestProjectUpdate_ReordersWithinTheProject(t *testing.T) {
 
 // TestProjectUpdate_ListedValuesAreAccepted keeps the literal value lists in the parameter descriptions true.
 func TestProjectUpdate_ListedValuesAreAccepted(t *testing.T) {
-	schema := newFixture(t).projectTools()[1].InputSchema
+	update := newFixture(t).projectTools()[1]
+	schema := update.InputSchema
 	listed := func(desc string) []string {
 		_, rest, _ := strings.Cut(desc, "icon: ")
 		rest, _, _ = strings.Cut(rest, ".")
@@ -232,8 +253,7 @@ func TestProjectUpdate_ListedValuesAreAccepted(t *testing.T) {
 	}
 	statuses := schema.Properties["statuses"].Properties["create"].Items
 	for _, c := range colors.All() {
-		assert.Contains(t, schema.Properties["categories"].Properties["create"].Items.Properties["color"].Description, string(c))
-		assert.Contains(t, schema.Properties["label_colors"].Items.Properties["color"].Description, string(c))
+		assert.Contains(t, update.Description, string(c), "the tool lists the colors every color field takes")
 	}
 	for _, k := range workspace.StatusKinds {
 		assert.Contains(t, statuses.Properties["stage"].Description, string(k))
