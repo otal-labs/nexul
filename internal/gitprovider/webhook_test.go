@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	githubapi "github.com/google/go-github/v71/github"
 	"github.com/stretchr/testify/assert"
@@ -288,17 +289,25 @@ func TestWebhookHandler_ReviewSubmitted(t *testing.T) {
 }
 
 func issueCommentPayload(isPR bool, body, author string) []byte {
+	return issueCommentPayloadWithAction("created", isPR, body, author)
+}
+
+func issueCommentPayloadWithAction(action string, isPR bool, body, author string) []byte {
 	issue := map[string]any{"number": 7}
 	if isPR {
 		issue["pull_request"] = map[string]any{"url": "https://api.github.com/repos/acme/app/pulls/7"}
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"action": "created",
+		"action": action,
 		"issue":  issue,
 		"comment": map[string]any{
-			"body": body,
-			"user": map[string]any{"login": author},
+			"id":         int64(99),
+			"body":       body,
+			"user":       map[string]any{"login": author, "avatar_url": "https://avatars.example.com/" + author},
+			"created_at": "2026-11-01T10:00:00Z",
+			"updated_at": "2026-11-02T10:00:00Z",
 		},
+		"sender": map[string]any{"login": author, "type": "User"},
 		"repository": map[string]any{
 			"owner": map[string]any{"login": "acme"},
 			"name":  "app",
@@ -376,7 +385,10 @@ func TestWebhookHandler_EventsWithoutADomainEvent_PublishOnlyTheEnvelope(t *test
 		{"a push without its repository", "push", noRepo},
 		{"a review that is not submitted", "pull_request_review", reviewEventPayload("dismissed", "dismissed", "alice")},
 		{"a review event without its review", "pull_request_review", repoOnly("submitted")},
-		{"a comment on a plain issue", "issue_comment", issueCommentPayload(false, "nice catch", "onik97")},
+		{"an issue action nothing listens for", "issues", issuesPayload("pinned", false)},
+		{"an issues delivery for a pull request", "issues", issuesPayload("opened", true)},
+		{"an issues delivery without its issue", "issues", repoOnly("opened")},
+		{"a plain issue's comment action nothing listens for", "issue_comment", issueCommentPayloadWithAction("pinned", false, "hm", "bob")},
 		{"an issue comment without its issue", "issue_comment", repoOnly("created")},
 		{"a review comment without its pull request", "pull_request_review_comment", repoOnly("created")},
 	}
@@ -392,11 +404,119 @@ func TestWebhookHandler_EventsWithoutADomainEvent_PublishOnlyTheEnvelope(t *test
 	}
 }
 
-func TestWebhookHandler_TicketResolverFails_Returns500SoGitHubRedelivers(t *testing.T) {
+func TestWebhookHandler_TicketResolverFails_Returns500(t *testing.T) {
 	bus := newFakeBus()
 	h := NewWebhookHandler("shhh", bus).WithTicketResolver(&fakeTicketResolver{err: errors.New("database is locked")})
 	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("opened", false)))
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.NotEqual(t, TopicPROpened, bus.lastPublished().Topic, "no PR event goes out without its links")
+}
+
+func issuesPayload(action string, isPR bool) []byte {
+	issue := map[string]any{
+		"id":           int64(5001),
+		"number":       12,
+		"title":        "Login fails on Safari",
+		"body":         "Steps to reproduce",
+		"state":        "closed",
+		"state_reason": "completed",
+		"labels":       []any{map[string]any{"name": "bug"}},
+		"assignees":    []any{map[string]any{"login": "bob"}},
+		"user":         map[string]any{"login": "alice"},
+		"html_url":     "https://github.com/acme/app/issues/12",
+		"updated_at":   "2026-11-03T09:30:00Z",
+	}
+	if isPR {
+		issue["pull_request"] = map[string]any{"url": "https://api.github.com/repos/acme/app/pulls/12"}
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"action":     action,
+		"issue":      issue,
+		"sender":     map[string]any{"login": "nexul-app[bot]", "type": "Bot"},
+		"repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"},
+	})
+	return payload
+}
+
+func TestWebhookHandler_Issues_PublishesGitIssueForEveryAction(t *testing.T) {
+	for _, action := range []string{"opened", "edited", "closed", "reopened", "labeled", "unlabeled", "assigned", "unassigned", "deleted", "transferred"} {
+		t.Run(action, func(t *testing.T) {
+			bus := newFakeBus()
+			rec := serveWebhook(t, NewWebhookHandler("shhh", bus), signedWebhookRequest(t, "shhh", "issues", issuesPayload(action, false)))
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			require.Len(t, bus.published, 2, "the envelope and one git.issue")
+			ev := bus.lastPublished()
+			assert.Equal(t, TopicIssue, ev.Topic)
+			var got IssueEvent
+			require.NoError(t, json.Unmarshal(ev.Payload, &got))
+			assert.Equal(t, IssueEvent{
+				Owner: "acme", Repo: "app", Action: action,
+				Issue: Issue{
+					ID: 5001, Number: 12, Title: "Login fails on Safari", Body: "Steps to reproduce",
+					State: "closed", StateReason: "completed", Labels: []string{"bug"}, Assignees: []string{"bob"},
+					Author: "alice", HTMLURL: "https://github.com/acme/app/issues/12",
+					UpdatedAt: time.Date(2026, 11, 3, 9, 30, 0, 0, time.UTC),
+				},
+				Sender: Sender{Login: "nexul-app[bot]", Type: "Bot"},
+			}, got)
+		})
+	}
+}
+
+func TestWebhookHandler_IssueWithoutLabelsOrAssignees_SendsEmptyLists(t *testing.T) {
+	bus := newFakeBus()
+	payload, _ := json.Marshal(map[string]any{
+		"action":     "opened",
+		"issue":      map[string]any{"number": 3, "title": "Bare", "state": "open"},
+		"repository": map[string]any{"owner": map[string]any{"login": "acme"}, "name": "app"},
+	})
+	rec := serveWebhook(t, NewWebhookHandler("shhh", bus), signedWebhookRequest(t, "shhh", "issues", payload))
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, string(bus.lastPublished().Payload), `"labels":[],"assignees":[]`)
+}
+
+func TestWebhookHandler_IssueComment_PlainIssueIsGitIssueComment_PRStaysGitPRComment(t *testing.T) {
+	tests := []struct {
+		action string
+		isPR   bool
+		topic  string
+	}{
+		{"created", false, TopicIssueComment},
+		{"edited", false, TopicIssueComment},
+		{"deleted", false, TopicIssueComment},
+		{"created", true, TopicPRCommentCreated},
+		{"edited", true, TopicPRCommentCreated},
+		{"deleted", true, TopicPRCommentCreated},
+	}
+	for _, tt := range tests {
+		t.Run(tt.topic+" "+tt.action, func(t *testing.T) {
+			bus := newFakeBus()
+			payload := issueCommentPayloadWithAction(tt.action, tt.isPR, "Seen on 17.1 too", "bob")
+			rec := serveWebhook(t, NewWebhookHandler("shhh", bus), signedWebhookRequest(t, "shhh", "issue_comment", payload))
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			require.Len(t, bus.published, 2)
+			ev := bus.lastPublished()
+			assert.Equal(t, tt.topic, ev.Topic)
+			if tt.isPR {
+				var got PRCommentEvent
+				require.NoError(t, json.Unmarshal(ev.Payload, &got))
+				assert.Equal(t, PRCommentEvent{Owner: "acme", Repo: "app", PR: PRCommentRef{Number: 7}, Comment: CommentRef{Body: "Seen on 17.1 too", Author: "bob"}}, got)
+				return
+			}
+			var got IssueCommentEvent
+			require.NoError(t, json.Unmarshal(ev.Payload, &got))
+			assert.Equal(t, IssueCommentEvent{
+				Owner: "acme", Repo: "app", IssueNumber: 7, Action: tt.action,
+				Comment: IssueComment{
+					ID: 99, Body: "Seen on 17.1 too", Author: "bob", AuthorAvatarURL: "https://avatars.example.com/bob",
+					CreatedAt: time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC),
+				},
+				Sender: Sender{Login: "bob", Type: "User"},
+			}, got)
+		})
+	}
 }

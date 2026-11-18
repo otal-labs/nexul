@@ -23,6 +23,10 @@ const (
 	TopicBranchDeleted = "git.branch_deleted"
 	// TopicPRCommentCreated is published for both a general conversation comment and an inline review comment on the diff.
 	TopicPRCommentCreated = "git.pr_comment"
+	// TopicIssue is published for an issue opened, edited, closed, reopened, labeled, assigned, deleted or transferred; never a pull request.
+	TopicIssue = "git.issue"
+	// TopicIssueComment is published for a comment created, edited or deleted on an issue; a pull request's stays git.pr_comment.
+	TopicIssueComment = "git.issue_comment"
 )
 
 // Topics returns every topic gitprovider publishes; TopicProviderEvent is declared in envelope.go but lives here.
@@ -36,6 +40,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicPush, Payload: PushEvent{}},
 		{Name: TopicBranchDeleted, Payload: BranchDeletedEvent{}},
 		{Name: TopicPRCommentCreated, Payload: PRCommentEvent{}},
+		{Name: TopicIssue, Payload: IssueEvent{}},
+		{Name: TopicIssueComment, Payload: IssueCommentEvent{}},
 	}
 }
 
@@ -93,6 +99,31 @@ type PRCommentRef struct {
 type CommentRef struct {
 	Body   string `json:"body"`
 	Author string `json:"author"`
+}
+
+// IssueEvent is the git.issue payload.
+type IssueEvent struct {
+	Owner  string `json:"owner"`
+	Repo   string `json:"repo"`
+	Action string `json:"action" enum:"opened,edited,closed,reopened,labeled,unlabeled,assigned,unassigned,deleted,transferred"`
+	Issue  Issue  `json:"issue"`
+	Sender Sender `json:"sender"`
+}
+
+// IssueCommentEvent is the git.issue_comment payload.
+type IssueCommentEvent struct {
+	Owner       string       `json:"owner"`
+	Repo        string       `json:"repo"`
+	IssueNumber int          `json:"issue_number"`
+	Action      string       `json:"action" enum:"created,edited,deleted"`
+	Comment     IssueComment `json:"comment"`
+	Sender      Sender       `json:"sender"`
+}
+
+// Sender is who caused a delivery; Type is the host's account type, such as User or Bot.
+type Sender struct {
+	Login string `json:"login"`
+	Type  string `json:"type" jsonschema:"The account type, such as User, Bot or Organization."`
 }
 
 // TicketLinker lets gitprovider declare LinkPR without importing tickets, which implements it.

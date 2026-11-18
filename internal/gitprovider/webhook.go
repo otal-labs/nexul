@@ -76,6 +76,8 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.dispatchPullRequest(r.Context(), w, delivery, payload)
 	case "pull_request_review":
 		h.dispatchReview(r.Context(), w, delivery, payload)
+	case "issues":
+		h.dispatchIssue(r.Context(), w, delivery, payload)
 	case "issue_comment":
 		h.dispatchIssueComment(r.Context(), w, delivery, payload)
 	case "pull_request_review_comment":
@@ -206,7 +208,34 @@ func (h *WebhookHandler) dispatchReview(ctx context.Context, w http.ResponseWrit
 	w.WriteHeader(http.StatusOK)
 }
 
-// dispatchIssueComment maps only a PR comment, not a plain issue, to git.pr_comment (Issue.IsPullRequest).
+// dispatchIssue maps an issue's lifecycle to git.issue; GitHub sends a pull request's on pull_request, so one here is skipped.
+func (h *WebhookHandler) dispatchIssue(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
+	logger := logging.FromCtx(ctx)
+	event, err := githubapi.ParseWebHook("issues", payload)
+	if err != nil {
+		logger.Warn("webhook payload parse failed", "error", err)
+		http.Error(w, "invalid webhook payload", http.StatusBadRequest)
+		return
+	}
+	issueEvent, ok := event.(*githubapi.IssuesEvent)
+	if !ok {
+		logger.Warn("webhook delivered an unexpected issues payload")
+		http.Error(w, "unexpected webhook payload", http.StatusBadRequest)
+		return
+	}
+	ev, ok := mapIssueEvent(issueEvent)
+	if !ok {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if err := h.publish(ctx, delivery, TopicIssue, ev); err != nil {
+		h.failDispatch(ctx, w, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// dispatchIssueComment maps a pull request's comment to git.pr_comment and a plain issue's to git.issue_comment.
 func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.ResponseWriter, delivery string, payload []byte) {
 	logger := logging.FromCtx(ctx)
 	event, err := githubapi.ParseWebHook("issue_comment", payload)
@@ -221,12 +250,12 @@ func (h *WebhookHandler) dispatchIssueComment(ctx context.Context, w http.Respon
 		http.Error(w, "unexpected webhook payload", http.StatusBadRequest)
 		return
 	}
-	ev, ok := mapIssueCommentEvent(commentEvent)
+	topic, ev, ok := mapIssueCommentEvent(commentEvent)
 	if !ok {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err := h.publish(ctx, delivery, TopicPRCommentCreated, ev); err != nil {
+	if err := h.publish(ctx, delivery, topic, ev); err != nil {
 		h.failDispatch(ctx, w, err)
 		return
 	}
@@ -322,7 +351,7 @@ func (h *WebhookHandler) publish(ctx context.Context, delivery, topic string, pa
 	return h.events.Record(ctx, receipt, eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: payload})
 }
 
-// failDispatch reports a failed dispatch; 500 makes GitHub redeliver so a failed outbox write doesn't drop it.
+// failDispatch answers 500, which GitHub only marks as a failed delivery in its log; it never redelivers on its own.
 func (h *WebhookHandler) failDispatch(ctx context.Context, w http.ResponseWriter, err error) {
 	logging.FromCtx(ctx).Error("webhook event dispatch failed", "error", err)
 	http.Error(w, "event dispatch failed", http.StatusInternalServerError)
@@ -367,16 +396,91 @@ func mapReviewEvent(e *githubapi.PullRequestReviewEvent) (ReviewSubmittedEvent, 
 	}, true
 }
 
-func mapIssueCommentEvent(e *githubapi.IssueCommentEvent) (PRCommentEvent, bool) {
-	if e.Repo == nil || e.Issue == nil || e.Comment == nil || !e.Issue.IsPullRequest() {
-		return PRCommentEvent{}, false
+// issueActions are the issues actions git.issue carries; the rest (pinned, milestoned, locked and so on) are envelope-only.
+var issueActions = map[string]bool{
+	"opened": true, "edited": true, "closed": true, "reopened": true, "labeled": true, "unlabeled": true,
+	"assigned": true, "unassigned": true, "deleted": true, "transferred": true,
+}
+
+func mapIssueEvent(e *githubapi.IssuesEvent) (IssueEvent, bool) {
+	if e.Repo == nil || e.Issue == nil || e.Issue.IsPullRequest() || !issueActions[e.GetAction()] {
+		return IssueEvent{}, false
 	}
-	return PRCommentEvent{
-		Owner:   e.Repo.GetOwner().GetLogin(),
-		Repo:    e.Repo.GetName(),
-		PR:      PRCommentRef{Number: e.Issue.GetNumber()},
-		Comment: CommentRef{Body: e.Comment.GetBody(), Author: e.Comment.GetUser().GetLogin()},
+	return IssueEvent{
+		Owner:  e.Repo.GetOwner().GetLogin(),
+		Repo:   e.Repo.GetName(),
+		Action: e.GetAction(),
+		Issue:  IssueFromGitHub(e.Issue),
+		Sender: senderOf(e.Sender),
 	}, true
+}
+
+// mapIssueCommentEvent keeps a pull request's comment exactly as git.pr_comment always carried it, whatever the action.
+func mapIssueCommentEvent(e *githubapi.IssueCommentEvent) (string, any, bool) {
+	if e.Repo == nil || e.Issue == nil || e.Comment == nil {
+		return "", nil, false
+	}
+	owner, repo := e.Repo.GetOwner().GetLogin(), e.Repo.GetName()
+	if e.Issue.IsPullRequest() {
+		return TopicPRCommentCreated, PRCommentEvent{
+			Owner:   owner,
+			Repo:    repo,
+			PR:      PRCommentRef{Number: e.Issue.GetNumber()},
+			Comment: CommentRef{Body: e.Comment.GetBody(), Author: e.Comment.GetUser().GetLogin()},
+		}, true
+	}
+	if a := e.GetAction(); a != "created" && a != "edited" && a != "deleted" {
+		return "", nil, false
+	}
+	return TopicIssueComment, IssueCommentEvent{
+		Owner:       owner,
+		Repo:        repo,
+		IssueNumber: e.Issue.GetNumber(),
+		Action:      e.GetAction(),
+		Comment:     IssueCommentFromGitHub(e.Comment),
+		Sender:      senderOf(e.Sender),
+	}, true
+}
+
+// IssueFromGitHub converts GitHub's issue; its lists are never nil, so the payload always carries [].
+func IssueFromGitHub(i *githubapi.Issue) Issue {
+	labels := make([]string, 0, len(i.Labels))
+	for _, l := range i.Labels {
+		labels = append(labels, l.GetName())
+	}
+	assignees := make([]string, 0, len(i.Assignees))
+	for _, a := range i.Assignees {
+		assignees = append(assignees, a.GetLogin())
+	}
+	return Issue{
+		ID:          i.GetID(),
+		Number:      i.GetNumber(),
+		Title:       i.GetTitle(),
+		Body:        i.GetBody(),
+		State:       i.GetState(),
+		StateReason: i.GetStateReason(),
+		Labels:      labels,
+		Assignees:   assignees,
+		Author:      i.GetUser().GetLogin(),
+		HTMLURL:     i.GetHTMLURL(),
+		UpdatedAt:   i.GetUpdatedAt().Time,
+	}
+}
+
+// IssueCommentFromGitHub converts GitHub's issue comment.
+func IssueCommentFromGitHub(c *githubapi.IssueComment) IssueComment {
+	return IssueComment{
+		ID:              c.GetID(),
+		Body:            c.GetBody(),
+		Author:          c.GetUser().GetLogin(),
+		AuthorAvatarURL: c.GetUser().GetAvatarURL(),
+		CreatedAt:       c.GetCreatedAt().Time,
+		UpdatedAt:       c.GetUpdatedAt().Time,
+	}
+}
+
+func senderOf(u *githubapi.User) Sender {
+	return Sender{Login: u.GetLogin(), Type: u.GetType()}
 }
 
 func mapReviewCommentEvent(e *githubapi.PullRequestReviewCommentEvent) (PRCommentEvent, bool) {

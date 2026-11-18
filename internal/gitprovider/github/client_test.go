@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	githubapi "github.com/google/go-github/v71/github"
 	"github.com/stretchr/testify/assert"
@@ -263,7 +264,8 @@ func TestCreateWebhook(t *testing.T) {
 			assert.Equal(t, "/repos/acme/app/hooks", r.URL.Path)
 			var hook githubapi.Hook
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&hook))
-			assert.Equal(t, []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issue_comment", "push"}, hook.Events)
+			assert.Equal(t, webhookEvents, hook.Events)
+			assert.Contains(t, hook.Events, "issues")
 			assert.Equal(t, "https://example.com/hook", hook.Config.GetURL())
 			assert.Equal(t, "json", hook.Config.GetContentType())
 			assert.Equal(t, "s3cret", hook.Config.GetSecret())
@@ -292,24 +294,46 @@ func TestListWebhooks(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/repos/acme/app/hooks", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("page") == "2" {
-				_, _ = fmt.Fprintln(w, `[{"id":2,"config":{"url":"https://b.example/hooks/github"}}]`) // test server: write errors are irrelevant
+				_, _ = fmt.Fprintln(w, `[{"id":2,"events":["push","issue_comment","issues","pull_request_review_comment","pull_request_review","pull_request"],"config":{"url":"https://b.example/hooks/github"}}]`) // test server: write errors are irrelevant
 				return
 			}
 			w.Header().Set("Link", `<http://x/repos/acme/app/hooks?page=2>; rel="next"`)
-			_, _ = fmt.Fprintln(w, `[{"id":1,"config":{"url":"https://a.example/hooks/github"}}]`) // test server: write errors are irrelevant
+			_, _ = fmt.Fprintln(w, `[{"id":1,"events":["pull_request","pull_request_review","pull_request_review_comment","issue_comment","push"],"config":{"url":"https://a.example/hooks/github"}}]`) // test server: write errors are irrelevant
 		})
 		c := newTestClient(t, mux)
 		hooks, err := c.ListWebhooks(t.Context(), "acme", "app")
 		require.NoError(t, err)
 		assert.Equal(t, []gitprovider.Webhook{
-			{ID: "1", URL: "https://a.example/hooks/github"},
+			{ID: "1", URL: "https://a.example/hooks/github", Stale: true},
 			{ID: "2", URL: "https://b.example/hooks/github"},
-		}, hooks)
+		}, hooks, "a hook without issues is stale; the same events in another order are not")
 	})
 	t.Run("forbidden maps to ErrUnauthorized", func(t *testing.T) {
 		c := newTestClient(t, errorHandler(http.StatusForbidden))
 		_, err := c.ListWebhooks(t.Context(), "acme", "app")
 		assertErrorIs(t, err, apperrs.ErrUnauthorized)
+	})
+}
+
+func TestUpdateWebhook(t *testing.T) {
+	t.Run("sets the events and nothing else", func(t *testing.T) {
+		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPatch, r.Method)
+			assert.Equal(t, "/repos/acme/app/hooks/42", r.URL.Path)
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			assert.Equal(t, map[string]any{"events": []any{"pull_request", "pull_request_review", "pull_request_review_comment", "issues", "issue_comment", "push"}}, body, "the secret and url stay as they are")
+			_, _ = fmt.Fprintln(w, `{"id":42}`) // test server: write errors are irrelevant
+		}))
+		require.NoError(t, c.UpdateWebhook(t.Context(), "acme", "app", "42"))
+	})
+	t.Run("non-numeric id is invalid", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusOK))
+		assertErrorIs(t, c.UpdateWebhook(t.Context(), "acme", "app", "abc"), apperrs.ErrInvalid)
+	})
+	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusNotFound))
+		assertErrorIs(t, c.UpdateWebhook(t.Context(), "acme", "app", "42"), apperrs.ErrNotFound)
 	})
 }
 
@@ -397,7 +421,7 @@ func TestListInstallationRepos(t *testing.T) {
 const installationsJSON = `{"total_count":2,"installations":[
 {"id":1,"account":{"login":"octo-org","id":10,"avatar_url":"https://avatars.githubusercontent.com/u/10?v=4","type":"Organization","site_admin":false},
  "repository_selection":"selected","html_url":"https://github.com/organizations/octo-org/settings/installations/1",
- "app_id":7,"app_slug":"nexul","target_id":10,"target_type":"Organization","permissions":{"contents":"read","metadata":"read"},
+ "app_id":7,"app_slug":"nexul","target_id":10,"target_type":"Organization","permissions":{"contents":"read","issues":"write","metadata":"read"},
  "events":["push"],"created_at":"2026-09-01T10:00:00.000Z","updated_at":"2026-09-01T10:00:00.000Z","single_file_name":null,"suspended_at":null},
 {"id":2,"account":{"login":"octocat","id":20,"avatar_url":"https://avatars.githubusercontent.com/u/20?v=4","type":"User","site_admin":false},
  "repository_selection":"all","html_url":"https://github.com/settings/installations/2",
@@ -429,15 +453,17 @@ func TestListInstallations(t *testing.T) {
 				ID: 1, AccountID: 10, AccountLogin: "octo-org", AccountType: "organization",
 				AccountAvatarURL:    "https://avatars.githubusercontent.com/u/10?v=4",
 				RepositorySelection: "selected", RepositoryCount: &three,
-				HTMLURL: "https://github.com/organizations/octo-org/settings/installations/1",
+				HTMLURL:            "https://github.com/organizations/octo-org/settings/installations/1",
+				MissingPermissions: []string{},
 			},
 			{
 				ID: 2, AccountID: 20, AccountLogin: "octocat", AccountType: "user",
 				AccountAvatarURL:    "https://avatars.githubusercontent.com/u/20?v=4",
 				RepositorySelection: "all",
 				HTMLURL:             "https://github.com/settings/installations/2",
+				MissingPermissions:  []string{"issues"},
 			},
-		}, got)
+		}, got, "an installation that has not accepted Issues: write says so")
 		assert.Equal(t, []string{"per_page=1"}, countQueries, "the count reads one page of one item, never the whole list")
 	})
 	t.Run("a failed count fails the list", func(t *testing.T) {
@@ -570,6 +596,24 @@ func TestClient_RepositorySegmentsAreCheckedBeforeEveryNamedRequest(t *testing.T
 		}},
 		{"list webhooks", func() error { _, err := client.ListWebhooks(t.Context(), owner, name); return err }},
 		{"delete webhook", func() error { return client.DeleteWebhook(t.Context(), owner, name, "1") }},
+		{"update webhook", func() error { return client.UpdateWebhook(t.Context(), owner, name, "1") }},
+		{"issues", func() error {
+			_, _, err := client.ListIssues(t.Context(), owner, name, gitprovider.IssueOpts{})
+			return err
+		}},
+		{"issue", func() error { _, err := client.GetIssue(t.Context(), owner, name, 1); return err }},
+		{"create issue", func() error {
+			_, err := client.CreateIssue(t.Context(), owner, name, gitprovider.IssueInput{})
+			return err
+		}},
+		{"update issue", func() error {
+			_, err := client.UpdateIssue(t.Context(), owner, name, 1, gitprovider.IssuePatch{})
+			return err
+		}},
+		{"issue comments", func() error { _, err := client.ListIssueComments(t.Context(), owner, name, 1, time.Time{}); return err }},
+		{"create issue comment", func() error { _, err := client.CreateIssueComment(t.Context(), owner, name, 1, "hi"); return err }},
+		{"update issue comment", func() error { _, err := client.UpdateIssueComment(t.Context(), owner, name, 1, "hi"); return err }},
+		{"delete issue comment", func() error { return client.DeleteIssueComment(t.Context(), owner, name, 1) }},
 	} {
 		t.Run(tt.name, func(t *testing.T) { require.ErrorIs(t, tt.call(), apperrs.ErrInvalid); assert.Zero(t, calls) })
 	}

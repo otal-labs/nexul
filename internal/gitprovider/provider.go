@@ -1,6 +1,9 @@
 package gitprovider
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // GitProvider is the seam to a git host; GitLab/Gitea add a package satisfying this interface.
 type GitProvider interface {
@@ -13,9 +16,21 @@ type GitProvider interface {
 	MergedInto(ctx context.Context, owner, name string, number int, sha string) (bool, error)
 	CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
 	ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
+	// UpdateWebhook sets the hook's events to the ones the receiver dispatches, what a Stale hook lacks.
+	UpdateWebhook(ctx context.Context, owner, name, hookID string) error
 	DeleteWebhook(ctx context.Context, owner, name, hookID string) error
 	// GetTree returns the recursive git tree at ref; an empty ref resolves to the repo's default branch.
 	GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)
 	// GetFile returns a file's decoded content at ref; an empty ref resolves to the repo's default branch.
 	GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
+	// ListIssues returns one page of issues, pull requests left out, and the next page number, 0 after the last.
+	ListIssues(ctx context.Context, owner, name string, opts IssueOpts) ([]*Issue, int, error)
+	GetIssue(ctx context.Context, owner, name string, number int) (*Issue, error)
+	CreateIssue(ctx context.Context, owner, name string, in IssueInput) (*Issue, error)
+	UpdateIssue(ctx context.Context, owner, name string, number int, patch IssuePatch) (*Issue, error)
+	// ListIssueComments returns every comment on issue number updated at or after since; a zero since returns them all.
+	ListIssueComments(ctx context.Context, owner, name string, number int, since time.Time) ([]*IssueComment, error)
+	CreateIssueComment(ctx context.Context, owner, name string, number int, body string) (*IssueComment, error)
+	UpdateIssueComment(ctx context.Context, owner, name string, commentID int64, body string) (*IssueComment, error)
+	DeleteIssueComment(ctx context.Context, owner, name string, commentID int64) error
 }

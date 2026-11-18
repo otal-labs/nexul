@@ -22,6 +22,7 @@ type fakeHookHost struct {
 	listErr error
 	created []gitprovider.WebhookConfig
 	deleted []string
+	updated []string
 	calls   []string
 	prs     map[int]*gitprovider.PR
 }
@@ -35,6 +36,12 @@ func (f *fakeHookHost) CreateWebhook(_ context.Context, _, _ string, cfg gitprov
 	f.calls = append(f.calls, "create")
 	f.created = append(f.created, cfg)
 	return "1", nil
+}
+
+func (f *fakeHookHost) UpdateWebhook(_ context.Context, _, _, id string) error {
+	f.calls = append(f.calls, "update")
+	f.updated = append(f.updated, id)
+	return nil
 }
 
 func (f *fakeHookHost) DeleteWebhook(_ context.Context, _, _, id string) error {
@@ -137,16 +144,22 @@ func TestRepoWebhooksEnsure(t *testing.T) {
 		host        *fakeHookHost
 		wantErr     bool
 		wantCreated []gitprovider.WebhookConfig
+		wantUpdated []string
 	}{
 		{"no hook yet registers one", "https://nexul.example/", &fakeHookHost{},
-			false, []gitprovider.WebhookConfig{{URL: testHookURL, Secret: "derived"}}},
+			false, []gitprovider.WebhookConfig{{URL: testHookURL, Secret: "derived"}}, nil},
 		{"own hook already there is left alone", "https://nexul.example",
-			&fakeHookHost{hooks: []gitprovider.Webhook{{ID: "7", URL: testHookURL}}}, false, nil},
+			&fakeHookHost{hooks: []gitprovider.Webhook{{ID: "7", URL: testHookURL}}}, false, nil, nil},
 		{"another instance's hook does not count", "https://nexul.example",
 			&fakeHookHost{hooks: []gitprovider.Webhook{{ID: "8", URL: "https://staging.example/hooks/github"}}},
-			false, []gitprovider.WebhookConfig{{URL: testHookURL, Secret: "derived"}}},
-		{"unset instance url registers nothing", "", &fakeHookHost{}, true, nil},
-		{"list failure registers nothing", "https://nexul.example", &fakeHookHost{listErr: errors.New("forbidden")}, true, nil},
+			false, []gitprovider.WebhookConfig{{URL: testHookURL, Secret: "derived"}}, nil},
+		{"unset instance url registers nothing", "", &fakeHookHost{}, true, nil, nil},
+		{"list failure registers nothing", "https://nexul.example", &fakeHookHost{listErr: errors.New("forbidden")}, true, nil, nil},
+		{"own hook missing an event is brought up to date", "https://nexul.example",
+			&fakeHookHost{hooks: []gitprovider.Webhook{{ID: "7", URL: testHookURL, Stale: true}}}, false, nil, []string{"7"}},
+		{"another instance's stale hook is left alone", "https://nexul.example",
+			&fakeHookHost{hooks: []gitprovider.Webhook{{ID: "8", URL: "https://staging.example/hooks/github", Stale: true}, {ID: "7", URL: testHookURL}}},
+			false, nil, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -158,6 +171,7 @@ func TestRepoWebhooksEnsure(t *testing.T) {
 				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.wantCreated, tt.host.created)
+			assert.Equal(t, tt.wantUpdated, tt.host.updated)
 		})
 	}
 }

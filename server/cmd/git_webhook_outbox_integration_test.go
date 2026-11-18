@@ -42,7 +42,7 @@ func (k keyResolver) TicketIDs(_ context.Context, _, _ string, keys []string) ([
 
 func signedPROpened(t *testing.T, secret, delivery string) *http.Request {
 	t.Helper()
-	body, err := json.Marshal(map[string]any{
+	return signedDelivery(t, secret, "pull_request", delivery, map[string]any{
 		"action": "opened",
 		"pull_request": map[string]any{
 			"number": 1, "title": "ACME-7 Fix login", "state": "open",
@@ -52,10 +52,15 @@ func signedPROpened(t *testing.T, secret, delivery string) *http.Request {
 		},
 		"repository": map[string]any{"name": "app", "owner": map[string]any{"login": "acme"}},
 	})
+}
+
+func signedDelivery(t *testing.T, secret, event, delivery string, payload map[string]any) *http.Request {
+	t.Helper()
+	body, err := json.Marshal(payload)
 	require.NoError(t, err)
 	req := httptest.NewRequest(http.MethodPost, "/hooks/github", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-GitHub-Event", "pull_request")
+	req.Header.Set("X-GitHub-Event", event)
 	req.Header.Set("X-GitHub-Delivery", delivery)
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(body)
@@ -106,4 +111,31 @@ func TestGitWebhook_ReachesTheAutomationLogOncePerDelivery(t *testing.T) {
 		return err == nil && len(pending) == 0 && delivered.Load() == 1
 	}, 10*time.Second, 20*time.Millisecond)
 	assert.Equal(t, int32(1), delivered.Load())
+}
+
+// TestGitWebhook_IssuesDelivery_RecordsOneGitIssueRowPerDelivery: a signed issues delivery records one git.issue row with
+// [] lists, and GitHub redelivering it records nothing new.
+func TestGitWebhook_IssuesDelivery_RecordsOneGitIssueRowPerDelivery(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	store := storage.New(migrated.DB(t), []byte("0123456789abcdef0123456789abcdef"))
+	h := gitprovider.NewWebhookHandler("shhh", store.Outbox)
+	issue := map[string]any{
+		"action":     "opened",
+		"issue":      map[string]any{"id": 5001, "number": 12, "title": "Login fails on Safari", "state": "open", "user": map[string]any{"login": "alice"}},
+		"sender":     map[string]any{"login": "alice", "type": "User"},
+		"repository": map[string]any{"name": "app", "owner": map[string]any{"login": "acme"}},
+	}
+	for range 2 {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, signedDelivery(t, "shhh", "issues", "delivery-issue-1", issue))
+		require.Equal(t, http.StatusOK, rec.Code)
+	}
+
+	events, err := store.AutomationEventLog.After(ctx, []string{gitprovider.TopicIssue}, automations.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.JSONEq(t, `{"owner":"acme","repo":"app","action":"opened","issue":{"id":5001,"number":12,"title":"Login fails on Safari",
+		"body":"","state":"open","state_reason":"","labels":[],"assignees":[],"author":"alice","html_url":"","updated_at":"0001-01-01T00:00:00Z"},
+		"sender":{"login":"alice","type":"User"}}`, string(events[0].Payload))
 }

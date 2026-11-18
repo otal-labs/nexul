@@ -38,6 +38,8 @@ type Installation struct {
 	Workspaces []InstallationWorkspace `json:"workspaces"`
 	// Problem says why GitHub refused to read this installation, a suspension for one; the others read on.
 	Problem string `json:"problem,omitempty"`
+	// MissingPermissions names what the App asks for that the installation's owner has not accepted yet, such as "issues".
+	MissingPermissions []string `json:"missing_permissions"`
 }
 
 // Assignment links an installation's account to a workspace whose project attached one of its repositories, so

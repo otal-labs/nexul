@@ -112,8 +112,9 @@ func (f *fakeTicketResolver) TicketIDs(_ context.Context, _, _ string, keys []st
 	return ids, nil
 }
 
-// fakeProvider is a scriptable GitProvider for use-case and tool tests.
+// fakeProvider is a scriptable GitProvider for use-case and tool tests; the issue methods panic through the nil embed.
 type fakeProvider struct {
+	GitProvider
 	repo         *Repo
 	prs          []*PR
 	pr           *PR

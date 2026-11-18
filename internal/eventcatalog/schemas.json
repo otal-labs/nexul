@@ -4125,6 +4125,201 @@
       "branch"
     ]
   },
+  "git.issue": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "opened",
+          "edited",
+          "closed",
+          "reopened",
+          "labeled",
+          "unlabeled",
+          "assigned",
+          "unassigned",
+          "deleted",
+          "transferred"
+        ]
+      },
+      "issue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "state_reason": {
+            "type": "string",
+            "description": "Why it was closed or reopened (completed, not_planned, duplicate, reopened); empty when the host gives none."
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Label names."
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Assignee logins."
+          },
+          "author": {
+            "type": "string"
+          },
+          "html_url": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "title",
+          "body",
+          "state",
+          "state_reason",
+          "labels",
+          "assignees",
+          "author",
+          "html_url",
+          "updated_at"
+        ]
+      },
+      "sender": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "The account type, such as User, Bot or Organization."
+          }
+        },
+        "required": [
+          "login",
+          "type"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "action",
+      "issue",
+      "sender"
+    ]
+  },
+  "git.issue_comment": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "issue_number": {
+        "type": "integer"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "created",
+          "edited",
+          "deleted"
+        ]
+      },
+      "comment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "body": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "author_avatar_url": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "author",
+          "author_avatar_url",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "sender": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "The account type, such as User, Bot or Organization."
+          }
+        },
+        "required": [
+          "login",
+          "type"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "issue_number",
+      "action",
+      "comment",
+      "sender"
+    ]
+  },
   "git.pr_closed": {
     "type": "object",
     "properties": {

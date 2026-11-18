@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	githubapi "github.com/google/go-github/v71/github"
 
@@ -138,7 +140,13 @@ func (c *Client) MergedInto(ctx context.Context, owner, name string, number int,
 }
 
 // webhookEvents are the delivery types the /hooks/github receiver dispatches; push also carries branch deletes.
-var webhookEvents = []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issue_comment", "push"}
+var webhookEvents = []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issues", "issue_comment", "push"}
+
+// staleEvents reports whether a hook's events differ from webhookEvents, in any order.
+func staleEvents(events []string) bool {
+	have, want := slices.Sorted(slices.Values(events)), slices.Sorted(slices.Values(webhookEvents))
+	return !slices.Equal(have, want)
+}
 
 // CreateWebhook implements gitprovider.GitProvider, returning the hook id.
 func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
@@ -172,13 +180,28 @@ func (c *Client) ListWebhooks(ctx context.Context, owner, name string) ([]gitpro
 			return nil, fmt.Errorf("list webhooks %s/%s: %w", owner, name, mapErr(err))
 		}
 		for _, h := range hooks {
-			out = append(out, gitprovider.Webhook{ID: strconv.FormatInt(h.GetID(), 10), URL: h.GetConfig().GetURL()})
+			out = append(out, gitprovider.Webhook{ID: strconv.FormatInt(h.GetID(), 10), URL: h.GetConfig().GetURL(), Stale: staleEvents(h.Events)})
 		}
 		if resp.NextPage == 0 {
 			return out, nil
 		}
 		opts.Page = resp.NextPage
 	}
+}
+
+// UpdateWebhook implements gitprovider.GitProvider, setting the hook's events to webhookEvents.
+func (c *Client) UpdateWebhook(ctx context.Context, owner, name, hookID string) error {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return err
+	}
+	id, err := strconv.ParseInt(hookID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("update webhook %s/%s: %w: hook id %q is not an integer", owner, name, apperrors.ErrInvalid, hookID)
+	}
+	if _, _, err := c.gh.Repositories.EditHook(ctx, owner, name, id, &githubapi.Hook{Events: webhookEvents}); err != nil {
+		return fmt.Errorf("update webhook %s/%s: %w", owner, name, mapErr(err))
+	}
+	return nil
 }
 
 // DeleteWebhook implements gitprovider.GitProvider.
@@ -192,6 +215,145 @@ func (c *Client) DeleteWebhook(ctx context.Context, owner, name, hookID string) 
 	}
 	if _, err := c.gh.Repositories.DeleteHook(ctx, owner, name, id); err != nil {
 		return fmt.Errorf("delete webhook %s/%s: %w", owner, name, mapErr(err))
+	}
+	return nil
+}
+
+// issuesPerPage is GitHub's largest page, so an import reads the fewest pages.
+const issuesPerPage = 100
+
+// ListIssues implements gitprovider.GitProvider: one page of issues, pull requests left out, and the next page, 0 after the last.
+func (c *Client) ListIssues(ctx context.Context, owner, name string, opts gitprovider.IssueOpts) ([]*gitprovider.Issue, int, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, 0, err
+	}
+	listOpts := &githubapi.IssueListByRepoOptions{
+		State:       opts.State,
+		Labels:      opts.Labels,
+		Since:       opts.Since,
+		ListOptions: githubapi.ListOptions{Page: opts.Page, PerPage: issuesPerPage},
+	}
+	issues, resp, err := c.gh.Issues.ListByRepo(ctx, owner, name, listOpts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list issues %s/%s: %w", owner, name, mapErr(err))
+	}
+	out := make([]*gitprovider.Issue, 0, len(issues))
+	for _, i := range issues {
+		if i.IsPullRequest() {
+			continue
+		}
+		issue := gitprovider.IssueFromGitHub(i)
+		out = append(out, &issue)
+	}
+	return out, resp.NextPage, nil
+}
+
+// GetIssue implements gitprovider.GitProvider.
+func (c *Client) GetIssue(ctx context.Context, owner, name string, number int) (*gitprovider.Issue, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	i, _, err := c.gh.Issues.Get(ctx, owner, name, number)
+	if err != nil {
+		return nil, fmt.Errorf("get issue %s/%s#%d: %w", owner, name, number, mapErr(err))
+	}
+	issue := gitprovider.IssueFromGitHub(i)
+	return &issue, nil
+}
+
+// CreateIssue implements gitprovider.GitProvider.
+func (c *Client) CreateIssue(ctx context.Context, owner, name string, in gitprovider.IssueInput) (*gitprovider.Issue, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	req := &githubapi.IssueRequest{Title: &in.Title, Body: &in.Body}
+	if in.Labels != nil {
+		req.Labels = &in.Labels
+	}
+	if in.Assignees != nil {
+		req.Assignees = &in.Assignees
+	}
+	i, _, err := c.gh.Issues.Create(ctx, owner, name, req)
+	if err != nil {
+		return nil, fmt.Errorf("create issue in %s/%s: %w", owner, name, mapErr(err))
+	}
+	issue := gitprovider.IssueFromGitHub(i)
+	return &issue, nil
+}
+
+// UpdateIssue implements gitprovider.GitProvider, sending only the fields the patch sets.
+func (c *Client) UpdateIssue(ctx context.Context, owner, name string, number int, p gitprovider.IssuePatch) (*gitprovider.Issue, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	req := &githubapi.IssueRequest{Title: p.Title, Body: p.Body, State: p.State, StateReason: p.StateReason, Labels: p.Labels, Assignees: p.Assignees}
+	i, _, err := c.gh.Issues.Edit(ctx, owner, name, number, req)
+	if err != nil {
+		return nil, fmt.Errorf("update issue %s/%s#%d: %w", owner, name, number, mapErr(err))
+	}
+	issue := gitprovider.IssueFromGitHub(i)
+	return &issue, nil
+}
+
+// ListIssueComments implements gitprovider.GitProvider: every comment on issue number updated at or after since, all pages.
+func (c *Client) ListIssueComments(ctx context.Context, owner, name string, number int, since time.Time) ([]*gitprovider.IssueComment, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	opts := &githubapi.IssueListCommentsOptions{ListOptions: githubapi.ListOptions{PerPage: issuesPerPage}}
+	if !since.IsZero() {
+		opts.Since = &since
+	}
+	var out []*gitprovider.IssueComment
+	for {
+		comments, resp, err := c.gh.Issues.ListComments(ctx, owner, name, number, opts)
+		if err != nil {
+			return nil, fmt.Errorf("list comments of %s/%s#%d: %w", owner, name, number, mapErr(err))
+		}
+		for _, cm := range comments {
+			comment := gitprovider.IssueCommentFromGitHub(cm)
+			out = append(out, &comment)
+		}
+		if resp.NextPage == 0 {
+			return out, nil
+		}
+		opts.Page = resp.NextPage
+	}
+}
+
+// CreateIssueComment implements gitprovider.GitProvider.
+func (c *Client) CreateIssueComment(ctx context.Context, owner, name string, number int, body string) (*gitprovider.IssueComment, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	cm, _, err := c.gh.Issues.CreateComment(ctx, owner, name, number, &githubapi.IssueComment{Body: &body})
+	if err != nil {
+		return nil, fmt.Errorf("comment on %s/%s#%d: %w", owner, name, number, mapErr(err))
+	}
+	comment := gitprovider.IssueCommentFromGitHub(cm)
+	return &comment, nil
+}
+
+// UpdateIssueComment implements gitprovider.GitProvider.
+func (c *Client) UpdateIssueComment(ctx context.Context, owner, name string, commentID int64, body string) (*gitprovider.IssueComment, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	cm, _, err := c.gh.Issues.EditComment(ctx, owner, name, commentID, &githubapi.IssueComment{Body: &body})
+	if err != nil {
+		return nil, fmt.Errorf("update comment %d in %s/%s: %w", commentID, owner, name, mapErr(err))
+	}
+	comment := gitprovider.IssueCommentFromGitHub(cm)
+	return &comment, nil
+}
+
+// DeleteIssueComment implements gitprovider.GitProvider.
+func (c *Client) DeleteIssueComment(ctx context.Context, owner, name string, commentID int64) error {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return err
+	}
+	if _, err := c.gh.Issues.DeleteComment(ctx, owner, name, commentID); err != nil {
+		return fmt.Errorf("delete comment %d in %s/%s: %w", commentID, owner, name, mapErr(err))
 	}
 	return nil
 }
@@ -370,7 +532,17 @@ func toInstallation(inst *githubapi.Installation) *gitprovider.Installation {
 		AccountAvatarURL:    account.GetAvatarURL(),
 		RepositorySelection: inst.GetRepositorySelection(),
 		HTMLURL:             inst.GetHTMLURL(),
+		MissingPermissions:  missingPermissions(inst.GetPermissions()),
 	}
+}
+
+// missingPermissions names the permissions the App asks for that an installation has not accepted yet.
+func missingPermissions(p *githubapi.InstallationPermissions) []string {
+	missing := []string{}
+	if p.GetIssues() != "write" {
+		missing = append(missing, "issues")
+	}
+	return missing
 }
 
 func toRepo(r *githubapi.Repository) *gitprovider.Repo {
@@ -398,8 +570,11 @@ func toPR(p *githubapi.PullRequest) *gitprovider.PR {
 }
 
 // mapErr translates go-github errors into the platform sentinels so adapters can
-// map them to HTTP/MCP codes. Network-level errors are treated as retryable.
+// map them to HTTP/MCP codes. Network-level errors and rate limits are treated as retryable.
 func mapErr(err error) error {
+	if wait, ok := rateLimitWait(err, time.Now()); ok {
+		return &apperrors.RetryAfterError{Wait: wait, Err: err}
+	}
 	var ghe *githubapi.ErrorResponse
 	if !errors.As(err, &ghe) {
 		return apperrors.Retryable(err)
@@ -418,4 +593,37 @@ func mapErr(err error) error {
 		return apperrors.Retryable(err)
 	}
 	return err
+}
+
+// rateLimitWait reads a 403 or 429 carrying X-RateLimit-Remaining: 0 or Retry-After as a rate limit, and how long it lasts:
+// Retry-After's seconds, else until X-RateLimit-Reset.
+func rateLimitWait(err error, now time.Time) (time.Duration, bool) {
+	var rle *githubapi.RateLimitError
+	if errors.As(err, &rle) {
+		return max(rle.Rate.Reset.Sub(now), 0), true
+	}
+	var abuse *githubapi.AbuseRateLimitError
+	if errors.As(err, &abuse) {
+		return max(abuse.GetRetryAfter(), 0), true
+	}
+	var ghe *githubapi.ErrorResponse
+	if !errors.As(err, &ghe) || ghe.Response == nil {
+		return 0, false
+	}
+	resp := ghe.Response
+	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusTooManyRequests {
+		return 0, false
+	}
+	retryAfter := resp.Header.Get("Retry-After")
+	if retryAfter == "" && resp.Header.Get("X-RateLimit-Remaining") != "0" {
+		return 0, false
+	}
+	if secs, perr := strconv.Atoi(retryAfter); perr == nil {
+		return max(time.Duration(secs)*time.Second, 0), true
+	}
+	reset, perr := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64)
+	if perr != nil {
+		return 0, true
+	}
+	return max(time.Unix(reset, 0).Sub(now), 0), true
 }

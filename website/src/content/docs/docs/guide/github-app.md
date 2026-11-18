@@ -33,11 +33,12 @@ Give it these repository permissions and nothing else:
 | Permission | Level |
 | --- | --- |
 | Contents | Read |
+| Issues | Read and write |
 | Pull requests | Read and write |
 | Webhooks | Read and write |
 | Metadata | Read (GitHub adds it) |
 
-Without Contents: Read, a runner cloning a private repository fails with "Write access to repository not granted". **Create App on GitHub** asks for all of these. An App made before this version also asked for the organisation's Members: Read; Nexul no longer uses it, and you can take it off on the App's page.
+Without Contents: Read, a runner cloning a private repository fails with "Write access to repository not granted". Issues: Read and write lets Nexul receive an attached repository's issues and their comments, and read and write them. **Create App on GitHub** asks for all of these. An App made before this version also asked for the organisation's Members: Read; Nexul no longer uses it, and you can take it off on the App's page.
 
 Generate a client secret on the App's page and copy it. GitHub shows it once.
 
@@ -74,6 +75,8 @@ An account renamed on GitHub keeps its workspaces. If its owner uninstalls the A
 ## Changing permissions later
 
 Adding or raising a permission on the App does not reach existing installations. GitHub asks each installation's owner to accept it: **Settings → Applications → Installed GitHub Apps → Configure → Review request**. Until they accept, anything that needs the new permission keeps failing.
+
+An App made before Issues was asked for shows **Issues permission missing** on each installation under **Installations**. To grant it, open the App's page on GitHub (**Settings → Developer settings → GitHub Apps → Edit → Permissions & events**), set **Issues** to **Read and write** and save; then, for each installation, click **Manage** and accept the change. Nexul adds `issues` to the webhook it already keeps on each attached repository the next time it starts.
 
 A connector's secret fields, like the client secret here, can be a 1Password reference instead: see [External secrets](/docs/guide/external-secrets/).
 
