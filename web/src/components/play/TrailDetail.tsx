@@ -3,6 +3,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { TrailDetailBody } from "@/components/play/TrailDetailBody";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useFetchTrail } from "@/hooks/TrailHooks";
+import { QuestionDockContext } from "@/hooks/useQuestionDock";
 
 interface TrailDetailProps {
   trailId: string | null;
@@ -22,7 +23,12 @@ export const TrailDetail = ({ trailId, onClose }: TrailDetailProps) => {
         </DialogHeader>
         {trailId !== null && isPending && <LoadingDisplay label="Loading trail…" />}
         {error && <ErrorDisplay error={error} title="Couldn't load the trail." />}
-        {trail && <TrailDetailBody trail={trail} />}
+        {/* A run opened from a thread answers its question here, not in the thread's composer behind the dialog. */}
+        {trail && (
+          <QuestionDockContext value={null}>
+            <TrailDetailBody trail={trail} />
+          </QuestionDockContext>
+        )}
       </DialogContent>
     </Dialog>
   );

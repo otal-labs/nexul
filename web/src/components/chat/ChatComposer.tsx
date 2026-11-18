@@ -33,12 +33,14 @@ interface ChatComposerProps {
   workspaceId: string;
   conversationId: string;
   placeholder?: string;
+  // dockRef receives the slot above the field that an open question renders into.
+  dockRef?: (element: HTMLDivElement | null) => void;
   // queue: the Agent's turn this starts waits behind the one under way instead of steering into it.
   onSend: (body: string, queue: boolean) => Promise<void>;
 }
 
 // ponytail: mention picker anchors to the composer, not the caret; upgrade to text-mirror measurement if felt.
-export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Message…", onSend }: ChatComposerProps) => {
+export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Message…", dockRef, onSend }: ChatComposerProps) => {
   const value = useChatDraftStore((s) => s.drafts[conversationId] ?? "");
   const setDraft = useChatDraftStore((s) => s.setDraft);
   const setValue = (text: string) => setDraft(conversationId, text);
@@ -161,8 +163,9 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
+        <div ref={dockRef} className="peer empty:hidden" />
         {/* One framed field holding attach, text and emoji; the frame takes the focus ring, not the textarea. */}
-        <div className="flex items-start gap-1 rounded-lg bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
+        <div className="flex items-start gap-1 rounded-lg peer-[:not(:empty)]:rounded-t-none bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
           <ComposerAttachButton onFiles={addFiles} />
           {/* The placeholder is drawn over the field, since a textarea's own cannot end in an ellipsis. */}
           <div className="relative min-w-0 flex-1">
