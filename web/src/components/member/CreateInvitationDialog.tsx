@@ -8,9 +8,11 @@ import { CreateInvitationForm } from "@/components/member/CreateInvitationForm";
 
 interface CreateInvitationDialogProps {
   onCreated: (invitation: CreatedInvitation) => void;
+  // Opened from a role on the Access page: the link starts out giving it, in the workspace in view.
+  role?: { id: string; name: string };
 }
 
-export const CreateInvitationDialog = ({ onCreated }: CreateInvitationDialogProps) => {
+export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDialogProps) => {
   const { open } = useFormDialog();
   const selectedWorkspaceId = useWorkspaceStore((state) => state.selectedWorkspaceId);
 
@@ -21,14 +23,14 @@ export const CreateInvitationDialog = ({ onCreated }: CreateInvitationDialogProp
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={onCreated} />,
-      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_ids: [] }] } },
+      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_ids: role ? [role.id] : [] }] } },
       dialogClassName: "max-w-2xl",
     });
   };
 
   return (
-    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()}>
-      Invite
+    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm" })}>
+      {role ? `Invite to ${role.name}` : "Invite"}
     </ActionButton>
   );
 };

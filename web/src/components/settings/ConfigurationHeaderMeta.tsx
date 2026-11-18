@@ -1,6 +1,5 @@
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
-import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -23,11 +22,6 @@ const MentionsMeta = () => {
   return <span className="tabular-nums">{workspace && count(fields, "field")}</span>;
 };
 
-const TeamMeta = () => {
-  const { data: team } = useFetchTeam();
-  return <span className="tabular-nums">{team && count(team.people.length, "person", "people")}</span>;
-};
-
 interface ConfigurationHeaderMetaProps {
   section: SettingsSection;
 }
@@ -38,6 +32,5 @@ export const ConfigurationHeaderMeta = ({ section }: ConfigurationHeaderMetaProp
     {(section === "general" || section === "danger") && <GeneralMeta />}
     {section === "interview" && <InterviewMeta />}
     {section === "mentions" && <MentionsMeta />}
-    {section === "team" && <TeamMeta />}
   </span>
 );

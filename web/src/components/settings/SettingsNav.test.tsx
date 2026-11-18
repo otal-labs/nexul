@@ -14,7 +14,6 @@ import {
 
 const nothing: SettingsVisibility = {
   instanceSections: [],
-  teamIsInstanceWide: false,
   showGeneral: false,
   showInterviewTemplate: false,
   showMentionLayout: false,
@@ -23,7 +22,6 @@ const nothing: SettingsVisibility = {
 
 const everything: SettingsVisibility = {
   instanceSections: ["instance", "sign-in", "connectors", "dns", "templates"],
-  teamIsInstanceWide: true,
   showGeneral: true,
   showInterviewTemplate: true,
   showMentionLayout: true,
@@ -32,7 +30,7 @@ const everything: SettingsVisibility = {
 
 // What ConfigurationPage hands the nav: the visible sections with the instance ones taken out.
 const workspaceSections = (visibility: SettingsVisibility) =>
-  visibleSettingsSections(visibility).filter((section) => !isInstanceSection(section, visibility.teamIsInstanceWide));
+  visibleSettingsSections(visibility).filter((section) => !isInstanceSection(section));
 
 const renderNav = (sections: SettingsSection[], active: SettingsSection = "danger") =>
   render(
@@ -55,13 +53,6 @@ describe("SettingsNav", () => {
     expect(nav.queryByRole("link", { name: "Plays" })).not.toBeInTheDocument();
   });
 
-  it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {
-    renderNav(workspaceSections({ ...nothing, showTeam: true }));
-    const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
-    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Team", "Danger zone"]);
-    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/acme/configuration/team");
-  });
-
   it("sets Danger zone apart with a hairline in the top row, and lets every label hold its medium width", () => {
     renderNav(workspaceSections(everything));
     const danger = screen.getByRole("link", { name: "Danger zone" }).closest("li");
@@ -72,14 +63,6 @@ describe("SettingsNav", () => {
   it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {
     renderNav(workspaceSections(nothing));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Danger zone"]);
-  });
-});
-
-describe("isInstanceSection", () => {
-  it("sends Team to Settings only for an accounts:read holder", () => {
-    expect(isInstanceSection("team", true)).toBe(true);
-    expect(isInstanceSection("team", false)).toBe(false);
-    expect(isInstanceSection("connectors", false)).toBe(true);
   });
 });
 

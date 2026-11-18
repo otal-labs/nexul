@@ -9,13 +9,13 @@ Your instance is private: nobody signs in without an invitation. Each person the
 
 ## Invite someone
 
-1. Open **Settings → Team** and press **Invite**.
+1. Open the role on **Access → Roles and people** and press **Invite to** followed by its name, which starts the link with that role ticked. An instance administrator can also press **Invite** on **Settings → Team**.
 2. Under **Link expires in**, choose **1 day** or **7 days**.
 3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Each role shows its description under its name. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
-4. Press **Create link**. Team switches to its **Invitations** tab with the new link on top; press **Copy link**. It's shown once.
+4. Press **Create link**. The new link shows above the role's people (on Team, the **Invitations** tab opens with it on top); press **Copy link**. It's shown once.
 5. Send the link yourself, by email, chat, or however you like. Nexul sends nothing.
 
-A link works once and gives nothing but its roles. The Owner role is never offered, and a role holding more than you hold sits under **Can't give** with what it holds that you don't; ownership doesn't move through an invitation. The **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
+A link works once and gives nothing but its roles. The Owner role is never offered, and a role holding more than you hold sits under **Can't give** with what it holds that you don't; ownership doesn't move through an invitation. A role lists its links not used yet under **Invited**, below its people. Team's **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
 
 Below them, **Accepted in the last 30 days** lists who each link let in, newest first: their name, the roles it gave, who made the link, when they accepted, and how far their setup got, the same line Team shows under them. Click one to open the person. **Expired or deleted in the last 30 days** lists the links that stopped working before anyone used them, whether they ran out, were revoked, or lost their role or their maker's right to give it: what each gave, who made it and when, and when it ended.
 
@@ -29,11 +29,11 @@ Signed in with the wrong account? **Not you?** beside the name goes back to the 
 
 ### When a link doesn't work
 
-A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. **Not you?** beside their name signs them out if they were signed in, and shows the sign-in buttons for the same link. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them on Team ([Manage people](#manage-people)). A link that has run out or been revoked says only "This invitation has been deleted or has expired": it doesn't say which, names nobody, and tells no one.
+A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. **Not you?** beside their name signs them out if they were signed in, and shows the sign-in buttons for the same link. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them to a role ([Give someone a role](#give-someone-a-role)). A link that has run out or been revoked says only "This invitation has been deleted or has expired": it doesn't say which, names nobody, and tells no one.
 
 ## Manage people
 
-**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their roles as chips (three, then a count whose tooltip names the rest, or **No roles**) or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Roles**, one checkbox per role with how much it allows beside it, and **Remove from workspace**; the **+** after the last tab adds them to another workspace, where you tick at least one role before **Confirm**.
+**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their roles as chips (three, then a count whose tooltip names the rest, or **No roles**) or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in, each with their roles there as chips and **View as**. Roles aren't changed here: **Change on Access** opens that workspace's **Roles and people** ([Give someone a role](#give-someone-a-role)).
 
 ### Setup progress
 
@@ -41,31 +41,39 @@ While someone hasn't finished their [Welcome wizard](/docs/guide/welcome-wizard/
 
 Open the person for the detail. Under their name it says when they joined and who invited them. **Welcome wizard** lists each step left or skipped with why it isn't done ("No paired computer with its setup confirmed") or when they skipped it, and folds the done steps into one line.
 
-The roles you may give come first. Under **Can't give** sit the Owner role and every role holding something you don't, each with the reason; their boxes keep the person's tick and can't be changed, since you can't take away a role you couldn't give. Unticking the last role warns that the person will see no projects or plays there, but you can still confirm it.
-
-Nothing applies as you edit. A tab with changes shows a dot, **Confirm** applies them all, and **Cancel** asks before throwing them away. If one change is refused, the dialog says which and keeps the rest waiting for the next **Confirm**.
-
 Account actions apply at once, each after its own confirmation: **Disable** stops someone signing in and keeps their access, **Reactivate** lets them sign in again (its confirm says their computers stay disconnected), and **Remove account** removes them. **Restore** brings a removed account back with no workspace access. Disable and Remove account also disconnect the person's computers: each one's runner uninstalls itself, and you are told only that their computers were disconnected, never which ones. Reactivating or restoring the account brings none back; the person adds each computer again from their own settings.
 
 A person with no role in a workspace stays a member. Opening it, they see **No roles in** that workspace, a line saying what that means, and its Owners, each a button that opens a direct message with them, which takes no role. Their sidebar shows no project; channels and direct messages show once they have some. They can read the public channels but not post in them, and their direct messages work as usual, so they can always message an Owner; posting in a channel takes a role that allows it.
 
 Everyone sees their own roles in **Settings → Profile → Your roles**, one line per workspace, and the account row at the bottom of the sidebar lists them for the workspace in view.
 
-Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `members:write` there. Without `accounts:read`, someone who manages members finds Team under **Configuration** instead, showing only the workspaces they manage.
+Team takes `accounts:read`, and shows everyone on the instance.
+
+## Give someone a role
+
+Roles are given from the role. Open **Access → Roles and people** and pick a role from the list on the left, where each shows its description and how many people hold it. The role's page lists its **People**, each with when they were last seen and the other roles they hold, then what the role allows.
+
+- **Add people** lists everyone you can see who doesn't hold the role, the workspace's members first, then people **Not in** the workspace **yet**, whom picking also adds to it. Search narrows the list, and it stays open so you can add several in a row.
+- **Invite to** the role makes a link for someone without an account ([Invite someone](#invite-someone)).
+- A person's **…** menu takes the role from them, views Nexul as them ([Check what someone can see](#check-what-someone-can-see)), or removes them from the workspace, which asks first and takes every role they hold there; their account stays.
+
+Each change saves at once and says so. If one is refused, the message names the person and the role. You can't give a role holding more than you hold, or take one you couldn't give: its page says why, with a lock, instead of offering Add people. The Owner role is never given or taken here.
+
+**No roles**, under the roles, lists the members holding none, who see no projects or plays until a role is given from its own page. Giving and taking roles takes `members:write` in the workspace.
 
 ## Check what someone can see
 
-To see whether a person's roles give them too much or too little, view Nexul as them. Open the person on **Settings → Team**, pick the workspace's tab, and press **View as** followed by their first name. Every page then shows what they see in that workspace: their projects, their channels, the buttons their roles allow. A bar across the top says who you're viewing as, and stays until you stop.
+To see whether a person's roles give them too much or too little, view Nexul as them. Choose **View as** followed by their first name from their **…** menu on a role's page, or open the person on **Settings → Team**, pick the workspace's tab, and press it there. Every page then shows what they see in that workspace: their projects, their channels, the buttons their roles allow. A bar across the top says who you're viewing as, and stays until you stop.
 
 Viewing as someone needs the **View Nexul as another member** permission in that workspace. You can't view as yourself or as an Owner, who sees everything, and you can't view as someone who holds a permission you don't: Nexul says which one, since you couldn't tell what it gives them.
 
 A view is read only. A button the person can press is still there, but pressing it tells you changes are off, so nothing is done in their name. Live updates are off too: reload a page to see new changes. Their inbox, their devices and computers, and any direct message or private channel you aren't in yourself are never shown, and neither are their other workspaces; a page that depends on them comes up empty.
 
-Press **Stop viewing** in the bar to leave. You land back on Team. Nexul also ends the view by itself, and tells you why, if the person's roles change in a way that would no longer let you view them. Signing out ends it too.
+Press **Stop viewing** in the bar to leave. You land back on the page you started from. Nexul also ends the view by itself, and tells you why, if the person's roles change in a way that would no longer let you view them. Signing out ends it too.
 
 ## Roles
 
-Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Access → Roles**.
+Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Access → Roles and people**.
 
 **New role** and a role's **Edit** open the role editor, a dialog with the name at the top and Save at the bottom. A new role can **Start from** a copy of another role's permissions and Welcome steps; the copy is yours to change and the other role stays as it is. Nothing is saved until **Create role** or **Save**, and closing with changes asks before it throws them away.
 
@@ -85,7 +93,7 @@ Lists answer by role only. An action there that a rule on one row refuses is sti
 
 A fourth tab, **Welcome**, switches on the [Welcome wizard](/docs/guide/welcome-wizard/) steps the role gives its holders. Switching one on asks everyone holding the role again, including anyone who skipped it.
 
-The **Roles** tab of the Access page shows every role side by side: one column per role, the Owner first, with how many people hold it under its name, and one row per area in the editor's three sections, each cell the role's level there (a **+1** after it counts the extra checkboxes it holds) or **Yes** and **No** for a switch. A column's **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
+**Compare roles**, under the roles on **Access → Roles and people**, shows every role side by side: one column per role, the Owner first, with how many people hold it under its name, and one row per area in the editor's three sections, each cell the role's level there (a **+1** after it counts the extra checkboxes it holds) or **Yes** and **No** for a switch. A column's **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
 
 Nobody can hand out a permission they don't hold: not in a role, a rule's Allow, or an invitation, and can't lift a Deny on one. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 
@@ -143,13 +151,13 @@ A machine carries rules of its own, like a project: a role of any workspace or a
 
 ## Who's in each project
 
-**Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project and what each role can do. It shows to anyone who can manage a project's access (`projects:access`) or edit roles (`roles:write`); the Owner sees every project, anyone else only the projects they're in and manage. Its tabs are **Projects**, **Roles** and **Public channels**, each shown to the people who hold what it needs. Someone who edits roles but manages no project sees **Roles** alone.
+**Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project and what each role can do. It shows to anyone who can manage a project's access (`projects:access`), edit roles (`roles:write`), or give them (`members:write`); the Owner sees every project, anyone else only the projects they're in and manage. Its tabs are **Projects**, **Roles and people** and **Public channels**, each shown to the people who hold what it needs. Someone who manages no project sees **Roles and people** alone.
 
 The **Projects** tab is a grid: one row per project, one column per role, with how many people hold each role under its name. Tick a role on a project and everyone holding it sees the project and everything in it; a ticked box is a check on a shaded cell, and a project with no ticks and no people is seen by Owners only. The **Every project** row ticks a role on every project at once, or clears it from all of them when every project already has it, and says how many projects have it, such as **9/15**; past ten projects a filter narrows the rows, and the top row then acts on the rows shown. **People**, pinned to the right, names someone on a project whatever roles they hold: hover a row for the add button, which opens a list of the workspace's people. The project names and the role names stay in view while the grid scrolls.
 
 The grid is the whole workspace at a glance. For one project, its settings' [People in this project](#people-in-this-project) lists everyone in it, through which role or by name, and anyone kept out of it by name.
 
-The **Roles** tab, between the two grids, is where you define what each role can do: the same [roles](#roles) the grid uses as columns, so who a role reaches and what it allows sit on one page. It takes `roles:write`.
+The **Roles and people** tab, between the two grids, is where you define what each role can do and give it to people: the same [roles](#roles) the grid uses as columns, so who holds a role, what it reaches and what it allows sit on one page. Defining roles takes `roles:write`, giving them `members:write`.
 
 The **Public channels** tab is the Owner's. Every member sees a public channel, so its cells start empty; click a role's cell to hide that channel from everyone holding it, which shows a crossed-out eye there, and the **Every channel** row counts how many channels each role can't see. Private channels keep their own members. A box here is the same rule as **See this channel** in the channel's own [permissions](/docs/guide/chat-and-voice/#who-sees-and-posts-in-a-channel), where whoever holds `channels:write` also sets who posts in it.
 

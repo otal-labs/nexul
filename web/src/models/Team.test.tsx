@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { AccountStatus, EveryProject, roleHolders, type Team, type TeamMembership, type TeamPerson } from "@/models/Team";
+import { AccountStatus, EveryProject, roleHolders, roleless, type Team, type TeamMembership, type TeamPerson } from "@/models/Team";
 
 const membership = (roleId: string, roles?: string[]): TeamMembership => ({
   workspace_id: "ws-1",
@@ -43,5 +43,23 @@ describe("roleHolders", () => {
     };
 
     expect(roleHolders(team, "ws-1", "role-client").map((p) => p.id)).toEqual(["alice", "bob"]);
+  });
+});
+
+describe("roleless", () => {
+  it("lists the workspace's members holding no role, from an empty set or an older server's blank role, and not a removed account", () => {
+    const team: Team = {
+      people: [
+        person("alice", [membership("role-dev", ["role-dev"])]),
+        person("bob", [membership("", [])]),
+        person("sam", [membership("")]),
+        person("lena", [membership("", [])], AccountStatus.Removed),
+        person("kai", [{ ...membership("", []), workspace_id: "ws-2" }]),
+      ],
+      workspaces: [],
+      can_manage_accounts: false,
+    };
+
+    expect(roleless(team, "ws-1").map((p) => p.id)).toEqual(["bob", "sam"]);
   });
 });

@@ -99,3 +99,11 @@ export const roleHolders = (team: Team | undefined, workspaceId: string, roleId:
           heldRoles(membership).some((role) => role.id === roleId),
       ),
   );
+
+// The members of a workspace holding no role, who see no project or play there; removed accounts are no one's.
+export const roleless = (team: Team | undefined, workspaceId: string): TeamPerson[] =>
+  (team?.people ?? []).filter(
+    (person) =>
+      person.status !== AccountStatus.Removed &&
+      person.workspaces.some((membership) => membership.workspace_id === workspaceId && heldRoles(membership).every((role) => !role.id)),
+  );

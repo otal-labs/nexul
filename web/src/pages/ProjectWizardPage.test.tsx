@@ -14,6 +14,7 @@ vi.mock("@/hooks/AccessHooks", () => ({
   useAreaAccess: () => (area: string) => access.areas.includes(area),
   useCanAddMachines: () => false,
   useCanOpenSection: () => false,
+  useSeesTeam: () => false,
   useVisibleSettingsSections: () => [],
 }));
 

@@ -92,6 +92,7 @@ const workspaceRoutes: RouteObject[] = [
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },
   ...staticTabs("access", ["roles", "channels"], "access", <AccessPage />),
+  { path: "access/roles/:roleId", handle: gate("access"), element: <TabSegmentContext value="roles"><AccessPage /></TabSegmentContext> },
   { path: "stacks/:stackId", handle: gate("stacks"), element: <StackPage tab="overview" /> },
   { path: "stacks/:stackId/deploys", handle: gate("stacks"), element: <StackPage tab="deploys" /> },
   { path: "stacks/:stackId/logs/:service?", handle: gate("stacks"), element: <StackPage tab="logs" /> },

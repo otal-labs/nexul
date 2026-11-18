@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router";
 import { toast } from "sonner";
 import type { WelcomeStep } from "@nexul/client-core/welcome";
 import { requires } from "@nexul/client-core/requires";
@@ -14,6 +15,7 @@ import { roleChoices, type RoleChoice } from "@/models/RoleChoice";
 import { getTeamKey } from "@/models/Team";
 import type { Workspace } from "@/models/Workspace";
 import type { LiveFollower } from "@/lib/live";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspaceRolesKey = "getWorkspaceRoles";
 
@@ -119,4 +121,15 @@ export const useCloneWorkspaceRole = () => {
 export const roleFollower: LiveFollower = {
   "role.updated": ({ workspace_id }: { workspace_id: string }, { client }) =>
     client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspace_id], exact: true }),
+};
+
+// The role the Access page's Roles and people tab has open, from its path, with whether the viewer may give and take it.
+export const useOpenRole = () => {
+  const { roleId } = useParams();
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: roles } = useFetchWorkspaceRoles(workspaceId);
+  const { choices } = useRoleChoices(workspaceId);
+  const role = roles?.find((candidate) => candidate.id === roleId);
+  const choice = choices?.find((candidate) => candidate.role.id === roleId);
+  return { roleId, role, givable: choice?.givable ?? false, reason: choice?.reason ?? "" };
 };

@@ -51,3 +51,7 @@ export const headName = (name: string, width = 11, lines = 3): string => {
     if (words.length === 1 || fits()) return `${words.join(" ")}…`;
   }
 };
+
+// The Roles and people tab's two entries besides the roles, as their path segments: role ids never take these.
+export const NO_ROLES = "none";
+export const COMPARE_ROLES = "compare";

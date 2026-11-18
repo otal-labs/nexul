@@ -174,25 +174,13 @@ describe("TeamSection", () => {
     expect(await screen.findByRole("dialog", { name: "Bob" })).toBeInTheDocument();
   });
 
-  it("gives each workspace the person is in a tab, read-only with the reason where the viewer can't manage members", async () => {
+  it("gives each workspace the person is in a tab, beside the account actions", async () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(await screen.findByRole("button", { name: "Open Bob" }));
 
     const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
     expect(dialog.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Nexul", "Acme"]);
-
-    await user.click(dialog.getByRole("tab", { name: "Acme" }));
-    const acme = within(dialog.getByRole("tabpanel", { name: "Acme" }));
-    expect(acme.getByText("Viewer")).toBeInTheDocument();
-    expect(acme.getByText("Read only: you can't manage members in Acme.")).toBeInTheDocument();
-    expect(acme.queryByText("Everything these roles allow, combined.")).not.toBeInTheDocument();
-    expect(acme.queryByRole("button", { name: "Remove from workspace" })).not.toBeInTheDocument();
-
-    await user.click(dialog.getByRole("tab", { name: "Nexul" }));
-    const nexul = within(dialog.getByRole("tabpanel", { name: "Nexul" }));
-    expect(nexul.getByText("Everything these roles allow, combined.")).toBeInTheDocument();
-    expect(nexul.getByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
     expect(await dialog.findByRole("button", { name: "Disable" })).toBeInTheDocument();
   });
 
@@ -209,14 +197,4 @@ describe("TeamSection", () => {
     expect(!!screen.queryByRole("button", { name: "Remove account" })).toBe(remove);
   });
 
-  it("offers + only the workspaces the person is not in and the viewer manages", async () => {
-    const user = userEvent.setup();
-    renderSection("/settings/team?person=u-bob");
-
-    const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
-    await user.click(dialog.getByRole("button", { name: "Add to a workspace" }));
-    await user.click(await screen.findByRole("combobox", { name: "Workspace to add to" }));
-    const offered = (await screen.findAllByRole("option")).map((option) => option.textContent);
-    expect(offered).toEqual(["Labs", "Kit"]);
-  });
 });

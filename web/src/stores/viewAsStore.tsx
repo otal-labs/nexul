@@ -7,6 +7,8 @@ export interface ViewAsTarget {
   userId: string;
   name: string;
   avatarUrl: string;
+  // The page the view was started from (Team or a role on the Access page), where stopping it lands.
+  returnTo?: string;
 }
 
 export type ViewAsStore = {

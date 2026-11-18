@@ -2,7 +2,7 @@ import { AccessChannelsTab } from "@/components/accessgrid/AccessChannelsTab";
 import { AccessProjectsTab } from "@/components/accessgrid/AccessProjectsTab";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
-import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
+import { RolesAndPeopleSection } from "@/components/role/RolesAndPeopleSection";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -16,10 +16,11 @@ interface AccessTabsViewProps {
   owner: boolean;
 }
 
-// The workspace's Access page once set up: the two grids and the roles as tabs, Public channels for the Owner alone.
+// The workspace's Access page once set up: the two grids and Roles and people as tabs, Public channels for the Owner alone.
 export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
   const crumb = useWorkspaceCrumb();
   const canWriteRoles = useHasPermission("roles:write");
+  const canWriteMembers = useHasPermission("members:write");
   const wsPath = useWorkspacePath();
   const draft = useAccessDraft(grid);
   useLeaveGuard(draft.projectChanges.length + draft.channelChanges.length > 0, wsPath("/access"), useAccessDraftStore.getState().clear);
@@ -39,7 +40,7 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
         className="min-h-0 flex-1"
         tabs={[
           { value: "projects", label: "Projects" },
-          { value: "roles", label: "Roles", hidden: !canWriteRoles },
+          { value: "roles", label: "Roles and people", hidden: !canWriteRoles && !canWriteMembers },
           { value: "channels", label: "Public channels", hidden: !owner },
         ]}
       >
@@ -47,7 +48,7 @@ export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
           <AccessProjectsTab grid={grid} />
         </PageTabsContent>
         <PageTabsContent value="roles" className="flex min-h-0 flex-col">
-          <RoleSettingsSection />
+          <RolesAndPeopleSection />
         </PageTabsContent>
         <PageTabsContent value="channels" className="flex min-h-0 flex-col">
           <AccessChannelsTab grid={grid} />

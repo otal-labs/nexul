@@ -32,8 +32,9 @@ export const useAnyProjectAreaAccess = (): ((area: Area) => boolean) | undefined
 // Manage this project's access, held through a role or on one project: what opens the Access grids.
 const MANAGES_ACCESS = "projects:access";
 
-// Edit the workspace's roles: the other way into the Access page, which then shows its Roles tab alone.
+// Edit roles, or give and take them: the other ways into the Access page, which then shows Roles and people alone (ADR 0198).
 const MANAGES_ROLES = "roles:write";
+const MANAGES_MEMBERS = "members:write";
 
 // Whether the viewer holds value through a role or in any project they are in; undefined while that is still loading.
 const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
@@ -50,6 +51,14 @@ export const useManagesAccess = (): boolean | undefined => useAnyProjectAreaAcce
 export const useHasInstancePermission = (value: string): boolean => {
   const { data: me } = useFetchMe();
   return hasPermission(me?.instance_permissions, value);
+};
+
+// Whether the server shows the viewer the Team: everyone to an accounts:read holder, the people of the workspaces they
+// manage to a members:write holder anywhere. Settings → Team itself opens only for the first.
+export const useSeesTeam = (): boolean => {
+  const everyone = useHasInstancePermission("accounts:read");
+  const manages = useHasInstancePermission("members:write");
+  return everyone || manages;
 };
 
 // Whether the viewer is the instance Owner, who alone sees and sets the rules on instance areas.
@@ -76,8 +85,7 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
   );
   return visibleSettingsSections({
     instanceSections,
-    teamIsInstanceWide: hasPermission(anywhere, "accounts:read"),
-    showTeam: hasPermission(anywhere, "accounts:read") || hasPermission(anywhere, "members:write"),
+    showTeam: hasPermission(anywhere, "accounts:read"),
     showGeneral: hasPermission(permissions, "workspaces:write"),
     showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
@@ -89,15 +97,12 @@ const opensConfiguration = (sections: SettingsSection[]) => sections.some((secti
 
 // What a viewer may open in another workspace, for the switcher to land on a page that exists for them there.
 export const workspaceAccess = (anywhere: string[] | undefined, permissions: string[]): WorkspaceAccess => {
-  const teamIsInstanceWide = hasPermission(anywhere, "accounts:read");
-  const configurationSections = settingsSectionsFor(anywhere, permissions).filter(
-    (section) => !isInstanceSection(section, teamIsInstanceWide),
-  );
+  const configurationSections = settingsSectionsFor(anywhere, permissions).filter((section) => !isInstanceSection(section));
   return {
     configurationSections,
     canOpen: (area) => {
       if (area === "configuration") return opensConfiguration(configurationSections);
-      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS) || hasPermission(permissions, MANAGES_ROLES);
+      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS) || hasPermission(permissions, MANAGES_ROLES) || hasPermission(permissions, MANAGES_MEMBERS);
       if (area === "wizard") return canOpenWizard((held) => hasPermission(permissions, AREA_PERMISSION[held]));
       return hasPermission(permissions, AREA_PERMISSION[area]);
     },
@@ -118,16 +123,14 @@ export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
 // Danger zone holds only Archive, so a viewer whose role hides that action has no Danger zone to open.
 export const useConfigurationSections = (): SettingsSection[] | undefined => {
   const sections = useVisibleSettingsSections();
-  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const archiveHidden = useActionState({ permission: "workspaces:delete" }).state === "hidden";
-  return sections?.filter((section) => !isInstanceSection(section, teamIsInstanceWide) && !(section === "danger" && archiveHidden));
+  return sections?.filter((section) => !isInstanceSection(section) && !(section === "danger" && archiveHidden));
 };
 
 // The instance sections the viewer may open from the Settings page.
 export const useInstanceSettingsSections = (): SettingsSection[] | undefined => {
   const sections = useVisibleSettingsSections();
-  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
-  return sections?.filter((section) => isInstanceSection(section, teamIsInstanceWide));
+  return sections?.filter((section) => isInstanceSection(section));
 };
 
 // Whether one settings section is open to the viewer; false while that is still loading, so a link never flashes.
@@ -139,10 +142,11 @@ export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
   const managesAccess = useManagesAccess();
   const managesRoles = useAnyProjectAreaAccessOf(MANAGES_ROLES);
+  const managesMembers = useAnyProjectAreaAccessOf(MANAGES_MEMBERS);
   const sections = useConfigurationSections();
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
-    if (area === "access") return managesAccess === undefined ? undefined : managesAccess || managesRoles === true;
+    if (area === "access") return managesAccess === undefined ? undefined : managesAccess || managesRoles === true || managesMembers === true;
     if (area === "wizard") return can && canOpenWizard(can);
     return can && can(area);
   };

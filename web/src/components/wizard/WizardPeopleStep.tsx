@@ -12,7 +12,7 @@ import { useFetchGrants, useSaveRules } from "@/hooks/PermissionHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useEntityActions } from "@/hooks/useEntityActions";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
-import { useCanOpenSection } from "@/hooks/AccessHooks";
+import { useSeesTeam } from "@/hooks/AccessHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { RuleState } from "@/models/Permission";
 import { targetKey } from "@/models/PermissionPanel";
@@ -32,7 +32,7 @@ export const WizardPeopleStep = ({ project, onDone, onBack, onSkip }: WizardPeop
   const { data: grants, error, isPending } = useFetchGrants("project", project.id);
   const { roles, ready } = usePanelTargets({ workspaceId: project.workspace_id });
   // Holder counts come from Team, so only a viewer who may read Team asks for it.
-  const { data: team } = useFetchTeam(useCanOpenSection("team"));
+  const { data: team } = useFetchTeam(useSeesTeam());
   const save = useSaveRules();
   const answer = useEntityActions("project", project.id);
   const manage = useActionState({ permission: "projects:access", projectId: project.id, answer: answer("projects:access"), verb: "choose who is in a project" });

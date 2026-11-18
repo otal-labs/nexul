@@ -1,4 +1,4 @@
-import { Navigate, useLocation, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -14,21 +14,11 @@ import {
   sectionLabels,
   YourSettingsNav,
 } from "@/components/you/YourSettingsNav";
-import { useHasInstancePermission, useInstanceSettingsSections, useVisibleSettingsSections } from "@/hooks/AccessHooks";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useInstanceSettingsSections } from "@/hooks/AccessHooks";
 
 export const YourSettingsPage = () => {
   const { section: rawSection } = useParams();
-  const { search, hash } = useLocation();
   const instanceSections = useInstanceSettingsSections();
-  const visible = useVisibleSettingsSections();
-  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
-  const wsPath = useWorkspacePath();
-  // A manager without accounts:read has Team in Configuration, scoped to their workspaces.
-  const moved =
-    rawSection === "team" && visible?.includes("team") && !teamIsInstanceWide
-      ? `${wsPath("/configuration/team")}${search}${hash}`
-      : undefined;
   const instanceSection = isSettingsSection(rawSection) && instanceSections?.includes(rawSection) ? rawSection : undefined;
   // An instance link holds its place until permissions answer, so a deep link never flashes Profile first.
   const resolving = !instanceSections && isSettingsSection(rawSection);
@@ -37,24 +27,20 @@ export const YourSettingsPage = () => {
   const yourTitle = resolving ? "Settings" : sectionLabels[section];
   const title = instanceSection ? instanceLabels[instanceSection] : yourTitle;
 
+
   return (
-    <>
-      {moved && <Navigate to={moved} replace />}
-      {!moved && (
-        <Container size="page" className="py-8">
-          <PageHeader
-            className="mb-8"
-            crumbs={[{ label: "Settings", to: "/settings" }]}
-            title={title}
-            meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
-          />
-          <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>
-            {resolving && <LoadingDisplay />}
-            {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
-            {!resolving && !instanceSection && <YourSettingsContent section={section} />}
-          </SettingsShell>
-        </Container>
-      )}
-    </>
+    <Container size="page" className="py-8">
+      <PageHeader
+        className="mb-8"
+        crumbs={[{ label: "Settings", to: "/settings" }]}
+        title={title}
+        meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
+      />
+      <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>
+        {resolving && <LoadingDisplay />}
+        {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
+        {!resolving && !instanceSection && <YourSettingsContent section={section} />}
+      </SettingsShell>
+    </Container>
   );
 };

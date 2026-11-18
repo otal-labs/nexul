@@ -44,7 +44,7 @@ describe("view as hooks", () => {
     api.defaults.adapter = realAdapter;
   });
 
-  it("starts a view: records the target, selects its workspace, drops the viewer's cached reads and opens the workspace home", async () => {
+  it("starts a view: records the target and the page it started from, selects its workspace, drops the viewer's cached reads and opens the workspace home", async () => {
     client.setQueryData(["getTeam"], { people: [] });
     const { result } = renderHook(() => ({ start: useStartViewAs(), at: useLocation().pathname }), { wrapper });
     await waitFor(() => expect(sent.some((c) => c.url === "/api/workspaces")).toBe(true));
@@ -52,7 +52,7 @@ describe("view as hooks", () => {
     await act(() => result.current.start.mutateAsync({ workspaceId: "ws-1", workspaceName: "Acme", userId: "u-alice" }));
 
     expect(sent.find((c) => c.method === "post")?.url).toBe("/api/workspaces/ws-1/members/u-alice/view-as");
-    expect(useViewAsStore.getState().target).toEqual(alice);
+    expect(useViewAsStore.getState().target).toEqual({ ...alice, returnTo: "/settings/team" });
     expect(useWorkspaceStore.getState()).toMatchObject({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
     expect(client.getQueryData(["getTeam"])).toBeUndefined();
     expect(result.current.at).toBe("/acme");

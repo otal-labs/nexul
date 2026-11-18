@@ -1,6 +1,3 @@
-import { useReducer, useState } from "react";
-import { toast } from "sonner";
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
@@ -8,12 +5,8 @@ import { TeamDialogFooter } from "@/components/team/TeamDialogFooter";
 import { TeamWelcomeBlock } from "@/components/team/TeamWelcomeBlock";
 import { TeamWorkspaceTabs } from "@/components/team/TeamWorkspaceTabs";
 import { TeamSsoRow } from "@/ee/components/TeamSsoRow";
-import { useApplyMemberStep, useFetchTeam } from "@/hooks/TeamHooks";
-import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { MemberDraftContext } from "@/hooks/useMemberDraft";
+import { useFetchTeam } from "@/hooks/TeamHooks";
 import { usePersonNamer } from "@/hooks/usePersonNamer";
-import { errorMessage } from "@/api/client";
-import { hasAddWithoutRoles, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
 import { personName, presenceText } from "@/utils/TeamUtility";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 import { loginHandle } from "@/models/User";
@@ -23,61 +16,14 @@ interface TeamPersonDialogProps {
   onClose: () => void;
 }
 
-const stepText = (step: MemberStep): string => {
-  if (step.kind === "add") return `add to ${step.workspaceName}`;
-  if (step.kind === "remove") return `remove from ${step.workspaceName}`;
-  return `update ${step.workspaceName}`;
-};
-
-// Every workspace change is held until Confirm; account status in the footer still applies on its own.
+// The account and where it is: its status actions apply at once, and its roles show per workspace, read-only.
 export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) => {
   const { data: team } = useFetchTeam();
   const person = team?.people.find((candidate) => candidate.id === personId);
-  const [draft, dispatch] = useReducer(memberDraftReducer, {});
-  const [failure, setFailure] = useState<string>();
-  const [applying, setApplying] = useState(false);
-  const apply = useApplyMemberStep();
   const nameOf = usePersonNamer();
-  const { open: ask } = useConfirmationDialog();
-  const steps = person && team ? memberSteps(person, team.workspaces, draft) : [];
-  const blocked = hasAddWithoutRoles(draft);
-
-  const finish = () => {
-    dispatch({ type: "reset" });
-    setFailure(undefined);
-    onClose();
-  };
-
-  const close = async () => {
-    if (steps.length > 0) {
-      const discard = await ask({ title: "Discard changes?", message: "Your unconfirmed changes here will be lost.", confirmLabel: "Discard changes" });
-      if (!discard) return;
-    }
-    finish();
-  };
-
-  // Stops at the first refusal and keeps whatever has not applied yet, so a second Confirm resends only that.
-  const confirm = async () => {
-    if (!person) return;
-    setApplying(true);
-    setFailure(undefined);
-    for (const step of steps) {
-      try {
-        await apply.mutateAsync({ userId: person.id, step });
-      } catch (error) {
-        setFailure(`Couldn't ${stepText(step)}: ${errorMessage(error)}`);
-        setApplying(false);
-        return;
-      }
-      dispatch({ type: "applied", step });
-    }
-    setApplying(false);
-    toast.success(`${personName(person)}'s access saved`);
-    finish();
-  };
 
   return (
-    <Dialog open={!!person} onOpenChange={(open) => !open && void close()}>
+    <Dialog open={!!person} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[40rem]">
         {person && (
           <DialogHeader className="flex-row items-center gap-3 px-6 pt-6 pb-4 pr-12 text-left">
@@ -99,21 +45,8 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
         )}
         {person && <TeamSsoRow person={person} />}
         {person && <TeamWelcomeBlock person={person} />}
-        {person && team && (
-          <MemberDraftContext value={{ person, draft, dispatch }}>
-            <TeamWorkspaceTabs workspaces={team.workspaces} steps={steps} />
-          </MemberDraftContext>
-        )}
-        {person && team && (
-          <TeamDialogFooter
-            person={person}
-            failure={failure}
-            canConfirm={steps.length > 0 && !blocked}
-            applying={applying}
-            onCancel={() => void close()}
-            onConfirm={() => void confirm()}
-          />
-        )}
+        {person && team && <TeamWorkspaceTabs person={person} workspaces={team.workspaces} />}
+        {person && <TeamDialogFooter person={person} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   );

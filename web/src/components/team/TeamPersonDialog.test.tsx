@@ -52,6 +52,7 @@ const renderDialog = async (team: Team, viewer: { id?: string; holds?: string[] 
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/me") return Promise.resolve({ data: { user: { id: viewer.id }, instance_permissions: ["members:write"] } });
     if (url === "/api/team") return Promise.resolve({ data: team });
+    if (url === "/api/workspaces") return Promise.resolve({ data: [{ id: "ws-nexul", name: "Nexul", slug: "nexul" }] });
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
     const rolesOf = /^\/api\/workspaces\/ws-(\w+)\/roles$/.exec(url);
     if (rolesOf) return Promise.resolve({ data: roles(rolesOf[1]!) });
@@ -71,31 +72,10 @@ const renderDialog = async (team: Team, viewer: { id?: string; holds?: string[] 
   return within(await screen.findByRole("dialog", { name: "Sam Lee" }));
 };
 
-const memberPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/members/u-sam`;
 
 describe("Team dialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("holds a ticked role until Confirm, then sends the whole set once and closes", async () => {
-    mocks.patch.mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul"), membership("Labs")]));
-
-    const confirm = dialog.getByRole("button", { name: "Confirm" });
-    expect(confirm).toBeDisabled();
-    expect(await dialog.findByText("1 of 2")).toBeInTheDocument();
-    await user.click(dialog.getByRole("checkbox", { name: /Editor/ }));
-
-    expect(mocks.patch).not.toHaveBeenCalled();
-    expect(dialog.getByText("2 of 2")).toBeInTheDocument();
-    expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
-    await user.click(confirm);
-
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
-    expect(mocks.patch).toHaveBeenCalledTimes(1);
-    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: ["nexul-client", "nexul-editor"] });
   });
 
   it("shows who invited the person, and their Welcome wizard: each step left or skipped as a row, the done ones folded", async () => {
@@ -127,102 +107,17 @@ describe("Team dialog", () => {
     expect(wizard.getByText("Done: Profile, Connect GitHub")).toBeInTheDocument();
   });
 
-  it("puts what the viewer can't give under Can't give with the reason, keeping the person's tick", async () => {
-    const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "lead"])]));
+  it("shows each workspace's roles as chips and changes none, linking to the Access page of a workspace the viewer is in and manages", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "editor"]), membership("Labs")]));
 
-    const lead = await dialog.findByRole("checkbox", { name: /Lead/ });
-    expect(lead).toBeDisabled();
-    expect(lead).toBeChecked();
-    expect(dialog.getByText("Holds Deploys: Delete, which you don't hold.")).toBeInTheDocument();
-    expect(dialog.getByRole("checkbox", { name: /Owner/ })).toBeDisabled();
-    expect(dialog.getByText("The Owner role is never given or taken here.")).toBeInTheDocument();
-    expect(dialog.getByRole("checkbox", { name: /Client/ })).toBeEnabled();
-  });
-
-  it("warns once the last role goes, and still lets the empty set be confirmed", async () => {
-    mocks.patch.mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul")]));
-
-    await user.click(await dialog.findByRole("checkbox", { name: /Client/ }));
-    expect(dialog.getByText("With no roles, Sam sees no projects or plays in Nexul.")).toBeInTheDocument();
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-
-    await vi.waitFor(() => expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: [] }));
-  });
-
-  it("asks before discarding on Cancel, and sends nothing once discarded", async () => {
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul")]));
-
-    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
-    await user.click(dialog.getByRole("button", { name: "Cancel" }));
-    const prompt = within(await screen.findByRole("dialog", { name: "Discard changes?" }));
-    await user.click(prompt.getByRole("button", { name: "Discard changes" }));
-
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
-    expect(mocks.patch).not.toHaveBeenCalled();
-  });
-
-  it("adds a workspace from + once a role is picked, and applies adds, then changes, then removals", async () => {
-    mocks.put.mockResolvedValue({});
-    mocks.patch.mockResolvedValue({});
-    mocks.delete.mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul"), membership("Labs")]));
-
-    await user.click(dialog.getByRole("button", { name: "Add to a workspace" }));
-    await user.click(await screen.findByRole("button", { name: "Add" }));
-
-    expect(dialog.getByRole("tab", { name: "Kit, unsaved changes" })).toHaveAttribute("aria-selected", "true");
-    expect(await dialog.findByText("Pick at least one role to add Sam to Kit.")).toBeInTheDocument();
-    expect(dialog.getByRole("button", { name: "Confirm" })).toBeDisabled();
-    await user.click(dialog.getByRole("checkbox", { name: /Client/ }));
-
-    await user.click(dialog.getByRole("tab", { name: "Nexul" }));
-    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
-    await user.click(dialog.getByRole("tab", { name: "Labs" }));
-    await user.click(dialog.getByRole("button", { name: "Remove from workspace" }));
-    expect(mocks.delete).not.toHaveBeenCalled();
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-
-    await vi.waitFor(() => expect(mocks.delete).toHaveBeenCalledWith(memberPath("ws-labs")));
-    expect(mocks.put).toHaveBeenCalledWith(memberPath("ws-kit"), { role_ids: ["kit-client"] });
-    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: ["nexul-client", "nexul-editor"] });
-    const order = [mocks.put, mocks.patch, mocks.delete].map((fn) => fn.mock.invocationCallOrder[0]!);
-    expect(order).toEqual([...order].sort((a, b) => a - b));
-  });
-
-  it("keeps the dialog and what is left when a change fails, and never resends what already applied", async () => {
-    mocks.put.mockResolvedValue({});
-    mocks.patch.mockRejectedValueOnce(new Error("forbidden")).mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul")]));
-
-    await user.click(dialog.getByRole("button", { name: "Add to a workspace" }));
-    await user.click(await screen.findByRole("button", { name: "Add" }));
-    await user.click(await dialog.findByRole("checkbox", { name: /Client/ }));
-    await user.click(dialog.getByRole("tab", { name: "Nexul" }));
-    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-
-    expect(await dialog.findByRole("alert")).toHaveTextContent("Couldn't update Nexul: You can't give a role holding more than you hold");
-    expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
-
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
-    expect(mocks.put).toHaveBeenCalledTimes(1);
-    expect(mocks.patch).toHaveBeenCalledTimes(2);
-  });
-
-  it("shows a workspace the viewer can't manage as its role chips, read only", async () => {
-    const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "editor"])], false));
-
-    expect(await dialog.findByText("Read only: you can't manage members in Nexul.")).toBeInTheDocument();
-    expect(dialog.getByText("Client")).toBeInTheDocument();
+    expect(await dialog.findByRole("link", { name: "Change on Access" })).toHaveAttribute("href", "/nexul/access/roles");
     expect(dialog.getByText("Editor")).toBeInTheDocument();
     expect(dialog.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(dialog.queryByRole("button", { name: "Remove from workspace" })).not.toBeInTheDocument();
+    expect(dialog.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
+    await userEvent.setup().click(dialog.getByRole("tab", { name: "Labs" }));
+    expect(await dialog.findByText("Client")).toBeInTheDocument();
+    expect(dialog.queryByRole("link", { name: "Change on Access" })).not.toBeInTheDocument();
+    expect(mocks.patch).not.toHaveBeenCalled();
   });
 
   it("shows an Owner's roles without a checklist", async () => {
@@ -248,7 +143,7 @@ describe("Team dialog, View as", () => {
 
   it("offers nothing to a viewer without the permission", async () => {
     const dialog = await renderDialog(teamWith([membership("Nexul")]), { id: "u-viewer" });
-    await dialog.findByRole("checkbox", { name: /Client/ });
+    await dialog.findByText("Client");
     expect(dialog.queryByRole("button", { name: /View as/ })).not.toBeInTheDocument();
   });
 
@@ -260,7 +155,7 @@ describe("Team dialog, View as", () => {
 
   it("offers nothing for yourself", async () => {
     const dialog = await renderDialog(teamWith([membership("Nexul")]), { ...viewer, id: "u-sam" });
-    await dialog.findByRole("checkbox", { name: /Client/ });
+    await dialog.findByText("Client");
     expect(dialog.queryByRole("button", { name: /View as/ })).not.toBeInTheDocument();
   });
 });
