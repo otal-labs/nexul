@@ -21,6 +21,7 @@ const (
 	TopicTestPassed       = "ticket.test_passed"
 	TopicTestFailed       = "ticket.test_failed"
 	TopicUnblocked        = "ticket.unblocked"
+	TopicLabelsChanged    = "ticket.labels_changed"
 )
 
 // Topics returns every topic the tickets domain publishes.
@@ -39,6 +40,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicLinkDeleted, Payload: LinkEvent{}, Description: "A found-in or blocked-by link was removed, or replaced by a new found-in."},
 		{Name: TopicTestPassed, Payload: TestedEvent{}, Description: "A ticket passed testing and moved to a done-stage column; tester is the login of whoever passed it."},
 		{Name: TopicTestFailed, Payload: TestedEvent{}, Description: "A ticket failed testing and moved back to a progress-stage column; report is the bug report posted to its thread."},
+		{Name: TopicLabelsChanged, Payload: LabelsChangedEvent{}, Description: "A label was added to a ticket or removed from it; a label already on it, or never on it, publishes nothing."},
 		{Name: TopicUnblocked, Payload: UnblockedEvent{}, Description: "A ticket not in a done stage lost its last open blocked-by ticket: the blocker finished (its pull request merged), entered a done-stage column, had its link removed, or was deleted. A finished blocker stays cleared; an unfinished one unblocks again on each entry into done. A column redefined as done publishes nothing."},
 	}
 }
@@ -108,6 +110,14 @@ func personTopic(role Role) string {
 // FinishedEvent publishes exactly once per ticket, once a PR merges and none remain open.
 type FinishedEvent struct {
 	Ticket Ticket `json:"ticket"`
+}
+
+// LabelsChangedEvent is the payload for ticket.labels_changed; Ticket carries its labels after the change.
+type LabelsChangedEvent struct {
+	Ticket  Ticket   `json:"ticket"`
+	Added   []string `json:"added" jsonschema:"Labels this change added."`
+	Removed []string `json:"removed" jsonschema:"Labels this change removed."`
+	Actor   Actor    `json:"actor,omitzero" jsonschema:"Who changed the labels: a member, or an automation."`
 }
 
 // DeletedEvent's ticket is already gone (hard delete), so consumers get identity only.

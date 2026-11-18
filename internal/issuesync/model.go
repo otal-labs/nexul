@@ -57,10 +57,36 @@ type Link struct {
 	// Paused is a label-mode issue whose label was removed; the link stays so adding it back resumes.
 	Paused bool
 	// InboundHash is Hash of the issue last applied to the ticket; OutboundHash of what Nexul last wrote to GitHub.
-	InboundHash    string
-	OutboundHash   string
+	InboundHash  string
+	OutboundHash string
+	// TicketHash is Hash of the ticket as its issue takes it when the two were last in step, so what GitHub changed is
+	// never written back.
+	TicketHash     string
 	IssueUpdatedAt time.Time
 	LinkedAt       time.Time
+}
+
+// TicketPush is a ticket's fields waiting to be written to its issue.
+type TicketPush struct {
+	TicketID string
+	Owner    string
+	Repo     string
+	// Create makes the issue in Owner/Repo when the ticket has none, once its trigger label was added.
+	Create bool
+	Due    time.Time
+	// Tried is when a create was first sent, zero before; a retry looks for the issue it may have made.
+	Tried    time.Time
+	Attempts int
+}
+
+// CommentPush is a person's message on a linked ticket's thread waiting to be mirrored to its issue.
+type CommentPush struct {
+	MessageID string
+	TicketID  string
+	Due       time.Time
+	// Tried is when the comment was first sent, zero before; a retry looks for the comment it may have made.
+	Tried    time.Time
+	Attempts int
 }
 
 // CommentLink joins a GitHub comment to the ticket-thread message it became.
@@ -107,7 +133,8 @@ type TicketFields struct {
 	Assignees []string
 }
 
-// FieldsFromIssue maps an issue onto ticket fields, leaving out trigger, the label that turns a label-mode sync on.
+// FieldsFromIssue maps an issue onto ticket fields, leaving out trigger, the label that turns a label-mode sync on, and
+// the hidden marker of the ticket Nexul made the issue for.
 func FieldsFromIssue(i Issue, trigger string) TicketFields {
 	labels := make([]string, 0, len(i.Labels))
 	for _, l := range i.Labels {
@@ -118,7 +145,7 @@ func FieldsFromIssue(i Issue, trigger string) TicketFields {
 	}
 	slices.Sort(labels)
 	return TicketFields{
-		Title: strings.TrimSpace(i.Title), Body: i.Body, Closed: i.State == "closed", StateReason: i.StateReason,
+		Title: strings.TrimSpace(i.Title), Body: withoutMarker(i.Body), Closed: i.State == "closed", StateReason: i.StateReason,
 		Labels: labels, Assignees: slices.Clone(i.Assignees),
 	}
 }

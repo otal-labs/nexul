@@ -497,7 +497,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		calendarSvc:         calendarSvc,
 		importsSvc:          importsSvc,
 		crashIntakeSvc:      crashIntakeSvc,
-		issueSyncSvc:        newIssueSync(store, ticketsSvc, chatSvc, workspaceSvc, accessSvc, gitRouter, appConfigs),
+		issueSyncSvc:        issuesync.New(issueSyncDeps(store, ticketsSvc, chatSvc, workspaceSvc, accessSvc, gitRouter, appConfigs)),
 		voiceSvc:            voiceSvc,
 		voiceHandler:        voiceHandler,
 		voiceWebhookHandler: voiceWebhookHandler,

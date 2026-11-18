@@ -749,7 +749,7 @@ func categoryName(ctx context.Context, q *sqlcgen.Queries, id string) string {
 }
 
 // AddLabel records changes only when the label was not already on the ticket.
-func (r *TicketsRepo) AddLabel(ctx context.Context, id, label string, changes []tickets.Change) error {
+func (r *TicketsRepo) AddLabel(ctx context.Context, id, label string, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.AddTicketLabel(ctx, sqlcgen.AddTicketLabelParams{TicketID: id, Label: label})
@@ -759,12 +759,15 @@ func (r *TicketsRepo) AddLabel(ctx context.Context, id, label string, changes []
 		if n == 0 {
 			return nil
 		}
-		return writeTicketChanges(ctx, q, id, changes)
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
+		}
+		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
 }
 
 // RemoveLabel records changes only when the label was on the ticket.
-func (r *TicketsRepo) RemoveLabel(ctx context.Context, id, label string, changes []tickets.Change) error {
+func (r *TicketsRepo) RemoveLabel(ctx context.Context, id, label string, changes []tickets.Change, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.RemoveTicketLabel(ctx, sqlcgen.RemoveTicketLabelParams{TicketID: id, Label: label})
@@ -774,7 +777,10 @@ func (r *TicketsRepo) RemoveLabel(ctx context.Context, id, label string, changes
 		if n == 0 {
 			return nil
 		}
-		return writeTicketChanges(ctx, q, id, changes)
+		if err := writeTicketChanges(ctx, q, id, changes); err != nil {
+			return err
+		}
+		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
 }
 

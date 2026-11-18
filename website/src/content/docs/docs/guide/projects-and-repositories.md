@@ -58,7 +58,17 @@ Each GitHub repository in **Settings → Repositories** has an **Issues** switch
 - **Comments** on the issue appear on the ticket's thread under the commenter's GitHub name and picture, and their edits and deletions follow.
 - **Removing the label** pauses the issue: nothing more changes until the label is back. A **deleted or transferred** issue stops syncing, and its ticket stays.
 
-The ticket's reporter shows the issue's author on GitHub. Changes the GitHub App makes itself are skipped, and Nexul catches anything a lost webhook missed within 15 minutes. GitHub's changes win; nothing in Nexul is written back to GitHub yet.
+The ticket's reporter shows the issue's author on GitHub. Changes the GitHub App makes itself are skipped, and Nexul catches anything a lost webhook missed within 15 minutes. When both sides change the same field, GitHub's change wins.
+
+Changes made in Nexul go back to the issue, written by the GitHub App:
+
+- **Title, body, labels and the developer** follow about ten seconds after the last edit, so a burst of typing is one change on GitHub. Links to tickets, docs and attachments point at your Nexul address, and a mention of someone who signs in with GitHub becomes their `@handle`; anyone else shows by name. The developer becomes the issue's one assignee only when they sign in with GitHub. Tester, due date and category stay in Nexul.
+- **Moving the ticket to done** closes the issue as completed.
+- **Messages** people write on the ticket's thread appear on the issue as comments, headed with the writer's name, and their edits and deletions follow. Agent replies and notes stay in Nexul.
+- **Adding the `nexul` label** to a ticket with no issue creates one in the synced repository and links it.
+- **Deleting the ticket** stops the sync and leaves the issue as it is. An issue deleted on GitHub stops syncing, and the ticket's thread says so.
+
+A paused issue gets nothing from Nexul until its label is back. Images in a mirrored body or comment load only for people signed in to Nexul.
 
 If the App's installation on the repository's account hasn't accepted the Issues permission, the switch stays off and the list says **Issues permission missing**. See [GitHub App](/docs/guide/github-app/).
 

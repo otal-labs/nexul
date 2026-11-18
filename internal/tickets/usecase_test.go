@@ -530,7 +530,7 @@ func (f *fakeRepo) SetPosition(_ context.Context, id string, position int) error
 	return nil
 }
 
-func (f *fakeRepo) AddLabel(_ context.Context, id, label string, _ []Change) error {
+func (f *fakeRepo) AddLabel(_ context.Context, id, label string, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -543,10 +543,11 @@ func (f *fakeRepo) AddLabel(_ context.Context, id, label string, _ []Change) err
 		}
 	}
 	t.Labels = append(t.Labels, label)
+	f.events = append(f.events, evts...)
 	return nil
 }
 
-func (f *fakeRepo) RemoveLabel(_ context.Context, id, label string, _ []Change) error {
+func (f *fakeRepo) RemoveLabel(_ context.Context, id, label string, _ []Change, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
@@ -554,12 +555,18 @@ func (f *fakeRepo) RemoveLabel(_ context.Context, id, label string, _ []Change) 
 		return apperrs.ErrNotFound
 	}
 	out := t.Labels[:0]
+	removed := false
 	for _, l := range t.Labels {
 		if l != label {
 			out = append(out, l)
+			continue
 		}
+		removed = true
 	}
 	t.Labels = out
+	if removed {
+		f.events = append(f.events, evts...)
+	}
 	return nil
 }
 

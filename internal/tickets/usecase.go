@@ -798,12 +798,13 @@ func (s *Service) AddLabel(ctx context.Context, id, label string) (*Ticket, erro
 	if err != nil {
 		return nil, fmt.Errorf("add label to ticket %s: %w", id, err)
 	}
-	if err := s.repo.AddLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, "", label)); err != nil {
+	updated := *current
+	updated.Labels = append(slices.Clone(current.Labels), label)
+	updated.UpdatedAt = s.now().UTC()
+	evt := s.labelsChanged(ctx, updated, []string{label}, nil)
+	if err := s.repo.AddLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, "", label), evt); err != nil {
 		return nil, fmt.Errorf("add label to ticket %s: %w", id, err)
 	}
-	updated := *current
-	updated.Labels = append(updated.Labels, label)
-	updated.UpdatedAt = s.now().UTC()
 	return &updated, nil
 }
 
@@ -820,9 +821,6 @@ func (s *Service) RemoveLabel(ctx context.Context, id, label string) (*Ticket, e
 	if err != nil {
 		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
 	}
-	if err := s.repo.RemoveLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, label, "")); err != nil {
-		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
-	}
 	labels := make([]string, 0, len(current.Labels))
 	for _, l := range current.Labels {
 		if l != label {
@@ -832,7 +830,15 @@ func (s *Service) RemoveLabel(ctx context.Context, id, label string) (*Ticket, e
 	updated := *current
 	updated.Labels = labels
 	updated.UpdatedAt = s.now().UTC()
+	evt := s.labelsChanged(ctx, updated, nil, []string{label})
+	if err := s.repo.RemoveLabel(ctx, id, label, s.changed(ActorOf(ctx), FieldLabels, label, ""), evt); err != nil {
+		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
+	}
 	return &updated, nil
+}
+
+func (s *Service) labelsChanged(ctx context.Context, t Ticket, added, removed []string) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicLabelsChanged, Payload: LabelsChangedEvent{Ticket: t, Added: added, Removed: removed, Actor: ActorOf(ctx)}}
 }
 
 // ListLabels returns the labels attached to a ticket.

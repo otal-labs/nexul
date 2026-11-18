@@ -395,7 +395,7 @@ func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role
 	})
 }
 
-func (r ticketRepo) AddLabel(_ context.Context, id, label string, _ []tickets.Change) error {
+func (r ticketRepo) AddLabel(_ context.Context, id, label string, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		if !slices.Contains(t.Labels, label) {
 			t.Labels = append(t.Labels, label)
@@ -403,7 +403,7 @@ func (r ticketRepo) AddLabel(_ context.Context, id, label string, _ []tickets.Ch
 	})
 }
 
-func (r ticketRepo) RemoveLabel(_ context.Context, id, label string, _ []tickets.Change) error {
+func (r ticketRepo) RemoveLabel(_ context.Context, id, label string, _ []tickets.Change, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		t.Labels = slices.DeleteFunc(t.Labels, func(l string) bool { return l == label })
 	})
@@ -963,9 +963,10 @@ func dueWithin(f tickets.TicketFilter, t *tickets.Ticket) bool {
 	return t.DueOn != "" && t.DueOn >= f.DueFrom && (f.DueTo == "" || t.DueOn <= f.DueTo)
 }
 
-// issueSyncRepo stores syncs only; the project tools never read links.
+// issueSyncRepo stores syncs only; the project tools never read links or pushes.
 type issueSyncRepo struct {
 	issuesync.LinkRepo
+	issuesync.PushRepo
 	syncs []issuesync.Sync
 }
 

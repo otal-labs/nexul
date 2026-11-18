@@ -495,6 +495,14 @@ type GithubCommentLink struct {
 	TicketID        string
 }
 
+type GithubCommentPush struct {
+	MessageID string
+	TicketID  string
+	DueAt     int64
+	TriedAt   sql.NullInt64
+	Attempts  int64
+}
+
 type GithubInstallationWorkspace struct {
 	AccountID    sql.NullInt64
 	AccountLogin string
@@ -514,6 +522,17 @@ type GithubIssueLink struct {
 	LastOutboundHash string
 	IssueUpdatedAt   int64
 	LinkedAt         int64
+	LastTicketHash   string
+}
+
+type GithubIssuePush struct {
+	TicketID    string
+	Owner       string
+	Repo        string
+	CreateIssue int64
+	DueAt       int64
+	TriedAt     sql.NullInt64
+	Attempts    int64
 }
 
 type GithubIssueSync struct {

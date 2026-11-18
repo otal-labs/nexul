@@ -28,8 +28,31 @@ type LinkRepo interface {
 	DeleteCommentLink(ctx context.Context, commentID int64) error
 }
 
+// PushRepo stores what waits to be written to GitHub, and finds the links a write follows.
+type PushRepo interface {
+	// GetLinkByTicket is ErrNotFound for a ticket no issue is linked to.
+	GetLinkByTicket(ctx context.Context, ticketID string) (Link, error)
+	// GetCommentLinkByMessage is ErrNotFound for a message no comment is linked to.
+	GetCommentLinkByMessage(ctx context.Context, messageID string) (CommentLink, error)
+	// QueueTicketPush stores p, moving a waiting push's due to p's and keeping a create it asked for.
+	QueueTicketPush(ctx context.Context, p TicketPush) error
+	QueueCommentPush(ctx context.Context, p CommentPush) error
+	DueTicketPushes(ctx context.Context, now time.Time, limit int) ([]TicketPush, error)
+	DueCommentPushes(ctx context.Context, now time.Time, limit int) ([]CommentPush, error)
+	// NextPushDue is the earliest due of every waiting push, false when none waits.
+	NextPushDue(ctx context.Context) (time.Time, bool, error)
+	// DeferTicketPush stores p's due unless the ticket was queued again since was, its tried unless one is stored, and
+	// its attempts unless more are stored, so a stale copy never loses a first try.
+	DeferTicketPush(ctx context.Context, p TicketPush, was time.Time) error
+	DeferCommentPush(ctx context.Context, p CommentPush, was time.Time) error
+	// DoneTicketPush drops p unless the ticket was queued again since p was read.
+	DoneTicketPush(ctx context.Context, p TicketPush) error
+	DoneCommentPush(ctx context.Context, p CommentPush) error
+}
+
 // Repo is everything the sync stores.
 type Repo interface {
 	SyncRepo
 	LinkRepo
+	PushRepo
 }

@@ -103,6 +103,11 @@ func TestLoopWrites_CoverEveryTableTheLoopsPassReads(t *testing.T) {
 		{"imports", ImportWrites, nil, func(ctx context.Context, s *Store) {
 			_, _ = s.Imports.Open(ctx)
 		}},
+		{"github issue push", IssuePushWrites, nil, func(ctx context.Context, s *Store) {
+			_, _ = s.IssueSync.DueTicketPushes(ctx, now, 50)
+			_, _ = s.IssueSync.DueCommentPushes(ctx, now, 50)
+			_, _, _ = s.IssueSync.NextPushDue(ctx)
+		}},
 		{"calendar reminders", ReminderWrites, nil, func(ctx context.Context, s *Store) {
 			_, _ = s.Meetings.RemindersDue(ctx, now)
 			_, _ = s.Meetings.Replacements(ctx, []string{"meeting-standup"})
