@@ -28,6 +28,9 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 	if err := r.requireThread(ctx, t.WorkspaceID, t.TargetType, t.TargetID); err != nil {
 		return nil, err
 	}
+	if err := r.withFoundMemories(ctx, t); err != nil {
+		return nil, fmt.Errorf("list the memories trail %s read: %w", id, err)
+	}
 	return t, nil
 }
 

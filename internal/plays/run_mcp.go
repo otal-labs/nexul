@@ -52,6 +52,7 @@ type trailDetail struct {
 	Model              string                  `json:"model"`
 	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty"`
 	ReplyMessageID     string                  `json:"reply_message_id,omitempty"`
+	FoundMemories      []FoundMemory           `json:"found_memories"`
 	Question           *TrailQuestion          `json:"question,omitempty"`
 	Steps              []trailStep             `json:"steps"`
 	StepsTotal         int                     `json:"steps_total"`
@@ -80,7 +81,7 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 	out := trailDetail{
 		trailSummary: toTrailSummary(t), SelectedMemoryIDs: t.SelectedMemoryIDs, CustomInstructions: t.CustomInstructions,
 		ComputerID: t.ComputerID, PassedOver: t.PassedOver, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
-		ReplyMessageID: t.ReplyMessageID, Question: t.Question, Steps: make([]trailStep, 0, len(tail)), StepsTotal: len(t.Activity),
+		ReplyMessageID: t.ReplyMessageID, FoundMemories: t.FoundMemories, Question: t.Question, Steps: make([]trailStep, 0, len(tail)), StepsTotal: len(t.Activity),
 	}
 	for _, e := range tail {
 		out.Steps = append(out.Steps, trailStep{Kind: e.Kind, Tool: e.Tool, Summary: e.Summary, At: e.At})
@@ -164,9 +165,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 		mcptool.New("trail_list", "List trails",
 			"Lists the trails of play runs on one target, newest first, optionally of one play, or with play_id alone "+
 				"the runs of that play on every target. With id it returns that one trail instead, with its run "+
-				"choices, the question a waiting run stopped on, and its newest transcript steps. "+
+				"choices, the memories it found itself, the question a waiting run stopped on, and its newest steps. "+
 				"With queue true it lists the auto runs of the target instead. A trail is visible to its starter and to "+
-				"whoever can see its play (a doc trail also needs the doc thread permission); others are left out or not found.",
+				"whoever can see its play (a doc trail also needs the doc thread permission).",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in trailListIn) (any, error) {
 				return listTrails(ctx, r, in)

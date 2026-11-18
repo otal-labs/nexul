@@ -91,13 +91,14 @@ type memoryDeleteIn struct {
 
 // memoryListItem is a memory's index entry: enough to decide relevance, never the body.
 type memoryListItem struct {
-	ID             string `json:"id"`
-	ProjectID      string `json:"project_id"`
-	Kind           string `json:"kind,omitempty"`
-	Title          string `json:"title"`
-	WhenToUse      string `json:"when_to_use"`
-	AlwaysIncluded bool   `json:"always_included"`
-	Footer         bool   `json:"footer"`
+	ID             string     `json:"id"`
+	ProjectID      string     `json:"project_id"`
+	Kind           string     `json:"kind,omitempty"`
+	Title          string     `json:"title"`
+	WhenToUse      string     `json:"when_to_use"`
+	AlwaysIncluded bool       `json:"always_included"`
+	Footer         bool       `json:"footer"`
+	LastReadAt     *time.Time `json:"last_read_at"`
 }
 
 // memoryResult is a memory with its body as markdown; CurrentVersion is set only when an older version is shown.
@@ -115,6 +116,7 @@ type memoryResult struct {
 	CurrentVersion int                 `json:"current_version,omitempty"`
 	UpdatedBy      string              `json:"updated_by"`
 	UpdatedAt      time.Time           `json:"updated_at"`
+	LastReadAt     *time.Time          `json:"last_read_at"`
 	Versions       []memoryVersionInfo `json:"versions,omitempty"`
 	Questions      []Question          `json:"questions,omitempty"`
 	Answers        []answerResult      `json:"answers,omitzero"`
@@ -180,8 +182,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func memoryListTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_list", "List memories",
-		"Lists a project's memories, title and when-to-use line only, no body. "+
-			"Pick the ones whose when-to-use matches your task. "+
+		"Lists a project's memories: title, when-to-use line and when a run last read it, no body. "+
+			"Pick those whose when-to-use matches your task. "+
 			"Read them with memory_get.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryListIn) (any, error) {
@@ -192,7 +194,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 			items := make([]memoryListItem, 0, len(ms))
 			for _, m := range ms {
 				items = append(items, memoryListItem{
-					ID: m.ID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer,
+					ID: m.ID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer, LastReadAt: m.LastReadAt,
 				})
 			}
 			return mcptool.PageOf(items, total, in.Window()), nil
@@ -471,7 +473,7 @@ func toMemoryResult(m *Memory) (memoryResult, error) {
 	}
 	return memoryResult{
 		ID: m.ID, WorkspaceID: m.WorkspaceID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse,
-		Body: md, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer, Version: m.Version, UpdatedBy: m.UpdatedBy, UpdatedAt: m.UpdatedAt,
+		Body: md, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer, Version: m.Version, UpdatedBy: m.UpdatedBy, UpdatedAt: m.UpdatedAt, LastReadAt: m.LastReadAt,
 	}, nil
 }
 

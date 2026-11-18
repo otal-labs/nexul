@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { personLabel } from "@nexul/client-core/person";
 
 import { microheaderClass } from "@/components/Microheader";
+import { TrailFoundMemories } from "@/components/play/TrailFoundMemories";
 import { TrailVersion } from "@/components/play/TrailVersion";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
@@ -65,6 +66,11 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
         {memoryTitles.length === 0 && <span className="text-muted-foreground">None</span>}
         {memoryTitles.length > 0 && memoryTitles.join(", ")}
       </Fact>
+      {trail.found_memories && trail.found_memories.length > 0 && (
+        <Fact label="Read by itself">
+          <TrailFoundMemories projectId={trail.project_id} memories={trail.found_memories} />
+        </Fact>
+      )}
       <div className="sm:col-span-2">
         <Fact label="Instructions">
           {trail.custom_instructions === "" && <span className="text-muted-foreground">None</span>}

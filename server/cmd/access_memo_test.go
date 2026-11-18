@@ -24,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
+	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
@@ -275,6 +276,7 @@ func grow(t *testing.T, f permFixture, n int) []string {
 		_, err = f.svc.chatSvc.CreatePrivateChannel(as(uWriter), wsDefault, uWriter, fmt.Sprintf("quiet-%d-%d", n, i), chat.KindChannel, []string{uReader})
 		require.NoError(t, err)
 		growMeetings(t, f, fmt.Sprintf("%d-%d", n, i), now)
+		growMemoryRead(t, f, fmt.Sprintf("%d-%d", n, i), now)
 	}
 	return ticketIDs
 }
@@ -292,6 +294,18 @@ func growMeetings(t *testing.T, f permFixture, suffix string, now time.Time) {
 	one.ID, one.Repeats, one.SeriesID, one.ReplacesAt = "meet-one-"+suffix, calendar.RepeatNone, series.ID, &slot
 	one.StartsAt, one.EndsAt = slot.Add(time.Hour), slot.Add(90*time.Minute)
 	require.NoError(t, f.store.Meetings.Save(context.Background(), []*calendar.Meeting{series, &one}))
+}
+
+// growMemoryRead adds a memory to the general project and a run that read it, so each memory path has a last read to show.
+func growMemoryRead(t *testing.T, f permFixture, suffix string, now time.Time) {
+	t.Helper()
+	ctx := context.Background()
+	m := &memories.Memory{ID: "mem-" + suffix, WorkspaceID: wsDefault, ProjectID: pGeneral, Title: "Deploys " + suffix, Body: "Body", Version: 1, CreatedAt: now, UpdatedAt: now}
+	require.NoError(t, f.store.Memories.Create(ctx, m, ""))
+	trail := &plays.Trail{ID: "tr-read-" + suffix, WorkspaceID: wsDefault, PlayID: "play-read", PlayLabel: "Fix", TargetType: plays.TargetTicket,
+		TargetID: f.ticket.ID, ProjectID: pGeneral, StarterID: uOwner, Via: plays.ViaWeb, State: plays.TrailDone, StartedAt: now}
+	require.NoError(t, f.store.PlayTrails.CreateTrail(ctx, trail))
+	require.NoError(t, f.store.PlayTrails.RecordMemoryRead(ctx, trail.ID, pGeneral, m.ID, now))
 }
 
 // guardPlay is the play queueRuns queues a run of on every ticket, for the play's queued-runs path.
@@ -450,6 +464,17 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 			if err == nil && len(due) != len(ticketIDs)-1 {
 				err = fmt.Errorf("listed %d due tickets, want %d", len(due), len(ticketIDs)-1)
 			}
+			return err
+		},
+		"memories list": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			ms, err := f.svc.memoriesSvc.List(ctx, wsDefault)
+			if err == nil && (len(ms) < len(ticketIDs)-1 || ms[len(ms)-1].LastReadAt == nil) {
+				err = fmt.Errorf("listed %d memories, want %d with their last read", len(ms), len(ticketIDs)-1)
+			}
+			return err
+		},
+		"memory_list": func(ctx context.Context, f permFixture, _ []string) error {
+			_, err := tool(t, memories.MCPTools(f.svc.memoriesSvc), "memory_list").Call(ctx, json.RawMessage(`{"project_id":"`+pGeneral+`"}`))
 			return err
 		},
 		"a play's queued runs": func(ctx context.Context, f permFixture, ticketIDs []string) error {

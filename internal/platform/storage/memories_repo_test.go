@@ -274,3 +274,40 @@ func TestMemoriesRepo_PageByProject_CoversTheProjectOnceOldestFirst(t *testing.T
 
 	assert.Equal(t, want, got)
 }
+
+// TestMemoriesRepo_LastReadAt_IsTheNewestRunsRead: every read path carries when a run last read the memory, from any
+// run, and nil for a memory none has read.
+func TestMemoriesRepo_LastReadAt_IsTheNewestRunsRead(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	require.NoError(t, s.Memories.Create(ctx, newTestMemory("mem-read", "project-general"), ""))
+	require.NoError(t, s.Memories.Create(ctx, newTestMemory("mem-unread", "project-general"), ""))
+	first, second := time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC), time.Date(2026, 9, 18, 9, 0, 0, 0, time.UTC)
+	for id, at := range map[string]time.Time{"tr-new": second, "tr-old": first} {
+		tr := newTestTrail(id, at)
+		tr.WorkspaceID, tr.ProjectID = "workspace-default", "project-general"
+		require.NoError(t, s.PlayTrails.CreateTrail(ctx, tr))
+		require.NoError(t, s.PlayTrails.RecordMemoryRead(ctx, id, "project-general", "mem-read", at))
+	}
+
+	byProject, err := s.Memories.ListByProject(ctx, "project-general")
+	require.NoError(t, err)
+	page, _, err := s.Memories.PageByProject(ctx, "project-general", paging.Window{Limit: 10})
+	require.NoError(t, err)
+	byWorkspace, err := s.Memories.ListByWorkspace(ctx, "workspace-default")
+	require.NoError(t, err)
+	one, err := s.Memories.GetByID(ctx, "mem-read")
+	require.NoError(t, err)
+	for name, list := range map[string][]*memories.Memory{"project": byProject, "page": page, "workspace": byWorkspace, "one": {one}} {
+		last := map[string]*time.Time{}
+		for _, m := range list {
+			last[m.ID] = m.LastReadAt
+		}
+		require.NotNil(t, last["mem-read"], name)
+		assert.Equal(t, second, *last["mem-read"], name)
+		if name != "one" {
+			assert.Nil(t, last["mem-unread"], name)
+		}
+	}
+}

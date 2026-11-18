@@ -30,6 +30,8 @@ type trailObserver struct {
 	opened chan bool
 	// before is a continued trail as it had ended, which a gone thread puts back.
 	before *Trail
+	// read holds the memories this turn already noted as read, so a step's later updates write nothing.
+	read map[string]bool
 }
 
 // signalOpen tells a waiting Continue how the turn opened; only the first word counts.
@@ -69,6 +71,7 @@ func (o *trailObserver) OnActivity(a harness.Activity) {
 	}
 	o.resetSilence()
 	o.trail.AppendActivity(ActivityEntry(a))
+	o.recordMemoryRead(ActivityEntry(a))
 	o.r.save(o.ctx, o.trail)
 }
 

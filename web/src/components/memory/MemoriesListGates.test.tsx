@@ -29,6 +29,7 @@ const memory: Memory = {
   created_at: "",
   updated_by: "u-1",
   updated_at: "2026-09-16T12:00:00Z",
+  last_read_at: null,
 };
 
 const renderPane = (showLocked: boolean) => {
@@ -80,5 +81,23 @@ describe.each([
         expect(item).toHaveAccessibleDescription(reason);
       }
     }
+  });
+});
+
+describe("a memories list row", () => {
+  it("says when a run last read it, and says nothing while none has", async () => {
+    const read = { ...memory, id: "mem-2", title: "Release steps", last_read_at: new Date(Date.now() - 2 * 3_600_000).toISOString() };
+    mocks.get.mockImplementation(asReader({ permissions: ["memories:read"] }));
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <MemoriesListPane memories={[memory, read]} project={{ id: "p-1", name: "Web", prefix: "WEB" } as Project} selectedId={undefined} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const readRow = (await screen.findByText("Release steps")).closest("li");
+    expect(readRow).toHaveTextContent("Read by a run 2h ago");
+    expect(screen.getByText("Naming rules").closest("li")).not.toHaveTextContent("Read by a run");
   });
 });

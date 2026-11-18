@@ -511,6 +511,67 @@ func (q *Queries) ListRunningPlayTrails(ctx context.Context) ([]PlayTrail, error
 	return items, nil
 }
 
+const listTrailMemoryReads = `-- name: ListTrailMemoryReads :many
+SELECT r.memory_id, COALESCE(m.title, r.title) AS title, CAST(m.id IS NULL AS INTEGER) AS deleted
+FROM trail_memory_reads r LEFT JOIN memories m ON m.id = r.memory_id
+WHERE r.trail_id = ? ORDER BY r.read_at, r.rowid
+`
+
+type ListTrailMemoryReadsRow struct {
+	MemoryID string
+	Title    string
+	Deleted  int64
+}
+
+// In read order, each by the memory's current title while it exists and by the one it had when read once it is gone.
+func (q *Queries) ListTrailMemoryReads(ctx context.Context, trailID string) ([]ListTrailMemoryReadsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTrailMemoryReads, trailID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrailMemoryReadsRow
+	for rows.Next() {
+		var i ListTrailMemoryReadsRow
+		if err := rows.Scan(&i.MemoryID, &i.Title, &i.Deleted); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recordTrailMemoryRead = `-- name: RecordTrailMemoryRead :exec
+INSERT INTO trail_memory_reads (trail_id, memory_id, title, read_at)
+SELECT ?1, m.id, m.title, ?2 FROM memories m
+WHERE m.id = ?3 AND m.project_id = ?4
+ON CONFLICT (trail_id, memory_id) DO NOTHING
+`
+
+type RecordTrailMemoryReadParams struct {
+	TrailID   string
+	ReadAt    int64
+	MemoryID  string
+	ProjectID sql.NullString
+}
+
+// Only a memory of the run's own project counts, with the title it has now; a second read of it changes nothing.
+func (q *Queries) RecordTrailMemoryRead(ctx context.Context, arg RecordTrailMemoryReadParams) error {
+	_, err := q.db.ExecContext(ctx, recordTrailMemoryRead,
+		arg.TrailID,
+		arg.ReadAt,
+		arg.MemoryID,
+		arg.ProjectID,
+	)
+	return err
+}
+
 const updatePlayTrail = `-- name: UpdatePlayTrail :execrows
 UPDATE play_trails SET conversation_id = ?, harness_session_id = ?, state = ?, ended_at = ?, last_error = ?, reply_message_id = ?, activity = ?, question = ?
 WHERE id = ?

@@ -29,6 +29,7 @@ const memory = (kind: string): Memory => ({
   created_at: "",
   updated_by: "u-1",
   updated_at: "",
+  last_read_at: null,
 });
 
 const renderBanner = () =>

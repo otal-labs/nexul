@@ -38,6 +38,13 @@ export interface ActivityEntry {
   at: string;
 }
 
+// Mirrors internal/plays.FoundMemory: a memory a run read by itself, by its title now or, once deleted, the one it had.
+export interface FoundMemory {
+  id: string;
+  title: string;
+  deleted: boolean;
+}
+
 // Mirrors internal/plays.Trail, the persisted record of one play run.
 export interface Trail {
   id: string;
@@ -69,6 +76,8 @@ export interface Trail {
   question?: TrailQuestion | null;
   // The play instructions version the run started with; absent on runs from before history.
   instructions_version?: number;
+  // The memories it read that it wasn't told to, in read order; sent on one trail to a reader of its project's memories.
+  found_memories?: FoundMemory[];
 }
 
 // Mirrors internal/plays.PlayRun: a run on a play's runs list with what it ran on (a ticket's key and title, or a doc's,
@@ -194,3 +203,7 @@ export const trailSummary = (state: TrailState, lastError: string, activity: Act
   }
   return STATE_LABELS[state];
 };
+
+// Mirrors plays.MemoryReadOf without the id: a finished, unfailed memory_get step under any harness's prefix for the tool.
+export const isMemoryRead = (step: ActivityEntry): boolean =>
+  step.kind === "tool_result" && !step.summary.endsWith(" · failed") && /(^|[^\p{L}\p{N}])memory_get$/u.test(step.tool ?? "");

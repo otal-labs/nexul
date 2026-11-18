@@ -254,3 +254,29 @@ func optionalIntPtr(n sql.NullInt64) *int {
 	v := int(n.Int64)
 	return &v
 }
+
+// RecordMemoryRead notes the run read memoryID, when it is a memory of projectID; a repeat read keeps the first.
+func (r *PlayTrailsRepo) RecordMemoryRead(ctx context.Context, trailID, projectID, memoryID string, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).RecordTrailMemoryRead(ctx, sqlcgen.RecordTrailMemoryReadParams{
+			TrailID: trailID, ReadAt: at.Unix(), MemoryID: memoryID, ProjectID: nullString(projectID),
+		})
+		if err != nil {
+			return fmt.Errorf("record trail %s read memory %s: %w", trailID, memoryID, classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+// ListMemoryReads returns the memories the run read, in read order.
+func (r *PlayTrailsRepo) ListMemoryReads(ctx context.Context, trailID string) ([]plays.FoundMemory, error) {
+	rows, err := r.q.ListTrailMemoryReads(ctx, trailID)
+	if err != nil {
+		return nil, fmt.Errorf("list the memories trail %s read: %w", trailID, err)
+	}
+	out := make([]plays.FoundMemory, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, plays.FoundMemory{ID: row.MemoryID, Title: row.Title, Deleted: row.Deleted != 0})
+	}
+	return out, nil
+}

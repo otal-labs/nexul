@@ -45,3 +45,16 @@ WHERE play_trails.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
 SELECT id, play_label FROM play_trails
 WHERE target_type = ? AND target_id = ? AND starter_id = ? AND state IN ('starting', 'running')
 ORDER BY started_at DESC, id DESC LIMIT 1;
+
+-- name: RecordTrailMemoryRead :exec
+-- Only a memory of the run's own project counts, with the title it has now; a second read of it changes nothing.
+INSERT INTO trail_memory_reads (trail_id, memory_id, title, read_at)
+SELECT sqlc.arg(trail_id), m.id, m.title, sqlc.arg(read_at) FROM memories m
+WHERE m.id = sqlc.arg(memory_id) AND m.project_id = sqlc.arg(project_id)
+ON CONFLICT (trail_id, memory_id) DO NOTHING;
+
+-- name: ListTrailMemoryReads :many
+-- In read order, each by the memory's current title while it exists and by the one it had when read once it is gone.
+SELECT r.memory_id, COALESCE(m.title, r.title) AS title, CAST(m.id IS NULL AS INTEGER) AS deleted
+FROM trail_memory_reads r LEFT JOIN memories m ON m.id = r.memory_id
+WHERE r.trail_id = ? ORDER BY r.read_at, r.rowid;

@@ -3,16 +3,20 @@ INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, bo
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMemory :one
-SELECT * FROM memories WHERE id = ?;
+SELECT sqlc.embed(memories), (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE id = ?;
 
 -- name: ListMemoriesByWorkspace :many
-SELECT * FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at;
+SELECT sqlc.embed(memories), (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at;
 
 -- name: ListMemoriesByProject :many
-SELECT * FROM memories WHERE project_id = ? ORDER BY created_at;
+SELECT sqlc.embed(memories), (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE project_id = ? ORDER BY created_at;
 
 -- name: ListMemoriesPage :many
-SELECT * FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?;
+SELECT sqlc.embed(memories), (SELECT MAX(r.read_at) FROM trail_memory_reads r WHERE r.memory_id = memories.id) AS last_read_at
+FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?;
 
 -- name: CountMemoriesByProject :one
 SELECT COUNT(*) FROM memories WHERE project_id = ?;

@@ -27,6 +27,9 @@ type fakeTrailRepo struct {
 	events                        []eventbus.OutboxEvent
 	terminal                      chan Trail
 	createErr, listErr, latestErr error
+	// reads are the RecordMemoryRead calls (trail, project, memory); found is what ListMemoryReads answers per trail.
+	reads [][3]string
+	found map[string][]FoundMemory
 }
 
 func newFakeTrailRepo() *fakeTrailRepo {
@@ -794,4 +797,17 @@ func summaries(entries []ActivityEntry) []string {
 		out = append(out, e.Summary)
 	}
 	return out
+}
+
+func (f *fakeTrailRepo) RecordMemoryRead(_ context.Context, trailID, projectID, memoryID string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads = append(f.reads, [3]string{trailID, projectID, memoryID})
+	return nil
+}
+
+func (f *fakeTrailRepo) ListMemoryReads(_ context.Context, trailID string) ([]FoundMemory, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.found[trailID]), nil
 }

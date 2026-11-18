@@ -310,10 +310,12 @@ phrase, and a rich-text body, belonging to exactly one project. It reaches
 only that project's turns, by name and never by body: every Agent turn there
 names the always-included ones for the agent to read first, a play run adds
 the ones the user picked, the agent finds the rest itself, and a plain chat
-with no ticket or doc names none. Memories sit in two folders, Main and
-Footer; a play run names its footer memories last, for the agent to read
-once the work is done and conclude the run, such as deciding which column
-the ticket now belongs in.
+with no ticket or doc names none. Each memory a run reads with `memory_get` is
+recorded on its trail, so the trail shows the ones it found itself and the
+memory shows when a run last read it: how a team tells a when-to-use line that
+works. Memories sit in two folders, Main and Footer; a play run names its
+footer memories last, for the agent to read once the work is done and
+conclude the run, such as deciding which column the ticket now belongs in.
 A memory is the project's skill: an agent finds it by its when-to-use line,
 as it would a skill, but it lives in Nexul, where the team reads and edits it,
 and reaches every agent on every computer. A new project starts with the
@@ -509,9 +511,10 @@ _Avoid_: Auto-fix, self-healing, incident response
 **Trail**:
 What one press of a play leaves behind: who started it, on which ticket,
 doc, or project interview, with which memories and instructions, every step the Agent took,
-and how it ended. A step is structured (tool call, tool result, question,
-or assistant text, with the tool name, an argument preview, the raw detail,
-and its time), never a bare line, so the trail reads as a transcript. The
+the memories it read by itself beside those it was told to read, and how it
+ended. A step is structured (tool call, tool result, question, or assistant
+text, with the tool name, an argument preview, the raw detail, and its time),
+never a bare line, so the trail reads as a transcript. The
 transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one fold per turn (the live step while it runs, then
 "Worked for" and what it did) holding what the Agent said between actions,
