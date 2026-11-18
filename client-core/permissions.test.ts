@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { projectPermissions, workspaceWidePermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
+import { heldPermissions, projectPermissions, workspaceWidePermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 const member: MyWorkspaceInfo = {
   role_name: "Client",
@@ -28,6 +28,13 @@ describe("a member's /me", () => {
     const unlisted: MyWorkspaceInfo = { ...member, projects: [] };
     expect(workspaceWidePermissions(unlisted)).toEqual(["chat:read", "projects:create"]);
     expect(projectPermissions(unlisted, "p-web")).not.toContain("tickets:read");
+  });
+
+  it("counts what a project they create would give only while no project is in view", () => {
+    const creator: MyWorkspaceInfo = { ...member, projects: [], new_project_actions: ["projects:write", "tickets:write"] };
+    expect(projectPermissions(creator, undefined)).toContain("projects:write");
+    expect(projectPermissions(creator, "p-web")).not.toContain("tickets:write");
+    expect(heldPermissions(creator)).toEqual(["chat:read", "projects:create"]);
   });
 
   it("answers the Owner's permissions on every project", () => {

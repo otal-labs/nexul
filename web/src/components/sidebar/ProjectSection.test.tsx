@@ -30,6 +30,7 @@ const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:
 
 interface MeExtra {
   projects?: { project_id: string; actions: string[] }[];
+  new_project_actions?: string[];
   roles?: { id: string; name: string; is_owner: boolean }[];
   access_setup_finished?: boolean;
 }
@@ -183,6 +184,13 @@ describe("ProjectSection", () => {
     await user.click(await screen.findByRole("button", { name: "New project" }));
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/project");
     expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+  });
+
+  it("with no projects, offers an Administrator New project from what they would hold in the one they create", async () => {
+    const administrator = { roles: [{ id: "r-a", name: "Administrator", is_owner: false }], projects: [] };
+    renderSection({ list: [], permissions: ["chat:write", "projects:create"], me: { ...administrator, new_project_actions: ["projects:read", "projects:write"] } });
+
+    expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
   });
 
   it("the menu lists every project and marks only the current one", async () => {

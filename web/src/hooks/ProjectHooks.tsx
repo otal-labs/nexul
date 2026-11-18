@@ -8,6 +8,7 @@ import { getAccessGridKey } from "@/hooks/AccessGridHooks";
 import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, TicketCounts, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
+import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
@@ -63,8 +64,12 @@ export const useCreateProject = () => {
           setup_finished: false,
         })
       ).data),
+    // The creator is now listed in it, so their own access is read again before the wizard's next step asks it.
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getProjectsKey] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getProjectsKey] }),
+        client.invalidateQueries({ queryKey: [getMyRoleKey, useWorkspaceStore.getState().selectedWorkspaceId], exact: true }),
+      ]);
       toast.success("Project created");
     },
     onError: (error) => toast.error(errorMessage(error)),

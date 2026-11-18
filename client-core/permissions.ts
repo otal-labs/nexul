@@ -50,6 +50,8 @@ export interface MyWorkspaceInfo {
   roles?: HeldRole[];
   permissions: string[];
   projects?: { project_id: string; actions: string[] }[];
+  // What a non-Owner who may create projects holds in one they create; a server from before it sends none.
+  new_project_actions?: string[];
   // False until an Owner finishes the workspace's one-time access setup; a server from before it sends none.
   access_setup_finished?: boolean;
   // True when any role the viewer holds shows an action they can't take dimmed with the reason (ADR 0152); a server from before it sends none.
@@ -60,16 +62,23 @@ export interface MyWorkspaceInfo {
 export const hasPermission = (permissions: readonly string[] | undefined, value: string): boolean =>
   (permissions ?? []).includes(value);
 
-// What the viewer holds somewhere in the workspace, for what stands for every project (a nav entry, a deep link's gate).
-export const workspaceWidePermissions = (info: MyWorkspaceInfo | undefined): string[] => [
+// What the viewer holds in the workspace or in some project they are in, for what the server checks against that.
+export const heldPermissions = (info: MyWorkspaceInfo | undefined): string[] => [
   ...(info?.permissions ?? []),
   ...(info?.projects ?? []).flatMap((project) => project.actions),
 ];
 
-// What the viewer holds inside one project: the workspace areas plus what they hold in that project. A project not
-// listed (none in view yet, or one just taken away) answers as any project would.
+// What stands for every project (a nav entry, a deep link's gate, the project wizard's door): held, or held in one they create.
+export const workspaceWidePermissions = (info: MyWorkspaceInfo | undefined): string[] => [
+  ...heldPermissions(info),
+  ...(info?.new_project_actions ?? []),
+];
+
+// What the viewer holds inside one project: the workspace areas plus what they hold in that project. With none in view it
+// answers as any project would; a project not listed (one just taken away) answers from what they hold elsewhere.
 export const projectPermissions = (info: MyWorkspaceInfo | undefined, projectId: string | undefined): string[] => {
+  if (!projectId) return workspaceWidePermissions(info);
   const project = info?.projects?.find((candidate) => candidate.project_id === projectId);
-  if (!project) return workspaceWidePermissions(info);
+  if (!project) return heldPermissions(info);
   return [...(info?.permissions ?? []), ...project.actions];
 };
