@@ -35,6 +35,8 @@ An agent turn never carries a memory's text. It names memories for the agent to 
 
 Because only names travel, a long memory never stops a turn.
 
+A run's trail lists the memories it found and read itself under **Read by itself**, apart from the ones it was told to read; one deleted since keeps its name there, without a link. Each memory says when a run last read it, on its row and on its page, or on its page that no run has yet. That is how you tell a **When to use** line that works from one no run ever opens.
+
 Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory skill (and nexul-triage, which [files bugs in Nexul itself](/docs/guide/triage/)), which tells agents how to look memories up and when to write or update one. Agents may write memories too; every save keeps its author.
 
 ## Default memories
