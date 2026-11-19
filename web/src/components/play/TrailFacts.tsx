@@ -35,22 +35,21 @@ const Fact = ({ label, className, children }: FactProps) => (
 
 const Muted = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground">{children}</span>;
 
-const NOT_IN_VIEW = "Not shown while viewing as another member";
-
 // The computer by the name the viewer knows it by and, when a runner reaches it, whether that runner is connected now.
 const ComputerName = ({ trail }: TrailFactsProps) => {
   const viewing = useIsViewingAs();
   const { data: computers, isError } = useQuery({ ...computersQuery, enabled: trail.computer_id !== "" && !viewing });
-  const computer = computers?.find((c) => c.id === trail.computer_id);
+  const shown = trail.computer_id !== "" && !viewing;
+  const computer = shown ? computers?.find((c) => c.id === trail.computer_id) : undefined;
   const presence = computer?.runner && runnerPresence(computer.runner);
 
   return (
     <>
-      {trail.computer_id === "" && <Muted>None of your computers</Muted>}
-      {trail.computer_id !== "" && viewing && <Muted>{NOT_IN_VIEW}</Muted>}
-      {trail.computer_id !== "" && !viewing && isError && <Muted>Couldn't load the computer</Muted>}
-      {trail.computer_id !== "" && !viewing && !isError && !computers && <Muted>Loading…</Muted>}
-      {computers && !computer && <Muted>A computer you can't see</Muted>}
+      {trail.computer_id === "" && <Muted>No computer took it</Muted>}
+      {trail.computer_id !== "" && viewing && <Muted>Not shown while viewing as another member</Muted>}
+      {shown && !computers && isError && <Muted>Couldn't load the computer</Muted>}
+      {shown && !computers && !isError && <Muted>Loading…</Muted>}
+      {shown && computers && !computer && <Muted>A computer you can't see</Muted>}
       {computer && <span className="font-medium break-words">{sharedComputerName(computer)}</span>}
       {presence && <SettingsStatus tone={presence.tone}>{presence.text}</SettingsStatus>}
     </>
@@ -63,7 +62,7 @@ const TrailComputer = ({ trail }: TrailFactsProps) => {
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
       <ComputerName trail={trail} />
-      {passedOver.length > 0 && <span className="text-xs text-pretty text-muted-foreground">Passed over: {passOverLines(passedOver)}</span>}
+      {passedOver.length > 0 && <span className="text-xs text-pretty break-words text-muted-foreground">Passed over: {passOverLines(passedOver)}</span>}
     </span>
   );
 };
@@ -87,7 +86,7 @@ const TrailModel = ({ trail }: TrailFactsProps) => {
 
 // The memories it was told to read, by their titles once the project's list answers; a deleted one keeps a placeholder, unlinked.
 const PickedMemories = ({ trail }: TrailFactsProps) => {
-  const { data: memories } = useFetchMemoriesByProject(trail.project_id);
+  const { data: memories, isError } = useFetchMemoriesByProject(trail.selected_memory_ids.length > 0 ? trail.project_id : "");
   const picked = trail.selected_memory_ids.map((id) => {
     const memory = memories?.find((m) => m.id === id);
     return { id, title: memory?.title ?? "Deleted memory", deleted: !memory };
@@ -96,7 +95,8 @@ const PickedMemories = ({ trail }: TrailFactsProps) => {
   return (
     <>
       {picked.length === 0 && <Muted>None picked</Muted>}
-      {picked.length > 0 && !memories && <Muted>Loading…</Muted>}
+      {picked.length > 0 && !memories && isError && <Muted>Couldn't load the memories</Muted>}
+      {picked.length > 0 && !memories && !isError && <Muted>Loading…</Muted>}
       {picked.length > 0 && memories && <TrailFoundMemories projectId={trail.project_id} memories={picked} />}
     </>
   );

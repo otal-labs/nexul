@@ -25,7 +25,6 @@ const stateWords = (state: TrailState, seconds: number) => {
   return { word: "Interrupted after", time: took };
 };
 
-
 // The dialog's meta line: how the run stands and for how long, then who started it, from where and when.
 export const TrailHeadline = ({ trail }: TrailHeadlineProps) => {
   const state = useLiveTrailState(trail);
