@@ -77,6 +77,7 @@ func TestRunHandler_Stop(t *testing.T) {
 	<-f.turns.done
 	var tr Trail
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tr))
+	releaseUnheldTurn(f, tr.ID)
 
 	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/stop", "", "stranger").Code)
 	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/missing/stop", "", starter).Code)
