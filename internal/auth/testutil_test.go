@@ -493,6 +493,20 @@ func (f *fakePATStore) GetActiveForComputer(_ context.Context, userID, computerI
 	return nil, apperrs.ErrNotFound
 }
 
+func (f *fakePATStore) RotateByRefresh(_ context.Context, oldRefreshHash, clientID string, next PersonalAccessToken) (*PersonalAccessToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, p := range f.byID {
+		if p.RefreshHash != oldRefreshHash || p.OAuthClientID != clientID || p.RevokedAt != nil {
+			continue
+		}
+		p.TokenHash, p.RefreshHash, p.ExpiresAt, p.Prefix = next.TokenHash, next.RefreshHash, next.ExpiresAt, next.Prefix
+		cp := *p
+		return &cp, nil
+	}
+	return nil, apperrs.ErrNotFound
+}
+
 func (f *fakePATStore) topics() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

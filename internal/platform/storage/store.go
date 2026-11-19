@@ -47,6 +47,7 @@ type Store struct {
 	GitHubManifests       *GitHubManifestsRepo
 	SetupCodes            *SetupCodesRepo
 	ConnectCodes          *ConnectCodesRepo
+	OAuthClients          *OAuthClientsRepo
 	Access                *AccessRepo
 	PATs                  *PATsRepo
 	Sessions              *SessionsRepo
@@ -136,6 +137,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},
 		Access:                &AccessRepo{db: db, w: w, q: q, hot: hot},
 		PATs:                  &PATsRepo{db: db, w: w, q: q},
+		OAuthClients:          &OAuthClientsRepo{db: db, w: w, q: q},
 		Sessions:              &SessionsRepo{db: db, w: w, q: q},
 		Passkeys:              &PasskeysRepo{db: db, w: w, q: q},
 		Projects:              &ProjectsRepo{db: db, w: w, q: q},

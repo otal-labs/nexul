@@ -903,6 +903,13 @@ type Notification struct {
 	ReadAt       sql.NullInt64
 }
 
+type OauthClient struct {
+	ID           string
+	Name         string
+	RedirectUris string
+	CreatedAt    int64
+}
+
 type Outbox struct {
 	ID        string
 	Topic     string
@@ -1019,15 +1026,18 @@ type PermissionOverwrite struct {
 }
 
 type PersonalAccessToken struct {
-	ID         string
-	UserID     string
-	Name       string
-	TokenHash  string
-	Prefix     string
-	CreatedAt  int64
-	LastUsedAt sql.NullInt64
-	RevokedAt  sql.NullInt64
-	ComputerID string
+	ID            string
+	UserID        string
+	Name          string
+	TokenHash     string
+	Prefix        string
+	CreatedAt     int64
+	LastUsedAt    sql.NullInt64
+	RevokedAt     sql.NullInt64
+	ComputerID    string
+	OauthClientID string
+	RefreshHash   sql.NullString
+	ExpiresAt     sql.NullInt64
 }
 
 type Play struct {

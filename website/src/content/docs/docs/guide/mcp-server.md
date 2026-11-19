@@ -11,6 +11,14 @@ A [paired computer](/docs/guide/paired-computers/) needs none of this: its [setu
 
 ## Connect
 
+Paste your instance's MCP URL, `https://nexul.example.com/mcp`, into your tool and sign in. Claude's custom connectors, the MCP Inspector, and any client that supports MCP sign-in open a Nexul page in your browser: sign in the way you usually do, check the app's name and where it sends you back to, and click **Allow**. The tool then connects as you.
+
+Each app you allow is listed under **Settings → Security**, **Personal access tokens**, marked as a signed-in app, with when it was last used. Revoke it there and the app's next call gets `401`. Its access token lasts an hour and the app renews it by itself until you revoke it. So that revoking it always cuts it off, a signed-in app can't create or read credentials: tokens, computers' install commands, automations' tokens, invitation links, or bots' webhook URLs. Use a personal access token for those.
+
+### With a token instead
+
+For a tool without MCP sign-in, or a script:
+
 1. Open **Settings → Security** and create a token under **Personal access tokens**. Copy it now; the raw token (`dep_…`) is shown once.
 2. Add the server to your tool, with your instance's URL and the token.
 
@@ -70,6 +78,17 @@ http_headers = { Authorization = "Bearer dep_your_token_here" }
 ```
 
 A missing or wrong token gets `401`. Revoke the token in the same place to cut the agent off.
+
+### Behind a proxy or Cloudflare Access
+
+MCP sign-in needs these paths to reach the instance without a login in front of them; they check their own credentials:
+
+- `/mcp`
+- `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`
+- `/.well-known/oauth-authorization-server`
+- `/oauth/register` and `/oauth/token`
+
+With Cloudflare Access, add a Bypass policy for them. A proxy must pass the `Authorization` header and the request body through unchanged. The sign-in page itself, `/oauth/authorize`, is part of the web app and can stay behind Access.
 
 ## What an agent can do
 

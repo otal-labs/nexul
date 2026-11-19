@@ -37,6 +37,7 @@ export const InterviewPage = page(() => import("@/pages/InterviewPage"), (m) => 
 export const InvitePreviewPage = page(() => import("@/pages/InvitePreviewPage"), (m) => m.InvitePreviewPage);
 export const LoginPage = page(() => import("@/pages/LoginPage"), (m) => m.LoginPage);
 export const MemoriesPage = page(() => import("@/pages/MemoriesPage"), (m) => m.MemoriesPage);
+export const OAuthAuthorizePage = page(() => import("@/pages/OAuthAuthorizePage"), (m) => m.OAuthAuthorizePage);
 export const OwnerWizardPage = page(() => import("@/pages/OwnerWizardPage"), (m) => m.OwnerWizardPage);
 export const PlaysPage = page(() => import("@/pages/PlaysPage"), (m) => m.PlaysPage);
 export const ProjectSettingsPage = page(() => import("@/pages/ProjectSettingsPage"), (m) => m.ProjectSettingsPage);

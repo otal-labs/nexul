@@ -186,6 +186,9 @@ func toolHandler(t mcptool.Tool, limits *limiters, audit func(context.Context, s
 			log.Warn("mcp tool call rate limited")
 			return errorResult(fmt.Sprintf("Too many tool calls; retry in %s.", wait.Round(time.Second))), nil
 		}
+		if t.Hints.MintsCredential && actor.Grant != "" {
+			return errorResult("A signed-in app cannot create credentials; revoking it must cut it off. Use a personal access token for this."), nil
+		}
 		start := time.Now()
 		out, err := t.Call(logging.CtxWithLogger(ctx, log), req.Params.Arguments)
 		if audit != nil && !t.Hints.ReadOnly {

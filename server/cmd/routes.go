@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/attachments"
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/calendar"
@@ -288,8 +289,12 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/ws/runner", wsHandler)
 	// A computer's stream authenticates with the runner's own credential, like /ws/runner.
 	httpMux.HandleFunc("GET /api/runners/streams/{id}", wsHandler.ServeStream)
-	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
-	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.
+	httpMux.Handle("/mcp", svc.authSvc.RequireMCPAuth(withIdentity(mcpServer)))
+	oauthRoutes := svc.authHandler.OAuthRoutes()
+	for _, path := range auth.OAuthPaths {
+		httpMux.Handle(path, oauthRoutes)
+	}
+	// Any other discovery probe, such as OpenID's, gets a clean 404, not the web app's HTML.
 	httpMux.Handle("/.well-known/", http.NotFoundHandler())
 	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(githubWebhookSecret(cfg.AuthSecret), store.Outbox).
 		WithTicketResolver(prTicketResolver{repoWorkspace: store.EventWorkspaces, tickets: svc.ticketsSvc}))

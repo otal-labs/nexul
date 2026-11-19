@@ -10,6 +10,8 @@ type Actor struct {
 	Automation *AutomationRef
 	// Viewer is set while someone views Nexul as ID (ADR 0160): ID is then the viewed member, and every check answers as them.
 	Viewer *ViewerRef
+	// Grant names the MCP client when the request came in on its sign-in grant, which mints no other credential (ADR 0204).
+	Grant string
 }
 
 // ViewerRef names the person behind a view-as request and the one workspace the view is held to.

@@ -118,6 +118,7 @@
   "POST /api/auth/connection-token": ["instance:read"],
   "POST /api/auth/identities/link": ["none"],
   "POST /api/auth/members": ["accounts:write"],
+  "POST /api/auth/oauth/authorize": ["none"],
   "POST /api/auth/onboarding/owner": ["none"],
   "POST /api/auth/onboarding/profile": ["none"],
   "POST /api/auth/passkeys": ["none"],

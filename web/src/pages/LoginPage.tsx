@@ -18,6 +18,7 @@ import { useProductName } from "@/ee/hooks/useProductName";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { passkeysSupported } from "@/lib/passkeys";
 import { useSessionStore } from "@/stores/sessionStore";
+import { takeSignInReturn } from "@/stores/signInReturnStore";
 import { signInErrorMessage } from "@/models/SignInError";
 import type { Provider } from "@/models/User";
 
@@ -46,7 +47,7 @@ export const LoginPage = () => {
       (await api.post<{ token: string }>("/auth/callback", { code })).data),
     onSuccess: (data) => {
       login(data.token);
-      navigate("/", { replace: true });
+      navigate(takeSignInReturn(), { replace: true });
     },
   });
   const { mutate: exchangeMutate } = exchange;
@@ -62,7 +63,7 @@ export const LoginPage = () => {
     started.current = true;
     if (token) {
       login(token);
-      navigate("/", { replace: true });
+      navigate(takeSignInReturn(), { replace: true });
       return;
     }
     if (code) exchangeMutate(code);
