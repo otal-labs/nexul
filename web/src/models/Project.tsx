@@ -117,7 +117,11 @@ export interface DeleteImpact {
   tickets: number;
   repos: number;
   services: number;
+  docs: number;
 }
+
+// Only a project that holds nothing can be removed; the server refuses the rest.
+export const holdsNothing = (impact: DeleteImpact): boolean => impact.tickets + impact.repos + impact.services + impact.docs === 0;
 
 // A project's tickets counted per status, category and ticket type id, and per label; a key with no tickets is absent.
 export interface TicketCounts {

@@ -41,7 +41,7 @@ describe("ProjectDangerZoneSection", () => {
 
   it("says how many people lose the project in the delete confirmation", async () => {
     const user = userEvent.setup();
-    renderSection({ tickets: 0, repos: 0, services: 0 }, [person("bob"), person("sam")]);
+    renderSection({ tickets: 0, repos: 0, services: 0, docs: 0 }, [person("bob"), person("sam")]);
 
     await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThanOrEqual(4));
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
@@ -50,9 +50,16 @@ describe("ProjectDangerZoneSection", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 
+  it("keeps a project that only holds docs from being removed", async () => {
+    renderSection({ tickets: 0, repos: 0, services: 0, docs: 2 }, []);
+
+    expect(await screen.findByText("Still holds 0 tickets · 0 repos · 0 services · 2 docs")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove project" })).toBeDisabled();
+  });
+
   it("adds no line when nobody is in the project", async () => {
     const user = userEvent.setup();
-    renderSection({ tickets: 0, repos: 0, services: 0 }, []);
+    renderSection({ tickets: 0, repos: 0, services: 0, docs: 0 }, []);
 
     await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThanOrEqual(4));
     await user.click(await screen.findByRole("button", { name: "Remove project" }));

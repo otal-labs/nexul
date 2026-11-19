@@ -67,6 +67,7 @@ type fakeRepo struct {
 	projects  map[string]*Project
 	repos     map[string][]RepoRef
 	services  map[string][]string
+	docs      map[string]int
 	ticketPro map[string]string
 	cats      map[string]*Category
 	types     map[string]*TicketType
@@ -92,6 +93,7 @@ func newFakeRepo() *fakeRepo {
 		projects:  map[string]*Project{},
 		repos:     map[string][]RepoRef{},
 		services:  map[string][]string{},
+		docs:      map[string]int{},
 		ticketPro: map[string]string{},
 		cats:      map[string]*Category{},
 		types:     map[string]*TicketType{},
@@ -239,6 +241,15 @@ func (f *fakeRepo) CountServices(_ context.Context, projectID string) (int, erro
 		return 0, f.countErr
 	}
 	return len(f.services[projectID]), nil
+}
+
+func (f *fakeRepo) CountDocs(_ context.Context, projectID string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.countErr != nil {
+		return 0, f.countErr
+	}
+	return f.docs[projectID], nil
 }
 
 func (f *fakeRepo) CountTicketUsage(context.Context, string) (TicketUsage, error) {
@@ -931,16 +942,17 @@ func TestReorder(t *testing.T) {
 }
 
 func TestDeleteImpact(t *testing.T) {
-	t.Run("counts tickets, repos and services", func(t *testing.T) {
+	t.Run("counts tickets, repos, services and docs", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
 		repo.ticketPro["t-1"] = "p-1"
 		repo.ticketPro["t-2"] = "p-1"
 		repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app"}}
 		repo.services["p-1"] = []string{"svc-1"}
+		repo.docs["p-1"] = 3
 		impact, err := s.DeleteImpact(context.Background(), "p-1")
 		require.NoError(t, err)
-		assert.Equal(t, DeleteImpact{Tickets: 2, Repos: 1, Services: 1, RestrictedMembers: []RestrictedMember{}}, impact)
+		assert.Equal(t, DeleteImpact{Tickets: 2, Repos: 1, Services: 1, Docs: 3, RestrictedMembers: []RestrictedMember{}}, impact)
 	})
 }
 
@@ -1125,6 +1137,10 @@ func TestProjectUsecases_Refusals(t *testing.T) {
 		{"delete a project with repos", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
 			seedProject(s, repo, owner)
 			repo.repos["p-1"] = []RepoRef{{Owner: "acme", Name: "app"}}
+		}, func(s *Service) error { return s.Delete(ctx, "p-1") }, apperrs.ErrConflict},
+		{"delete a project with docs", true, func(s *Service, repo *fakeRepo, owner *fakeGate) {
+			seedProject(s, repo, owner)
+			repo.docs["p-1"] = 1
 		}, func(s *Service) error { return s.Delete(ctx, "p-1") }, apperrs.ErrConflict},
 		{"add a repo as a non-owner", false, nil, func(s *Service) error { return s.AddRepo(ctx, "p-1", "acme", "app", "", "") }, apperrs.ErrForbidden},
 		{"add a repo without an owner", true, nil, func(s *Service) error { return s.AddRepo(ctx, "p-1", "  ", "app", "", "") }, apperrs.ErrInvalid},

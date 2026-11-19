@@ -374,7 +374,11 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	if err != nil {
 		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
 	}
-	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: []RestrictedMember{}}, nil
+	docs, err := s.repo.CountDocs(ctx, id)
+	if err != nil {
+		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
+	}
+	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, Docs: docs, RestrictedMembers: []RestrictedMember{}}, nil
 }
 
 // TicketCounts counts the project's tickets by status, category, type and label, for the settings lists beside each row.
@@ -392,7 +396,7 @@ func (s *Service) TicketCounts(ctx context.Context, id string) (TicketUsage, err
 	return usage, nil
 }
 
-// Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.
+// Delete removes a project (projects:delete); refused while it has tickets, repos, services, or docs, to avoid orphans.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.requireOn(ctx, id, permissions.ProjectsDelete); err != nil {
 		return err
@@ -401,9 +405,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	if impact.Tickets > 0 || impact.Repos > 0 || impact.Services > 0 {
-		return fmt.Errorf("%w: project has %d ticket(s), %d repo(s) and %d service(s); move or delete them first",
-			apperrs.ErrConflict, impact.Tickets, impact.Repos, impact.Services)
+	if impact.Tickets > 0 || impact.Repos > 0 || impact.Services > 0 || impact.Docs > 0 {
+		return fmt.Errorf("%w: project has %d ticket(s), %d repo(s), %d service(s) and %d doc(s); move or delete them first",
+			apperrs.ErrConflict, impact.Tickets, impact.Repos, impact.Services, impact.Docs)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete project %s: %w", id, err)

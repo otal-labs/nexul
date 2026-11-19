@@ -325,6 +325,19 @@ func TestProjectsRepo_CountServices(t *testing.T) {
 	assert.Equal(t, 2, n)
 }
 
+func TestProjectsRepo_CountDocs_IncludesArchivedDocs(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
+	archived := newTestDoc("doc-2")
+	archived.Archived = true
+	require.NoError(t, s.Docs.Create(context.Background(), archived))
+
+	n, err := s.Projects.CountDocs(context.Background(), "project-general")
+	require.NoError(t, err)
+	assert.Equal(t, 2, n)
+}
+
 func TestStacksRepo_ZeroErrorRateRule_ReadsAsTheDefaults(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

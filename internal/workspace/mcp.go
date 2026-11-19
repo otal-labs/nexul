@@ -67,9 +67,9 @@ type projectDeleteIn struct {
 
 func projectDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("project_delete", "Delete project",
-		"Deletes an empty project for good. Owners only. It is refused while the project still holds tickets, "+
-			"repositories, or services; project_get shows those counts under delete_impact, and ticket_update "+
-			"(project_id) and project_update (remove_repos) move them out. Returns the deleted project's id.",
+		"Deletes an empty project for good. Owners only. It is refused while it still holds tickets, "+
+			"repositories, services, or docs; project_get counts them under delete_impact, and ticket_update "+
+			"(project_id), project_update (remove_repos) and doc_delete clear them. Returns the deleted project's id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in projectDeleteIn) (any, error) {
 			if err := requireOwnerActor(ctx); err != nil {

@@ -7,15 +7,13 @@ import { useFetchProjectPeople } from "@/hooks/PeopleHooks";
 import { useDeleteProject, useFetchProjectDeleteImpact } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useEntityActions } from "@/hooks/useEntityActions";
-import type { DeleteImpact, Project } from "@/models/Project";
+import { holdsNothing, type Project } from "@/models/Project";
 
 interface ProjectDangerZoneSectionProps {
   project: Project;
 }
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
-const isBlocked = (impact: DeleteImpact) => impact.tickets > 0 || impact.repos > 0 || impact.services > 0;
 
 export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionProps) => {
   const navigate = useNavigate();
@@ -24,7 +22,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
   const { data: people } = useFetchProjectPeople(project.id);
   const { open: confirmDelete } = useConfirmationDialog();
   // A project that still holds anything can't be removed; the Still holds line under it says what.
-  const blocked = !impact || isBlocked(impact);
+  const blocked = !impact || !holdsNothing(impact);
   const answer = useEntityActions("project", project.id);
 
   const onDelete = async () => {
@@ -48,9 +46,9 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
         consequence="Removes this project for good. Only an empty project can be removed."
         details={
           impact &&
-          isBlocked(impact) && (
+          !holdsNothing(impact) && (
             <p className="pt-1 font-mono text-xs text-pretty text-muted-foreground">
-              Still holds {plural(impact.tickets, "ticket")} · {plural(impact.repos, "repo")} · {plural(impact.services, "service")}
+              Still holds {plural(impact.tickets, "ticket")} · {plural(impact.repos, "repo")} · {plural(impact.services, "service")} · {plural(impact.docs, "doc")}
             </p>
           )
         }
