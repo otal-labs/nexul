@@ -1,4 +1,4 @@
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, FolderInputIcon } from "lucide-react";
 import { useState } from "react";
 
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
@@ -22,6 +22,7 @@ export const DocMoveToFolderItem = ({ doc }: { doc: Doc }) => {
         permission="docs:write"
         answer={answer("docs:write")}
         verb="move docs"
+        icon={FolderInputIcon}
         onSelect={() => setOpen((was) => !was)}
       >
         Move to folder

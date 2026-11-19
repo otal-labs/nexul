@@ -63,7 +63,10 @@ const inList = (text: string) =>
     return own;
   });
 
-const LocationSpy = () => <p data-testid="location">{useLocation().pathname}</p>;
+const LocationSpy = () => {
+  const { pathname, search } = useLocation();
+  return <p data-testid="location">{pathname + search}</p>;
+};
 
 const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
   const endpoints: Record<string, unknown> = {
@@ -169,10 +172,10 @@ describe("DocsPage", () => {
     expect(screen.getByRole("button", { name: /^Sort and view: Archived/ })).toBeInTheDocument();
   });
 
-  it("moves a bare doc link to its project's URL", async () => {
-    renderPage("/acme/docs/doc-2", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
+  it("moves a bare doc link to its project's URL, keeping the view it names", async () => {
+    renderPage("/acme/docs/doc-2?view=tickets", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
 
-    await vi.waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/acme/docs/BE/doc-2"));
+    await vi.waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/acme/docs/BE/doc-2?view=tickets"));
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 

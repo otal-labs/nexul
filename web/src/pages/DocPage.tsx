@@ -7,6 +7,7 @@ import { DocDetail } from "@/components/doc/DocDetail";
 import { DocSkeleton } from "@/components/doc/DocSkeleton";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { useArchiveDoc, useFetchDoc, useFetchDocClarification, useRestoreDoc } from "@/hooks/DocHooks";
+import { useFetchTicketsByDoc } from "@/hooks/TicketHooks";
 import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -25,8 +26,9 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
   const openPermissions = usePermissionsDialog();
   const { data: doc, error, isPending } = useFetchDoc(docId);
   const createTicket = useCreateTicketDialog(doc?.project_id ?? "");
-  // Fetched beside the doc, so a page opening on its Questions view doesn't flash the article first.
+  // Fetched beside the doc, so a page opening on its Questions or Tickets view doesn't flash the article first.
   useFetchDocClarification(docId);
+  useFetchTicketsByDoc(docId);
   const archiveDoc = useArchiveDoc();
   const restoreDoc = useRestoreDoc();
 

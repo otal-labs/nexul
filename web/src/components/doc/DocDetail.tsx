@@ -10,12 +10,13 @@ import { DocBodySection } from "@/components/doc/DocBodySection";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTicketsRunLine } from "@/components/doc/DocTicketsRunLine";
+import { DocTicketsView } from "@/components/doc/DocTicketsView";
 import { DocTitleField } from "@/components/doc/DocTitleField";
 import { DocWatchButton } from "@/components/doc/DocWatchButton";
 import { DocToc } from "@/components/doc/DocToc";
 import { DocTocButton } from "@/components/doc/DocTocButton";
 import { DocQuestionsPanel } from "@/components/doc/clarification/DocQuestionsPanel";
-import { DocViewSwitch } from "@/components/doc/clarification/DocViewSwitch";
+import { DocViewSwitch } from "@/components/doc/DocViewSwitch";
 import { PointerOverlay } from "@/components/doc/collab/PointerOverlay";
 import { useArticlePointer } from "@/components/doc/collab/useArticlePointer";
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
@@ -69,7 +70,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   const [headings, setHeadings] = useState<DocHeading[]>(() => extractDocHeadings(doc.body));
   const participants = session?.participants ?? [];
   const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
-  const { switchable, waiting, view, setView } = useDocView(doc);
+  const { switchable, questions, ticketCount, waiting, view, setView } = useDocView(doc);
   const crumbs = useEmbeddedCrumbs(useDocCrumbs(doc));
 
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, doc.title, doc.body);
@@ -91,12 +92,14 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           />
         }
         meta={<DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />}
+        afterCrumbs={
+          switchable && <DocViewSwitch view={view} ticketCount={ticketCount} questions={questions} waiting={waiting} onChange={setView} />
+        }
         actions={
           <>
-            {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
-            {switchable && <span aria-hidden className="h-4 w-px bg-border" />}
             {doc.locked && <DocLockedSignal docId={doc.id} />}
-            {view === "doc" && <DocTocButton headings={headings} className="size-7 @min-[50rem]:hidden" />}
+            {/* Kept in place off the doc view, so the actions never shift as the view changes. */}
+            <DocTocButton headings={headings} className={cn("size-7 @min-[50rem]:hidden", view !== "doc" && "invisible")} />
             <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
             <DocWatchButton docId={doc.id} />
             <DocThreadButton workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />
@@ -114,11 +117,12 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
       <div className="mt-6 @min-[50rem]:flex @min-[50rem]:justify-between @min-[50rem]:gap-8">
         <div className="min-w-0 max-w-[42rem] flex-1 space-y-4">
           {canThread && <DocTicketsRunLine workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />}
+          {view === "tickets" && <DocTicketsView docId={doc.id} projectId={doc.project_id} />}
           {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
-          {/* Hidden, not unmounted, behind Questions so the editor keeps its session. */}
+          {/* Hidden, not unmounted, behind the other views so the editor keeps its session. */}
           <article
             ref={articleRef}
-            hidden={view === "questions"}
+            hidden={view !== "doc"}
             className="relative"
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeave}

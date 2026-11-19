@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
@@ -35,6 +35,13 @@ export const resolveStatus = (statuses: BoardStatus[] | undefined, id: string) =
 export const useTicketStatus = (ticket: Pick<Ticket, "project_id" | "status">) => {
   const { data: statuses, isPending } = useFetchProjectStatuses(ticket.project_id);
   return { status: resolveStatus(statuses, ticket.status), isPending };
+};
+
+// How many of the tickets sit in a done-stage column, each read against its own project's columns.
+export const useDoneCount = (tickets: Pick<Ticket, "project_id" | "status">[]) => {
+  const projectIds = [...new Set(tickets.map((t) => t.project_id))];
+  const columns = useQueries({ queries: projectIds.map((id) => projectStatusesQuery(id)) });
+  return tickets.filter((t) => resolveStatus(columns[projectIds.indexOf(t.project_id)]?.data, t.status)?.kind === StatusKind.Done).length;
 };
 
 export const useCreateStatus = () => {

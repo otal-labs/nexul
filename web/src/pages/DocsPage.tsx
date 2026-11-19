@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, useParams } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 
 import { DocsBrowser } from "@/components/doc/DocsBrowser";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -13,17 +13,18 @@ import { docPath, projectTokenById } from "@/models/Project";
 // Lazy: the editor's tiptap and yjs stack loads only once a doc is open.
 const DocPage = lazy(() => import("@/pages/DocPage").then((m) => ({ default: m.DocPage })));
 
-// The sidebar's project's docs beside the open one; a bare /docs/:docId link moves to its project's URL.
+// The sidebar's project's docs beside the open one; a bare /docs/:docId link moves to its project's URL, keeping its ?view=.
 export const DocsPage = () => {
   const { projectToken, docId } = useParams();
   const { projects, current } = useSidebarProject();
   const wsPath = useWorkspacePath();
+  const { search } = useLocation();
   const { data: docs, error, isPending } = useFetchDocsByProject(current?.id ?? "");
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
     <div className="h-full">
-      {bareDoc && projects && <Navigate replace to={wsPath(docPath(projectTokenById(projects, bareDoc.project_id), bareDoc.id))} />}
+      {bareDoc && projects && <Navigate replace to={wsPath(docPath(projectTokenById(projects, bareDoc.project_id), bareDoc.id)) + search} />}
       {projects && projects.length === 0 && (
         <div className="p-6">
           <NoProjectsState message="Every doc belongs to a project. Create one to start writing." />

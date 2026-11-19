@@ -1401,8 +1401,8 @@ button.mention-chip:hover {
 .scroll-edge:has(.sticky-group-head) {
   --edge-sticky: 2.25rem;
 }
-/* A record's crumbs row stays pinned while it scrolls. Once scrolled, a 16px fade under it softens what passes beneath;
-   it grows over the first 24px of scroll, so the title at rest is never washed. Without scroll timelines, an 8px fade inside the row. */
+/* A record's crumbs row stays pinned; its 16px fade grows over the first 24px of scroll and stays unseen on a record too
+   short to scroll. Without scroll timelines, an 8px fade inside the row. */
 .sticky-crumbs {
   position: sticky;
   top: 0;
@@ -1421,6 +1421,7 @@ button.mention-chip:hover {
     height: 1rem;
     pointer-events: none;
     background: linear-gradient(var(--panel-opaque), transparent);
+    opacity: 0;
     animation: crumbs-fade linear both;
     animation-timeline: scroll();
     animation-range: 0 24px;
@@ -1432,8 +1433,8 @@ button.mention-chip:hover {
   }
 }
 @keyframes crumbs-fade {
-  from {
-    opacity: 0;
+  to {
+    opacity: 1;
   }
 }
 @keyframes scroll-edge {
