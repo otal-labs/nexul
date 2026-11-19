@@ -75,7 +75,7 @@ export const RoleHolderRow = ({ person, onOpen, match }: RoleHolderRowProps) => 
             <MatchText text={personName(person)} match={match} />
           </span>
           {/* The handle leads, so two people with like names tell apart; presence, status and other roles follow. */}
-          <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-4 text-xs text-muted-foreground">
             <span className="shrink-0 font-mono">
               <MatchText text={loginHandle(person.login)} match={match} />
             </span>

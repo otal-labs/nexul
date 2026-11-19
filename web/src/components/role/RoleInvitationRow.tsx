@@ -47,7 +47,7 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{title}</span>
-          <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-4 text-xs text-muted-foreground">
             <span className="shrink-0">By {inviter}</span>
             {others.length > 0 && (
               <span className="-my-0.5 flex min-w-0 flex-1">
