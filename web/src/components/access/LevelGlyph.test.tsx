@@ -17,4 +17,9 @@ describe("LevelGlyph", () => {
     expect(slots(2, 2)).toEqual(["full", "full", "tick"]);
     expect(slots(1, 1)).toEqual(["full", "tick", "tick"]);
   });
+
+  it("names each slot in its tooltip", () => {
+    const { container } = render(<LevelGlyph level={2} rungs={2} />);
+    expect(container.firstElementChild).toHaveAttribute("title", "Read and Write held, Delete not offered here");
+  });
 });

@@ -45,5 +45,5 @@ export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
     </span>
   );
 
-  return <ListPaneRow to={wsPath(`/plays/${play.id}`)} title={play.label} muted={!play.enabled} detail={detail || undefined} selected={selected} menu={menu} meta={time} metaOnTitleLine />;
+  return <ListPaneRow to={wsPath(`/plays/${play.id}`)} title={play.label} muted={!play.enabled} detail={detail || undefined} dense={!detail} selected={selected} menu={menu} meta={time} metaOnTitleLine />;
 };
