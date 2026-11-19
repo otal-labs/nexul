@@ -126,6 +126,19 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 	return out, nil
 }
 
+// RunningByWorkspace counts the starting or running trails the caller can read, per workspace.
+func (r *Runner) RunningByWorkspace(ctx context.Context) (map[string]int, error) {
+	list, err := r.trails.ListRunningTrails(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list running trails: %w", err)
+	}
+	out := map[string]int{}
+	for _, t := range r.readable(ctx, list) {
+		out[t.WorkspaceID]++
+	}
+	return out, nil
+}
+
 // QueuedTargets maps each target with a run waiting in the queue to its first; targets the caller cannot read are left
 // out, not refused.
 func (r *Runner) QueuedTargets(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]*QueueItem, error) {

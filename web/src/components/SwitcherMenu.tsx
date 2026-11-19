@@ -1,4 +1,4 @@
-import { CheckIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, LoaderCircle, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ActionGate } from "@nexul/client-core/actionState";
@@ -55,9 +55,10 @@ interface SwitcherMenuItemProps {
   selected: boolean;
   onSelect: () => void;
   unreadCount?: number;
+  runningCount?: number;
 }
 
-export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadCount = 0 }: SwitcherMenuItemProps) => (
+export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadCount = 0, runningCount = 0 }: SwitcherMenuItemProps) => (
   <button type="button" onClick={onSelect} aria-current={selected || undefined} title={name} className={menuItemClass}>
     {mark}
     {!mark && (
@@ -66,6 +67,16 @@ export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadC
       </span>
     )}
     <span className="min-w-0 flex-1 truncate">{name}</span>
+    {runningCount > 0 && (
+      <span
+        role="img"
+        aria-label={`${runningCount} ${runningCount === 1 ? "play" : "plays"} running`}
+        className="flex shrink-0 items-center gap-1 font-mono text-xs leading-none text-warning tabular-nums"
+      >
+        <LoaderCircle className="size-3 animate-spin text-warning motion-reduce:animate-none" aria-hidden />
+        {runningCount}
+      </span>
+    )}
     <UnreadBadge count={unreadCount} />
     {selected && <CheckIcon className="text-primary" aria-hidden />}
   </button>

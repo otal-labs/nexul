@@ -47,6 +47,7 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/{id}/run", h.run)
 	mux.HandleFunc("GET /api/plays/runs", h.list)
 	mux.HandleFunc("GET /api/plays/runs/active", h.active)
+	mux.HandleFunc("GET /api/plays/runs/running", h.running)
 	mux.HandleFunc("GET /api/plays/runs/{trailID}", h.get)
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/stop", h.stop)
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/answer", h.answer)
@@ -344,6 +345,16 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 		background[target] = true
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started, "queued": queued, "background": background, "background_since": since})
+}
+
+// running answers how many runs are going in each workspace the caller can see, for the workspace switcher.
+func (h *RunHandler) running(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.runner.RunningByWorkspace(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"workspaces": counts})
 }
 
 func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {

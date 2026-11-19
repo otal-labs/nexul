@@ -39,11 +39,13 @@ const workspaces = [
 const mockApi = (
   wsList: unknown,
   me: typeof baseMe = baseMe,
+  running: Record<string, number> = {},
 ) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: me };
     if (url.endsWith("/me")) return { data: { role_name: "Member", permissions: ["tickets:read"] } };
     if (url === "/api/notifications/unread-count") return { data: { count: 3, workspaces: { "ws-2": 3 } } };
+    if (url === "/api/plays/runs/running") return { data: { workspaces: running } };
     return { data: wsList };
   });
 };
@@ -110,6 +112,20 @@ describe("WorkspaceSwitcher", () => {
     const rowOf = (name: string) => within(popover).getByText(name).closest("button")!;
     expect(await within(rowOf("Arena's Hub")).findByText("3")).toBeInTheDocument();
     expect(within(rowOf("Globex")).queryByText(/^\d+$/)).not.toBeInTheDocument();
+  });
+
+  it("marks a workspace with plays running with a spinner and their count, and leaves an idle one bare", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    mockApi(workspaces, baseMe, { "ws-1": 2 });
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(await screen.findByText("Globex"));
+
+    const popover = screen.getByRole("dialog");
+    const rowOf = (name: string) => within(popover).getByText(name).closest("button")!;
+    expect(await within(rowOf("Globex")).findByLabelText("2 plays running")).toHaveTextContent("2");
+    expect(within(rowOf("Arena's Hub")).queryByLabelText(/plays? running/)).not.toBeInTheDocument();
   });
 
   it("keeps the section and drops the item when switching inside a workspace", async () => {
