@@ -1446,7 +1446,7 @@ pane's top on a screen at least 1024px wide and 800px tall, on `panel-opaque` (`
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
 every width (none for the Owner), then the description and, 12px under it, one
 quiet link per editor section with how many of its areas the role reaches in
-mono, then the highest level it holds as its glyph and word ("In projects 10/12 Delete"), the glyph between them so the count never reads as the level's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
+mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
 Then People, a band that pins under the role's header wherever the header pins, opaque to its edge and closed by the list's top hairline, while the holders are in view: the microheader with its count in mono beside it, never joined by
@@ -1464,7 +1464,7 @@ over a muted line holding only what says something: Online as a status mark,
 when they were last seen in plain words (a grey dot would say nothing), Disabled
 or Removed with the name muted too, and their
 other roles as chips that overhang the line instead of growing it, their text
-on the line's baseline, as many whole chips as fit (up to three) and the rest
+on the line's baseline, as many whole chips as the line holds, measured (up to three), and the rest
 as a mono "+N"; a row with none of these is the name alone. Its
 `…` holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
@@ -1489,7 +1489,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 Delete", each section it reaches with its count and top level as glyph and word, `RoleReach`), each row as tall as its content. Compare roles
+role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 up to Delete", each section it reaches with its count and top level as glyph and word, `RoleReach`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.

@@ -19,9 +19,10 @@ export const RoleReach = ({ catalog, permissions }: RoleReachProps) => {
           {section.title}
           <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
           {top > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              up to
               <LevelGlyph level={top} />
-              {levelName(top)}
+              <span className="text-foreground">{levelName(top)}</span>
             </span>
           )}
         </span>
