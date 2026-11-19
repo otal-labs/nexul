@@ -1425,9 +1425,9 @@ button.mention-chip:hover {
     animation-timeline: scroll();
     animation-range: 0 24px;
   }
-  /* A pinned band over hairline rows fades over 12px from its own rule, a row's top padding, so a passing row is softened and a row at rest never is. */
+  /* A pinned band over hairline rows fades over 16px from its own rule, so a passing row's rule never doubles it and a resting row's name stays clear. */
   .sticky-crumbs.band-edge::after {
-    height: 0.75rem;
+    height: 1rem;
     background: linear-gradient(var(--panel-opaque), transparent);
   }
 }

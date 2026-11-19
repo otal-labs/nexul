@@ -23,7 +23,7 @@ const cellClass = "border-b border-border px-2 group-hover/row:bg-accent/40";
 const MatrixRow = ({ label, children }: { label: string; children: ReactNode }) => (
   <tr className="group/row">
     <th scope="row" className={rowHead}>
-      <span className="line-clamp-2 -translate-y-px leading-tight text-balance" title={label}>
+      <span className="line-clamp-3 -translate-y-px leading-tight text-balance lg:line-clamp-2" title={label}>
         {label}
       </span>
     </th>

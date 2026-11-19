@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -27,6 +27,14 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
   const [startedEmpty] = useState(value.length === 0);
   const toggle = (roleId: string) => onChange(value.includes(roleId) ? value.filter((id) => id !== roleId) : [...value, roleId]);
   const givable = choices?.filter((choice) => choice.givable) ?? [];
+  // Opened from a role low in the list, the dialog brings that ticked role into view once, so the pick is never below the fold.
+  const shown = useRef(false);
+  const listRef = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (shown.current || !choices) return;
+    shown.current = true;
+    listRef.current?.querySelector("[data-state=checked]")?.closest("li")?.scrollIntoView?.({ block: "nearest" });
+  }, [choices]);
   const locked = choices?.filter((choice) => !choice.givable) ?? [];
   // Counts only what you may give, so a role like Owner never makes the list look unfinished.
   const ticked = givable.filter((choice) => value.includes(choice.role.id)).length;
@@ -46,7 +54,7 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
       {!choices && !error && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {givable.length > 0 && (
-        <ul className="divide-y divide-border border-b border-border">
+        <ul ref={listRef} className="divide-y divide-border border-b border-border">
           {givable.map((choice) => (
             <RoleCheckRow key={choice.role.id} choice={choice} catalog={catalog ?? []} checked={value.includes(choice.role.id)} onToggle={toggle} />
           ))}

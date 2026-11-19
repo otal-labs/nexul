@@ -11,7 +11,7 @@ interface RoleSectionLinkProps {
 }
 
 const linkClass =
-  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground underline decoration-muted-foreground/40 decoration-dotted underline-offset-4 transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground hover:decoration-solid";
+  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground";
 
 // A section's reach, "Workspace 9/15 up to Delete": a link down to it, or plain words when the role has no access in it.
 export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkProps) => (
@@ -31,14 +31,17 @@ export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkPr
         }}
         className={linkClass}
       >
-        {section.title}
-        <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
-        {top > 0 && (
-          <span>
-            up to <LevelGlyph level={top} className="mx-1 -translate-y-px align-middle" />
-            <span className="text-foreground">{levelName(top)}</span>
-          </span>
-        )}
+        {/* One dotted rule under the whole reach, glyph included, so it reads as one link. */}
+        <span className="inline-flex items-center gap-1.5 border-b border-dotted border-muted-foreground/40 group-hover/link:border-solid group-hover/link:border-foreground/50">
+          {section.title}
+          <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
+          {top > 0 && (
+            <span>
+              up to <LevelGlyph level={top} className="mx-1 -translate-y-px align-middle" />
+              <span className="text-foreground">{levelName(top)}</span>
+            </span>
+          )}
+        </span>
       </a>
     )}
   </>
