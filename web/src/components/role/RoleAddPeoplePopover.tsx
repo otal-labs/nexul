@@ -50,7 +50,7 @@ export const RoleAddPeoplePopover = () => {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-88 p-2">
         <div className="flex flex-col gap-1.5">
-          <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" />
+          <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="m-1" />
           <div className="scroll-edge flex max-h-72 flex-col gap-0.5 overflow-y-auto pb-2">
             {inWorkspace.length > 0 && <p className={cn(microheaderClass, "px-2 pt-1.5 pb-0.5")}>In {workspace.name}</p>}
             {inWorkspace.map((person) => (

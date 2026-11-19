@@ -5,7 +5,6 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Microheader } from "@/components/Microheader";
 import { CreatedInvitationLink } from "@/components/member/CreatedInvitationLink";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
 import { RoleFindField } from "@/components/role/RoleFindField";
@@ -50,7 +49,7 @@ export const RoleHoldersSection = () => {
           {/* The field sits with the actions, so a count changing width never moves it; it shrinks first, then the actions wrap under it. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
             <span className="flex shrink-0 items-baseline gap-2">
-              <Microheader id="role-people-title">People</Microheader>
+              <h3 id="role-people-title" className="text-sm font-semibold">People</h3>
               {holders && holders.length > 0 && (
                 // The count and Show fewer share a cell with an invisible copy of their widest reading, so the field never moves.
                 <span className="grid items-center">

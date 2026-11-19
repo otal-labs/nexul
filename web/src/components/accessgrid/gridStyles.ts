@@ -16,3 +16,5 @@ export const fillerCell = "border-b border-border";
 export const snapScroller = "snap-x snap-proximity scroll-ps-50 lg:scroll-ps-60";
 // The role matrix has no filler, so its columns share the spare width; its end fade is wide enough to read as more to scroll.
 export const matrixFadeWidth = "w-12 min-w-12";
+// Below 1024px the matrix's area column narrows, its names wrapping to two lines, so another role column fits.
+export const matrixAreaWidth = "w-38 min-w-38 max-w-38";
