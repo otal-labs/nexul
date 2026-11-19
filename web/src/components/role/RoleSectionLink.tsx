@@ -11,7 +11,7 @@ interface RoleSectionLinkProps {
 }
 
 const linkClass =
-  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground underline-offset-4 transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground hover:underline";
+  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground underline decoration-muted-foreground/40 decoration-dotted underline-offset-4 transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground hover:decoration-solid";
 
 // A section's reach, "Workspace 9/15 up to Delete": a link down to it, or plain words when the role has no access in it.
 export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkProps) => (

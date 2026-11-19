@@ -5,7 +5,6 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Microheader } from "@/components/Microheader";
 import { RoleDetailHeader } from "@/components/role/RoleDetailHeader";
 import { RoleFindField } from "@/components/role/RoleFindField";
 import { RoleHolderRow } from "@/components/role/RoleHolderRow";
@@ -38,7 +37,7 @@ export const NoRolesDetail = () => {
       {people && people.length > 0 && shown && (
         <section className="space-y-3" aria-labelledby="no-roles-people">
           <div className="flex min-h-8 items-center gap-2">
-            <Microheader id="no-roles-people">People</Microheader>
+            <h3 id="no-roles-people" className="text-sm font-semibold">People</h3>
             <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle ? `${shown.length} of ${people.length}` : people.length}</span>
           </div>
           {people.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs" />}

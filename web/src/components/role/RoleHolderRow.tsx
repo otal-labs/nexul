@@ -84,14 +84,15 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
             )}
           </span>
         </button>
-        {!owner && !role && (
-          <span className="relative">
-            <RoleGivePopover person={person} />
-          </span>
-        )}
+        {/* The menu comes first, so on No roles the one action, Give a role, holds the row's edge while the menu waits for hover. */}
         {!owner && (
           <span className="relative [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100">
             <RowActionsMenu subject={personName(person)} actions={actions} />
+          </span>
+        )}
+        {!owner && !role && (
+          <span className="relative">
+            <RoleGivePopover person={person} />
           </span>
         )}
       </div>

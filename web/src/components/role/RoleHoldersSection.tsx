@@ -48,25 +48,28 @@ export const RoleHoldersSection = () => {
         <div className="space-y-3 border-b border-border pb-3">
           {/* The field sits with the actions, so a count changing width never moves it; it shrinks first, then the actions wrap under it. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="flex shrink-0 items-baseline gap-2">
-              <h3 id="role-people-title" className="text-sm font-semibold">People</h3>
-              {holders && holders.length > 0 && (
-                // The count and Show fewer share a cell with an invisible copy of their widest reading, so the field never moves.
-                <span className="grid items-center">
-                  {holders.length > FIND_FROM && (
-                    <span aria-hidden className="invisible col-start-1 row-start-1 flex items-center gap-2">
-                      <span className="font-mono text-micro tabular-nums">{`${holders.length} of ${holders.length}`}</span>
-                      <RoleFoldButton open onToggle={() => undefined} label="Show fewer" className="h-6" />
-                    </span>
-                  )}
-                  <span className="col-start-1 row-start-1 flex items-center gap-2">
-                    {!(needle && matched?.length === 0) && (
-                      <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+            {/* One 32px line, centred, whether or not the field and actions share it, so the heading never shifts. */}
+            <span className="flex h-8 shrink-0 items-center">
+              <span className="flex shrink-0 items-baseline gap-2">
+                <h3 id="role-people-title" className="text-sm font-semibold">People</h3>
+                {holders && holders.length > 0 && (
+                  // The count and Show fewer share a cell with an invisible copy of their widest reading, so the field never moves.
+                  <span className="grid items-center">
+                    {holders.length > FIND_FROM && (
+                      <span aria-hidden className="invisible col-start-1 row-start-1 flex items-center gap-2">
+                        <span className="font-mono text-micro tabular-nums">{`${holders.length} of ${holders.length}`}</span>
+                        <RoleFoldButton open onToggle={() => undefined} label="Show fewer" className="h-5" />
+                      </span>
                     )}
-                    {all && !needle && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
+                    <span className="col-start-1 row-start-1 flex items-center gap-2">
+                      {!(needle && matched?.length === 0) && (
+                        <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                      )}
+                      {all && !needle && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-5" />}
+                    </span>
                   </span>
-                </span>
-              )}
+                )}
+              </span>
             </span>
             <div className="flex min-w-0 flex-1 basis-md items-center justify-end gap-2">
               {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="min-w-44 flex-1" />}
