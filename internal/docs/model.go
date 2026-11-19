@@ -104,6 +104,9 @@ type DocListItem struct {
 	ClarificationClosed bool `json:"clarification_closed,omitempty"`
 }
 
+// MaxFolderDepth is how many folders deep a doc can sit, a top-level folder being one; the access reads walk at most 100.
+const MaxFolderDepth = 10
+
 // Folder groups a project's docs, inside another folder or at the top; each project has one default folder, which is
 // never deleted or moved.
 type Folder struct {

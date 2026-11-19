@@ -41,3 +41,11 @@ UPDATE docs SET folder_id = sqlc.arg(to_folder_id) WHERE folder_id IN (SELECT va
 
 -- name: SetDocFolder :execrows
 UPDATE docs SET folder_id = ? WHERE id = ?;
+
+-- name: GetDocFolderSubtreeHeight :one
+WITH RECURSIVE down AS (
+  SELECT CAST(sqlc.arg(id) AS TEXT) AS id, 0 AS depth
+  UNION ALL
+  SELECT f.id, down.depth + 1 FROM down JOIN doc_folders f ON f.parent_id = down.id WHERE down.depth < 100
+)
+SELECT CAST(MAX(depth) AS INTEGER) AS height FROM down;

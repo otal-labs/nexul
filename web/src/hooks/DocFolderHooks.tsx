@@ -104,6 +104,10 @@ interface FolderPayload {
   folder: DocFolder;
 }
 
+interface FolderUpdatedPayload extends FolderPayload {
+  previous_parent_id?: string;
+}
+
 interface GrantPayload {
   resource_type: string;
 }
@@ -116,7 +120,10 @@ export const docFolderFollower: LiveFollower = {
     Promise.all([client.invalidateQueries({ queryKey: [getDocsKey] }), client.invalidateQueries({ queryKey: [getDocFoldersKey] })]),
   "doc.folder.created": ({ folder }: FolderPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true }),
-  "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>
-    client.setQueryData<DocFolder[]>([getDocFoldersKey, folder.project_id], (list) => list?.map((f) => (f.id === folder.id ? folder : f))),
+  // A move changes which folders' rules reach the docs inside, so what each viewer may see is read again.
+  "doc.folder.updated": ({ folder, previous_parent_id: from }: FolderUpdatedPayload, { client }) =>
+    (from ?? folder.parent_id) === folder.parent_id
+      ? client.setQueryData<DocFolder[]>([getDocFoldersKey, folder.project_id], (list) => list?.map((f) => (f.id === folder.id ? folder : f)))
+      : Promise.all([client.invalidateQueries({ queryKey: [getDocsKey] }), client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true })]),
   "doc.folder.deleted": ({ folder }: FolderPayload, { client }) => dropRow(client, [getDocFoldersKey, folder.project_id], folder.id),
 };

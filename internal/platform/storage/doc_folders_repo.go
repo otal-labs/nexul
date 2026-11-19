@@ -46,7 +46,11 @@ func (r *DocsRepo) DefaultFolder(ctx context.Context, projectID string) (*docs.F
 
 func (r *DocsRepo) CreateFolder(ctx context.Context, f *docs.Folder, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := insertDocFolder(ctx, r.q.WithTx(tx), f); err != nil {
+		q := r.q.WithTx(tx)
+		if err := placeFolder(ctx, q, f); err != nil {
+			return err
+		}
+		if err := insertDocFolder(ctx, q, f); err != nil {
 			return err
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
@@ -61,19 +65,12 @@ func (r *DocsRepo) FolderSubtree(ctx context.Context, id string) ([]string, erro
 	return ids, nil
 }
 
-// UpdateFolder checks the new parent against the folder's subtree inside the write, so two crossing moves can't make a
-// loop.
+// UpdateFolder checks the new parent inside the write, so two crossing moves can't make a loop.
 func (r *DocsRepo) UpdateFolder(ctx context.Context, f *docs.Folder, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		if f.ParentID != "" {
-			subtree, err := q.ListDocFolderSubtree(ctx, f.ID)
-			if err != nil {
-				return fmt.Errorf("folders inside %s: %w", f.ID, err)
-			}
-			if slices.Contains(subtree, f.ParentID) {
-				return fmt.Errorf("%w: a folder can't go inside itself or a folder within it", apperrs.ErrInvalid)
-			}
+		if err := placeFolder(ctx, q, f); err != nil {
+			return err
 		}
 		n, err := q.UpdateDocFolder(ctx, sqlcgen.UpdateDocFolderParams{Name: f.Name, ParentID: f.ParentID, UpdatedAt: f.UpdatedAt.Unix(), ID: f.ID})
 		if err != nil {
@@ -123,6 +120,32 @@ func (r *DocsRepo) SetDocFolder(ctx context.Context, docID, folderID string, evt
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
+}
+
+// placeFolder refuses a parent that is gone, in another project, or inside f, and a place that nests f's subtree deeper
+// than docs.MaxFolderDepth; it reads inside the write, so a parent deleted meanwhile is caught.
+func placeFolder(ctx context.Context, q *sqlcgen.Queries, f *docs.Folder) error {
+	if f.ParentID == "" {
+		return nil
+	}
+	chain, err := q.ListDocFolderChain(ctx, f.ParentID)
+	if err != nil {
+		return fmt.Errorf("folders around %s: %w", f.ParentID, err)
+	}
+	if len(chain) == 0 || chain[0].ProjectID != f.ProjectID {
+		return fmt.Errorf("%w: folder %s is not a folder of this project", apperrs.ErrInvalid, f.ParentID)
+	}
+	if slices.ContainsFunc(chain, func(row sqlcgen.ListDocFolderChainRow) bool { return row.ID == f.ID }) {
+		return fmt.Errorf("%w: a folder can't go inside itself or a folder within it", apperrs.ErrInvalid)
+	}
+	height, err := q.GetDocFolderSubtreeHeight(ctx, f.ID)
+	if err != nil {
+		return fmt.Errorf("folders inside %s: %w", f.ID, err)
+	}
+	if len(chain)+1+int(height) > docs.MaxFolderDepth {
+		return fmt.Errorf("%w: folders nest at most %d deep", apperrs.ErrInvalid, docs.MaxFolderDepth)
+	}
+	return nil
 }
 
 func insertDocFolder(ctx context.Context, q *sqlcgen.Queries, f *docs.Folder) error {

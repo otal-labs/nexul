@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -50,10 +51,10 @@ func TestDocFolders_UpdateRefusesAParentInsideTheFolder(t *testing.T) {
 	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-c", ProjectID: "project-general", ParentID: "f-b", Name: "C"}))
 
 	for _, parent := range []string{"f-a", "f-b", "f-c"} {
-		err := s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-a", Name: "A", ParentID: parent})
+		err := s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-a", ProjectID: "project-general", Name: "A", ParentID: parent})
 		require.ErrorIs(t, err, apperrs.ErrInvalid, "inside %s", parent)
 	}
-	require.NoError(t, s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-c", Name: "C", ParentID: "f-a"}))
+	require.NoError(t, s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-c", ProjectID: "project-general", Name: "C", ParentID: "f-a"}))
 	got, err := s.Docs.GetFolder(ctx, "f-c")
 	require.NoError(t, err)
 	assert.Equal(t, "f-a", got.ParentID)
@@ -147,4 +148,41 @@ func TestAccessRepo_NestedFolders(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"f-c", "f-d"}, reach.AllowedFolders, "C's Allow reaches D where the project reads nothing")
 	assert.Empty(t, reach.DeniedFolders)
+}
+
+func TestDocFolders_PlacingChecksTheParentInsideTheWrite(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedProject(t, s, "p-other", "workspace-default", "OTH")
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-elsewhere", ProjectID: "p-other", Name: "Elsewhere"}))
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-gone", ProjectID: "project-general", Name: "Gone"}))
+	require.NoError(t, s.Docs.DeleteFolder(ctx, "f-gone", "folder-general-main"))
+
+	err := s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-orphan", ProjectID: "project-general", ParentID: "f-gone", Name: "Orphan"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a parent deleted after the use-case looked")
+	err = s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-across", ProjectID: "project-general", ParentID: "f-elsewhere", Name: "Across"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a parent in another project")
+	_, err = s.Docs.GetFolder(ctx, "f-orphan")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestDocFolders_NestAtMostMaxFolderDepth(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	parent := ""
+	for i := range docs.MaxFolderDepth {
+		id := fmt.Sprintf("f-%02d", i)
+		require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: id, ProjectID: "project-general", ParentID: parent, Name: id}))
+		parent = id
+	}
+	err := s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-deeper", ProjectID: "project-general", ParentID: parent, Name: "Deeper"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "one past the deepest level")
+
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-top", ProjectID: "project-general", Name: "Top"}))
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-top-inner", ProjectID: "project-general", ParentID: "f-top", Name: "Inner"}))
+	err = s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-top", ProjectID: "project-general", ParentID: fmt.Sprintf("f-%02d", docs.MaxFolderDepth-2), Name: "Top"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a move counts the folders inside the one moved")
+	require.NoError(t, s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-top", ProjectID: "project-general", ParentID: fmt.Sprintf("f-%02d", docs.MaxFolderDepth-3), Name: "Top"}))
 }

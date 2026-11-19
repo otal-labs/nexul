@@ -23,6 +23,19 @@ describe("the doc folder follower", () => {
     expect(client.getQueryData(["getDocFolders", "p-1"])).toEqual([]);
   });
 
+  it("refetches the docs and the project's folders when a folder moves, since other folders' rules now reach its docs", async () => {
+    const client = seeded([
+      [["getDocFolders", "p-1"], [specs]],
+      [["getDocFolders", "p-2"], []],
+      [["getDocs"], []],
+    ]);
+    await followFrame(docFolderFollower, "doc.folder.updated", { folder: { ...specs, name: "Plans" }, previous_parent_id: "" }, client);
+    expect(isStale(client, ["getDocs"])).toBe(false);
+
+    await followFrame(docFolderFollower, "doc.folder.updated", { folder: { ...specs, parent_id: "f-0" }, previous_parent_id: "" }, client);
+    expect([isStale(client, ["getDocs"]), isStale(client, ["getDocFolders", "p-1"]), isStale(client, ["getDocFolders", "p-2"])]).toEqual([true, true, false]);
+  });
+
   it("refetches the doc and folder lists when a folder's rule changes, and nothing for another entity's", async () => {
     const client = seeded([
       [["getDocFolders", "p-1"], [specs]],

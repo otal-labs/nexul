@@ -95,6 +95,22 @@ func (q *Queries) GetDocFolder(ctx context.Context, id string) (DocFolder, error
 	return i, err
 }
 
+const getDocFolderSubtreeHeight = `-- name: GetDocFolderSubtreeHeight :one
+WITH RECURSIVE down AS (
+  SELECT CAST(?1 AS TEXT) AS id, 0 AS depth
+  UNION ALL
+  SELECT f.id, down.depth + 1 FROM down JOIN doc_folders f ON f.parent_id = down.id WHERE down.depth < 100
+)
+SELECT CAST(MAX(depth) AS INTEGER) AS height FROM down
+`
+
+func (q *Queries) GetDocFolderSubtreeHeight(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getDocFolderSubtreeHeight, id)
+	var height int64
+	err := row.Scan(&height)
+	return height, err
+}
+
 const listDocFolderChain = `-- name: ListDocFolderChain :many
 WITH RECURSIVE up AS (
   SELECT f.id AS id, f.parent_id AS parent_id, 0 AS depth FROM doc_folders f WHERE f.id = ?

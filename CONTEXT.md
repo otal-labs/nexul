@@ -667,8 +667,8 @@ _Avoid_: Follower, subscriber
 
 **Folder**:
 A group of a project's docs: every doc lives in exactly one folder of its
-project, and a folder sits at the top or inside another folder of it, to any
-depth. Each project has a default folder, Main, where a new doc lands unless it
+project, and a folder sits at the top or inside another folder of it, up to ten
+deep. Each project has a default folder, Main, where a new doc lands unless it
 was started in another folder; it can be renamed and hold folders but is never
 moved or deleted. Deleting any other folder deletes the folders inside it and
 moves all their docs to its parent, or to Main for a top-level folder, never
