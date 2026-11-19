@@ -299,7 +299,7 @@ describe("DocsPage", () => {
   });
 
   it("offers a writer New doc in the overview and the list header when the project has no docs", async () => {
-    renderPage("/acme/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
+    renderPage("/acme/docs", ["docs:read", "docs:write"], { "/api/docs": [], "/api/docs/folders": [main] });
 
     const overview = await screen.findByRole("region", { name: "Docs overview" });
     expect(await within(overview).findByRole("button", { name: "New doc" })).toBeInTheDocument();
