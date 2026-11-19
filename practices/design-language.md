@@ -1398,7 +1398,7 @@ the text below that; a rule above the first row and between rows. A list
 inside a card is the same: hairline rows straight on the card, about 56px, no
 box of their own and no hover lift unless the row is a link. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
-detail (Connected · by Alice 20d ago, Active · last used 9d ago, Revoked 8 Oct),
+detail 16px after it, set apart by space alone ("Connected" then "by Alice 20d ago", "Active" then "last used 9d ago", "Revoked 8 Oct"),
 never a chip; an active account says nothing, only one that can't sign in
 (Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job are ghost
 buttons that turn `destructive` on hover, kept apart from the primary action,
@@ -1412,7 +1412,7 @@ shows the value picked while it saves, and only a failed save says so, in an
 error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
-(`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
+(`SettingsHeaderMeta`: Nexul theme, Dark; 2 gateways, 3 hostnames), each fact 16px from the next with no dot between, and marks
 instance sections Instance-wide. On Your settings, Configuration and a project's settings the open section is the page
 title ("Security" or "Labels" under a `Settings` crumb, "Mention chips" under the workspace and
 `Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
@@ -1450,7 +1450,7 @@ mono, then "up to" (dropped below 1024px, where the header scrolls with the pane
 up to Delete"), so the count never reads as the level's, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
-Then People: the microheader with its count in mono beside it, never joined by
+Then People, a band that pins under the role's header from 1024px while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
@@ -1490,7 +1490,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with the role's tally on its line, over its description on one line across the row (whole in its tooltip), each row as tall as its content. Compare roles
+role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 Delete", each section it reaches with its count and top level as glyph and word, `RoleReach`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1583,8 +1583,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium over the
-role's description in muted 12px on one line across the row's full width (whole in its tooltip), and the role's tally trailing the name, the box and the
-tally on the name's line however tall the description makes the row (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
+role's description in muted 12px on one line across the row's full width (whole in its tooltip), then the role's reach as the header words it (`RoleReach`), the box on the name's line however tall the row grows. Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in

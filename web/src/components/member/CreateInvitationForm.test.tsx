@@ -84,7 +84,7 @@ describe("CreateInvitationForm", () => {
     );
   });
 
-  it("explains who the link is for and shows each role's description under its name", async () => {
+  it("explains who the link is for and shows each role's description under its name, then its reach as its page words it", async () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -102,5 +102,7 @@ describe("CreateInvitationForm", () => {
     const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
     expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();
     expect(within(labelOf("Owner")).getByText("Runs the workspace.")).toBeInTheDocument();
+    expect(labelOf("Client")).toHaveTextContent("In projects1/1Read");
+    expect(labelOf("Developer")).toHaveTextContent("In projects1/1Write");
   });
 });

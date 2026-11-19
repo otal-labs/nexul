@@ -13,12 +13,11 @@ export const TeamSignInAccounts = ({ person }: TeamSignInAccountsProps) => {
   return (
     <>
       {known.map((provider) => (
-        <span key={provider} className="inline-flex shrink-0 items-center gap-1">
+        <span key={provider} className="inline-flex shrink-0 items-center">
           <SignInAccount provider={provider} username={person.usernames?.[provider]} />
-          <span aria-hidden>·</span>
         </span>
       ))}
-      {!named && <span className="shrink-0 font-mono">{loginHandle(person.login)} ·</span>}
+      {!named && <span className="shrink-0 font-mono">{loginHandle(person.login)}</span>}
     </>
   );
 };

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { ChevronLeft, CrownIcon } from "lucide-react";
 import { Link } from "react-router";
 
@@ -6,6 +6,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 
 interface RoleDetailHeaderProps {
+  ref?: Ref<HTMLElement>;
   title: string;
   line: string;
   owner?: boolean;
@@ -20,10 +21,10 @@ interface RoleDetailHeaderProps {
 // Below 1024px a link back to the list leads it; a pane that also takes the list's place sets that link on the title's line.
 const backClass = "-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground lg:hidden";
 
-export const RoleDetailHeader = ({ title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {
+export const RoleDetailHeader = ({ ref, title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <header className="sticky-crumbs -mx-4 max-lg:relative! space-y-1.5 px-4 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
+    <header ref={ref} className="sticky-crumbs -mx-4 max-lg:relative! space-y-1.5 px-4 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
       {!backAlways && (
         <Link to={wsPath("/access/roles")} className={backClass}>
           <ChevronLeft aria-hidden className="size-4" />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -8,7 +8,6 @@ import { RoleCheckRow } from "@/components/role/RoleCheckRow";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useRoleChoices } from "@/hooks/RoleHooks";
 import { cn } from "@/lib/utils";
-import { domainsOf } from "@/models/PermissionLevel";
 
 interface RolesChecklistProps {
   workspaceId: string;
@@ -23,7 +22,6 @@ interface RolesChecklistProps {
 export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote }: RolesChecklistProps) => {
   const { choices, error } = useRoleChoices(workspaceId);
   const { data: catalog } = useFetchPermissionCatalog();
-  const domains = useMemo(() => domainsOf(catalog ?? []), [catalog]);
   // The note settles in when the last role goes, never on a list that opens empty: one entrance at a time.
   const [startedEmpty] = useState(value.length === 0);
   const toggle = (roleId: string) => onChange(value.includes(roleId) ? value.filter((id) => id !== roleId) : [...value, roleId]);
@@ -48,7 +46,7 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
       {givable.length > 0 && (
         <ul className="divide-y divide-border border-b border-border">
           {givable.map((choice) => (
-            <RoleCheckRow key={choice.role.id} choice={choice} domains={domains} checked={value.includes(choice.role.id)} onToggle={toggle} />
+            <RoleCheckRow key={choice.role.id} choice={choice} catalog={catalog ?? []} checked={value.includes(choice.role.id)} onToggle={toggle} />
           ))}
         </ul>
       )}
@@ -57,7 +55,7 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
           <Microheader>Can&apos;t give</Microheader>
           <ul className="divide-y divide-border">
             {locked.map((choice) => (
-              <RoleCheckRow key={choice.role.id} choice={choice} domains={domains} checked={value.includes(choice.role.id)} onToggle={toggle} />
+              <RoleCheckRow key={choice.role.id} choice={choice} catalog={catalog ?? []} checked={value.includes(choice.role.id)} onToggle={toggle} />
             ))}
           </ul>
         </div>

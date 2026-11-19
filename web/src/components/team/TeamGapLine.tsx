@@ -17,14 +17,17 @@ export const TeamGapLine = ({ person }: { person: TeamPerson }) => {
     </>
   );
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-0.5">
       {left.length > 0 && (
         <SettingsStatus tone="warning" detail={gapText(left)}>
           {count}
         </SettingsStatus>
       )}
       {left.length === 0 && <SettingsStatus tone="muted">{count}</SettingsStatus>}
-      {skipped.length > 0 && <span className="text-xs text-muted-foreground">· {skippedText(skipped)}</span>}
+      {skipped.length > 0 && <span className="text-xs text-muted-foreground">
+          <span className="sr-only">, </span>
+          {skippedText(skipped)}
+        </span>}
     </span>
   );
 };

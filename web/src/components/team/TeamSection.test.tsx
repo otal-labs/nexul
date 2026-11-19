@@ -165,7 +165,7 @@ describe("TeamSection", () => {
     const accepted = within(await screen.findByRole("region", { name: "Accepted in the last 30 days" }));
     const row = await accepted.findByRole("button", { name: "Open Bob" });
     expect(row).toHaveTextContent("Editor in Nexul · invited by Alice");
-    expect(row).toHaveTextContent("1 of 2 set up· computer not added");
+    expect(row).toHaveTextContent("1 of 2 set up, computer not added");
     expect(row).toHaveTextContent("accepted 2d ago");
     const ended = within(screen.getByRole("region", { name: "Expired or deleted in the last 30 days" }));
     expect(ended.getByRole("listitem")).toHaveTextContent("Nexul · Editorby Alice · made 5d agoended 4d ago");

@@ -41,33 +41,36 @@ export const RoleHoldersSection = () => {
 
   return (
     <section className="space-y-3" aria-labelledby="role-people-title">
-      <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-        <div className="flex items-baseline gap-2">
-          <Microheader id="role-people-title">People</Microheader>
-          {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-            <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+      {/* From 1024px the heading, its actions and the find field pin under the role's header while the holders are in view. */}
+      <div className="sticky-crumbs -mx-4 space-y-3 px-4 pb-2 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 lg:top-(--role-header)!">
+        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <Microheader id="role-people-title">People</Microheader>
+            {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+              <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+            )}
+          </div>
+          {changeable && givable && (
+            <div className="flex items-center gap-2">
+              <RoleAddPeoplePopover />
+              <CreateInvitationDialog role={role} onCreated={setCreated} />
+            </div>
           )}
         </div>
-        {changeable && givable && (
-          <div className="flex items-center gap-2">
-            <RoleAddPeoplePopover />
-            <CreateInvitationDialog role={role} onCreated={setCreated} />
-          </div>
+        {changeable && !givable && reason && (
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Lock aria-hidden className="mt-px size-3 shrink-0" />
+            {reason}
+          </p>
+        )}
+        {holders && holders.length > FIND_FROM && (
+          <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
         )}
       </div>
-      {changeable && !givable && reason && (
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Lock aria-hidden className="mt-px size-3 shrink-0" />
-          {reason}
-        </p>
-      )}
       {created && <CreatedInvitationLink key={created.id} invitation={created} />}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {holders && holders.length === 0 && <EmptyRow flush className="flex min-h-14 items-center border-y border-border">Nobody holds {role?.name} yet.</EmptyRow>}
-      {holders && holders.length > FIND_FROM && (
-        <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
-      )}
       {matched && holders && holders.length > 0 && matched.length === 0 && (
         <p role="status" className="flex min-h-14 items-center border-y border-border text-sm text-muted-foreground">
           Nobody holding {role?.name} matches &ldquo;{query.trim()}&rdquo;.

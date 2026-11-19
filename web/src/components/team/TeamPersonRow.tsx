@@ -32,13 +32,13 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <span dir="auto" className="line-clamp-2 font-medium break-words" title={personName(person)}>
             {personName(person)}
           </span>
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-0.5">
             {person.online && <SettingsStatus tone="success">{presenceText(person)}</SettingsStatus>}
             {!person.online && <span className="text-xs text-muted-foreground">{presenceText(person)}</span>}
             <AccountStatusLabel status={person.status} />
           </span>
           {/* The 20px chips overhang the 16px line instead of growing it, so both meta lines keep one height. */}
-          <span className="flex min-w-0 items-center gap-1.5 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-4 overflow-x-clip text-xs whitespace-nowrap text-muted-foreground">
             <TeamSignInAccounts person={person} />
             {only && !several && (
               <span className="-my-0.5 flex min-w-0 flex-1">
