@@ -48,7 +48,7 @@ export const RoleAddPeoplePopover = () => {
           Add people
         </ActionButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-2">
+      <PopoverContent align="end" className="w-88 p-2">
         <div className="flex flex-col gap-1.5">
           <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" />
           <div className="scroll-edge flex max-h-72 flex-col gap-0.5 overflow-y-auto pb-2">

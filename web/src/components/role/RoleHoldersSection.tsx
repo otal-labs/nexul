@@ -59,7 +59,7 @@ export const RoleHoldersSection = () => {
               {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
             </span>
             <div className="flex min-w-0 flex-1 basis-96 items-center justify-end gap-2">
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="w-72 min-w-0 shrink" />}
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="w-64 min-w-0 shrink" />}
               {changeable && givable && (
                 <>
                   <RoleAddPeoplePopover />
