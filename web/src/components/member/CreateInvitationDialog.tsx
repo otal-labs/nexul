@@ -30,7 +30,8 @@ export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDial
 
   return (
     <ActionButton permission="members:write" verb="invite people" icon={role ? Link2 : Plus} type="button" onClick={() => void create()} {...(role && { variant: "outline", size: "sm", "aria-label": `Invite to ${role.name} by link`, title: `Invite to ${role.name} by link` })}>
-      {role ? "Invite by link" : "Invite"}
+      {/* In a band under 40rem the link mark says it alone, so both actions keep the heading's line; the name stays in its label. */}
+      {role ? <span className="@max-[40rem]:sr-only">Invite by link</span> : "Invite"}
     </ActionButton>
   );
 };

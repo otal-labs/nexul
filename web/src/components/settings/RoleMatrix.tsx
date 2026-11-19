@@ -50,7 +50,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
                   type="button"
                   onClick={more}
                   aria-label={`Show ${hidden} more ${hidden === 1 ? "role" : "roles"}`}
-                  className="relative z-10 inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-card px-1.5 font-mono text-xs text-foreground tabular-nums hover:bg-accent"
+                  className="relative z-10 mr-2 inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-card px-1.5 font-mono text-xs text-foreground tabular-nums hover:bg-accent"
                 >
                   +{hidden}
                   <ChevronRight aria-hidden className="size-3.5" />
