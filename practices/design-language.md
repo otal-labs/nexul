@@ -1489,7 +1489,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 up to Delete", each section it reaches with its count and top level as glyph and word, `RoleReach`), each row as tall as its content. Compare roles
+role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 up to Delete", every section with its count and top level as glyph and word, or No access, `RoleReach`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.

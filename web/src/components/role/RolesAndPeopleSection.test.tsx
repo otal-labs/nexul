@@ -126,7 +126,7 @@ describe("RolesAndPeopleSection", () => {
     renderAt("/acme/access/roles/r-dev");
 
     await user.click(await screen.findByRole("button", { name: "Add people" }));
-    await user.click(await screen.findByRole("button", { name: "Kai Nakamura" }));
+    await user.click(await screen.findByRole("button", { name: /^Kai Nakamura/ }));
 
     expect(mocks.error).toHaveBeenCalledWith("Couldn't give Developer to Kai Nakamura: refused");
     expect(mocks.success).not.toHaveBeenCalled();
@@ -139,10 +139,10 @@ describe("RolesAndPeopleSection", () => {
 
     await user.click(await screen.findByRole("button", { name: "Add people" }));
     const picker = within(await screen.findByRole("dialog"));
-    expect(picker.queryByRole("button", { name: "Lena Fischer" })).not.toBeInTheDocument();
-    expect(picker.queryByRole("button", { name: "Alice Moreau" })).not.toBeInTheDocument();
-    await user.click(picker.getByRole("button", { name: "Kai Nakamura" }));
-    await user.click(picker.getByRole("button", { name: "Sam Whitaker" }));
+    expect(picker.queryByRole("button", { name: /^Lena Fischer/ })).not.toBeInTheDocument();
+    expect(picker.queryByRole("button", { name: /^Alice Moreau/ })).not.toBeInTheDocument();
+    await user.click(picker.getByRole("button", { name: /^Kai Nakamura/ }));
+    await user.click(picker.getByRole("button", { name: /^Sam Whitaker/ }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/members/kai", { role_ids: ["r-dev"] });
     expect(mocks.put).toHaveBeenCalledWith("/api/workspaces/ws-1/members/sam", { role_ids: ["r-dev"] });

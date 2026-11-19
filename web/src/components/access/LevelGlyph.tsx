@@ -17,8 +17,8 @@ export const LevelGlyph = ({ level, rungs = 3, className }: LevelGlyphProps) => 
           className={cn(
             "w-1.5",
             !missing && "h-2",
-            slot === 0 && "rounded-l-[2px]",
-            slot === 2 && "rounded-r-[2px]",
+            slot === 0 && slot < level && "rounded-l-[2px]",
+            slot === 2 && slot < level && "rounded-r-[2px]",
             !missing && slot < level && "bg-foreground/75",
             !missing && slot >= level && "border border-muted-foreground",
             missing && "h-px bg-muted-foreground/60",

@@ -1,6 +1,7 @@
 import { menuItemClass } from "@/components/MenuItem";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { TeamPerson } from "@/models/Team";
+import { loginHandle } from "@/models/User";
 import { personName } from "@/utils/TeamUtility";
 
 interface RolePersonOptionProps {
@@ -12,6 +13,9 @@ interface RolePersonOptionProps {
 export const RolePersonOption = ({ person, disabled, onPick }: RolePersonOptionProps) => (
   <button type="button" className={menuItemClass} disabled={disabled} onClick={() => onPick(person.id)}>
     <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-6" />
-    <span className="min-w-0 flex-1 truncate">{personName(person)}</span>
+    <span className="min-w-0 flex-1 truncate">
+      {personName(person)}
+      <span className="ml-2 font-mono text-xs text-muted-foreground">{loginHandle(person.login)}</span>
+    </span>
   </button>
 );

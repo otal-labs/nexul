@@ -37,7 +37,7 @@ export const NoRolesDetail = () => {
       {people && people.length === 0 && <EmptyRow flush>Everyone in {name} holds a role.</EmptyRow>}
       {people && people.length > 0 && shown && (
         <section className="space-y-3" aria-labelledby="no-roles-people">
-          <div className="flex min-h-8 items-baseline gap-2">
+          <div className="flex min-h-8 items-center gap-2">
             <Microheader id="no-roles-people">People</Microheader>
             <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle ? `${shown.length} of ${people.length}` : people.length}</span>
           </div>
