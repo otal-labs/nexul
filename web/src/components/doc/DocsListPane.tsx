@@ -49,6 +49,8 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
   const openable = docs.filter((doc) => doc.can_open && doc.archived === showArchived);
   const query = search.trim().toLowerCase();
   const searching = query !== "";
+  // A folder someone made shows before any doc does; only a project with just its default folder reads as empty.
+  const bare = openable.length === 0 && (folders?.length ?? 0) < 2;
   const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: folderFilter(query, showArchived) });
   const token = projectToken(project);
   // Below 1024 the list is the whole page, so the docs a play holds lead it, wherever their folder is.
@@ -85,7 +87,7 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable]">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
-        {groups && openable.length === 0 && !searching && !showArchived && (
+        {groups && bare && !searching && !showArchived && (
           // From 1024 the overview beside the list says this, with its action.
           <div className="flex h-full items-center justify-center lg:hidden">
             <EmptyState
@@ -113,7 +115,7 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
             <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
           </div>
         )}
-        {groups && (openable.length > 0 || searching || showArchived) && groups.folders.map((group) => (
+        {groups && (!bare || searching || showArchived) && groups.folders.map((group) => (
           <DocFolderSection key={group.folder.id} group={group} projectToken={token} selectedId={selectedId} forceOpen={searching} />
         ))}
       </div>

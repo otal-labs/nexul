@@ -20,7 +20,10 @@ vi.mock("@/hooks/useCreateDocDialog", () => ({ useOpenCreateDoc: () => vi.fn() }
 vi.mock("@/hooks/TrailHooks", () => ({ useDocRunStates: () => [] }));
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/components/doc/NewDocFolderButton", () => ({ NewDocFolderButton: () => null }));
-vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: [main], error: null, isPending: false }) }));
+const guides: DocFolder = { ...main, id: "f-guides", name: "Guides", is_default: false };
+let folders = [main];
+
+vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: folders, error: null, isPending: false }) }));
 vi.mock("@/components/doc/DocFolderSection", () => ({
   DocFolderSection: ({ group, forceOpen }: { group: DocFolderGroup; forceOpen: boolean }) => (
     <ul aria-label={`${group.folder.name}${forceOpen ? " (open)" : ""}`}>
@@ -75,6 +78,7 @@ describe("DocsListPane", () => {
   beforeEach(() => {
     useDocSortStore.setState({ sortBy: "created_at" });
     useDocArchiveStore.setState({ showArchived: false });
+    folders = [main];
   });
 
   it("lists by creation by default and by last edit once toggled", async () => {
@@ -118,6 +122,22 @@ describe("DocsListPane", () => {
 
     await pick("Show archived");
     expect(listed()).toEqual(["EP07", "EP06", "EP01"]);
+  });
+
+  it("lists a project's folders before it holds any doc", () => {
+    folders = [main, guides];
+    render(<Pane docs={[]} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+
+    expect(screen.getByRole("list", { name: "Main" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Guides" })).toBeInTheDocument();
+    expect(screen.queryByText("No docs yet")).not.toBeInTheDocument();
+  });
+
+  it("says a project with only its default folder has no docs yet", () => {
+    render(<Pane docs={[]} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+
+    expect(screen.getByText("No docs yet")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Main" })).not.toBeInTheDocument();
   });
 
   it("says when nothing is archived instead of listing empty folders", async () => {
