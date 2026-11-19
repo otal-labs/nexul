@@ -48,7 +48,7 @@ beforeEach(() => {
     if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url === "/api/projects") return { data: [project] };
     if (url === "/api/projects/p-1") return { data: project };
-    if (url === "/api/projects/p-1/impact") return { data: { tickets: 0, repos: 0, services: 0 } };
+    if (url === "/api/projects/p-1/impact") return { data: { tickets: 0, repos: 0, services: 0, docs: 0 } };
     if (url === "/api/categories") return { data: categories };
     if (url === "/api/projects/p-1/ticket-counts") return { data: ticketCounts() };
     return { data: [] };
@@ -164,7 +164,7 @@ describe("ProjectSettingsPage", () => {
   it("keeps Remove disabled while the project still holds work, and says what", async () => {
     const defaultGet = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0 } };
+      if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0, docs: 0 } };
       return defaultGet(url);
     });
     renderPage("/acme/projects/p-1/settings/danger");
