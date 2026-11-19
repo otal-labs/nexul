@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -168,5 +168,29 @@ describe("DocPage", () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPage();
     expect(await screen.findByText("boom")).toBeInTheDocument();
+  });
+
+  it("moves the doc to another folder from its actions menu", async () => {
+    const user = userEvent.setup();
+    const folders = [
+      { id: "f-main", project_id: "p-1", name: "Main", is_default: true, created_at: "", updated_at: "" },
+      { id: "f-gs", project_id: "p-1", name: "GetSource", is_default: false, created_at: "", updated_at: "" },
+    ];
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === "/api/docs/doc-1") return Promise.resolve({ data: { ...docData, folder_id: "f-main" } });
+      if (url === "/api/docs/folders") return Promise.resolve({ data: folders });
+      if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["docs:write"] } });
+      return serveDoc(url);
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: { ...docData, folder_id: "f-gs" } });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Doc actions" }));
+    await user.click(await screen.findByRole("button", { name: "Move to folder" }));
+    const list = screen.getByRole("group", { name: "Folders" });
+    expect(within(list).getByRole("button", { name: "Main" })).toHaveAttribute("aria-current", "true");
+    await user.click(within(list).getByRole("button", { name: "GetSource" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/move", { folder_id: "f-gs" });
   });
 });
