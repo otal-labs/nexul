@@ -17,7 +17,7 @@ export const TrailDetail = ({ trailId, onClose }: TrailDetailProps) => {
 
   return (
     <Dialog open={trailId !== null} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-4xl">
+      <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col gap-0 p-0 sm:max-w-[min(56rem,calc(100%-4rem))]">
         <DialogHeader className="gap-2 px-6 pt-6 pb-5">
           <DialogTitle>{trail?.play_label ?? "Play run"}</DialogTitle>
           {trail && <TrailHeadline trail={trail} />}

@@ -77,10 +77,10 @@ afterEach(() => useViewAsStore.setState({ target: null }));
 
 describe("TrailFacts", () => {
   it.each([
-    { name: "a connected runner", computers: [computer({ connected: true, reconnecting: false, last_seen: "" })], shows: ["build-box", "Online"] },
-    { name: "a dropped runner coming back", computers: [computer({ connected: false, reconnecting: true, last_seen: "" })], shows: ["build-box", "Reconnecting"] },
-    { name: "a runner that is gone", computers: [computer({ connected: false, reconnecting: false, last_seen: "" })], shows: ["build-box", "Offline"] },
-    { name: "a computer with no runner", computers: [computer(undefined)], shows: ["build-box"], hides: ["Offline", "Online"] },
+    { name: "a connected runner", computers: [computer({ connected: true, reconnecting: false, last_seen: "" })], shows: ["build-box", "Online now"] },
+    { name: "a dropped runner coming back", computers: [computer({ connected: false, reconnecting: true, last_seen: "" })], shows: ["build-box", "Reconnecting now"] },
+    { name: "a runner that is gone", computers: [computer({ connected: false, reconnecting: false, last_seen: "" })], shows: ["build-box", "Offline now"] },
+    { name: "a computer with no runner", computers: [computer(undefined)], shows: ["build-box"], hides: ["Offline now", "Online now"] },
     { name: "a computer the viewer can't see", computers: [], shows: ["A computer you can't see"] },
     { name: "a failed computers request", computers: "error" as const, shows: ["Couldn't load the computer"], hides: ["A computer you can't see", "Loading…"] },
   ])("names the computer and how it stands for $name", async ({ computers, shows, hides = [] }) => {
@@ -89,6 +89,15 @@ describe("TrailFacts", () => {
 
     for (const text of shows) expect(await screen.findByText(text)).toBeInTheDocument();
     for (const text of hides) expect(screen.queryByText(text)).not.toBeInTheDocument();
+  });
+
+  it("says how a running run's computer stands without the 'now' an ended run adds, and what it passed over", async () => {
+    answerComputers([computer({ connected: true, reconnecting: false, last_seen: "" })]);
+    renderInDialog(trail({ state: "running", ended_at: null, passed_over: [{ computer_id: "pc-2", name: "laptop", why: "offline", text: "laptop is offline" }] }));
+
+    expect(await screen.findByText("Online")).toBeInTheDocument();
+    expect(screen.getByText("Runs on")).toBeInTheDocument();
+    expect(screen.getByText("Passed over: laptop is offline")).toBeInTheDocument();
   });
 
   it("says the computer isn't shown while viewing as another member, without asking for it", () => {
@@ -109,14 +118,18 @@ describe("TrailFacts", () => {
     await client.refetchQueries();
 
     expect(screen.getByText("build-box")).toBeInTheDocument();
+    expect(screen.getByText("Online now")).toBeInTheDocument();
     expect(screen.queryByText("Couldn't load the computer")).not.toBeInTheDocument();
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
   });
 
-  it("says no computer took a run that landed nowhere", () => {
+  it("says no computer took a run that landed nowhere, and no model either", () => {
     answerComputers([]);
     renderInDialog(trail({ computer_id: "", state: "failed" }));
 
     expect(screen.getByText("No computer took it")).toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
+    expect(screen.queryByText("The computer's default")).not.toBeInTheDocument();
   });
 
   it("names the picked memories once their list answers, a deleted one as plain text", async () => {
@@ -129,15 +142,65 @@ describe("TrailFacts", () => {
     expect(screen.getByText("Deleted memory")).not.toHaveAttribute("href");
   });
 
-  it("says the memories couldn't load when their list fails, and asks for none when none were picked", async () => {
+  it("says the memories couldn't load when their list fails", async () => {
     answerComputers([], "error");
     renderInDialog(trail({ selected_memory_ids: ["m-1"] }));
-    expect(await screen.findByText("Couldn't load the memories")).toBeInTheDocument();
 
-    vi.mocked(api.get).mockClear();
-    renderInDialog(trail({ id: "tr-2" }));
+    expect(await screen.findByText("Couldn't load the memories")).toBeInTheDocument();
+  });
+
+  it("asks for no memories when none were picked", () => {
+    answerComputers([]);
+    renderInDialog(trail({}));
+
     expect(screen.getByText("None picked")).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/memories", expect.anything());
+  });
+});
+
+describe("TrailModel", () => {
+  const providers = [{ id: "codex", driver: "codex", name: "Codex", needs_setup: false, skipped: false, models: [{ slug: "gpt-x", name: "GPT X" }] }];
+  const answerProviders = (list: object[] | "error") => {
+    answerComputers([computer(undefined)]);
+    const base = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string, config?: object) => {
+      if (url === "/api/pairing/computers/pc-1/providers" && list === "error") throw new Error("offline");
+      if (url === "/api/pairing/computers/pc-1/providers") return { data: { providers: list } };
+      return base?.(url, config);
+    });
+  };
+
+  it("names the model and its provider as the computer lists them", async () => {
+    answerProviders(providers);
+    renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
+
+    expect(await screen.findByText("GPT X")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+  });
+
+  it("falls back to the slug and provider id while the computer can't say", async () => {
+    answerProviders("error");
+    renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
+
+    expect(await screen.findByText("gpt-x")).toBeInTheDocument();
+    expect(screen.getByText("codex")).toBeInTheDocument();
+  });
+
+  it("says the computer's default when the run picked none, and asks the computer nothing", () => {
+    answerProviders(providers);
+    renderInDialog(trail({}));
+
+    expect(screen.getByText("The computer's default")).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalledWith("/api/pairing/computers/pc-1/providers");
+  });
+
+  it("asks the computer nothing while viewing as another member", () => {
+    answerProviders(providers);
+    useViewAsStore.setState({ target: { workspaceId: "ws-1", workspaceName: "Northwind", userId: "u-2", name: "Lena", avatarUrl: "" } });
+    renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
+
+    expect(screen.getByText("gpt-x")).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalledWith("/api/pairing/computers/pc-1/providers");
   });
 });
 

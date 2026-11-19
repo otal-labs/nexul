@@ -35,9 +35,11 @@ const Fact = ({ label, className, children }: FactProps) => (
 
 const Muted = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground">{children}</span>;
 
-// The computer by the name the viewer knows it by and, when a runner reaches it, whether that runner is connected now.
+// The computer by the name the viewer knows it by and, when a runner reaches it, whether that runner is connected now; an
+// ended run says "now", so a computer back online doesn't read as contradicting the run's own error.
 const ComputerName = ({ trail }: TrailFactsProps) => {
   const viewing = useIsViewingAs();
+  const ended = !isTrailActive(useLiveTrailState(trail));
   const { data: computers, isError } = useQuery({ ...computersQuery, enabled: trail.computer_id !== "" && !viewing });
   const shown = trail.computer_id !== "" && !viewing;
   const computer = shown ? computers?.find((c) => c.id === trail.computer_id) : undefined;
@@ -51,7 +53,7 @@ const ComputerName = ({ trail }: TrailFactsProps) => {
       {shown && !computers && !isError && <Muted>Loading…</Muted>}
       {shown && computers && !computer && <Muted>A computer you can't see</Muted>}
       {computer && <span className="font-medium break-words">{sharedComputerName(computer)}</span>}
-      {presence && <SettingsStatus tone={presence.tone}>{presence.text}</SettingsStatus>}
+      {presence && <SettingsStatus tone={presence.tone}>{ended ? `${presence.text} now` : presence.text}</SettingsStatus>}
     </>
   );
 };
@@ -76,7 +78,8 @@ const TrailModel = ({ trail }: TrailFactsProps) => {
 
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
-      {trail.model === "" && <Muted>The computer's default</Muted>}
+      {trail.model === "" && trail.computer_id === "" && <Muted>None</Muted>}
+      {trail.model === "" && trail.computer_id !== "" && <Muted>The computer's default</Muted>}
       {model && <span className="font-medium break-words">{model.name}</span>}
       {trail.model !== "" && !model && <span className="font-mono text-xs leading-5 break-all">{trail.model}</span>}
       {trail.model !== "" && <span className="text-xs text-muted-foreground">{provider?.name ?? trail.provider}</span>}

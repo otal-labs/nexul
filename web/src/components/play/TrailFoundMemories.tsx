@@ -14,7 +14,7 @@ interface TrailFoundMemoriesProps {
 export const TrailFoundMemories = ({ projectId, memories }: TrailFoundMemoriesProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <span>
+    <span className="break-words">
       {memories.map((memory, i) => (
         <Fragment key={memory.id}>
           {i > 0 && ", "}
