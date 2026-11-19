@@ -1,10 +1,10 @@
 -- name: CreateContainer :exec
-INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpsertContainer :exec
-INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (stack_id, name) DO UPDATE SET
     declared = excluded.declared,
     container_name = excluded.container_name,
@@ -12,7 +12,8 @@ ON CONFLICT (stack_id, name) DO UPDATE SET
     status = excluded.status,
     networks = excluded.networks,
     ports = excluded.ports,
-    observed_at = excluded.observed_at;
+    observed_at = excluded.observed_at,
+    healthcheck = excluded.healthcheck;
 
 -- name: GetContainer :one
 SELECT * FROM services WHERE id = ?;

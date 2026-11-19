@@ -504,4 +504,6 @@ type Container struct {
 	Networks      []Network     `json:"networks,omitempty"`
 	Ports         []string      `json:"ports,omitempty"`
 	ObservedAt    time.Time     `json:"observed_at,omitempty"`
+	// Healthcheck is whether the container has a healthcheck, which a deploy needs to swap it; nil until a runner says.
+	Healthcheck *bool `json:"healthcheck,omitempty"`
 }

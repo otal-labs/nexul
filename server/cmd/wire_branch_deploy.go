@@ -67,6 +67,18 @@ func (a deployGatewayJoinAdapter) GatewayForStackNetwork(ctx context.Context, ne
 	return a.dns.GatewayForStackNetwork(ctx, network)
 }
 
+func (a deployGatewayJoinAdapter) RoutedContainerIDs(ctx context.Context) ([]string, error) {
+	routes, err := a.dns.RequestRoutes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(routes))
+	for _, r := range routes {
+		ids = append(ids, r.ContainerID)
+	}
+	return ids, nil
+}
+
 func (a deployExposureAdapter) RemoveExposures(ctx context.Context, stackName string, containerIDs []string) error {
 	return a.dns.DeleteExposuresForStack(ctx, stackName, containerIDs)
 }

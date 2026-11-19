@@ -24,7 +24,8 @@ type composePSEntry struct {
 // inspectResult is the subset of `docker inspect --format '{{json .}}'` the observation report reads.
 type inspectResult struct {
 	Config struct {
-		Image string `json:"Image"`
+		Image       string             `json:"Image"`
+		Healthcheck *healthcheckConfig `json:"Healthcheck"`
 	} `json:"Config"`
 	State struct {
 		Status string `json:"Status"`
@@ -114,6 +115,7 @@ func (e *ShellExecutor) inspectService(ctx context.Context, ref containerRef) (O
 	if err := json.Unmarshal([]byte(out), &res); err != nil {
 		return ObservedService{}, fmt.Errorf("parse inspect output: %w", err)
 	}
+	healthcheck := res.Config.Healthcheck.present()
 	return ObservedService{
 		Name:          ref.name,
 		ContainerName: ref.containerName,
@@ -121,6 +123,7 @@ func (e *ShellExecutor) inspectService(ctx context.Context, ref containerRef) (O
 		Status:        containerStatus(res),
 		Networks:      containerNetworks(res),
 		Ports:         containerPorts(res),
+		Healthcheck:   &healthcheck,
 	}, nil
 }
 

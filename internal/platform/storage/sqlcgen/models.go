@@ -1250,6 +1250,7 @@ type Service struct {
 	Networks      string
 	Ports         string
 	ObservedAt    int64
+	Healthcheck   sql.NullInt64
 }
 
 type ServiceOutage struct {

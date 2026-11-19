@@ -344,6 +344,7 @@ func (c *Client) startJob(ctx context.Context, conn *websocket.Conn, f Frame) {
 		StackRoot:        f.StackRoot,
 		GatewayContainer: f.GatewayContainer,
 		JoinNetworks:     f.JoinNetworks,
+		SwapServices:     f.SwapServices,
 	}
 	// deploy_result is the job terminal even for a build (build_result is only a phase terminal, per
 	// handler.go's dispatchFrame comment) — that's the one point where the client can safely go idle and apply

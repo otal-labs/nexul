@@ -80,6 +80,7 @@ func toCreateContainerParams(svc *deploy.Container) sqlcgen.CreateContainerParam
 		ID: svc.ID, StackID: svc.StackID, Name: svc.Name, Declared: declaredJSON(svc.Declared),
 		ContainerName: svc.ContainerName, Image: svc.Image, Status: string(svc.Status),
 		Networks: networksJSON(svc.Networks), Ports: portsJSON(svc.Ports), ObservedAt: observedAt,
+		Healthcheck: nullBool(svc.Healthcheck),
 	}
 }
 
@@ -90,6 +91,9 @@ func toContainer(row sqlcgen.Service) (*deploy.Container, error) {
 	}
 	if row.ObservedAt > 0 {
 		svc.ObservedAt = time.Unix(row.ObservedAt, 0).UTC()
+	}
+	if row.Healthcheck.Valid {
+		svc.Healthcheck = new(row.Healthcheck.Int64 == 1)
 	}
 	if err := json.Unmarshal([]byte(row.Declared), &svc.Declared); err != nil {
 		return nil, fmt.Errorf("unmarshal declared for service %s: %w", svc.ID, err)
@@ -132,4 +136,15 @@ func networksJSON(networks []deploy.Network) string {
 		return "[]"
 	}
 	return string(b)
+}
+
+// nullBool stores a yes, a no, or NULL for not known.
+func nullBool(b *bool) sql.NullInt64 {
+	if b == nil {
+		return sql.NullInt64{}
+	}
+	if *b {
+		return sql.NullInt64{Int64: 1, Valid: true}
+	}
+	return sql.NullInt64{Valid: true}
 }

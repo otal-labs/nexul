@@ -177,6 +177,8 @@ type Frame struct {
 	// networks; on a join_networks frame they are the whole request.
 	GatewayContainer string   `json:"gateway_container,omitempty"`
 	JoinNetworks     []string `json:"join_networks,omitempty"`
+	// SwapServices names, on an assign frame, the services a gateway routes to, each swapped when it can run twice.
+	SwapServices []string `json:"swap_services,omitempty"`
 	// GatewayRoutes is a gateway_routes frame's file-provider fragment: the http.routers and http.services to merge into the
 	// gateway's base config.
 	GatewayRoutes string `json:"gateway_routes,omitempty"`
@@ -266,6 +268,8 @@ type ObservedService struct {
 	Networks []ObservedNetwork `json:"networks,omitempty"`
 	// Ports are published bindings as "host:container/proto" and network-only ports as "container/proto".
 	Ports []string `json:"ports,omitempty"`
+	// Healthcheck says whether the container has a healthcheck, which is what lets a deploy swap it.
+	Healthcheck *bool `json:"healthcheck,omitempty"`
 }
 
 // ObservedNetwork is one docker network a reported container joined, with its address on it.

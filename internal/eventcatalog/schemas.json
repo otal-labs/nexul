@@ -2916,6 +2916,13 @@
           "type": "string"
         }
       },
+      "swap_services": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The services a gateway routes to, which the runner swaps with no downtime when each can run twice and has a healthcheck."
+      },
       "triggered_by": {
         "type": "string",
         "description": "Who started the deploy; empty when nobody did."
@@ -3042,6 +3049,9 @@
               "items": {
                 "type": "string"
               }
+            },
+            "healthcheck": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -8189,6 +8199,9 @@
             "observed_at": {
               "type": "string",
               "format": "date-time"
+            },
+            "healthcheck": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -8542,6 +8555,9 @@
             "observed_at": {
               "type": "string",
               "format": "date-time"
+            },
+            "healthcheck": {
+              "type": "boolean"
             }
           },
           "required": [

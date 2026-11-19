@@ -269,8 +269,9 @@ func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	require.Len(t, frames[7].Services, 1)
 	assert.Equal(t, ObservedService{
 		Name: "api", ContainerName: "api", Image: "api:b1", Status: "running",
-		Networks: []ObservedNetwork{{Name: "app-net", Address: "172.18.0.4"}},
-		Ports:    []string{"8080:80/tcp"},
+		Networks:    []ObservedNetwork{{Name: "app-net", Address: "172.18.0.4"}},
+		Ports:       []string{"8080:80/tcp"},
+		Healthcheck: new(false),
 	}, frames[7].Services[0])
 
 	assert.Equal(t, []string{"rev-parse", "HEAD"}, cmd.argsFor("git")[1], "the commit is read right after the checkout")
@@ -337,12 +338,14 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 	require.Len(t, rec.last().Services, 2)
 	assert.Equal(t, ObservedService{
 		Name: "web", ContainerName: "api-web-1", Image: "nginx:1", Status: "healthy",
-		Networks: []ObservedNetwork{{Name: "api_default", Address: "172.18.0.2"}},
-		Ports:    []string{"8080:80/tcp"},
+		Networks:    []ObservedNetwork{{Name: "api_default", Address: "172.18.0.2"}},
+		Ports:       []string{"8080:80/tcp"},
+		Healthcheck: new(false),
 	}, rec.last().Services[0])
 	assert.Equal(t, ObservedService{
 		Name: "worker", ContainerName: "api-worker-1", Image: "worker:1", Status: "running",
-		Networks: []ObservedNetwork{{Name: "api_default", Address: "172.18.0.3"}},
+		Networks:    []ObservedNetwork{{Name: "api_default", Address: "172.18.0.3"}},
+		Healthcheck: new(false),
 	}, rec.last().Services[1])
 	assert.Equal(t, "172.18.0.2", rec.last().Address, "the primary address falls back to the first reported container")
 
@@ -355,7 +358,7 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 
 func TestShellExecutor_Build_RepoDriven_ComposePSOutput_ReportsServices(t *testing.T) {
 	observed := func(name, container string) ObservedService {
-		return ObservedService{Name: name, ContainerName: container, Image: "img", Status: "running", Networks: []ObservedNetwork{}}
+		return ObservedService{Name: name, ContainerName: container, Image: "img", Status: "running", Networks: []ObservedNetwork{}, Healthcheck: new(false)}
 	}
 	tests := []struct {
 		name  string
@@ -751,8 +754,9 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 		require.Len(t, rec.last().Services, 1)
 		assert.Equal(t, ObservedService{
 			Name: "api", ContainerName: "api", Image: "img:1", Status: "running",
-			Networks: []ObservedNetwork{{Name: "bridge", Address: "172.18.0.4"}},
-			Ports:    []string{"8080:80/tcp"},
+			Networks:    []ObservedNetwork{{Name: "bridge", Address: "172.18.0.4"}},
+			Ports:       []string{"8080:80/tcp"},
+			Healthcheck: new(false),
 		}, rec.last().Services[0])
 		inspectArgs := cmd.argsFor("docker")[len(cmd.argsFor("docker"))-1]
 		assert.Equal(t, []string{"inspect", "--format", "{{json .}}", "api"}, inspectArgs)
@@ -770,9 +774,9 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 		assert.Equal(t, "172.20.0.5", rec.last().Address)
 	})
 
-	t.Run("a healthy check promotes the reported status", func(t *testing.T) {
+	t.Run("a healthy check promotes the reported status and reports the healthcheck", func(t *testing.T) {
 		cmd := &fakeCmd{inspectByName: map[string]string{
-			"api": `{"State":{"Status":"running","Health":{"Status":"healthy"}},"NetworkSettings":{"Networks":{}}}`,
+			"api": `{"Config":{"Healthcheck":{"Test":["CMD","true"]}},"State":{"Status":"running","Health":{"Status":"healthy"}},"NetworkSettings":{"Networks":{}}}`,
 		}}
 		e := newTestExecutor(cmd.run)
 		rec := &frameRecorder{}
@@ -781,6 +785,7 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 
 		require.Len(t, rec.last().Services, 1)
 		assert.Equal(t, "healthy", rec.last().Services[0].Status)
+		assert.Equal(t, new(true), rec.last().Services[0].Healthcheck, "the container's healthcheck is reported")
 	})
 
 	t.Run("an inspect failure still reports a healthy deploy with an empty report", func(t *testing.T) {

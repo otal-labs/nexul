@@ -104,6 +104,7 @@ type DeployRequestedEvent struct {
 	// reachable; empty GatewayContainer skips the step entirely.
 	GatewayContainer string    `json:"gateway_container,omitempty"`
 	JoinNetworks     []string  `json:"join_networks,omitempty"`
+	SwapServices     []string  `json:"swap_services,omitempty" jsonschema:"The services a gateway routes to, which the runner swaps with no downtime when each can run twice and has a healthcheck."`
 	TriggeredBy      string    `json:"triggered_by,omitempty" jsonschema:"Who started the deploy; empty when nobody did."`
 	RequestedAt      time.Time `json:"requested_at,omitzero" jsonschema:"When the deploy was created; absent on a deploy requested before this field existed."`
 	// SecretManagers names each manager whose references the stack's env holds, so only a runner ready for each takes the deploy.
@@ -155,6 +156,7 @@ type ObservedService struct {
 	Status        string    `json:"status"`
 	Networks      []Network `json:"networks,omitempty"`
 	Ports         []string  `json:"ports,omitempty"`
+	Healthcheck   *bool     `json:"healthcheck,omitempty" jsonschema:"Whether the container has a healthcheck; absent from a runner too old to say."`
 }
 
 // StackEvent is the shared stack.created/stack.updated payload (still published on the "service.*" topics).

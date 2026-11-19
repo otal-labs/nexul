@@ -228,6 +228,8 @@ type DeployRequestedEvent struct {
 	// empty GatewayContainer skips it.
 	GatewayContainer string   `json:"gateway_container,omitempty"`
 	JoinNetworks     []string `json:"join_networks,omitempty"`
+	// SwapServices are the services a gateway routes to: each one that can run twice and has a healthcheck is swapped.
+	SwapServices []string `json:"swap_services,omitempty"`
 	// TriggeredBy is who started the deploy; RequestedAt is when it was created.
 	TriggeredBy string    `json:"triggered_by,omitempty"`
 	RequestedAt time.Time `json:"requested_at,omitzero"`
@@ -270,22 +272,23 @@ func (r DeployRequestedEvent) toFrame(env map[string]string) (Frame, error) {
 	switch r.Kind {
 	case RequestBuild:
 		return Frame{
-			Type:        FrameAssignBuild,
-			ID:          r.ID,
-			Repo:        r.Repo,
-			Ref:         r.Ref,
-			Steps:       r.Steps,
-			Service:     r.Service,
-			Env:         env,
-			Strategy:    r.Strategy,
-			Network:     r.Network,
-			Ports:       r.Ports,
-			Mounts:      r.Mounts,
-			Command:     r.Command,
-			Dockerfile:  r.Dockerfile,
-			ComposePath: r.ComposePath,
-			StackSlug:   r.StackSlug,
-			StackRoot:   r.StackRoot,
+			Type:         FrameAssignBuild,
+			ID:           r.ID,
+			Repo:         r.Repo,
+			Ref:          r.Ref,
+			Steps:        r.Steps,
+			Service:      r.Service,
+			Env:          env,
+			Strategy:     r.Strategy,
+			Network:      r.Network,
+			Ports:        r.Ports,
+			Mounts:       r.Mounts,
+			Command:      r.Command,
+			Dockerfile:   r.Dockerfile,
+			ComposePath:  r.ComposePath,
+			StackSlug:    r.StackSlug,
+			StackRoot:    r.StackRoot,
+			SwapServices: r.SwapServices,
 		}, nil
 	case RequestDeploy:
 		return Frame{
@@ -304,6 +307,7 @@ func (r DeployRequestedEvent) toFrame(env map[string]string) (Frame, error) {
 			StackRoot:        r.StackRoot,
 			GatewayContainer: r.GatewayContainer,
 			JoinNetworks:     r.JoinNetworks,
+			SwapServices:     r.SwapServices,
 		}, nil
 	default:
 		return Frame{}, fmt.Errorf("%w: unknown deploy.requested kind %q", apperrs.ErrInvalid, r.Kind)
