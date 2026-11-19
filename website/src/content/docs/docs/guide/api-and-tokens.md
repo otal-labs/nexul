@@ -21,6 +21,8 @@ The list shows each token as **Active** with when it was last used, or **Revoked
 
 Each paired computer also gets a token of its own, "Nexul MCP on <computer>", listed here and marked as the computer's. Un-confirming the computer's setup or removing the computer revokes it.
 
+An MCP client you [signed in](/docs/guide/mcp-server/#connect) is listed here too, under the name it gave and marked as a signed-in app. Revoke it like any other token.
+
 Browse the API at `/swagger`, or fetch the OpenAPI document at `/openapi.json`. Both are built from the routes the server actually mounts.
 
 ## Permissions

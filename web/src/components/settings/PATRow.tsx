@@ -1,4 +1,4 @@
-import { Monitor, Trash2 } from "lucide-react";
+import { LogIn, Monitor, Trash2 } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
@@ -26,6 +26,12 @@ export const PATRow = ({ token }: PATRowProps) => {
             <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
               <Monitor className="size-3" aria-hidden />
               paired computer
+            </span>
+          )}
+          {token.oauth_client_id && (
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+              <LogIn className="size-3" aria-hidden />
+              signed-in app
             </span>
           )}
         </p>

@@ -11,18 +11,21 @@ import (
 )
 
 const createPAT = `-- name: CreatePAT :exec
-INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at, computer_id)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at, computer_id, oauth_client_id, refresh_hash, expires_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreatePATParams struct {
-	ID         string
-	UserID     string
-	Name       string
-	TokenHash  string
-	Prefix     string
-	CreatedAt  int64
-	ComputerID string
+	ID            string
+	UserID        string
+	Name          string
+	TokenHash     string
+	Prefix        string
+	CreatedAt     int64
+	ComputerID    string
+	OauthClientID string
+	RefreshHash   sql.NullString
+	ExpiresAt     sql.NullInt64
 }
 
 func (q *Queries) CreatePAT(ctx context.Context, arg CreatePATParams) error {
@@ -34,12 +37,15 @@ func (q *Queries) CreatePAT(ctx context.Context, arg CreatePATParams) error {
 		arg.Prefix,
 		arg.CreatedAt,
 		arg.ComputerID,
+		arg.OauthClientID,
+		arg.RefreshHash,
+		arg.ExpiresAt,
 	)
 	return err
 }
 
 const getActiveComputerPAT = `-- name: GetActiveComputerPAT :one
-SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id, oauth_client_id, refresh_hash, expires_at FROM personal_access_tokens
 WHERE user_id = ? AND computer_id = ? AND computer_id != '' AND revoked_at IS NULL
 `
 
@@ -61,12 +67,15 @@ func (q *Queries) GetActiveComputerPAT(ctx context.Context, arg GetActiveCompute
 		&i.LastUsedAt,
 		&i.RevokedAt,
 		&i.ComputerID,
+		&i.OauthClientID,
+		&i.RefreshHash,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const getPATByHash = `-- name: GetPATByHash :one
-SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens WHERE token_hash = ?
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id, oauth_client_id, refresh_hash, expires_at FROM personal_access_tokens WHERE token_hash = ?
 `
 
 func (q *Queries) GetPATByHash(ctx context.Context, tokenHash string) (PersonalAccessToken, error) {
@@ -82,12 +91,15 @@ func (q *Queries) GetPATByHash(ctx context.Context, tokenHash string) (PersonalA
 		&i.LastUsedAt,
 		&i.RevokedAt,
 		&i.ComputerID,
+		&i.OauthClientID,
+		&i.RefreshHash,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const listPATsByUser = `-- name: ListPATsByUser :many
-SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id, oauth_client_id, refresh_hash, expires_at FROM personal_access_tokens WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPATsByUser(ctx context.Context, userID string) ([]PersonalAccessToken, error) {
@@ -109,6 +121,9 @@ func (q *Queries) ListPATsByUser(ctx context.Context, userID string) ([]Personal
 			&i.LastUsedAt,
 			&i.RevokedAt,
 			&i.ComputerID,
+			&i.OauthClientID,
+			&i.RefreshHash,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -139,6 +154,49 @@ func (q *Queries) RevokePAT(ctx context.Context, arg RevokePATParams) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const rotatePATByRefresh = `-- name: RotatePATByRefresh :one
+UPDATE personal_access_tokens
+SET token_hash = ?1, refresh_hash = ?2, expires_at = ?3, prefix = ?4
+WHERE refresh_hash = ?5 AND oauth_client_id = ?6 AND revoked_at IS NULL
+RETURNING id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id, oauth_client_id, refresh_hash, expires_at
+`
+
+type RotatePATByRefreshParams struct {
+	TokenHash      string
+	RefreshHash    sql.NullString
+	ExpiresAt      sql.NullInt64
+	Prefix         string
+	OldRefreshHash sql.NullString
+	OauthClientID  string
+}
+
+func (q *Queries) RotatePATByRefresh(ctx context.Context, arg RotatePATByRefreshParams) (PersonalAccessToken, error) {
+	row := q.db.QueryRowContext(ctx, rotatePATByRefresh,
+		arg.TokenHash,
+		arg.RefreshHash,
+		arg.ExpiresAt,
+		arg.Prefix,
+		arg.OldRefreshHash,
+		arg.OauthClientID,
+	)
+	var i PersonalAccessToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.TokenHash,
+		&i.Prefix,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+		&i.RevokedAt,
+		&i.ComputerID,
+		&i.OauthClientID,
+		&i.RefreshHash,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const touchPATLastUsed = `-- name: TouchPATLastUsed :exec

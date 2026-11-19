@@ -22,6 +22,7 @@ var routePermissions = map[string][]string{
 	"POST /api/auth/bootstrap/verify":           none,
 	"POST /api/auth/connect-codes":              none,
 	"POST /api/auth/connect-codes/exchange":     none,
+	"POST /api/auth/oauth/authorize":            none,
 	"POST /api/auth/connection-token":           {"instance:read"},
 	"DELETE /api/auth/github-link":              none,
 	"POST /api/auth/identities/link":            none,

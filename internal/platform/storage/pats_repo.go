@@ -24,13 +24,16 @@ type PATsRepo struct {
 func (r *PATsRepo) Create(ctx context.Context, p *auth.PersonalAccessToken, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreatePAT(ctx, sqlcgen.CreatePATParams{
-			ID:         p.ID,
-			UserID:     p.UserID,
-			Name:       p.Name,
-			TokenHash:  p.TokenHash,
-			Prefix:     p.Prefix,
-			CreatedAt:  p.CreatedAt.Unix(),
-			ComputerID: p.ComputerID,
+			ID:            p.ID,
+			UserID:        p.UserID,
+			Name:          p.Name,
+			TokenHash:     p.TokenHash,
+			Prefix:        p.Prefix,
+			CreatedAt:     p.CreatedAt.Unix(),
+			ComputerID:    p.ComputerID,
+			OauthClientID: p.OAuthClientID,
+			RefreshHash:   sql.NullString{String: p.RefreshHash, Valid: p.RefreshHash != ""},
+			ExpiresAt:     nullUnixPtr(p.ExpiresAt),
 		})
 		if err != nil {
 			return fmt.Errorf("insert pat %s: %w", p.ID, classifyWriteErr(err))
@@ -94,15 +97,41 @@ func (r *PATsRepo) TouchLastUsed(ctx context.Context, id string) error {
 	})
 }
 
+func (r *PATsRepo) RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, next auth.PersonalAccessToken) (*auth.PersonalAccessToken, error) {
+	var out *auth.PersonalAccessToken
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		row, err := r.q.WithTx(tx).RotatePATByRefresh(ctx, sqlcgen.RotatePATByRefreshParams{
+			TokenHash:      next.TokenHash,
+			RefreshHash:    sql.NullString{String: next.RefreshHash, Valid: next.RefreshHash != ""},
+			ExpiresAt:      nullUnixPtr(next.ExpiresAt),
+			Prefix:         next.Prefix,
+			OldRefreshHash: sql.NullString{String: oldRefreshHash, Valid: true},
+			OauthClientID:  clientID,
+		})
+		if err != nil {
+			return fmt.Errorf("rotate grant: %w", notFoundIfNoRows(err))
+		}
+		out = toPAT(row)
+		return nil
+	})
+	return out, err
+}
+
 func toPAT(row sqlcgen.PersonalAccessToken) *auth.PersonalAccessToken {
 	p := &auth.PersonalAccessToken{
-		ID:         row.ID,
-		UserID:     row.UserID,
-		Name:       row.Name,
-		TokenHash:  row.TokenHash,
-		Prefix:     row.Prefix,
-		CreatedAt:  time.Unix(row.CreatedAt, 0).UTC(),
-		ComputerID: row.ComputerID,
+		ID:            row.ID,
+		UserID:        row.UserID,
+		Name:          row.Name,
+		TokenHash:     row.TokenHash,
+		Prefix:        row.Prefix,
+		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
+		ComputerID:    row.ComputerID,
+		OAuthClientID: row.OauthClientID,
+		RefreshHash:   row.RefreshHash.String,
+	}
+	if row.ExpiresAt.Valid {
+		t := time.Unix(row.ExpiresAt.Int64, 0).UTC()
+		p.ExpiresAt = &t
 	}
 	if row.LastUsedAt.Valid {
 		t := time.Unix(row.LastUsedAt.Int64, 0).UTC()

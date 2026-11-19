@@ -138,3 +138,33 @@ func TestPATsRepo_TouchLastUsed(t *testing.T) {
 	require.NotNil(t, got.LastUsedAt)
 	assert.True(t, got.LastUsedAt.After(got.CreatedAt))
 }
+
+func TestPATsRepo_RotateByRefresh_WorksOnceAndNeverOnARevokedOrOtherClientsGrant(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "alice"))
+	require.NoError(t, err)
+	expires := time.Unix(5000, 0).UTC()
+	grant := newPATRecord("u1", "Globex Agent", "access-1", "g1", time.Unix(100, 0).UTC())
+	grant.OAuthClientID, grant.RefreshHash, grant.ExpiresAt = "client-1", "refresh-1", &expires
+	require.NoError(t, s.PATs.Create(ctx, grant))
+
+	later := time.Unix(9000, 0).UTC()
+	next := auth.PersonalAccessToken{TokenHash: "access-2", RefreshHash: "refresh-2", Prefix: "cess-2", ExpiresAt: &later}
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-2", next)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "another client's refresh")
+
+	got, err := s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", next)
+	require.NoError(t, err)
+	assert.Equal(t, "g1", got.ID)
+	assert.Equal(t, later, *got.ExpiresAt)
+	_, err = s.PATs.GetByHash(ctx, "access-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "the old access token is gone")
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", next)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a refresh hash works once")
+
+	require.NoError(t, s.PATs.Revoke(ctx, "g1", "u1"))
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-2", "client-1", auth.PersonalAccessToken{TokenHash: "access-3", RefreshHash: "refresh-3", Prefix: "cess-3"})
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a revoked grant")
+}

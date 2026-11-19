@@ -98,6 +98,8 @@ export interface PersonalAccessToken {
   revoked_at?: string | null;
   // Set when the token was minted for a paired computer's MCP connection.
   computer_id?: string;
+  // Set when an MCP client got the token by signing in; the name is the one the client registered.
+  oauth_client_id?: string;
 }
 
 export type SessionClient = "browser" | "desktop" | "phone";

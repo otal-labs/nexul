@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import { LoginPage } from "@/pages/LoginPage";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useSignInReturnStore } from "@/stores/signInReturnStore";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -125,6 +126,23 @@ describe("LoginPage", () => {
     });
     expect(useSessionStore.getState().token).toBe("tok-server");
     expect(mocks.post).not.toHaveBeenCalled();
+  });
+
+  it("returns to the page that sent the person to sign in, once", async () => {
+    useSignInReturnStore.setState({ path: "/oauth/authorize?client_id=c1" });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/login?token=tok-server"]}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/oauth/authorize" element={<p>consent page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("consent page")).toBeInTheDocument();
+    expect(useSignInReturnStore.getState().path).toBeNull();
   });
 
   it("says an invitation was declined, as a note rather than an error", async () => {

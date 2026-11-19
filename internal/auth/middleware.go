@@ -51,20 +51,31 @@ func ViewerFromCtx(ctx context.Context) *identity.ViewerRef {
 
 // RequireAuth resolves the full User into context, or 401s; a setup pass resolves to the setup identity (setup.go).
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.cfg.Users == nil {
-			unauthorized(w)
-			return
+	return s.requireAuth(next, func(*http.Request) string { return bearerChallenge })
+}
+
+// RequireMCPAuth is RequireAuth whose 401 names the protected-resource metadata, where an MCP client starts sign-in.
+func (s *Service) RequireMCPAuth(next http.Handler) http.Handler {
+	return s.requireAuth(next, func(r *http.Request) string {
+		if !s.OAuthEnabled() {
+			return bearerChallenge
 		}
-		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		token = strings.TrimSpace(token)
-		if token == "" {
-			unauthorized(w)
+		return bearerChallenge + `, resource_metadata="` + s.apiOrigin(r) + `/.well-known/oauth-protected-resource/mcp"`
+	})
+}
+
+const bearerChallenge = `Bearer realm="nexul"`
+
+func (s *Service) requireAuth(next http.Handler, challenge func(*http.Request) string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if s.cfg.Users == nil || token == "" {
+			unauthorized(w, challenge(r))
 			return
 		}
 		user, ses, err := s.authenticate(r, token)
 		if err != nil {
-			unauthorized(w)
+			unauthorized(w, challenge(r))
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), user, ses)))
@@ -72,8 +83,8 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 }
 
 // unauthorized carries the Bearer challenge RFC 6750 requires on every 401 of a bearer-protected resource.
-func unauthorized(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", `Bearer realm="nexul"`)
+func unauthorized(w http.ResponseWriter, challenge string) {
+	w.Header().Set("WWW-Authenticate", challenge)
 	httpx.WriteError(w, apperrs.ErrUnauthorized)
 }
 

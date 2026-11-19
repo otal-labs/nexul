@@ -35,8 +35,8 @@ export const Layout = () => {
   const { pathname } = useLocation();
   // Wizards own the whole app frame; the sidebar's nav has nothing to point at there.
   const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(pathname);
-  // Sign-in, the invitation and setup draw their own full-screen frame, signed in or not.
-  const shell = isLoggedIn && !/^\/(?:login|invite|setup)$/.test(pathname);
+  // Sign-in, the invitation, setup and an app's sign-in consent draw their own full-screen frame, signed in or not.
+  const shell = isLoggedIn && !/^\/(?:login|invite|setup|oauth\/authorize)$/.test(pathname);
   const frame = useRef<HTMLDivElement>(null);
   usePageEntrance(frame);
 

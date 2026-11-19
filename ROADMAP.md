@@ -42,8 +42,10 @@ Every domain built out:
 - **Docs evolution** — access and permissions, a rich editor, `@`-mentions with
   live chips, real-time collaboration.
 - **Machine credentials & ecosystem gateway** — personal access tokens,
-  connection tokens, and the initial integrations contract: scoped tokens,
-  signed webhooks-out, published event schemas, OpenAPI.
+  connection tokens, MCP sign-in (an MCP client registers itself and the
+  person approves it in the browser, no pasted token), and the initial
+  integrations contract: scoped tokens, signed webhooks-out, published event
+  schemas, OpenAPI.
 - **Desktop client** — an Electron thin shell over the served web app,
   bootstrapped by the connection token.
 - **DNS** — a Cloudflare-first provider abstraction: records, a setup-wizard

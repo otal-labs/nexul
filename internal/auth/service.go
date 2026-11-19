@@ -184,6 +184,8 @@ type Config struct {
 	Allowlist     AllowlistStore
 	Settings      SettingsStore
 	PATs          PATStore
+	// OAuthClients keeps registered MCP clients; nil turns MCP sign-in off.
+	OAuthClients OAuthClientStore
 	// Sessions stores one row per signed-in device (ADR 0083); every sign-in path mints through it.
 	Sessions SessionStore
 	// DefaultWorkspace binds the wizard's completing user to the default workspace; wired later via SetDefaultWorkspace.
@@ -246,6 +248,9 @@ type Service struct {
 	searchURL string
 	unlocks   *failureLimiter
 	exchanges *failureLimiter
+	// registrations counts each address's MCP client registrations, which need no sign-in.
+	registrations *failureLimiter
+	oauthCodes    *oauthCodes
 	// githubRefresh serialises GitHub token refreshes: a refresh token works once, so two at a time would spend it twice.
 	// ponytail: one lock for every person; per-person locks if refreshes ever queue behind each other.
 	githubRefresh sync.Mutex
@@ -277,10 +282,12 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, probeClient: freshdns.New().Client(15 * time.Second),
-		searchURL:  githubSearchUsersURL,
-		unlocks:    newFailureLimiter(unlockMaxFailures, unlockWindow),
-		exchanges:  newFailureLimiter(exchangeMaxFailures, exchangeWindow),
-		ceremonies: newPasskeyCeremonies(),
+		searchURL:     githubSearchUsersURL,
+		unlocks:       newFailureLimiter(unlockMaxFailures, unlockWindow),
+		exchanges:     newFailureLimiter(exchangeMaxFailures, exchangeWindow),
+		ceremonies:    newPasskeyCeremonies(),
+		registrations: newFailureLimiter(oauthRegistrations, oauthRegistrationSpan),
+		oauthCodes:    &oauthCodes{m: map[string]oauthCode{}},
 	}
 }
 

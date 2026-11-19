@@ -226,6 +226,8 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/tokens", h.listPATs)
 	mux.HandleFunc("POST /api/auth/tokens", h.mintPAT)
 	mux.HandleFunc("DELETE /api/auth/tokens/{id}", h.revokePAT)
+	mux.HandleFunc("GET /api/auth/oauth/authorize", h.oauthConsent)
+	mux.HandleFunc("POST /api/auth/oauth/authorize", h.decideOAuth)
 	mux.HandleFunc("GET /api/auth/sessions", h.listSessions)
 	mux.HandleFunc("POST /api/auth/connect-codes", h.issueConnectCode)
 	mux.HandleFunc("DELETE /api/auth/sessions/current", h.signOutCurrentSession)
@@ -942,7 +944,11 @@ func (h *Handler) issueConnectCode(w http.ResponseWriter, r *http.Request) {
 
 // apiOrigin is the address a phone dials: the instance URL, else the host this request reached; never the SPA origin.
 func (h *Handler) apiOrigin(r *http.Request) string {
-	if base := h.svc.InstanceURL(r.Context()); base != "" {
+	return h.svc.apiOrigin(r)
+}
+
+func (s *Service) apiOrigin(r *http.Request) string {
+	if base := s.InstanceURL(r.Context()); base != "" {
 		return strings.TrimSuffix(base, "/")
 	}
 	scheme := "http"

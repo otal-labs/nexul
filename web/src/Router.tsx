@@ -29,6 +29,7 @@ import {
   InvitePreviewPage,
   LoginPage,
   MemoriesPage,
+  OAuthAuthorizePage,
   OwnerWizardPage,
   PlaysPage,
   ProjectSettingsPage,
@@ -128,6 +129,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/invite", element: <InvitePreviewPage /> },
+      { path: "/oauth/authorize", element: <OAuthAuthorizePage /> },
       // The handoff link's landing and re-entry for a wrong GitHub App; the API only accepts either while no user exists.
       { path: "/setup", element: <SetupPage /> },
       ...(loggedIn

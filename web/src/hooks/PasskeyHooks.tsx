@@ -7,6 +7,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { createPasskey, getPasskey, passkeyCancelled } from "@/lib/passkeys";
 import { useSessionStore } from "@/stores/sessionStore";
+import { takeSignInReturn } from "@/stores/signInReturnStore";
 import type { Passkey, PasskeyCeremony, PasskeysResponse } from "@/models/Passkey";
 
 export const getPasskeysKey = "getPasskeys";
@@ -81,7 +82,7 @@ export const usePasskeySignIn = () => {
     },
     onSuccess: (data) => {
       login(data.token);
-      navigate("/", { replace: true });
+      navigate(takeSignInReturn(), { replace: true });
     },
   });
 };

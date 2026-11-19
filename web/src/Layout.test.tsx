@@ -81,6 +81,7 @@ const renderLayout = (path = "/") => {
             <Route path="/" element={<div>page-content</div>} />
             <Route path="/wizard/onboarding/owner" element={<div>page-content</div>} />
             <Route path="/invite" element={<div>page-content</div>} />
+            <Route path="/oauth/authorize" element={<div>page-content</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -145,6 +146,9 @@ describe("Layout", () => {
     const { container, unmount } = renderLayout("/invite");
     expect(container.querySelector(".app-frame")).toBeNull();
     unmount();
+    const consent = renderLayout("/oauth/authorize");
+    expect(consent.container.querySelector(".app-frame")).toBeNull();
+    consent.unmount();
     expect(renderLayout("/wizard/onboarding/owner").container.querySelector(".app-frame")).not.toBeNull();
   });
 

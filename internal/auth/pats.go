@@ -120,6 +120,9 @@ func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error
 	if pat.RevokedAt != nil {
 		return nil, apperrs.ErrUnauthorized
 	}
+	if pat.ExpiresAt != nil && !s.cfg.Now().Before(*pat.ExpiresAt) {
+		return nil, apperrs.ErrUnauthorized
+	}
 	user, err := s.cfg.Users.GetUserByID(ctx, pat.UserID)
 	if err != nil {
 		return nil, apperrs.ErrUnauthorized

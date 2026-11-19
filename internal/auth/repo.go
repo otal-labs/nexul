@@ -110,6 +110,14 @@ type PATStore interface {
 	TouchLastUsed(ctx context.Context, id string) error
 	// GetActiveForComputer returns the computer's unrevoked token, or ErrNotFound.
 	GetActiveForComputer(ctx context.Context, userID, computerID string) (*PersonalAccessToken, error)
+	// RotateByRefresh swaps an unrevoked grant's token and refresh hashes for next's, or returns ErrNotFound.
+	RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, next PersonalAccessToken) (*PersonalAccessToken, error)
+}
+
+// OAuthClientStore keeps the MCP clients that registered themselves.
+type OAuthClientStore interface {
+	CreateOAuthClient(ctx context.Context, c OAuthClient) error
+	GetOAuthClient(ctx context.Context, id string) (*OAuthClient, error)
 }
 
 // SessionStore persists sessions; only the hash reaches the store; deletes are user-scoped so nobody signs out another's device.
