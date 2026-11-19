@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export const RoleChip = ({ name, className }: { name: string; className?: string }) => (
   <span
     title={name}
-    className={cn("inline-flex h-5 max-w-48 min-w-0 items-center rounded-full border border-border bg-foreground/[0.04] px-2 pt-px text-micro leading-none font-medium text-muted-foreground", className)}
+    className={cn("inline-flex h-5 max-w-48 min-w-0 items-center rounded-full border border-border px-2 pt-px text-micro leading-none font-medium text-muted-foreground", className)}
   >
     <span className="truncate">{name}</span>
   </span>

@@ -1587,7 +1587,7 @@ disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in
 (`settle-in`): a warning for a member, "Pick at least one role" on an
 invitation, whose Create link waits for one. A role is shown elsewhere as a
-chip: a neutral `rounded-full` hairline pill at 20px, `foreground` at 4%, 11px
+chip: a neutral `rounded-full` hairline pill at 20px with no fill, so its muted text holds 4.5:1 in every palette, 11px
 medium in `muted-foreground` so it sits under the name, never tinted; three then a mono `+N` with the rest in its tooltip, and
 a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
 `web/src/components/role/` are the reference.
