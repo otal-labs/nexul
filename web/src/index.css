@@ -1425,10 +1425,10 @@ button.mention-chip:hover {
     animation-timeline: scroll();
     animation-range: 0 24px;
   }
-  /* A pinned band over hairline rows stays opaque 16px past its own rule and fades over 12px more, so a row's rule never shows as a second line. */
+  /* A pinned band over hairline rows fades over 28px from its own rule, so a passing row is softened, never cut flat, and its rule never reads as a second line. */
   .sticky-crumbs.band-edge::after {
     height: 1.75rem;
-    background: linear-gradient(var(--panel-opaque) 1rem, transparent);
+    background: linear-gradient(var(--panel-opaque) 0.25rem, transparent);
   }
 }
 @keyframes crumbs-fade {

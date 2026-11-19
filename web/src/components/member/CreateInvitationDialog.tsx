@@ -24,7 +24,7 @@ export const CreateInvitationDialog = ({ onCreated, role }: CreateInvitationDial
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={onCreated} />,
       formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_ids: role ? [role.id] : [] }] } },
-      dialogClassName: "max-w-2xl",
+      dialogClassName: "sm:max-w-xl",
     });
   };
 

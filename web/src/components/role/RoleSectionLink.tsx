@@ -1,5 +1,3 @@
-import { ArrowDown } from "lucide-react";
-
 import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { levelName } from "@/models/PermissionLevel";
 import { roleSectionId, type RoleSection } from "@/models/RoleSection";
@@ -13,7 +11,7 @@ interface RoleSectionLinkProps {
 }
 
 const linkClass =
-  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground";
+  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground underline-offset-4 transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground hover:underline";
 
 // A section's reach, "Workspace 9/15 up to Delete": a link down to it, or plain words when the role has no access in it.
 export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkProps) => (
@@ -41,7 +39,6 @@ export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkPr
             <span className="text-foreground">{levelName(top)}</span>
           </span>
         )}
-        <ArrowDown aria-hidden className="size-3 opacity-60 group-hover/link:opacity-100" />
       </a>
     )}
   </>
