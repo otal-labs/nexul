@@ -11,10 +11,26 @@ A key is a short block of text naming who it is for, the address of the one inst
 
 ## Get a key
 
-A key covers one instance and every enterprise feature, with no limit on people. It runs monthly or yearly. A staging or test instance has its own address, so it needs its own key.
+A key covers one instance and every enterprise feature, with no limit on people. It runs monthly or yearly, and a key fits one address, so each instance you run needs its own.
 
-[//]: # "TODO(pre-release/07-launch-copy): where to buy and what it costs, from the owner"
-To get one, send the instance's full public address, as it appears under **Instance URL** in Settings → Instance, and the name the key should carry. The key arrives as one block of text starting with `nexul-license-1.`.
+To get one, write to [sales@nexul.io](mailto:sales@nexul.io) with the instance's full public address, as it appears under **Instance URL** in Settings → Instance, and the name the key should carry. We reply within 2 business days. The key arrives as one block of text starting with `nexul-license-1.`.
+
+[//]: # "TODO(pre-release/07-launch-copy): the license portal and the OTAL store on Whop, once each is live"
+
+### Plans
+
+| Plan | Covers |
+| --- | --- |
+| Simple | [Single sign-on](/docs/guide/single-sign-on/) and [branding](/docs/guide/branding/) |
+| Enterprise | Arranged on a call |
+
+For a price, a pilot (an 8 to 12 week paid trial), a hosting partner agreement or a done-for-you install, write to the same address.
+
+### What to know before you buy
+
+- **Grace.** A key keeps working for 7 days past the period you paid for.
+- **Staging.** Staging instances get no key. A key fits one address, and a staging instance runs without the enterprise features.
+- **Refunds.** A monthly key is not refunded: cancel any time and the key runs to its date. A yearly key is refunded in full within 7 days of the first purchase, and renewals are not refunded.
 
 ## Add a key
 
