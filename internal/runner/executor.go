@@ -389,7 +389,8 @@ func composeArgs(req DeployRequestedEvent, verb ...string) []string {
 // streamed, since the rm and network probes are expected to fail on a first deploy and say nothing useful.
 // The label names the container and image but never the args: env values ride `-e` and are secrets.
 func (e *ShellExecutor) replaceContainer(ctx context.Context, req DeployRequestedEvent, logs *logStream) error {
-	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug)
+	// The -next and -old leftovers of a swap the runner died in would otherwise keep running beside it.
+	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug, req.StackSlug+"-next", req.StackSlug+"-old")
 	e.ensureNetwork(ctx, req.Network)
 	label := "docker run --name " + req.StackSlug + " " + req.Image
 	return e.runStreamed(ctx, "", logs, label, "docker", runArgsNamed(req, req.StackSlug)...)

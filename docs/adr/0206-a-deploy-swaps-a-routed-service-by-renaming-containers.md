@@ -5,7 +5,8 @@ for as long as its new container took to boot. A gateway reaches a service by it
 embedded DNS: a proxy gateway's Traefik routes and a tunnel gateway's Cloudflare ingress both say `http://<name>:<port>`.
 
 Decision: the server names, on each deploy request, the stack's services some exposure routes to (`swap_services`). For
-each one that can run twice (no published host port, no fixed `container_name`, one container running) and has a
+each one that changed (a compose container whose config hash and image already match is left to `up`, which leaves it
+alone), can run twice (no host port, random ones included, no fixed `container_name`, one container running) and has a
 healthcheck, the runner starts a second container beside it: `<slug>-next` for a run stack, a second replica through
 `compose up --no-deps --no-recreate --scale <service>=2` for compose. It waits for that container's healthcheck, renames
 the old container to `<name>-old` and the new one to the old name, then stops the old one. A new container that turns

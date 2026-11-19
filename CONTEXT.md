@@ -846,7 +846,7 @@ _Avoid_: Redeploy (that pulls an image again), re-run
 How a deploy replaces a service a hostname routes to: a second container starts
 beside the running one, takes its name once its healthcheck passes, and the old
 one stops, so the gateway never loses it. A service that cannot run twice, or
-has no healthcheck, restarts in place instead (ADR 0198).
+has no healthcheck, restarts in place instead (ADR 0206).
 _Avoid_: Blue-green, rolling update (one container per service, swapped once)
 
 **Tests repository**:

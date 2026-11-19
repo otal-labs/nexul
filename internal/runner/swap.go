@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-// A swapped service's new container gets healthyTimeout to pass its healthcheck, looked at every healthyPoll; cleanup
-// after a failed or cancelled swap gets swapCleanupTimeout of its own, since the job's context may already be done.
+// How long and how often a swap waits on its new container's healthcheck, and how long a cleanup may take.
 const (
 	healthyTimeout     = 5 * time.Minute
 	healthyPoll        = time.Second
@@ -27,6 +26,8 @@ const (
 	noSwapNotRunning    = "nothing is running yet"
 	noSwapReplicas      = "it runs more than one container"
 	noSwapFixedName     = "it sets container_name"
+	// noSwapUnchanged is never logged: `up` leaves a service whose container matches its config alone, as it always did.
+	noSwapUnchanged = "unchanged"
 )
 
 // containerHealth is the part of `docker inspect --format '{{json .State}}'` a swap waits on.
@@ -110,8 +111,7 @@ func (e *ShellExecutor) swapRun(ctx context.Context, req DeployRequestedEvent, l
 	return e.swapIn(ctx, logs, next, old)
 }
 
-// swapIn waits for next to turn healthy, gives it old's name, then stops old. Until the rename, old keeps serving, and a
-// next that never turns healthy is removed with old untouched.
+// swapIn waits for next to turn healthy, gives it old's name, then stops old; until the rename old serves alone.
 func (e *ShellExecutor) swapIn(ctx context.Context, logs *logStream, next, old string) error {
 	defer logs.flush()
 	if err := e.waitHealthy(ctx, logs, next); err != nil {
@@ -126,23 +126,26 @@ func (e *ShellExecutor) swapIn(ctx context.Context, logs *logStream, next, old s
 	}
 	if err := e.cmd(ctx, "", stream, "docker", "rename", next, old); err != nil {
 		// Give the old container its name back, so it goes on serving under it.
-		_ = e.cmd(context.WithoutCancel(ctx), "", stream, "docker", "rename", retired, old)
+		cctx, cancel := cleanupCtx(ctx)
+		_ = e.cmd(cctx, "", stream, "docker", "rename", retired, old)
+		cancel()
 		e.removeContainer(ctx, next)
 		return fmt.Errorf("swap %s: %w", old, err)
 	}
 	// The new container already serves; an old one that will not stop is reported, never a failed deploy.
 	stop := logs.step(LogPhaseDeploy, "stop old: "+retired)
-	if err := e.cmd(context.WithoutCancel(ctx), "", stop, "docker", "stop", retired); err != nil {
+	cctx, cancel := cleanupCtx(ctx)
+	defer cancel()
+	if err := e.cmd(cctx, "", stop, "docker", "stop", retired); err != nil {
 		stop("stop old failed: " + err.Error() + "\n")
 	}
-	if err := e.cmd(context.WithoutCancel(ctx), "", stop, "docker", "rm", "-f", retired); err != nil {
+	if err := e.cmd(cctx, "", stop, "docker", "rm", "-f", retired); err != nil {
 		stop("remove old failed: " + err.Error() + "\n")
 	}
 	return nil
 }
 
-// waitHealthy polls container until its healthcheck passes; unhealthy, stopped or past healthyTimeout fails with the
-// healthcheck's last output.
+// waitHealthy polls container until it is healthy; unhealthy, stopped or timed out fails with the health log.
 func (e *ShellExecutor) waitHealthy(ctx context.Context, logs *logStream, container string) error {
 	defer logs.flush()
 	stream := logs.step(LogPhaseDeploy, "wait healthy: "+container)
@@ -216,9 +219,14 @@ func (e *ShellExecutor) containerHealth(ctx context.Context, container string) (
 	return st, nil
 }
 
+// cleanupCtx outlives a cancelled job but not a hung Docker daemon.
+func cleanupCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), swapCleanupTimeout)
+}
+
 // removeContainer drops a new container that will not take over, even when the job was cancelled.
 func (e *ShellExecutor) removeContainer(ctx context.Context, container string) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), swapCleanupTimeout)
+	ctx, cancel := cleanupCtx(ctx)
 	defer cancel()
 	if err := e.cmd(ctx, "", discardLog, "docker", "rm", "-f", container); err != nil {
 		e.log.Warn("remove new container failed", "container", container, "error", err)
@@ -230,11 +238,10 @@ type composeService struct {
 	Image         string             `json:"image"`
 	ContainerName string             `json:"container_name"`
 	Healthcheck   *healthcheckConfig `json:"healthcheck"`
-	Ports         []composePort      `json:"ports"`
+	Ports         []json.RawMessage  `json:"ports"`
 }
 
-// composeUp brings a compose stack up: every service that cannot swap first, as today, then each one that can, one
-// at a time, then a last `up` that leaves the swapped containers alone and removes orphans.
+// composeUp ups the services that do not swap, swaps the rest one at a time, then ups once more to remove orphans.
 func (e *ShellExecutor) composeUp(ctx context.Context, req DeployRequestedEvent, checkout string, logs *logStream) error {
 	swaps, rest := e.composeSwaps(ctx, req, checkout, logs)
 	if len(swaps) == 0 {
@@ -262,8 +269,7 @@ type composeSwap struct {
 	old     string
 }
 
-// composeSwaps splits the stack's services into the ones a deploy swaps and the rest, logging why each routed one
-// that cannot swap restarts. A config that cannot be read swaps nothing.
+// composeSwaps splits the services into those a deploy swaps and the rest; an unreadable config swaps nothing.
 func (e *ShellExecutor) composeSwaps(ctx context.Context, req DeployRequestedEvent, checkout string, logs *logStream) ([]composeSwap, []string) {
 	if len(req.SwapServices) == 0 {
 		return nil, nil
@@ -288,7 +294,11 @@ func (e *ShellExecutor) composeSwaps(ctx context.Context, req DeployRequestedEve
 			rest = append(rest, name)
 			continue
 		}
-		old, reason := e.composeSwapBlocker(ctx, req, name, cfg.Services[name])
+		old, reason := e.composeSwapBlocker(ctx, req, checkout, name, cfg.Services[name])
+		if reason == noSwapUnchanged {
+			rest = append(rest, name)
+			continue
+		}
 		if reason != "" {
 			logs.step(LogPhaseDeploy, name+" restarts in place: "+reason)
 			rest = append(rest, name)
@@ -300,23 +310,27 @@ func (e *ShellExecutor) composeSwaps(ctx context.Context, req DeployRequestedEve
 }
 
 // composeSwapBlocker says why a compose service cannot be swapped, or returns the one container serving it now.
-func (e *ShellExecutor) composeSwapBlocker(ctx context.Context, req DeployRequestedEvent, name string, svc composeService) (string, string) {
+func (e *ShellExecutor) composeSwapBlocker(ctx context.Context, req DeployRequestedEvent, checkout, name string, svc composeService) (string, string) {
+	image := svc.Image
+	if image == "" {
+		image = req.StackSlug + "-" + name
+	}
+	running := e.serviceContainers(ctx, req.StackSlug, name)
+	if len(running) == 1 && e.composeUnchanged(ctx, req, checkout, name, running[0], image) {
+		return "", noSwapUnchanged
+	}
 	if svc.ContainerName != "" {
 		return "", noSwapFixedName
 	}
-	if slices.ContainsFunc(svc.Ports, func(p composePort) bool { return p.Published != "" }) {
+	// A random host port too: the page, which sees only the bindings, says the same.
+	if len(svc.Ports) > 0 {
 		return "", noSwapHostPort
 	}
-	running := e.serviceContainers(ctx, req.StackSlug, name)
 	if len(running) == 0 {
 		return "", noSwapNotRunning
 	}
 	if len(running) > 1 {
 		return "", noSwapReplicas
-	}
-	image := svc.Image
-	if image == "" {
-		image = req.StackSlug + "-" + name
 	}
 	if !e.composeHasHealthcheck(ctx, svc, image) {
 		return "", noSwapNoHealthcheck
@@ -338,6 +352,8 @@ func (e *ShellExecutor) serviceContainers(ctx context.Context, project, service 
 
 // swapCompose scales the service to two, the second built from the new config, and swaps that one in.
 func (e *ShellExecutor) swapCompose(ctx context.Context, req DeployRequestedEvent, checkout string, logs *logStream, s composeSwap) error {
+	// A stopped leftover of a swap the runner died in would otherwise be restarted as the second container.
+	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", s.old+"-old")
 	args := composeArgs(req, "up", "-d", "--no-deps", "--no-recreate", "--scale", s.service+"=2", s.service)
 	if err := e.runStreamed(ctx, checkout, logs, "start new: "+cmdString("docker", args), "docker", args...); err != nil {
 		e.removeNewReplicas(ctx, req.StackSlug, s)
@@ -372,7 +388,20 @@ func (e *ShellExecutor) composeHasHealthcheck(ctx context.Context, svc composeSe
 	return e.imageHasHealthcheck(ctx, image)
 }
 
-// composePort is one ports entry of a compose service; Published is empty for a port only its networks reach.
-type composePort struct {
-	Published string `json:"published"`
+// composeUnchanged says whether container already runs the service's current config and image, which `up` leaves alone.
+func (e *ShellExecutor) composeUnchanged(ctx context.Context, req DeployRequestedEvent, checkout, service, container, image string) bool {
+	var hash strings.Builder
+	if err := e.rawCmd(ctx, checkout, func(s string) { hash.WriteString(s) }, "docker", composeArgs(req, "config", "--hash", service)...); err != nil {
+		return false
+	}
+	want := strings.Fields(hash.String())
+	if len(want) != 2 {
+		return false
+	}
+	imageID, err := e.output(ctx, "docker", "image", "inspect", "--format", "{{.Id}}", image)
+	if err != nil {
+		return false
+	}
+	got, err := e.output(ctx, "docker", "inspect", "--format", `{{index .Config.Labels "com.docker.compose.config-hash"}} {{.Image}}`, container)
+	return err == nil && got == want[1]+" "+imageID
 }

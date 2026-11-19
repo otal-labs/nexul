@@ -348,6 +348,7 @@ func TestShellExecutor_Build_ComposeSwap_SwapsTheRoutedServiceAndUpdatesTheRest(
 		require.Equal(t, DeployStatusHealthy, rec.last().Status, rec.last().Error)
 		assert.Equal(t, []string{
 			"docker compose -p api up -d --no-deps worker",
+			"docker rm -f api-web-1-old",
 			"docker compose -p api up -d --no-deps --no-recreate --scale web=2 web",
 			"docker rename api-web-1 api-web-1-old",
 			"docker rename api-web-2 api-web-1",
@@ -400,6 +401,7 @@ func TestShellExecutor_Build_ComposeNoSwap_UpsAsBeforeAndSaysWhy(t *testing.T) {
 	}{
 		{name: "it sets container_name", config: `{"services":{"web":{"container_name":"web","healthcheck":{"test":["CMD","true"]}}}}`, wantLog: noSwapFixedName},
 		{name: "it publishes a host port", config: `{"services":{"web":{"ports":[{"target":80,"published":"8080"}],"healthcheck":{"test":["CMD","true"]}}}}`, wantLog: noSwapHostPort},
+		{name: "it publishes a random host port", config: `{"services":{"web":{"ports":[{"target":80}],"healthcheck":{"test":["CMD","true"]}}}}`, wantLog: noSwapHostPort},
 		{name: "its healthcheck is disabled", config: `{"services":{"web":{"healthcheck":{"disable":true}}}}`, wantLog: noSwapNoHealthcheck},
 		{
 			name:   "neither it nor its image has a healthcheck",
@@ -450,5 +452,35 @@ func TestShellExecutor_Build_ComposeSwap_AnImageHealthcheckIsEnough(t *testing.T
 
 		require.Equal(t, DeployStatusHealthy, rec.last().Status, rec.last().Error)
 		assert.True(t, cmd.ran("docker rename api-web-2 api-web-1"), "a built image is named after its project and service")
+	})
+}
+
+func TestShellExecutor_Build_ComposeSwap_AnUnchangedServiceIsLeftAlone(t *testing.T) {
+	cmd := swapComposeScript(composeConfig, stateHealthy)
+	cmd.answers["docker compose -p api config --hash web"] = []scripted{{out: "web f7b86ac1\n"}}
+	cmd.answers["docker image inspect --format {{.Id}} web:2"] = []scripted{{out: "sha256:a462"}}
+	cmd.answers[`docker inspect --format {{index .Config.Labels "com.docker.compose.config-hash"}} {{.Image}} api-web-1`] = []scripted{{out: "f7b86ac1 sha256:a462"}}
+	rec := &frameRecorder{}
+	newTestExecutor(cmd.run).Build(t.Context(), composeSwapRequest(t), rec.send)
+
+	require.Equal(t, DeployStatusHealthy, rec.last().Status, rec.last().Error)
+	assert.Equal(t, []string{"docker compose -p api up -d --remove-orphans"}, cmd.order("docker compose -p api up"))
+	assert.NotContains(t, rec.logText(LogPhaseDeploy), "restarts in place")
+}
+
+func TestShellExecutor_Build_ComposeSwap_ARebuiltImageIsSwappedEvenWithTheSameConfig(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cmd := swapComposeScript(composeConfig, stateHealthy)
+		cmd.answers["docker compose -p api config --hash web"] = []scripted{{out: "web f7b86ac1\n"}}
+		cmd.answers["docker image inspect --format {{.Id}} web:2"] = []scripted{{out: "sha256:b000"}}
+		cmd.answers[`docker inspect --format {{index .Config.Labels "com.docker.compose.config-hash"}} {{.Image}} api-web-1`] = []scripted{{out: "f7b86ac1 sha256:a462"}}
+		rec := &frameRecorder{}
+		newTestExecutor(cmd.run).Build(t.Context(), composeSwapRequest(t), rec.send)
+
+		require.Equal(t, DeployStatusHealthy, rec.last().Status, rec.last().Error)
+		assert.True(t, cmd.ran("docker rename api-web-2 api-web-1"))
+		assert.Equal(t, []string{"docker rm -f api-web-1-old", "docker compose -p api up -d --no-deps --no-recreate --scale web=2 web"},
+			cmd.order("docker rm -f api-web-1-old", "docker compose -p api up -d --no-deps --no-recreate")[:2],
+			"a stopped leftover of an earlier swap is removed before compose could restart it as the second container")
 	})
 }

@@ -31,6 +31,7 @@ func TestClient_startJob_CopiesRunFields(t *testing.T) {
 		Strategy: "run", Network: "nexul_default",
 		Ports: []string{"80:80"}, Mounts: []string{"/var/run/docker.sock:/var/run/docker.sock:ro"},
 		Command: []string{"tunnel", "--no-autoupdate", "run"}, GitToken: "job-token",
+		SwapServices: []string{"cloudflared-instance"},
 	})
 	require.Eventually(t, func() bool {
 		exec.mu.Lock()
@@ -43,6 +44,7 @@ func TestClient_startJob_CopiesRunFields(t *testing.T) {
 	assert.Equal(t, []string{"/var/run/docker.sock:/var/run/docker.sock:ro"}, got.Mounts)
 	assert.Equal(t, RequestDeploy, got.Kind)
 	assert.Equal(t, "job-token", got.GitToken)
+	assert.Equal(t, []string{"cloudflared-instance"}, got.SwapServices, "a request that drops it never swaps")
 }
 
 func newTestClient(srvURL string, exec Executor) *Client {

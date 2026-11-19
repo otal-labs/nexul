@@ -13,7 +13,7 @@ import (
 func TestDeployRequestedEvent_ToFrame(t *testing.T) {
 	t.Run("build maps to assign_build", func(t *testing.T) {
 		req := DeployRequestedEvent{ID: "b1", Kind: RequestBuild, Repo: "org/app", Ref: "main", Steps: []string{"go build"},
-			Network: "nexul_default", Ports: []string{"80:80"}, Mounts: []string{"/a:/b"}, Command: []string{"serve"}}
+			Network: "nexul_default", Ports: []string{"80:80"}, Mounts: []string{"/a:/b"}, Command: []string{"serve"}, SwapServices: []string{"web"}}
 		got, err := req.toFrame(nil)
 		require.NoError(t, err)
 		assert.Equal(t, FrameAssignBuild, got.Type)
@@ -24,13 +24,15 @@ func TestDeployRequestedEvent_ToFrame(t *testing.T) {
 		assert.Equal(t, []string{"80:80"}, got.Ports)
 		assert.Equal(t, []string{"/a:/b"}, got.Mounts)
 		assert.Equal(t, []string{"serve"}, got.Command)
+		assert.Equal(t, []string{"web"}, got.SwapServices, "a repo build swaps like a deploy")
 	})
 
 	t.Run("deploy maps to assign_deploy", func(t *testing.T) {
-		req := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", Image: "img", Strategy: "run"}
+		req := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", Image: "img", Strategy: "run", SwapServices: []string{"api"}}
 		got, err := req.toFrame(map[string]string{"K": "v"})
 		require.NoError(t, err)
 		assert.Equal(t, FrameAssignDeploy, got.Type)
+		assert.Equal(t, []string{"api"}, got.SwapServices)
 		assert.Equal(t, "run", got.Strategy)
 	})
 
