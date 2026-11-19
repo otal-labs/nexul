@@ -1449,11 +1449,11 @@ quiet link per editor section with how many of its areas the role reaches in
 mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
-Then People, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline and opaque 12px past it before its fade, so a passing row's rule never doubles it, while the holders are in view: the microheader with its count in mono beside it, never joined by
+Then People, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline and opaque 16px past it before a 12px fade, so a passing row's rule never doubles it, while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
-more than they do. Past eight holders a find field (with a clear button, its placeholder "Search") sits on the People line with Add people and Invite by link, so the count changing width never moves it, the line wrapping before anything overlaps, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
+more than they do. Past eight holders a find field (with a clear button, its placeholder "Search") sits on the People line with Add people and Invite by link, so the count changing width never moves it, shrinking first and then letting the actions wrap under it, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach, and a "Show fewer" beside the count in the band folds them back; a search shows
 every match. Holders run in name order. Each holder
@@ -1488,7 +1488,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with its description muted beside its name on one line (whole in its tooltip) over the role's reach in three columns named once at the top of the list (Instance, Workspace, In projects; each cell the header's count and top level as glyph and word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
+role named with its description muted beside its name on one line (whole in its tooltip) over the role's reach in three columns named once at the top of the list (Instance, Workspace, In projects; each cell the header's count, "up to" and top level as glyph and word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.

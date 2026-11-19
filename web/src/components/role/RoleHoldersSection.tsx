@@ -47,7 +47,7 @@ export const RoleHoldersSection = () => {
       <div className="sticky-crumbs band-edge -mx-4 mb-0! px-4 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 short-lg:-mt-3 short-lg:pt-3 pin:top-(--role-header)! pin:-mt-5 pin:pt-5">
         {/* The list's top hairline, here so a row passing under the band meets an edge. */}
         <div className="space-y-3 border-b border-border pb-3">
-          {/* The field sits with the actions, so a count changing width as you type never moves it; the line wraps before anything overlaps. */}
+          {/* The field sits with the actions, so a count changing width never moves it; it shrinks first, then the actions wrap under it. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
             <span className="flex shrink-0 items-center gap-2">
               <span className="flex items-baseline gap-2">
@@ -58,7 +58,7 @@ export const RoleHoldersSection = () => {
               </span>
               {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
             </span>
-            <div className="flex flex-1 items-center justify-end gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
               {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="w-72 min-w-32 shrink" />}
               {changeable && givable && (
                 <>
