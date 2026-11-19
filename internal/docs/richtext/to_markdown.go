@@ -221,13 +221,15 @@ func renderListItem(item Node, marker string) (string, error) {
 		firstMD = renderInline(first.Content)
 	}
 	lines := []string{marker + firstMD}
+	// Nested blocks sit at the item's content column: "1. " is three wide, while "[ ]" of a task is content.
+	indent := strings.Repeat(" ", strings.Index(marker, " ")+1)
 	for _, nested := range rest {
 		rendered, err := renderBlock(nested)
 		if err != nil {
 			return "", err
 		}
 		for _, line := range strings.Split(rendered, "\n") {
-			lines = append(lines, "  "+line)
+			lines = append(lines, indent+line)
 		}
 	}
 	return strings.Join(lines, "\n"), nil
