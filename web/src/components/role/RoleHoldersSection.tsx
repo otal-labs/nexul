@@ -47,22 +47,24 @@ export const RoleHoldersSection = () => {
       <div className="sticky-crumbs band-edge -mx-4 mb-0! px-4 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 short-lg:-mt-3 short-lg:pt-3 pin:top-(--role-header)! pin:-mt-5 pin:pt-5">
         {/* The list's top hairline, here so a row passing under the band meets an edge. */}
         <div className="space-y-3 border-b border-border pb-3">
-          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex shrink-0 items-baseline gap-2">
-                <Microheader id="role-people-title">People</Microheader>
-                {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-                  <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
-                )}
-              </span>
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs min-w-40 flex-1" />}
+          {/* The field sits with the actions, so a count changing width as you type never moves it; the line wraps before anything overlaps. */}
+          <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="flex shrink-0 items-baseline gap-2">
+              <Microheader id="role-people-title">People</Microheader>
+              {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+                <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+              )}
+              {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
+            </span>
+            <div className="flex flex-1 items-center justify-end gap-2">
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs min-w-32 flex-1" />}
+              {changeable && givable && (
+                <>
+                  <RoleAddPeoplePopover />
+                  <CreateInvitationDialog role={role} onCreated={setCreated} />
+                </>
+              )}
             </div>
-            {changeable && givable && (
-              <div className="flex items-center gap-2">
-                <RoleAddPeoplePopover />
-                <CreateInvitationDialog role={role} onCreated={setCreated} />
-              </div>
-            )}
           </div>
           {changeable && !givable && reason && (
             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -91,7 +93,6 @@ export const RoleHoldersSection = () => {
       {capped && holders && (
         <RoleFoldButton open={false} onToggle={() => setAll(true)} label={`Show all ${holders.length}`} className="-ml-2" />
       )}
-      {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="-ml-2" />}
       {!needle && <RoleInvitationsSection />}
       <TeamPersonDialog personId={openPerson} onClose={() => setOpenPerson(null)} />
     </section>
