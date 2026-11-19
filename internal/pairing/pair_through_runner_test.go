@@ -195,7 +195,7 @@ func TestResolveTarget_OfflineComputer_FailsOverUnlessPinned(t *testing.T) {
 		repo.computers[id] = Computer{ID: id, UserID: "u-alice", Kind: harness.KindT3Code, Name: strings.TrimPrefix(id, "c-"), ServerURL: runnerAddress(id),
 			BearerToken: sealed, TokenExpiresAt: testNow.Add(20 * day), SetupConfirmedAt: &testNow, Position: i}
 		repo.setups[id] = []ProviderSetup{{Provider: "codex", ConfirmedAt: &testNow}}
-		require.NoError(t, repo.SaveCheckout(t.Context(), "u-alice", "p-acme", id, "t3-acme-"+id))
+		require.NoError(t, repo.SaveCheckout(t.Context(), "u-alice", "p-acme", Checkout{ComputerID: id, HarnessProjectID: "t3-acme-" + id}))
 	}
 	ctx := t.Context()
 

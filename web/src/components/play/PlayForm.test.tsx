@@ -29,6 +29,7 @@ const editingPlay: Play = {
   enabled: true,
   show_when_stage: "progress",
   excluded_project_ids: [],
+  repository: "app",
   builtin_key: "",
   created_by: "",
   created_at: "",
@@ -47,6 +48,7 @@ const PlayHarness = ({ editing }: { editing?: Play }) => {
         enabled: editing.enabled,
         show_when_stage: editing.show_when_stage ?? "",
         excluded_project_ids: editing.excluded_project_ids,
+        repository: editing.repository,
       }
     : {
         label: "",
@@ -56,6 +58,7 @@ const PlayHarness = ({ editing }: { editing?: Play }) => {
         enabled: true,
         show_when_stage: "progress",
         excluded_project_ids: [],
+        repository: "app",
       };
   return (
     <div>

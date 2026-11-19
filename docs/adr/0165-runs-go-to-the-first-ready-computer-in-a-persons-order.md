@@ -2,6 +2,9 @@
 
 Amends ADR 0102 and ADR 0132; supersedes ADR 0145's question for every case but one.
 
+Amended by ADR 0204: a project's checkout is picked per computer and repository, and a run uses the checkout of the
+repository it works on.
+
 A person's runs had one place to go: the project's link, which pinned one computer, else the default computer. With
 that computer offline a run waited, even with a second computer online and idle. A run could not fail over, and a
 person with two computers could not spread work across them.

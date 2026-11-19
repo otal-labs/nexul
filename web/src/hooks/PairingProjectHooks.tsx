@@ -36,16 +36,16 @@ export const useFetchProjectLinks = () =>
   });
 
 // What blocks a play in the project and where it is fixed: no message when one can start, or when it would ask where;
-// undefined until readiness has loaded.
-export const useRunBlock = (projectId: string): { message: string; link?: ReadinessLink } | undefined => {
-  const readiness = useHarnessReadiness(projectId);
+// undefined until readiness has loaded. tests is a play that works in the project's tests repository.
+export const useRunBlock = (projectId: string, tests = false): { message: string; link?: ReadinessLink } | undefined => {
+  const readiness = useHarnessReadiness(projectId, tests);
   if (readiness === undefined) return undefined;
   if (readiness.state === "ready" || canChooseRunLocation(readiness)) return { message: "" };
   return readiness;
 };
 
 // Why no play can start in the project, "" when one can; undefined until readiness has loaded.
-export const useRunBlockedReason = (projectId: string): string | undefined => useRunBlock(projectId)?.message;
+export const useRunBlockedReason = (projectId: string, tests = false): string | undefined => useRunBlock(projectId, tests)?.message;
 
 // A link changes which computer the caller's turns in that project land on, so readiness refetches with it.
 export const invalidateProjectLinks = (client: QueryClient) =>

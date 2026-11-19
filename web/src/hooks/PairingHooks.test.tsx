@@ -113,6 +113,13 @@ describe("useHarnessReadiness", () => {
     expect(api.get).toHaveBeenCalledWith("/api/pairing/resolve", { params: { project_id: "proj-1" } });
   });
 
+  it("asks where a tests play would land, which can be another checkout", async () => {
+    mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
+    const { result } = renderHook(() => useHarnessReadiness("proj-1", true), { wrapper });
+    await waitFor(() => expect(result.current).toMatchObject({ state: "ready" }));
+    expect(api.get).toHaveBeenCalledWith("/api/pairing/resolve", { params: { project_id: "proj-1", tests: true } });
+  });
+
   it("returns undefined while either query is still loading, never flashing offline", () => {
     vi.mocked(api.get).mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });

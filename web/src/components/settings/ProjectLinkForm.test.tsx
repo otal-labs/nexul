@@ -77,7 +77,46 @@ describe("ProjectLinkForm", () => {
     await waitFor(() =>
       expect(mocks.put).toHaveBeenCalledWith(
         "/api/pairing/projects/proj-1",
-        expect.objectContaining({ computers: ["c1", "c2"], checkouts: [{ computer_id: "c2", harness_project_id: "t3-app-b" }] }),
+        expect.objectContaining({ computers: ["c1", "c2"], checkouts: [{ computer_id: "c2", repository: "acme/app", harness_project_id: "t3-app-b" }] }),
+      ),
+    );
+  });
+
+  it("shows and saves one checkout per repository when the project has its tests in another", async () => {
+    const user = userEvent.setup();
+    const both = computer("c3", "desk", [
+      { id: "t3-app", repository: "github.com/acme/app" },
+      { id: "t3-e2e", repository: "github.com/acme/e2e" },
+      { id: "t3-e2e-2", repository: "github.com/acme/e2e" },
+    ]);
+    const testsOnly = computer("c4", "ci", [{ id: "t3-e2e-ci", repository: "github.com/acme/e2e" }]);
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/pairing/computers") return { data: { computers: [both, testsOnly] } };
+      if (url === "/api/pairing/defaults") return { data: { placement: "in_order", clone_automatically: false } };
+      if (url === "/api/projects/proj-1/repos")
+        return {
+          data: [
+            { owner: "acme", name: "app", full_name: "acme/app", connector_id: "github", role: "app" },
+            { owner: "acme", name: "e2e", full_name: "acme/e2e", connector_id: "github", role: "tests" },
+          ],
+        };
+      return { data: {} };
+    });
+    renderForm();
+
+    const list = await screen.findByRole("list", { name: /this project's computers/i });
+    const [desk, ci] = await within(list).findAllByRole("listitem");
+    expect(within(desk!).getByText("t3-app")).toBeInTheDocument();
+    expect(within(desk!).getByRole("combobox", { name: "Pick the acme/e2e checkout on desk" })).toBeInTheDocument();
+    expect(within(ci!).getByText("No checkout")).toBeInTheDocument();
+    expect(within(ci!).getByText("t3-e2e-ci")).toBeInTheDocument();
+
+    await pickOption(user, "Pick the acme/e2e checkout on desk", /t3-e2e-2/);
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(mocks.put).toHaveBeenCalledWith(
+        "/api/pairing/projects/proj-1",
+        expect.objectContaining({ checkouts: [{ computer_id: "c3", repository: "acme/e2e", harness_project_id: "t3-e2e-2" }] }),
       ),
     );
   });

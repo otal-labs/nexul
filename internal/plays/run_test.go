@@ -441,6 +441,17 @@ func TestRun_NoHarnessChoice_RecordsWhateverTheResolverPicked(t *testing.T) {
 	assert.Equal(t, "sonnet-5", trail.Model)
 }
 
+func TestRun_ATestsPlayAsksForTheTestsRepository(t *testing.T) {
+	f := newRunnerFixture()
+	f.plays.byID[fixPlayID].Repository = RepositoryTests
+
+	_, err := f.runner.Run(ctxAs(starter), ticketRun())
+	require.NoError(t, err)
+	<-f.turns.done
+
+	assert.Equal(t, HarnessChoice{Tests: true}, f.harness.lastChoice)
+}
+
 func TestRun_HarnessChoice_ComputerNotOwnedByCaller_FailsTrail(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.err = fmt.Errorf("%w: computer c-theirs is not yours", apperrs.ErrForbidden)

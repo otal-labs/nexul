@@ -155,11 +155,13 @@ export const useFetchPresence = () =>
 // Joins the read-only resolve route, where a pressed play would land now (ADR 0165), with presence: ready needs both a
 // computer and a connected session.
 // Returns undefined while either query is loading, so callers never flash "offline" before presence has an answer.
-export const useHarnessReadiness = (projectId?: string): HarnessReadiness | undefined => {
+// tests is a play that works in the project's tests repository, which can land in another checkout (ADR 0204).
+export const useHarnessReadiness = (projectId?: string, tests = false): HarnessReadiness | undefined => {
   const resolve = useQuery({
-    queryKey: [getHarnessResolveKey, projectId ?? null],
+    queryKey: [getHarnessResolveKey, projectId ?? null, tests],
     queryFn: async () =>
-      (await api.get<ResolveResponse>("/api/pairing/resolve", { params: projectId ? { project_id: projectId } : {} })).data,
+      (await api.get<ResolveResponse>("/api/pairing/resolve", { params: { ...(projectId && { project_id: projectId }), ...(tests && { tests: true }) } }))
+        .data,
   });
   const presence = useFetchPresence();
 

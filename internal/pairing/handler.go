@@ -370,7 +370,7 @@ func (h *Handler) revokeMCPToken(w http.ResponseWriter, r *http.Request) {
 
 // resolve answers whether the caller can run a play right now, without starting a turn or leaking the bearer token.
 func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
-	target, err := h.svc.PreviewTarget(r.Context(), actorID(r), r.URL.Query().Get("project_id"))
+	target, err := h.svc.PreviewTarget(r.Context(), actorID(r), r.URL.Query().Get("project_id"), r.URL.Query().Get("tests") == "true")
 	if err != nil {
 		var nc *NotConfiguredError
 		if errors.As(err, &nc) {

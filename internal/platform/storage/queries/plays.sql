@@ -1,6 +1,6 @@
 -- name: CreatePlay :exec
-INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key, repository)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetPlay :one
 SELECT * FROM plays WHERE id = ?;
@@ -12,7 +12,7 @@ SELECT * FROM plays WHERE workspace_id = ? ORDER BY label;
 SELECT * FROM plays WHERE workspace_id = ? AND label = ? COLLATE NOCASE;
 
 -- name: UpdatePlay :execrows
-UPDATE plays SET label = ?, description = ?, instructions = ?, enabled = ?, show_when_stage = ?, excluded_project_ids = ?, updated_at = ?
+UPDATE plays SET label = ?, description = ?, instructions = ?, enabled = ?, show_when_stage = ?, excluded_project_ids = ?, repository = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeletePlay :execrows

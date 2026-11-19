@@ -89,6 +89,8 @@ type queuePlayRequest struct {
 	TicketID string `json:"ticket_id"`
 	RunOn    RunOn  `json:"run_on"`
 	Priority Level  `json:"priority"`
+	// Repository is the owner/name of the repository whose git event the automation is handling; empty for none.
+	Repository string `json:"repository"`
 }
 
 // queuedRun is what runPlay answers: the run's queue id, queued or didnt_run, and why or what it waits on.

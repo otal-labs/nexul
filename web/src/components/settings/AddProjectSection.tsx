@@ -10,7 +10,8 @@ interface AddProjectSectionProps {
   projectId?: string | undefined;
   computerId: string;
   projects: HarnessProject[];
-  onAdded: (harnessProjectId: string) => void;
+  // repository is the owner/name a clone holds; absent for an empty project.
+  onAdded: (harnessProjectId: string, repository?: string) => void;
 }
 
 const folderName = (path: string) => path.split(/[\\/]/).pop() ?? "";

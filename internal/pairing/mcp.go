@@ -58,14 +58,22 @@ type computerCreateIn struct {
 }
 
 type computerPairIn struct {
-	ID            string  `json:"id" jsonschema:"One of your computers, from computer_list."`
-	Name          string  `json:"name,omitempty" jsonschema:"A new name. With it, or any field below, the call only changes those and does not pair."`
-	Position      *int    `json:"position,omitempty" jsonschema:"Place in your order, 0 for first: runs go to the first computer that can take them."`
-	RunsAtOnce    *int    `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
-	ChatProjectID *string `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
-	Restart       bool    `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer instead of pairing, so it starts again with the PATH the computer saved since, such as after installing git; its connection drops for a few seconds while it restarts."`
-	InstallTool   string  `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools, instead of pairing; ask the person first, since it runs their package manager there. It returns once the tool is installed; where sudo wants a password it refuses, since only the Install button in Settings → Computers takes one."`
-	GitIdentity   bool    `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none, instead of pairing; it never replaces a name or email already set."`
+	ID            string            `json:"id" jsonschema:"One of your computers, from computer_list."`
+	Name          string            `json:"name,omitempty" jsonschema:"A new name. With it, or any field below, the call only changes those and does not pair."`
+	Position      *int              `json:"position,omitempty" jsonschema:"Place in your order, 0 for first: runs go to the first computer that can take them."`
+	RunsAtOnce    *int              `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
+	ChatProjectID *string           `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
+	Restart       bool              `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer, so it starts with the PATH saved since, such as after installing git; its connection drops for a few seconds."`
+	InstallTool   string            `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools; ask the person first, since it runs their package manager there. Where sudo wants a password it refuses, since only the Install button in Settings → Computers takes one."`
+	GitIdentity   bool              `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none; it never replaces a name or email already set."`
+	Checkout      *computerCheckout `json:"checkout,omitzero" jsonschema:"The T3 project runs in one repository of a project use here, replacing that repository's pick."`
+}
+
+// computerCheckout is one picked checkout on a computer: the T3 project runs in one repository of a project use there.
+type computerCheckout struct {
+	ProjectID   string `json:"project_id" jsonschema:"From project_list."`
+	Repository  string `json:"repository,omitempty" jsonschema:"owner/name from project_get; empty if it has none."`
+	T3ProjectID string `json:"t3_project_id" jsonschema:"From computer_list with id."`
 }
 
 type computerDeleteIn struct {
@@ -129,6 +137,8 @@ type computerResult struct {
 	RunsAtOnce       int                    `json:"runs_at_once"`
 	Running          int                    `json:"running"`
 	ChatProjectID    string                 `json:"chat_project_id,omitempty"`
+	// Checkouts are the T3 projects picked on the computer, one per project repository; set only when it was asked for alone.
+	Checkouts []computerCheckout `json:"checkouts,omitzero"`
 }
 
 func toComputerResult(c Computer) computerResult {
@@ -148,7 +158,7 @@ func computerListTool(s *Service) mcptool.Tool {
 		"Lists the computers you own in your order (runs go to the first that can take them), each with its "+
 			"position, runs_at_once, running count, chat_project_id, setup confirmation (overall, per provider, newest "+
 			"setup turn) and its MCP token's metadata, never the token. Pass id to read one with its T3 projects, "+
-			"the t3_project_id play_run takes. paired false means no harness session yet (pair_error says why); "+
+			"the t3_project_id play_run takes, and its picked checkouts. paired false means no harness session yet (pair_error says why); "+
 			"no runner means it predates the Nexul app and runs no agent work until computer_create with its id "+
 			"moves it; no setup.confirmed_at needs computer_setup_run first. A computer with a runner carries facts "+
 			"only you can read. With id and docker in its facts it also lists Docker containers; "+
@@ -220,10 +230,30 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	if r.Paired {
 		r.T3Projects, r.T3ProjectsError = listedT3Projects(ctx, s, userID, c.ID)
 	}
+	if r.Checkouts, err = pickedCheckouts(ctx, s, userID, c.ID); err != nil {
+		return r, err
+	}
 	if c.Facts != nil && c.Facts.Docker != nil && c.Facts.Docker.Available {
 		r.Containers, r.ContainersError = listedContainers(ctx, s, userID, c)
 	}
 	return r, nil
+}
+
+// pickedCheckouts are the caller's picks on computerID across the projects they can open.
+func pickedCheckouts(ctx context.Context, s *Service, userID, computerID string) ([]computerCheckout, error) {
+	links, err := s.ListProjectLinks(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var out []computerCheckout
+	for _, l := range links {
+		for _, c := range l.Checkouts {
+			if c.ComputerID == computerID {
+				out = append(out, computerCheckout{ProjectID: l.ProjectID, Repository: c.Repository, T3ProjectID: c.HarnessProjectID})
+			}
+		}
+	}
+	return out, nil
 }
 
 // listedT3Projects asks the computer's harness for its projects; a failure is a line, not the call's.
@@ -322,8 +352,7 @@ func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
 		"Pairs T3 Code on one of your computers now through its Nexul app, minting a one-time token there and "+
 			"exchanging it for a harness session. A computer from computer_create pairs, and re-pairs before its "+
-			"session ends, on its own once its Nexul app connects. With restart it restarts the Nexul app on the computer, with install_tool it installs git or gh there, and with git_identity it sets git's name and email from your GitHub sign-in; each pairs nothing. With name, position, runs_at_once or "+
-			"chat_project_id it only changes those and pairs nothing. Returns the computer; after pairing, run "+
+			"session ends, on its own once its Nexul app connects. Returns the computer; after pairing, run "+
 			"computer_setup_run next.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
@@ -337,20 +366,8 @@ func computerPairTool(s *Service) mcptool.Tool {
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
 	userID := mcpActorID(ctx)
-	if in.Restart {
-		if err := s.RestartApp(ctx, userID, in.ID); err != nil {
-			return nil, err
-		}
-		return s.ownComputer(ctx, userID, in.ID)
-	}
-	if in.InstallTool != "" {
-		if err := s.InstallTool(ctx, userID, in.ID, in.InstallTool, ""); err != nil {
-			return nil, err
-		}
-		return s.ownComputer(ctx, userID, in.ID)
-	}
-	if in.GitIdentity {
-		if _, err := s.SetGitIdentity(ctx, userID, in.ID); err != nil {
+	if act := computerAction(s, userID, in); act != nil {
+		if err := act(ctx); err != nil {
 			return nil, err
 		}
 		return s.ownComputer(ctx, userID, in.ID)
@@ -368,6 +385,27 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 		patch.Name = &in.Name
 	}
 	return s.UpdateComputer(ctx, userID, in.ID, patch)
+}
+
+// computerAction is the one thing in asks to do instead of pairing or changing the computer's settings; nil for none.
+func computerAction(s *Service, userID string, in computerPairIn) func(context.Context) error {
+	if in.Restart {
+		return func(ctx context.Context) error { return s.RestartApp(ctx, userID, in.ID) }
+	}
+	if in.InstallTool != "" {
+		return func(ctx context.Context) error { return s.InstallTool(ctx, userID, in.ID, in.InstallTool, "") }
+	}
+	if in.GitIdentity {
+		return func(ctx context.Context) error {
+			_, err := s.SetGitIdentity(ctx, userID, in.ID)
+			return err
+		}
+	}
+	if in.Checkout != nil {
+		pick := Checkout{ComputerID: in.ID, Repository: in.Checkout.Repository, HarnessProjectID: in.Checkout.T3ProjectID}
+		return func(ctx context.Context) error { return s.PickCheckout(ctx, userID, in.Checkout.ProjectID, pick) }
+	}
+	return nil
 }
 
 func computerDeleteTool(s *Service) mcptool.Tool {

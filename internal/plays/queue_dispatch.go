@@ -319,7 +319,7 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: normalizeIDs(tgt.memoryIDs),
 		State: TrailStarting, StartedAt: now,
 	}
-	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{ComputerID: it.ComputerID, ComputerIDs: it.ComputerIDs}, launchQueued)
+	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{ComputerID: it.ComputerID, ComputerIDs: it.ComputerIDs, Repository: it.Repository}, launchQueued)
 	if err == nil {
 		r.logDecide(ctx, it, QueueDispatching, QueueStarted, "")
 		return

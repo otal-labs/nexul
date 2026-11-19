@@ -2,6 +2,7 @@ package pairing
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -38,7 +39,8 @@ func newPlacementFixture(t *testing.T) *placementFixture {
 	svc := NewService(Config{
 		Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Now: func() time.Time { return placementNow },
 		Projects: fakeProjects{}, Repositories: fakeRemotes{"proj-1": {
-			{Remote: "github.com/acme/app", App: true}, {Remote: "github.com/acme/e2e"}, {Remote: "github.com/acme/e2e-mobile"},
+			{Remote: "github.com/acme/app", Repository: "acme/app", App: true}, {Remote: "github.com/acme/e2e", Repository: "acme/e2e"},
+			{Remote: "github.com/acme/e2e-mobile", Repository: "acme/e2e-mobile"},
 		}}, Tokens: newFakeTokens(),
 	})
 	return &placementFixture{repo: repo, exch: exch, svc: svc}
@@ -102,12 +104,12 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 			edits: map[string]func(*Computer){"a": func(c *Computer) {
 				c.Facts.Projects = []harness.Project{{ID: "t3-x", Repository: "github.com/acme/other"}}
 			}},
-			want: "b", passed: []string{"a doesn't have this project"}},
+			want: "b", passed: []string{"a doesn't have acme/app"}},
 		{name: "two checkouts of the project are ambiguous",
 			edits: map[string]func(*Computer){"a": func(c *Computer) {
 				c.Facts.Projects = append(c.Facts.Projects, harness.Project{ID: "t3-app-copy", Repository: "github.com/acme/app"})
 			}},
-			want: "b", passed: []string{"a has several checkouts of this project; pick one"}},
+			want: "b", passed: []string{"a has several checkouts of acme/app; pick one"}},
 		{name: "a picked checkout wins over the remote", link: ProjectLink{Checkouts: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-other-a"}}},
 			want: "a", checkout: "t3-other-a"},
 		{name: "a picked checkout the computer no longer lists falls back to the remote",
@@ -135,7 +137,7 @@ func TestResolveRun_LandsOnTheFirstReadyComputer(t *testing.T) {
 			want:  "a", checkout: "t3-chat-a"},
 		{name: "a pressed run no computer has the project for asks where", req: RunRequest{Person: true, Room: RoomPreferred},
 			edits:  map[string]func(*Computer){"a": func(c *Computer) { c.Facts.Projects = nil }, "b": func(c *Computer) { c.Facts.Projects = nil }},
-			reason: ReasonNeedsLocation, passed: []string{"a doesn't have this project", "b doesn't have this project"}},
+			reason: ReasonNeedsLocation, passed: []string{"a doesn't have acme/app", "b doesn't have acme/app"}},
 		{name: "a run pinned to one offline computer is that computer's refusal", req: RunRequest{ComputerIDs: []string{"a"}},
 			edits: map[string]func(*Computer){"a": offline}, reason: ReasonOffline, passed: []string{"T3 Code isn't answering on a"}},
 		{name: "a computer that does not answer is passed over", answerless: "a", want: "b",
@@ -269,7 +271,7 @@ func TestResolveRun_APressedRunsPickIsRememberedOnlyWhenTheComputerListsIt(t *te
 		reason  NotConfiguredReason
 		checked []Checkout
 	}{
-		{name: "listed", list: listsT3Projects("t3-picked"), checked: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-picked"}}},
+		{name: "listed", list: listsT3Projects("t3-picked"), checked: []Checkout{{ComputerID: "a", Repository: "acme/app", HarnessProjectID: "t3-picked"}}},
 		{name: "not listed", list: listsT3Projects("t3-app"), want: apperrs.ErrInvalid},
 		{name: "the computer cannot say", list: func(context.Context, harness.Session) ([]harness.Project, error) { return nil, errBoom },
 			want: apperrs.ErrInvalid, reason: ReasonOffline},
@@ -335,7 +337,7 @@ func TestPreviewRun_SaysWhereARunWouldLandWithoutAskingAComputer(t *testing.T) {
 		return nil, nil
 	}
 
-	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1")
+	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "b", target.Computer.ID)
@@ -420,29 +422,50 @@ func listsT3Projects(ids ...string) func(context.Context, harness.Session) ([]ha
 	}
 }
 
-func TestCheckout_TheAppRepositoryWinsATie(t *testing.T) {
+func TestCheckout_MatchesTheRepositoryTheRunWorksOn(t *testing.T) {
 	t.Parallel()
 	clone := func(id, repo string) harness.Project { return harness.Project{ID: id, Repository: repo} }
+	appAndTests := []harness.Project{clone("t3-e2e", "github.com/acme/e2e"), clone("t3-app", "github.com/Acme/App"), clone("t3-x", "")}
 	tests := []struct {
 		name     string
 		projects []harness.Project
+		req      RunRequest
+		picks    []Checkout
 		want     string
 		why      PassOverReason
 	}{
-		{"one match", []harness.Project{clone("t3-app", "github.com/acme/app"), clone("t3-x", "")}, "t3-app", ""},
-		{"app plus tests", []harness.Project{clone("t3-e2e", "github.com/acme/e2e"), clone("t3-app", "github.com/Acme/App")}, "t3-app", ""},
-		{"two clones of the app", []harness.Project{clone("t3-app", "github.com/acme/app"), clone("t3-app-2", "github.com/acme/app"), clone("t3-e2e", "github.com/acme/e2e")},
-			"", PassOverAmbiguousCheckout},
-		{"two tests repositories and no app", []harness.Project{clone("t3-e2e", "github.com/acme/e2e"), clone("t3-mobile", "github.com/acme/e2e-mobile")},
-			"", PassOverAmbiguousCheckout},
+		{name: "one match", projects: []harness.Project{clone("t3-app", "github.com/acme/app"), clone("t3-x", "")}, want: "t3-app"},
+		{name: "an app run with both cloned takes the app's", projects: appAndTests, want: "t3-app"},
+		{name: "a tests run with both cloned takes the tests'", projects: appAndTests, req: RunRequest{Tests: true}, want: "t3-e2e"},
+		{name: "a run naming a repository takes its clone", projects: append(slices.Clone(appAndTests), clone("t3-mobile", "github.com/acme/e2e-mobile")),
+			req: RunRequest{Repository: "Acme/E2E-Mobile"}, want: "t3-mobile"},
+		{name: "a run naming a repository outside the project takes the app's", projects: appAndTests, req: RunRequest{Repository: "globex/api"}, want: "t3-app"},
+		{name: "a computer with only the tests repository is passed over for an app run", projects: []harness.Project{clone("t3-e2e", "github.com/acme/e2e")},
+			why: PassOverNoCheckout},
+		{name: "and takes a tests run", projects: []harness.Project{clone("t3-e2e", "github.com/acme/e2e")}, req: RunRequest{Tests: true}, want: "t3-e2e"},
+		{name: "two clones of the app are ambiguous for an app run", projects: append(slices.Clone(appAndTests), clone("t3-app-2", "github.com/acme/app")),
+			why: PassOverAmbiguousCheckout},
+		{name: "but not for a tests run", projects: append(slices.Clone(appAndTests), clone("t3-app-2", "github.com/acme/app")), req: RunRequest{Tests: true}, want: "t3-e2e"},
+		{name: "a pick per repository serves its own repository", projects: append(slices.Clone(appAndTests), clone("t3-e2e-2", "github.com/acme/e2e")),
+			req: RunRequest{Tests: true}, picks: []Checkout{{ComputerID: "a", Repository: "acme/e2e", HarnessProjectID: "t3-e2e-2"}}, want: "t3-e2e-2"},
+		{name: "and leaves the other repository's run alone", projects: appAndTests,
+			picks: []Checkout{{ComputerID: "a", Repository: "acme/e2e", HarnessProjectID: "t3-e2e"}}, want: "t3-app"},
+		{name: "a pick from before counts for the repository it clones", projects: appAndTests, req: RunRequest{Tests: true},
+			picks: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-e2e"}}, want: "t3-e2e"},
+		{name: "and not for another", projects: appAndTests, picks: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-e2e"}}, want: "t3-app"},
+		{name: "a pick from before of a folder with no remote counts for an app run", projects: appAndTests,
+			picks: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-x"}}, want: "t3-x"},
+		{name: "but not for a tests run", projects: appAndTests, req: RunRequest{Tests: true},
+			picks: []Checkout{{ComputerID: "a", HarnessProjectID: "t3-x"}}, want: "t3-e2e"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f := newPlacementFixture(t)
 			f.add(t, "a", func(c *Computer) { c.Facts.Projects = tt.projects })
+			tt.req.UserID, tt.req.ProjectID = "u1", "proj-1"
 
-			got, m, err := f.svc.checkout(t.Context(), &plan{req: RunRequest{UserID: "u1", ProjectID: "proj-1"}}, f.repo.computers["a"])
+			got, m, err := f.svc.checkout(t.Context(), &plan{req: tt.req, link: ProjectLink{Checkouts: tt.picks}}, f.repo.computers["a"])
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
@@ -454,4 +477,53 @@ func TestCheckout_TheAppRepositoryWinsATie(t *testing.T) {
 			assert.Equal(t, tt.why, m.pass.Why)
 		})
 	}
+}
+
+func TestResolveRun_AComputerWithBothRepositoriesTakesEachRunInItsOwnCheckout(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "tests-only", func(c *Computer) {
+		c.Facts.Projects = []harness.Project{{ID: "t3-e2e-tests-only", Repository: "github.com/acme/e2e"}}
+	})
+	f.add(t, "both", func(c *Computer) {
+		c.Facts.Projects = []harness.Project{{ID: "t3-app-both", Repository: "github.com/acme/app"}, {ID: "t3-e2e-both", Repository: "github.com/acme/e2e"}}
+	})
+
+	app, err := f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1"})
+	require.NoError(t, err)
+	assert.Equal(t, "both", app.Computer.ID, "the tests-only computer first in the order is passed over for an app run")
+	assert.Equal(t, "t3-app-both", app.HarnessProjectID)
+	assert.Equal(t, []PassOver{{ComputerID: "tests-only", Name: "tests-only", Why: PassOverNoCheckout, Text: "tests-only doesn't have acme/app"}}, app.PassedOver)
+
+	tests, err := f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Repository: "acme/e2e"})
+	require.NoError(t, err)
+	assert.Equal(t, "tests-only", tests.Computer.ID)
+	assert.Equal(t, "t3-e2e-tests-only", tests.HarnessProjectID)
+
+	both, err := f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Tests: true, ComputerIDs: []string{"both"}})
+	require.NoError(t, err)
+	assert.Equal(t, "t3-e2e-both", both.HarnessProjectID)
+
+	preview, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", true)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"tests-only", "t3-e2e-tests-only"}, []string{preview.Computer.ID, preview.HarnessProjectID},
+		"the run dialog is told where a pressed tests play lands")
+}
+
+func TestSetProjectLink_DropsAPickForARepositoryTheProjectNoLongerHas(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "a", nil)
+	picks := []Checkout{
+		{ComputerID: "a", Repository: "acme/app", HarnessProjectID: "t3-app-a"},
+		{ComputerID: "a", Repository: "acme/gone", HarnessProjectID: "t3-gone"},
+		{ComputerID: "a", HarnessProjectID: "t3-other-a"},
+	}
+
+	link, err := f.svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{Checkouts: picks})
+
+	require.NoError(t, err, "a pick the form sends back for a removed repository never blocks the save")
+	assert.Equal(t, []Checkout{picks[0], picks[2]}, link.Checkouts)
+	err = f.svc.PickCheckout(t.Context(), "u1", "proj-1", picks[1])
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a new pick for it is refused")
 }

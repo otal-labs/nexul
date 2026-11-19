@@ -3,13 +3,20 @@ import type { ProjectCheckout } from "@/models/ProjectCheckout";
 
 interface ProjectCheckoutCellProps {
   computerName: string;
+  // The repository the checkout is of, named only when the project has several.
+  repository?: string | undefined;
   checkout: ProjectCheckout;
   onPick: (harnessProjectId: string) => void;
 }
 
 // What a project's run would use on one computer: its checkout there, a pick between several, or that it has none.
-export const ProjectCheckoutCell = ({ computerName, checkout, onPick }: ProjectCheckoutCellProps) => (
-  <div className="flex min-w-0 justify-end">
+export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick }: ProjectCheckoutCellProps) => (
+  <div className="flex min-w-0 items-center justify-end gap-2">
+    {repository && (
+      <span className="shrink-0 font-mono text-micro text-muted-foreground" title={repository}>
+        {repository.split("/").pop()}
+      </span>
+    )}
     {checkout.state === "has" && (
       <span className="min-w-0 truncate font-mono text-xs text-muted-foreground" title={checkout.project.path}>
         {checkout.project.title}
@@ -17,7 +24,7 @@ export const ProjectCheckoutCell = ({ computerName, checkout, onPick }: ProjectC
     )}
     {checkout.state === "ambiguous" && (
       <Select onValueChange={onPick}>
-        <SelectTrigger aria-label={`Pick the checkout on ${computerName}`} className="h-7 w-44 text-xs">
+        <SelectTrigger aria-label={`Pick the ${repository ? `${repository} ` : ""}checkout on ${computerName}`} className="h-7 w-44 text-xs">
           <SelectValue placeholder="Pick a checkout" />
         </SelectTrigger>
         <SelectContent>

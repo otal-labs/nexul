@@ -5,14 +5,14 @@ import { RankedComputersField } from "@/components/settings/RankedComputersField
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import type { ProjectLinkFormData } from "@/models/Pairing";
-import { projectCheckout, projectRemotes, withCheckout } from "@/models/ProjectCheckout";
+import { projectRemotes, repoCheckouts, withCheckout } from "@/models/ProjectCheckout";
 
 interface ProjectComputersFieldProps {
   projectId: string;
 }
 
 // The computers a project's runs try, ranked: the person's order, or the project's own list in its own order, each with
-// the checkout a run would use there (ADR 0165).
+// the checkout a run in each of the project's repositories would use there (ADR 0165, ADR 0204).
 export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps) => {
   const { control, setValue } = useFormContext<ProjectLinkFormData>();
   const ids = useWatch({ control, name: "computers" });
@@ -38,9 +38,11 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
                 projectId={projectId}
                 computer={computer}
                 rank={rank}
-                checkout={projectCheckout(computer, checkouts, remotes)}
+                checkouts={repoCheckouts(computer, checkouts, remotes)}
                 controls={controls}
-                onPick={(harnessProjectId) => setValue("checkouts", withCheckout(checkouts, computer.id, harnessProjectId), dirty)}
+                onPick={(repository, harnessProjectId) =>
+                  setValue("checkouts", withCheckout(checkouts, computer.id, repository, harnessProjectId), dirty)
+                }
               />
             )
           );

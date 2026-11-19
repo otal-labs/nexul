@@ -270,11 +270,13 @@ A queued run waits when no ready computer has room; a pressed run never waits
 _Avoid_: Slots per person, concurrency limit
 
 **Project checkout**:
-The T3 project on one computer that a project's runs use there: the one the
-person picked for it, else the one whose git remote matches a repository of
-the project. A computer with none is passed over, unless the person's Clone
-automatically is on, which clones the repository there first. Outside a
-project a computer uses its chat folder instead.
+The T3 project on one computer that a project's runs in one of its
+repositories use there: the one the person picked for that repository, else
+the one whose git remote is that repository (ADR 0204). A run works on the
+repository of the git event an automation queued it from, else its play's,
+by role (app or tests), else the app's. A computer with none is passed over,
+unless the person's Clone automatically is on, which clones the repository
+there first. Outside a project a computer uses its chat folder instead.
 _Avoid_: Checkout (that is a stack's on a machine), fallback T3 project
 
 **Project link**:

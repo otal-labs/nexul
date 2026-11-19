@@ -418,25 +418,58 @@ type ProjectLink struct {
 	Placement Placement `json:"placement,omitempty"`
 	// Computers is the project's own order of the person's computers; empty follows their order.
 	Computers []string `json:"computers"`
-	// Checkouts are the T3 projects the person picked for this project, one per computer.
+	// Checkouts are the T3 projects the person picked for this project, one per computer and repository (ADR 0204).
 	Checkouts []Checkout `json:"checkouts"`
 	UpdatedAt time.Time  `json:"updated_at,omitempty"`
 }
 
-// Checkout is the T3 project a person picked for a project on one computer.
+// Checkout is the T3 project a person picked for one repository of a project on one computer.
 type Checkout struct {
-	ComputerID       string `json:"computer_id"`
+	ComputerID string `json:"computer_id"`
+	// Repository is the project's repository it holds, as owner/name in lowercase; empty on a pick from before checkouts
+	// were per repository, which counts for the repository it is a clone of.
+	Repository       string `json:"repository"`
 	HarnessProjectID string `json:"harness_project_id"`
 }
 
-// checkoutOn is the checkout picked on computerID, "" when none was.
-func (l ProjectLink) checkoutOn(computerID string) string {
-	for _, c := range l.Checkouts {
-		if c.ComputerID == computerID {
-			return c.HarnessProjectID
+// checkoutOn is the checkout picked on c for repo, "" when none was. A pick from before checkouts were per repository
+// counts for the repository it is a clone of, or for the one a run names no repository for when it clones none of them.
+func (l ProjectLink) checkoutOn(c Computer, repo *ProjectRemote, remotes []ProjectRemote) string {
+	key, legacy := repositoryOf(repo), ""
+	for _, ch := range l.Checkouts {
+		if ch.ComputerID == c.ID && ch.Repository == key {
+			return ch.HarnessProjectID
+		}
+		if ch.ComputerID == c.ID && ch.Repository == "" {
+			legacy = ch.HarnessProjectID
 		}
 	}
+	if legacy == "" {
+		return ""
+	}
+	remote := c.remoteOf(legacy)
+	if remote == repo.Remote {
+		return legacy
+	}
+	if slices.ContainsFunc(remotes, func(r ProjectRemote) bool { return r.Remote == remote }) {
+		return ""
+	}
+	if repositoryOf((RunRequest{}).repository(remotes)) == key {
+		return legacy
+	}
 	return ""
+}
+
+// remoteOf is the git remote of c's T3 project harnessProjectID as it last reported, lowercase; "" when unknown.
+func (c Computer) remoteOf(harnessProjectID string) string {
+	if c.Facts == nil {
+		return ""
+	}
+	i := slices.IndexFunc(c.Facts.Projects, func(hp harness.Project) bool { return hp.ID == harnessProjectID })
+	if i < 0 {
+		return ""
+	}
+	return strings.ToLower(c.Facts.Projects[i].Repository)
 }
 
 // Placement is how a run picks among a person's ready computers (ADR 0165).

@@ -25,6 +25,15 @@ export const PLAY_STAGE_LABELS: Record<PlayStage, string> = {
   done: "Done",
 };
 
+// Which of a project's repositories a play's runs work on, by role; a project with no tests repository runs it in its app's.
+export const PLAY_REPOSITORIES = ["app", "tests"] as const;
+export type PlayRepository = (typeof PLAY_REPOSITORIES)[number];
+
+export const PLAY_REPOSITORY_LABELS: Record<PlayRepository, string> = {
+  app: "App repository",
+  tests: "Tests repository",
+};
+
 // The built-in interview play that drafts answers from sources; it is never the interview's run.
 export const DRAFT_INTERVIEW_KEY = "interview-draft";
 
@@ -47,6 +56,7 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
+  repository: PlayRepository;
   // How many of its auto plays are switched on; the list sends it only to someone who reads auto plays.
   auto_plays_on?: number;
   // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, update-doc, audit, decisions-check, investigate-crash), kept through renames; "" for a play a person made.
@@ -94,6 +104,7 @@ export const SavePlayFormSchema = z
     enabled: z.boolean(),
     show_when_stage: z.string(),
     excluded_project_ids: z.array(z.string()),
+    repository: z.enum(PLAY_REPOSITORIES),
   })
   .refine(
     (data) =>
@@ -116,6 +127,7 @@ export const emptyPlayForm = (): SavePlayFormData => ({
   enabled: true,
   show_when_stage: "progress",
   excluded_project_ids: [],
+  repository: "app",
 });
 
 export const playToFormData = (play: Play): SavePlayFormData => ({
@@ -126,6 +138,7 @@ export const playToFormData = (play: Play): SavePlayFormData => ({
   enabled: play.enabled,
   show_when_stage: play.show_when_stage ?? "",
   excluded_project_ids: play.excluded_project_ids,
+  repository: play.repository,
 });
 
 // The wire shape the gateway accepts: show_when_stage travels as null, never "".
@@ -137,6 +150,7 @@ export interface SavePlayRequest {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
+  repository: PlayRepository;
 }
 
 export const toSavePlayRequest = (data: SavePlayFormData): SavePlayRequest => ({

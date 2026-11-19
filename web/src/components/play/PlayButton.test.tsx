@@ -27,6 +27,7 @@ const play: ListedPlay = {
   enabled: true,
   show_when_stage: "progress",
   excluded_project_ids: [],
+  repository: "app",
   builtin_key: "",
   created_by: "u-1",
   created_at: "",
@@ -115,6 +116,17 @@ describe("PlayButton", () => {
     await user.click(run);
     expect(await screen.findByText(/None of your computers has this project yet/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
+  });
+
+  it("gates a tests play on where a tests run lands, not where an app run would", async () => {
+    mockApi({ resolve: { ok: false, reason: "no_computer_ready" } });
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) => {
+      if (args[0] === "/api/pairing/resolve" && (args[1]?.params as { tests?: boolean } | undefined)?.tests) return { data: { ok: true, computer_id: "c-1" } };
+      return base(...args);
+    });
+    renderButton({ ...play, repository: "tests" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toBeEnabled());
   });
 
   it("shows for a play whose own rule allows Run, without plays:run in the workspace", async () => {

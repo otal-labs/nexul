@@ -1,10 +1,11 @@
 import type { HistoryFieldChange } from "@/models/History";
-import { PLAY_STAGE_LABELS, type PlayStage } from "@/models/Play";
+import { PLAY_REPOSITORY_LABELS, PLAY_STAGE_LABELS, type PlayRepository, type PlayStage } from "@/models/Play";
 
 const FIELD_LABELS: Record<string, string> = {
   enabled: "Enabled",
   show_when_stage: "Shows at",
   excluded_project_ids: "Excluded projects",
+  repository: "Works in",
 };
 
 const ENABLED: Record<string, string> = { true: "On", false: "Off" };
@@ -13,6 +14,7 @@ const ENABLED: Record<string, string> = { true: "On", false: "Off" };
 const readValue = (field: string, value: string, projectName: (id: string) => string): string => {
   if (field === "enabled") return ENABLED[value] ?? value;
   if (field === "show_when_stage") return PLAY_STAGE_LABELS[value as PlayStage] ?? value;
+  if (field === "repository") return PLAY_REPOSITORY_LABELS[value as PlayRepository] ?? value;
   if (field === "excluded_project_ids") return value.split(",").filter(Boolean).map(projectName).join(", ");
   return value;
 };

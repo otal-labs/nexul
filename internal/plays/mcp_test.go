@@ -114,6 +114,10 @@ func TestPlayUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	assert.True(t, got.Enabled, "a rename keeps the play enabled")
 	assert.Equal(t, StageProgress, *got.ShowWhenStage)
 	assert.Equal(t, []string{"proj-9"}, got.ExcludedProjectIDs)
+	assert.Equal(t, RepositoryApp, got.Repository)
+
+	got = update(`{"workspace_id":"$WS","id":"$ID","repository":"tests"}`)
+	assert.Equal(t, []any{RepositoryTests, "Fix it"}, []any{got.Repository, got.Label})
 
 	got = update(`{"workspace_id":"$WS","id":"$ID","enabled":false,"show_when_stage":"review","instructions":"Fix it well.","label":null}`)
 	assert.False(t, got.Enabled)
@@ -126,6 +130,7 @@ func TestPlayUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	assert.Empty(t, got.Description, "an empty string clears the description")
 	assert.Equal(t, "Fix it well.", got.Instructions)
 	assert.False(t, got.Enabled)
+	assert.Equal(t, RepositoryTests, got.Repository, "a later save without it keeps it")
 }
 
 func TestPlayTools_CreateListDelete(t *testing.T) {

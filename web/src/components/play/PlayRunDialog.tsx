@@ -38,7 +38,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
   const memories = useFetchMemoriesByProject(canReadMemories ? projectId : "");
   const choices = useFetchLatestChoices(play.id, projectId);
   // Shares the resolve query's cache with the play button that gated this dialog open, so this costs no extra call.
-  const readiness = useHarnessReadiness(projectId);
+  const readiness = useHarnessReadiness(projectId, play.repository === "tests");
   const isPending = canReadMemories === undefined || (canReadMemories && memories.isPending) || choices.isPending || readiness === undefined;
   const error = memories.error ?? choices.error;
   const ready = readiness?.state === "ready" ? readiness : undefined;

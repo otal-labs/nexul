@@ -58,12 +58,23 @@ type Play struct {
 	Enabled            bool     `json:"enabled"`
 	ShowWhenStage      *Stage   `json:"show_when_stage"`
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
+	// Repository is which of a project's repositories its runs work on, by role (ADR 0204).
+	Repository Repository `json:"repository" enum:"app,tests"`
 	// BuiltinKey names the seeded play this one is, kept through renames; empty for a play a person created.
 	BuiltinKey string    `json:"builtin_key"`
 	CreatedBy  string    `json:"created_by"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+
+// Repository is a play's repository by its role in the project: the app, or a separate tests repository, which a
+// project without one reads as its app.
+type Repository string
+
+const (
+	RepositoryApp   Repository = "app"
+	RepositoryTests Repository = "tests"
+)
 
 // Listed is a play in one caller's list, with whether its own rules and their roles let them run it.
 type Listed struct {
@@ -261,6 +272,9 @@ func (p *Play) Validate() error {
 	}
 	if p.Type != TypeTicket && p.ShowWhenStage != nil {
 		return fmt.Errorf("%w: a %s play cannot have a show-when stage", apperrs.ErrInvalid, p.Type)
+	}
+	if p.Repository != RepositoryApp && p.Repository != RepositoryTests {
+		return fmt.Errorf("%w: repository must be app or tests", apperrs.ErrInvalid)
 	}
 	return nil
 }

@@ -36,11 +36,14 @@ export interface Ctx<S extends ConfigSchema = ConfigSchema> {
   runPlay: (play: TicketPlay, ticketId: string, opts?: RunPlayOptions) => Promise<QueuedRun>;
 }
 
+// repository is the owner/name of the repository whose git event the handler runs for, so a play it queues runs in
+// that repository's checkout.
 export function buildCtx<S extends ConfigSchema>(
   api: ApiClient,
   config: ConfigValues<S>,
   secrets: Record<string, string>,
   log: (message: string, meta?: Record<string, unknown>) => void,
+  repository?: string,
 ): Ctx<S> {
   const runPlay = (play: TicketPlay, ticketId: string, opts: RunPlayOptions = {}) =>
     api.request<QueuedRun>("POST", "/api/plays/queue", {
@@ -48,6 +51,16 @@ export function buildCtx<S extends ConfigSchema>(
       ticket_id: ticketId,
       run_on: opts.runOn,
       priority: opts.priority,
+      repository,
     });
   return { api, config, secrets, log, runPlay };
 }
+
+// eventRepository is the owner/name of the repository a git event happened in; undefined for any other event.
+export const eventRepository = (topic: string, payload: unknown): string | undefined => {
+  if (!topic.startsWith("git.") || typeof payload !== "object" || payload === null) return undefined;
+  const p = payload as { owner?: unknown; repo?: unknown; repository?: { full_name?: unknown } };
+  if (typeof p.owner === "string" && typeof p.repo === "string") return `${p.owner}/${p.repo}`;
+  if (typeof p.repository?.full_name === "string") return p.repository.full_name;
+  return undefined;
+};

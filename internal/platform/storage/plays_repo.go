@@ -34,7 +34,7 @@ func (r *PlaysRepo) Create(ctx context.Context, p *plays.Play, rev plays.Revisio
 			ID: p.ID, WorkspaceID: p.WorkspaceID, Label: p.Label, Type: string(p.Type),
 			Description: p.Description, Instructions: p.Instructions, Enabled: int64(boolInt(p.Enabled)),
 			ShowWhenStage: nullStage(p.ShowWhenStage), ExcludedProjectIds: excluded,
-			CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(), BuiltinKey: p.BuiltinKey,
+			CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(), BuiltinKey: p.BuiltinKey, Repository: string(p.Repository),
 		})
 		if err != nil {
 			return fmt.Errorf("insert play %s: %w", p.ID, classifyWriteErr(err))
@@ -98,7 +98,7 @@ func (r *PlaysRepo) Update(ctx context.Context, p *plays.Play, rev plays.Revisio
 		n, err := q.UpdatePlay(ctx, sqlcgen.UpdatePlayParams{
 			Label: p.Label, Description: p.Description, Instructions: p.Instructions,
 			Enabled: int64(boolInt(p.Enabled)), ShowWhenStage: nullStage(p.ShowWhenStage),
-			ExcludedProjectIds: excluded, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
+			ExcludedProjectIds: excluded, Repository: string(p.Repository), UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update play %s: %w", p.ID, classifyWriteErr(err))
@@ -168,7 +168,7 @@ func toPlay(row sqlcgen.Play) (*plays.Play, error) {
 	return &plays.Play{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Label: row.Label, Type: plays.Type(row.Type),
 		Description: row.Description, Instructions: row.Instructions, Enabled: row.Enabled != 0,
-		ShowWhenStage: stage, ExcludedProjectIDs: excluded, CreatedBy: row.CreatedBy, BuiltinKey: row.BuiltinKey,
+		ShowWhenStage: stage, ExcludedProjectIDs: excluded, Repository: plays.Repository(row.Repository), CreatedBy: row.CreatedBy, BuiltinKey: row.BuiltinKey,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }

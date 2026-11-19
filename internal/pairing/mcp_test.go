@@ -323,6 +323,33 @@ func TestComputerPair_OrderRunsAtOnceAndChatFolder_ChangeOnlyThose(t *testing.T)
 	assert.Empty(t, f.exch.pairedURL, "nothing was paired")
 }
 
+func TestComputerPair_WithCheckout_PicksOneRepositorysAndComputerListShowsEach(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "a", nil)
+	f.add(t, "b", nil)
+	ctx := actorCtx(t, "u1")
+
+	_, err := callTool(t, ctx, f.svc, "computer_pair", `{"id": "a", "checkout": {"project_id": "proj-1", "repository": "Acme/E2E", "t3_project_id": "t3-e2e"}}`)
+	require.NoError(t, err)
+	_, err = callTool(t, ctx, f.svc, "computer_pair", `{"id": "a", "checkout": {"project_id": "proj-1", "repository": "acme/app", "t3_project_id": "t3-app-a"}}`)
+	require.NoError(t, err)
+	_, err = callTool(t, ctx, f.svc, "computer_pair", `{"id": "a", "checkout": {"project_id": "proj-1", "repository": "globex/api", "t3_project_id": "t3-x"}}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorContains(t, err, "not a repository of this project")
+
+	out, err := callTool(t, ctx, f.svc, "computer_list", `{"id": "a"}`)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []computerCheckout{
+		{ProjectID: "proj-1", Repository: "acme/e2e", T3ProjectID: "t3-e2e"},
+		{ProjectID: "proj-1", Repository: "acme/app", T3ProjectID: "t3-app-a"},
+	}, out.(mcptool.Page[computerResult]).Items[0].Checkouts)
+	out, err = callTool(t, ctx, f.svc, "computer_list", `{"id": "b"}`)
+	require.NoError(t, err)
+	assert.Empty(t, out.(mcptool.Page[computerResult]).Items[0].Checkouts, "a pick is the computer's own")
+	assert.Empty(t, f.exch.pairedURL, "picking a checkout pairs nothing")
+}
+
 func TestComputerList_ShowsSetupAndTokenMetadata(t *testing.T) {
 	t.Parallel()
 	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{})

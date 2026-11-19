@@ -61,6 +61,32 @@ func TestQueuePlay_QueuesByLabelOnTheDeveloperThroughTheQueue(t *testing.T) {
 	assert.Equal(t, []any{dev, plays.ViaAutomation}, []any{trail.StarterID, trail.Via})
 }
 
+func TestQueuePlay_ARunFromAGitEventWorksOnItsRepository(t *testing.T) {
+	tests := []struct {
+		name       string
+		repository string
+		want       []any
+	}{
+		{"from a git event", " acme/e2e ", []any{"acme/e2e", "acme/e2e", true}},
+		{"without one the play's role decides", "", []any{"", "", true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newRig(t, openStore(t))
+			review := r.play(t, "Review it")
+			review.Repository = plays.RepositoryTests
+			require.NoError(t, r.store.Plays.Update(t.Context(), review, plays.Revision{}))
+			r.ticket("t-1")
+
+			it, err := r.Runner.QueuePlay(asAutomation(t.Context(), dev), plays.QueuePlayInput{Play: "Review it", TicketID: "t-1", Repository: tt.repository})
+			require.NoError(t, err)
+			r.dispatch(t)
+
+			assert.Equal(t, tt.want, []any{it.Repository, r.LastChoice().Repository, r.LastChoice().Tests})
+		})
+	}
+}
+
 func TestQueuePlay_RunsOnTheTesterAtThePriorityAsked(t *testing.T) {
 	r := newRig(t, openStore(t))
 	r.play(t, "Test it")

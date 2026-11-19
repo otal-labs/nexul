@@ -11,8 +11,8 @@ import (
 )
 
 const createPlay = `-- name: CreatePlay :exec
-INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key, repository)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreatePlayParams struct {
@@ -29,6 +29,7 @@ type CreatePlayParams struct {
 	CreatedAt          int64
 	UpdatedAt          int64
 	BuiltinKey         string
+	Repository         string
 }
 
 func (q *Queries) CreatePlay(ctx context.Context, arg CreatePlayParams) error {
@@ -46,6 +47,7 @@ func (q *Queries) CreatePlay(ctx context.Context, arg CreatePlayParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.BuiltinKey,
+		arg.Repository,
 	)
 	return err
 }
@@ -63,7 +65,7 @@ func (q *Queries) DeletePlay(ctx context.Context, id string) (int64, error) {
 }
 
 const getPlay = `-- name: GetPlay :one
-SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE id = ?
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key, repository FROM plays WHERE id = ?
 `
 
 func (q *Queries) GetPlay(ctx context.Context, id string) (Play, error) {
@@ -83,12 +85,13 @@ func (q *Queries) GetPlay(ctx context.Context, id string) (Play, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BuiltinKey,
+		&i.Repository,
 	)
 	return i, err
 }
 
 const getPlayByLabel = `-- name: GetPlayByLabel :one
-SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? AND label = ? COLLATE NOCASE
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key, repository FROM plays WHERE workspace_id = ? AND label = ? COLLATE NOCASE
 `
 
 type GetPlayByLabelParams struct {
@@ -113,6 +116,7 @@ func (q *Queries) GetPlayByLabel(ctx context.Context, arg GetPlayByLabelParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BuiltinKey,
+		&i.Repository,
 	)
 	return i, err
 }
@@ -159,7 +163,7 @@ func (q *Queries) ListAutomationNamesByPlayLabel(ctx context.Context, arg ListAu
 }
 
 const listPlays = `-- name: ListPlays :many
-SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? ORDER BY label
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key, repository FROM plays WHERE workspace_id = ? ORDER BY label
 `
 
 func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, error) {
@@ -185,6 +189,7 @@ func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, er
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.BuiltinKey,
+			&i.Repository,
 		); err != nil {
 			return nil, err
 		}
@@ -200,7 +205,7 @@ func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, er
 }
 
 const updatePlay = `-- name: UpdatePlay :execrows
-UPDATE plays SET label = ?, description = ?, instructions = ?, enabled = ?, show_when_stage = ?, excluded_project_ids = ?, updated_at = ?
+UPDATE plays SET label = ?, description = ?, instructions = ?, enabled = ?, show_when_stage = ?, excluded_project_ids = ?, repository = ?, updated_at = ?
 WHERE id = ?
 `
 
@@ -211,6 +216,7 @@ type UpdatePlayParams struct {
 	Enabled            int64
 	ShowWhenStage      sql.NullString
 	ExcludedProjectIds string
+	Repository         string
 	UpdatedAt          int64
 	ID                 string
 }
@@ -223,6 +229,7 @@ func (q *Queries) UpdatePlay(ctx context.Context, arg UpdatePlayParams) (int64, 
 		arg.Enabled,
 		arg.ShowWhenStage,
 		arg.ExcludedProjectIds,
+		arg.Repository,
 		arg.UpdatedAt,
 		arg.ID,
 	)

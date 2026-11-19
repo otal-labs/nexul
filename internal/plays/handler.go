@@ -28,6 +28,8 @@ type playRequest struct {
 	Enabled            bool     `json:"enabled"`
 	ShowWhenStage      *Stage   `json:"show_when_stage"`
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
+	// Repository is app or tests; omitted, it is app on create and kept on update.
+	Repository Repository `json:"repository"`
 }
 
 // Routes are mounted under the tenancy domain's /api/workspaces prefix.
@@ -188,7 +190,7 @@ func createInputFrom(req playRequest) CreateInput {
 func updateInputFrom(req playRequest) UpdateInput {
 	return UpdateInput{
 		Label: req.Label, Description: req.Description, Instructions: req.Instructions,
-		Enabled: req.Enabled, ShowWhenStage: req.ShowWhenStage, ExcludedProjectIDs: req.ExcludedProjectIDs,
+		Enabled: req.Enabled, ShowWhenStage: req.ShowWhenStage, ExcludedProjectIDs: req.ExcludedProjectIDs, Repository: req.Repository,
 	}
 }
 

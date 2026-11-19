@@ -256,7 +256,7 @@ func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-2", Model: "sonnet"}))
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", Computers: []string{"c1"}}))
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u2", ProjectID: "proj-1", Computers: []string{"c3"}}))
-	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-3", "c2", "t3-three"))
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-3", pairing.Checkout{ComputerID: "c2", HarnessProjectID: "t3-three"}))
 
 	links, err := s.Pairing.ListProjectLinks(ctx, "u1")
 	require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
 	assert.Equal(t, []string{"c1"}, links[0].Computers)
 	assert.Equal(t, []pairing.Checkout{{ComputerID: "c2", HarnessProjectID: "t3-three"}}, links[2].Checkouts, "a picked checkout alone is listed too")
 
-	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-1", "c1", "t3-one"))
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-1", pairing.Checkout{ComputerID: "c1", HarnessProjectID: "t3-one"}))
 	require.NoError(t, s.Pairing.DeleteProjectLink(ctx, "u1", "proj-1"))
 	mine, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
@@ -274,6 +274,32 @@ func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
 	theirs, err := s.Pairing.GetProjectLink(ctx, "u2", "proj-1")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"c3"}, theirs.Computers, "neither a save nor a clear touches another person's link")
+}
+
+func TestPairingRepo_Checkouts_AreKeptPerRepositoryOnOneComputer(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "u1", "u1"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
+
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-1", pairing.Checkout{ComputerID: "c1", Repository: "acme/app", HarnessProjectID: "t3-app"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", Computers: []string{"c1"},
+		Checkouts: []pairing.Checkout{{ComputerID: "c1", Repository: "acme/e2e", HarnessProjectID: "t3-e2e"}}}))
+	require.NoError(t, s.Pairing.SaveCheckout(ctx, "u1", "proj-1", pairing.Checkout{ComputerID: "c1", Repository: "acme/app", HarnessProjectID: "t3-app-2"}))
+
+	link, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, []pairing.Checkout{
+		{ComputerID: "c1", Repository: "acme/app", HarnessProjectID: "t3-app-2"},
+		{ComputerID: "c1", Repository: "acme/e2e", HarnessProjectID: "t3-e2e"},
+	}, link.Checkouts, "a pick replaces only its own repository's")
+	links, err := s.Pairing.ListProjectLinks(ctx, "u1")
+	require.NoError(t, err)
+	require.Len(t, links, 1)
+	assert.Equal(t, link.Checkouts, links[0].Checkouts)
 }
 
 func TestPairingRepo_DeleteProjectLink_NeverLinkedIsNoop(t *testing.T) {

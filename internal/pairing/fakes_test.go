@@ -285,14 +285,16 @@ func (f *fakeRepo) DeleteProjectLink(_ context.Context, userID, projectID string
 	return nil
 }
 
-func (f *fakeRepo) SaveCheckout(_ context.Context, userID, projectID, computerID, harnessProjectID string) error {
+func (f *fakeRepo) SaveCheckout(_ context.Context, userID, projectID string, pick Checkout) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	key := linkKey(userID, projectID)
 	link := f.projectLinks[key]
 	link.UserID, link.ProjectID = userID, projectID
-	link.Checkouts = slices.DeleteFunc(link.Checkouts, func(c Checkout) bool { return c.ComputerID == computerID })
-	link.Checkouts = append(link.Checkouts, Checkout{ComputerID: computerID, HarnessProjectID: harnessProjectID})
+	link.Checkouts = slices.DeleteFunc(slices.Clone(link.Checkouts), func(c Checkout) bool {
+		return c.ComputerID == pick.ComputerID && c.Repository == pick.Repository
+	})
+	link.Checkouts = append(link.Checkouts, pick)
 	f.projectLinks[key] = link
 	return nil
 }

@@ -13,11 +13,22 @@ import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useConfirmPlayRename } from "@/hooks/useConfirmPlayRename";
 import { useEntityActions } from "@/hooks/useEntityActions";
-import { PLAY_STAGE_LABELS, PLAY_STAGES, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
+import {
+  PLAY_REPOSITORIES,
+  PLAY_REPOSITORY_LABELS,
+  PLAY_STAGE_LABELS,
+  PLAY_STAGES,
+  PLAY_TYPE_LABELS,
+  PLAY_TYPES,
+  type Play,
+  type SavePlayFormData,
+} from "@/models/Play";
 
 const TYPE_OPTIONS = PLAY_TYPES.map((type) => ({ value: type, label: PLAY_TYPE_LABELS[type] }));
 
 const STAGE_OPTIONS = PLAY_STAGES.map((stage) => ({ value: stage, label: PLAY_STAGE_LABELS[stage] }));
+
+const REPOSITORY_OPTIONS = PLAY_REPOSITORIES.map((repository) => ({ value: repository, label: PLAY_REPOSITORY_LABELS[repository] }));
 
 interface PlayFormProps {
   workspaceId: string;
@@ -98,6 +109,8 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
           placeholder="No stage"
         />
       )}
+
+      <FormSelect control={control} name="repository" label="Works in" options={REPOSITORY_OPTIONS} />
 
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">

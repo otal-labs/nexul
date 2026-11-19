@@ -28,6 +28,7 @@ const docPlay: ListedPlay = {
   enabled: true,
   show_when_stage: null,
   excluded_project_ids: [],
+  repository: "app",
   builtin_key: "",
   created_by: "u-1",
   created_at: "",

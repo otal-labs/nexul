@@ -27,6 +27,7 @@ const (
 	ChangedEnabled       = "enabled"
 	ChangedShowWhenStage = "show_when_stage"
 	ChangedExcluded      = "excluded_project_ids"
+	ChangedRepository    = "repository"
 )
 
 // Actor kinds of a Change: a person, a person's agent over MCP, or an automation.
@@ -160,6 +161,7 @@ func revision(ctx context.Context, before, after *Play, restoredFrom int) Revisi
 	add(ChangedEnabled, strconv.FormatBool(before.Enabled), strconv.FormatBool(after.Enabled))
 	add(ChangedShowWhenStage, stageText(before.ShowWhenStage), stageText(after.ShowWhenStage))
 	add(ChangedExcluded, projectsText(before.ExcludedProjectIDs), projectsText(after.ExcludedProjectIDs))
+	add(ChangedRepository, string(before.Repository), string(after.Repository))
 	return rev
 }
 

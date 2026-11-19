@@ -442,30 +442,29 @@ func (q *Queries) ListPairingComputersWithOutdatedSkills(ctx context.Context, ar
 	return items, nil
 }
 
-const listPairingProjectComputers = `-- name: ListPairingProjectComputers :many
-SELECT user_id, project_id, computer_id, position, harness_project_id FROM pairing_project_computers WHERE user_id = ? AND project_id = ? ORDER BY position IS NULL, position, computer_id
+const listPairingProjectCheckouts = `-- name: ListPairingProjectCheckouts :many
+SELECT user_id, project_id, computer_id, repository, harness_project_id FROM pairing_project_checkouts WHERE user_id = ? AND project_id = ? ORDER BY computer_id, repository
 `
 
-type ListPairingProjectComputersParams struct {
+type ListPairingProjectCheckoutsParams struct {
 	UserID    string
 	ProjectID string
 }
 
-// A person's computers for one project: those in its own order by position, then the ones only holding a checkout.
-func (q *Queries) ListPairingProjectComputers(ctx context.Context, arg ListPairingProjectComputersParams) ([]PairingProjectComputer, error) {
-	rows, err := q.db.QueryContext(ctx, listPairingProjectComputers, arg.UserID, arg.ProjectID)
+func (q *Queries) ListPairingProjectCheckouts(ctx context.Context, arg ListPairingProjectCheckoutsParams) ([]PairingProjectCheckout, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingProjectCheckouts, arg.UserID, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PairingProjectComputer
+	var items []PairingProjectCheckout
 	for rows.Next() {
-		var i PairingProjectComputer
+		var i PairingProjectCheckout
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ProjectID,
 			&i.ComputerID,
-			&i.Position,
+			&i.Repository,
 			&i.HarnessProjectID,
 		); err != nil {
 			return nil, err
@@ -481,8 +480,79 @@ func (q *Queries) ListPairingProjectComputers(ctx context.Context, arg ListPairi
 	return items, nil
 }
 
+const listPairingProjectCheckoutsByUser = `-- name: ListPairingProjectCheckoutsByUser :many
+SELECT user_id, project_id, computer_id, repository, harness_project_id FROM pairing_project_checkouts WHERE user_id = ? ORDER BY project_id, computer_id, repository
+`
+
+func (q *Queries) ListPairingProjectCheckoutsByUser(ctx context.Context, userID string) ([]PairingProjectCheckout, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingProjectCheckoutsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PairingProjectCheckout
+	for rows.Next() {
+		var i PairingProjectCheckout
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ProjectID,
+			&i.ComputerID,
+			&i.Repository,
+			&i.HarnessProjectID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPairingProjectComputers = `-- name: ListPairingProjectComputers :many
+SELECT user_id, project_id, computer_id, position FROM pairing_project_computers WHERE user_id = ? AND project_id = ? ORDER BY position IS NULL, position, computer_id
+`
+
+type ListPairingProjectComputersParams struct {
+	UserID    string
+	ProjectID string
+}
+
+// A person's computers for one project, in its own order.
+func (q *Queries) ListPairingProjectComputers(ctx context.Context, arg ListPairingProjectComputersParams) ([]PairingProjectComputer, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingProjectComputers, arg.UserID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PairingProjectComputer
+	for rows.Next() {
+		var i PairingProjectComputer
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ProjectID,
+			&i.ComputerID,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPairingProjectComputersByUser = `-- name: ListPairingProjectComputersByUser :many
-SELECT user_id, project_id, computer_id, position, harness_project_id FROM pairing_project_computers WHERE user_id = ? ORDER BY project_id, position IS NULL, position, computer_id
+SELECT user_id, project_id, computer_id, position FROM pairing_project_computers WHERE user_id = ? ORDER BY project_id, position IS NULL, position, computer_id
 `
 
 func (q *Queries) ListPairingProjectComputersByUser(ctx context.Context, userID string) ([]PairingProjectComputer, error) {
@@ -499,7 +569,6 @@ func (q *Queries) ListPairingProjectComputersByUser(ctx context.Context, userID 
 			&i.ProjectID,
 			&i.ComputerID,
 			&i.Position,
-			&i.HarnessProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -734,7 +803,7 @@ func (q *Queries) NextPairingComputerPosition(ctx context.Context, userID string
 }
 
 const prunePairingProjectComputers = `-- name: PrunePairingProjectComputers :exec
-DELETE FROM pairing_project_computers WHERE user_id = ? AND project_id = ? AND position IS NULL AND harness_project_id = ''
+DELETE FROM pairing_project_computers WHERE user_id = ? AND project_id = ? AND position IS NULL
 `
 
 type PrunePairingProjectComputersParams struct {
@@ -1067,14 +1136,15 @@ func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPa
 }
 
 const setPairingProjectCheckout = `-- name: SetPairingProjectCheckout :exec
-INSERT INTO pairing_project_computers (user_id, project_id, computer_id, harness_project_id) VALUES (?, ?, ?, ?)
-ON CONFLICT(user_id, project_id, computer_id) DO UPDATE SET harness_project_id = excluded.harness_project_id
+INSERT INTO pairing_project_checkouts (user_id, project_id, computer_id, repository, harness_project_id) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(user_id, project_id, computer_id, repository) DO UPDATE SET harness_project_id = excluded.harness_project_id
 `
 
 type SetPairingProjectCheckoutParams struct {
 	UserID           string
 	ProjectID        string
 	ComputerID       string
+	Repository       string
 	HarnessProjectID string
 }
 
@@ -1083,6 +1153,7 @@ func (q *Queries) SetPairingProjectCheckout(ctx context.Context, arg SetPairingP
 		arg.UserID,
 		arg.ProjectID,
 		arg.ComputerID,
+		arg.Repository,
 		arg.HarnessProjectID,
 	)
 	return err

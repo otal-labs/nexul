@@ -952,12 +952,19 @@ type PairingMoveNotice struct {
 	NotifiedAt int64
 }
 
-type PairingProjectComputer struct {
+type PairingProjectCheckout struct {
 	UserID           string
 	ProjectID        string
 	ComputerID       string
-	Position         sql.NullInt64
+	Repository       string
 	HarnessProjectID string
+}
+
+type PairingProjectComputer struct {
+	UserID     string
+	ProjectID  string
+	ComputerID string
+	Position   sql.NullInt64
 }
 
 type PairingProjectLink struct {
@@ -1054,6 +1061,7 @@ type Play struct {
 	CreatedAt          int64
 	UpdatedAt          int64
 	BuiltinKey         string
+	Repository         string
 }
 
 type PlayChange struct {
@@ -1110,6 +1118,7 @@ type PlayQueue struct {
 	SweepPosition    int64
 	StartBy          sql.NullInt64
 	LockKey          string
+	Repository       string
 }
 
 type PlayQueueResume struct {
