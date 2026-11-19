@@ -1,18 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { Microheader } from "@/components/Microheader";
+import { microheaderClass } from "@/components/Microheader";
 import { TrailFoundMemories } from "@/components/play/TrailFoundMemories";
 import { TrailVersion } from "@/components/play/TrailVersion";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { computersQuery, useFetchHarnessProviders } from "@/hooks/PairingHooks";
 import { useLiveTrailState } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
+import { runnerPresence } from "@/models/ComputerChecks";
 import { findModel } from "@/models/ModelPick";
 import { passOverLines } from "@/models/Pairing";
 import { sharedComputerName } from "@/models/SharedComputer";
 import { isTrailActive, type Trail } from "@/models/Trail";
-import { notViewing } from "@/stores/viewAsStore";
+import { useIsViewingAs } from "@/stores/viewAsStore";
 
 interface TrailFactsProps {
   trail: Trail;
@@ -26,16 +28,36 @@ interface FactProps {
 
 const Fact = ({ label, className, children }: FactProps) => (
   <div className={cn("min-w-0 space-y-1.5", className)}>
-    <dt>
-      <Microheader>{label}</Microheader>
-    </dt>
+    <dt className={microheaderClass}>{label}</dt>
     <dd className="text-sm text-foreground">{children}</dd>
   </div>
 );
 
-const None = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground">{children}</span>;
+const Muted = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground">{children}</span>;
 
-// The computer by the name the viewer knows it by and whether its runner is connected now; a run that landed nowhere says so.
+const NOT_IN_VIEW = "Not shown while viewing as another member";
+
+// The computer by the name the viewer knows it by and, when a runner reaches it, whether that runner is connected now.
+const ComputerName = ({ trail }: TrailFactsProps) => {
+  const viewing = useIsViewingAs();
+  const { data: computers, isError } = useQuery({ ...computersQuery, enabled: trail.computer_id !== "" && !viewing });
+  const computer = computers?.find((c) => c.id === trail.computer_id);
+  const presence = computer?.runner && runnerPresence(computer.runner);
+
+  return (
+    <>
+      {trail.computer_id === "" && <Muted>None of your computers</Muted>}
+      {trail.computer_id !== "" && viewing && <Muted>{NOT_IN_VIEW}</Muted>}
+      {trail.computer_id !== "" && !viewing && isError && <Muted>Couldn't load the computer</Muted>}
+      {trail.computer_id !== "" && !viewing && !isError && !computers && <Muted>Loading…</Muted>}
+      {computers && !computer && <Muted>A computer you can't see</Muted>}
+      {computer && <span className="font-medium break-words">{sharedComputerName(computer)}</span>}
+      {presence && <SettingsStatus tone={presence.tone}>{presence.text}</SettingsStatus>}
+    </>
+  );
+};
+
+// The computer, then each one the run passed over before it and why.
 const TrailComputer = ({ trail }: TrailFactsProps) => {
   const passedOver = trail.passed_over ?? [];
   return (
@@ -46,52 +68,43 @@ const TrailComputer = ({ trail }: TrailFactsProps) => {
   );
 };
 
-const ComputerName = ({ trail }: TrailFactsProps) => {
-  const { data: computer, isPending } = useQuery({
-    ...computersQuery,
-    select: (computers) => computers.find((c) => c.id === trail.computer_id),
-    enabled: trail.computer_id !== "" && notViewing(),
-  });
-  if (trail.computer_id === "") return <None>None of your computers</None>;
-  if (isPending) return <None>Loading…</None>;
-  if (!computer) return <None>A computer you can't see</None>;
+// The model by the name its computer lists it under, its slug while the computer can't say, and the computer's default when none was picked.
+const TrailModel = ({ trail }: TrailFactsProps) => {
+  const viewing = useIsViewingAs();
+  const { data: providers } = useFetchHarnessProviders(trail.model === "" || viewing ? "" : trail.computer_id);
+  const provider = providers?.find((p) => p.id === trail.provider);
+  const model = findModel(providers ?? [], { provider: trail.provider, model: trail.model });
 
-  const connected = computer.runner?.connected === true;
   return (
-    <>
-      <span className="font-medium break-words">{sharedComputerName(computer)}</span>
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span aria-hidden className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "border border-muted-foreground")} />
-        {connected ? "Online" : "Offline"}
-      </span>
-    </>
+    <span className="flex min-w-0 flex-col gap-0.5">
+      {trail.model === "" && <Muted>The computer's default</Muted>}
+      {model && <span className="font-medium break-words">{model.name}</span>}
+      {trail.model !== "" && !model && <span className="font-mono text-xs leading-5 break-all">{trail.model}</span>}
+      {trail.model !== "" && <span className="text-xs text-muted-foreground">{provider?.name ?? trail.provider}</span>}
+    </span>
   );
 };
 
-// The model by the name its computer lists it under, its slug while the computer can't say, and the computer's default when none was picked.
-const TrailModel = ({ trail }: TrailFactsProps) => {
-  const { data: providers } = useFetchHarnessProviders(trail.model === "" ? "" : trail.computer_id);
-  if (trail.model === "") return <None>The computer's default</None>;
+// The memories it was told to read, by their titles once the project's list answers; a deleted one keeps a placeholder, unlinked.
+const PickedMemories = ({ trail }: TrailFactsProps) => {
+  const { data: memories } = useFetchMemoriesByProject(trail.project_id);
+  const picked = trail.selected_memory_ids.map((id) => {
+    const memory = memories?.find((m) => m.id === id);
+    return { id, title: memory?.title ?? "Deleted memory", deleted: !memory };
+  });
 
-  const provider = providers?.find((p) => p.id === trail.provider);
-  const model = findModel(providers ?? [], { provider: trail.provider, model: trail.model });
   return (
-    <span className="flex min-w-0 flex-col gap-0.5">
-      {model && <span className="font-medium break-words">{model.name}</span>}
-      {!model && <span className="font-mono text-xs break-all">{trail.model}</span>}
-      <span className="text-xs text-muted-foreground">{provider?.name ?? trail.provider}</span>
-    </span>
+    <>
+      {picked.length === 0 && <Muted>None picked</Muted>}
+      {picked.length > 0 && !memories && <Muted>Loading…</Muted>}
+      {picked.length > 0 && memories && <TrailFoundMemories projectId={trail.project_id} memories={picked} />}
+    </>
   );
 };
 
 // Where the run went and what it was given, in one row whose places hold for every run, then the memories under it.
 export const TrailFacts = ({ trail }: TrailFactsProps) => {
   const state = useLiveTrailState(trail);
-  const { data: memories } = useFetchMemoriesByProject(trail.project_id);
-  const picked = trail.selected_memory_ids.map((id) => {
-    const memory = memories?.find((m) => m.id === id);
-    return { id, title: memory?.title ?? "Unknown memory", deleted: !memory };
-  });
 
   return (
     <dl className="grid grid-cols-3 gap-x-8 gap-y-5">
@@ -103,11 +116,10 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
       </Fact>
       <Fact label="Instructions">
         {trail.instructions_version !== undefined && <TrailVersion trail={trail} version={trail.instructions_version} />}
-        {trail.instructions_version === undefined && <None>Not recorded</None>}
+        {trail.instructions_version === undefined && <Muted>Version not recorded</Muted>}
       </Fact>
       <Fact label="Memories" className="col-span-full">
-        {picked.length === 0 && <None>None picked</None>}
-        {picked.length > 0 && <TrailFoundMemories projectId={trail.project_id} memories={picked} />}
+        <PickedMemories trail={trail} />
       </Fact>
       {trail.found_memories && trail.found_memories.length > 0 && (
         <Fact label="Read by itself" className="col-span-full">

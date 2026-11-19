@@ -41,7 +41,7 @@ export const TrailContinueForm = ({ trail }: TrailContinueFormProps) => {
 
   return (
     <>
-      <form onSubmit={form.handleSubmit(send)} className="dialog-tray space-y-2 border-t border-border px-6 py-4">
+      <form onSubmit={form.handleSubmit(send)} className="dialog-tray sticky bottom-0 space-y-2 border-t border-border px-6 py-4">
         <FormTextarea
           control={form.control}
           name="message"

@@ -90,11 +90,12 @@ describe("a trail's instructions version", () => {
     expect(screen.queryByRole("button", { name: "Version 7" })).not.toBeInTheDocument();
   });
 
-  it("shows nothing for a run from before history", () => {
+  it("says the version wasn't recorded for a run from before history, and opens nothing", () => {
     vi.mocked(api.get).mockImplementation(answer(keptVersions(8, 7)));
     renderFacts(trail({}));
 
-    expect(screen.queryByText(/version/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Version not recorded")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Version/ })).not.toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/plays/play-1/history");
   });
 });

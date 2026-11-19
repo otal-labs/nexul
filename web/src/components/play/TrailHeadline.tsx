@@ -7,16 +7,17 @@ import { useLiveTrailState } from "@/hooks/TrailHooks";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { isTrailActive, type Trail, type TrailState } from "@/models/Trail";
+import { formatClockTime, formatShortDate } from "@/utils/TimeUtility";
 
 interface TrailHeadlineProps {
   trail: Trail;
 }
 
-const VIA_WORDS: Record<Trail["via"], string> = { web: "from the web", mcp: "over MCP", automation: "by an automation" };
+const VIA_WORDS: Record<Exclude<Trail["via"], "automation">, string> = { web: "from the web", mcp: "over MCP" };
 
 const stateWords = (state: TrailState, seconds: number) => {
   const took = formatElapsed(seconds);
-  if (state === "starting") return { word: "Starting", time: "" };
+  if (state === "starting") return { word: "Starting for", time: took };
   if (state === "running") return { word: "Running for", time: took };
   if (state === "waiting") return { word: "Waiting for an answer", time: "" };
   if (state === "done") return { word: "Done in", time: took };
@@ -24,7 +25,6 @@ const stateWords = (state: TrailState, seconds: number) => {
   return { word: "Interrupted after", time: took };
 };
 
-const formatStart = (iso: string) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 // The dialog's meta line: how the run stands and for how long, then who started it, from where and when.
 export const TrailHeadline = ({ trail }: TrailHeadlineProps) => {
@@ -39,14 +39,16 @@ export const TrailHeadline = ({ trail }: TrailHeadlineProps) => {
     <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
       <span className="inline-flex items-center gap-1.5 text-foreground">
         <TrailStateIcon state={state} />
-        {word}
-        {time && <span className="tabular-nums">{time}</span>}
+        <span className="tabular-nums">{time ? `${word} ${time}` : word}</span>
       </span>
-      <span>
-        Started by {personLabel(lookup(trail.starter_id))} {VIA_WORDS[trail.via]}
-      </span>
-      <time dateTime={trail.started_at} className="tabular-nums">
-        {formatStart(trail.started_at)}
+      {trail.via === "automation" && <span>Started by an automation</span>}
+      {trail.via !== "automation" && (
+        <span>
+          Started by {personLabel(lookup(trail.starter_id))} {VIA_WORDS[trail.via]}
+        </span>
+      )}
+      <time dateTime={trail.started_at} className="font-mono tabular-nums">
+        {formatShortDate(trail.started_at)} {formatClockTime(trail.started_at)}
       </time>
     </DialogDescription>
   );
