@@ -77,12 +77,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-// The part of a long dialog that scrolls, between a header and footer that stay put.
+// The part of a long dialog that scrolls, between a header and footer that stay put; positioned, so nothing inside it overflows the dialog.
 function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("scroll-edge -mx-6 -my-1 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-1", className)}
+      className={cn("scroll-edge relative -mx-6 -my-1 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-1", className)}
       {...props}
     />
   );
