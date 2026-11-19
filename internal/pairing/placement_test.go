@@ -337,7 +337,7 @@ func TestPreviewRun_SaysWhereARunWouldLandWithoutAskingAComputer(t *testing.T) {
 		return nil, nil
 	}
 
-	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1")
+	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "b", target.Computer.ID)
@@ -503,4 +503,27 @@ func TestResolveRun_AComputerWithBothRepositoriesTakesEachRunInItsOwnCheckout(t 
 	both, err := f.svc.ResolveRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Tests: true, ComputerIDs: []string{"both"}})
 	require.NoError(t, err)
 	assert.Equal(t, "t3-e2e-both", both.HarnessProjectID)
+
+	preview, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", true)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"tests-only", "t3-e2e-tests-only"}, []string{preview.Computer.ID, preview.HarnessProjectID},
+		"the run dialog is told where a pressed tests play lands")
+}
+
+func TestSetProjectLink_DropsAPickForARepositoryTheProjectNoLongerHas(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "a", nil)
+	picks := []Checkout{
+		{ComputerID: "a", Repository: "acme/app", HarnessProjectID: "t3-app-a"},
+		{ComputerID: "a", Repository: "acme/gone", HarnessProjectID: "t3-gone"},
+		{ComputerID: "a", HarnessProjectID: "t3-other-a"},
+	}
+
+	link, err := f.svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{Checkouts: picks})
+
+	require.NoError(t, err, "a pick the form sends back for a removed repository never blocks the save")
+	assert.Equal(t, []Checkout{picks[0], picks[2]}, link.Checkouts)
+	err = f.svc.PickCheckout(t.Context(), "u1", "proj-1", picks[1])
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a new pick for it is refused")
 }

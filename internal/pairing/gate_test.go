@@ -295,12 +295,12 @@ func TestResolveSetupTurnTarget_OnlyTheWizardCallsIt(t *testing.T) {
 func TestPreviewTarget_UnconfirmedComputer_ResolvesWithoutTokenOrGate(t *testing.T) {
 	t.Parallel()
 	f := newGateFixture(t)
-	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1")
+	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
 	require.NoError(t, err)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
 	assert.Empty(t, target.Computer.BearerToken)
 
-	_, err = f.svc.PreviewTarget(t.Context(), "", "proj-1")
+	_, err = f.svc.PreviewTarget(t.Context(), "", "proj-1", false)
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 

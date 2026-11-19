@@ -25,9 +25,12 @@ ADR 0197's tie-break falls out of this rather than being a rule of its own: a ru
 so the app's clone is the one it matches.
 
 The trade-off: a play that should work in the tests repository has to say so, and an automation reacting to a git event
-in a repository outside the project still runs in the app's checkout. Rejected: inferring the repository from the
-play's label or instructions, which no one can see or correct; a repository per auto play, which leaves pressed runs and
-`runPlay` without one; and keeping one checkout per computer with a second "tests checkout" field, which breaks again
-at a third repository.
+in a repository outside the project runs in the play's own repository. A run waiting in the queue is still one per
+automation, play and ticket, so a second git event for the same ticket while the first waits keeps the first one's
+repository.
+
+Rejected: inferring the repository from the play's label or instructions, which no one can see or correct; a repository
+per auto play, which leaves pressed runs and `runPlay` without one; and keeping one checkout per computer with a second
+"tests checkout" field, which breaks again at a third repository.
 
 Decided 2026-11-19.

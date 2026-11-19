@@ -11,10 +11,11 @@ import (
 func TestMigration0130_AutoPlaysDropMemoriesDeletedBeforeIt(t *testing.T) {
 	db := migrateBefore(t, "0130")
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
-	seedPlays(t, s, "play-1")
 	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
 	// Raw SQL at this migration's schema: the repos write the newest one.
-	_, err := db.Exec(`INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, updated_at) VALUES ('p-1', 'Project ACM', 'ACM', 1, 'ws-1', 1, 1);
+	_, err := db.Exec(`INSERT INTO plays (id, workspace_id, label, type, created_at, updated_at) VALUES ('play-1', 'ws-1', 'play-1', 'doc', 1, 1);
+INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, updated_at) VALUES ('p-1', 'Project ACM', 'ACM', 1, 'ws-1', 1, 1);
 INSERT INTO memories (id, workspace_id, project_id, title, body, version, created_at, updated_at) VALUES
     ('mem-1', 'ws-1', 'p-1', 'A', '', 1, 1, 1), ('mem-2', 'ws-1', 'p-1', 'B', '', 1, 1, 1)`)
 	require.NoError(t, err)

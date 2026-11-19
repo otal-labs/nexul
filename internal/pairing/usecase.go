@@ -483,6 +483,9 @@ func (s *Service) SetProjectLink(ctx context.Context, userID, projectID string, 
 		return ProjectLink{}, err
 	}
 	link.UserID, link.ProjectID = userID, projectID
+	if link.Checkouts, err = s.currentPicks(ctx, projectID, link.Checkouts); err != nil {
+		return ProjectLink{}, err
+	}
 	if link.Computers, link.Checkouts, err = s.ownLinkComputers(ctx, userID, projectID, link.Computers, link.Checkouts); err != nil {
 		return ProjectLink{}, err
 	}
@@ -565,6 +568,22 @@ func (s *Service) checkoutRepository(ctx context.Context, projectID, repository 
 		return "", fmt.Errorf("%w: %s is not a repository of this project; project_get lists them", apperrs.ErrInvalid, repository)
 	}
 	return repository, nil
+}
+
+// currentPicks drops the picks for a repository the project no longer has, which a client sends back as it read them.
+func (s *Service) currentPicks(ctx context.Context, projectID string, checkouts []Checkout) ([]Checkout, error) {
+	if s.repositories == nil {
+		return checkouts, nil
+	}
+	remotes, err := s.repositories.ProjectRemotes(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("read the repositories of project %s: %w", projectID, err)
+	}
+	return slices.DeleteFunc(slices.Clone(checkouts), func(c Checkout) bool {
+		repository := strings.ToLower(strings.TrimSpace(c.Repository))
+		return repository != "" && githubRepository.MatchString(repository) &&
+			!slices.ContainsFunc(remotes, func(r ProjectRemote) bool { return r.Repository == repository })
+	}), nil
 }
 
 // PickCheckout remembers the T3 project the caller's runs in one repository of a project they can open use on one of
@@ -701,12 +720,10 @@ func (s *Service) requireListedProject(ctx context.Context, userID, computerID, 
 	return nil
 }
 
-// PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.
-
 // PreviewTarget is where a play pressed in projectID would land now, without the gate or bearer token, so readiness
-// never greys a play that would start on press.
-func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
-	return s.PreviewRun(ctx, RunRequest{UserID: userID, ProjectID: projectID, Room: RoomPreferred, Person: true})
+// never greys a play that would start on press; tests is a play that works on the project's tests repository.
+func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string, tests bool) (*ResolvedTarget, error) {
+	return s.PreviewRun(ctx, RunRequest{UserID: userID, ProjectID: projectID, Room: RoomPreferred, Person: true, Tests: tests})
 }
 
 // ResolveSetupTurnTarget skips the setup gate for the wizard's setup turn only; TestResolveSetupTurnTarget_OnlyTheWizardCallsIt guards it.
