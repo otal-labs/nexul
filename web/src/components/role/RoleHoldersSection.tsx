@@ -41,8 +41,8 @@ export const RoleHoldersSection = () => {
 
   return (
     <section className="space-y-3" aria-labelledby="role-people-title">
-      {/* From 1024px the heading, its actions and the find field pin under the role's header while the holders are in view. */}
-      <div className="sticky-crumbs -mx-4 space-y-3 px-4 pb-2 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 lg:top-(--role-header)! lg:-mt-3 lg:pt-3">
+      {/* Where the role header pins, the heading, its actions and the find field pin under the role's header, opaque to their edge, while the holders are in view. */}
+      <div className="sticky-crumbs -mx-4 mb-0! space-y-3 px-4 pb-3 after:hidden unpin:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-3 pin:pt-3">
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <Microheader id="role-people-title">People</Microheader>

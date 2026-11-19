@@ -17,14 +17,14 @@ interface RoleDetailHeaderProps {
   backAlways?: boolean;
 }
 
-// The open pane's title and actions on one line, then its line and reach, stuck to the pane's top from 1024px so its links stay in reach.
+// The open pane's title and actions on one line, then its line and reach, stuck to the pane's top where there is room (the pin variant) so its links stay in reach.
 // Below 1024px a link back to the list leads it; a pane that also takes the list's place sets that link on the title's line.
 const backClass = "-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground lg:hidden";
 
 export const RoleDetailHeader = ({ ref, title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <header ref={ref} className="sticky-crumbs -mx-4 max-lg:relative! space-y-1.5 px-4 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
+    <header ref={ref} className="sticky-crumbs -mx-4 unpin:relative! space-y-1.5 px-4 sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6">
       {!backAlways && (
         <Link to={wsPath("/access/roles")} className={backClass}>
           <ChevronLeft aria-hidden className="size-4" />

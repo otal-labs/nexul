@@ -28,7 +28,7 @@ export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevel
   const rows = held > 0 || showNone;
 
   return (
-    <section id={roleSectionId(area)} className="scroll-mt-4 space-y-1 lg:scroll-mt-[calc(var(--role-header,0px)+1rem)]" aria-label={title}>
+    <section id={roleSectionId(area)} className="scroll-mt-4 space-y-1 pin:scroll-mt-[calc(var(--role-header,0px)+1rem)]" aria-label={title}>
       <div className="flex min-h-8 items-center gap-2">
         <Microheader>{title}</Microheader>
         {held > 0 && (

@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { microheaderClass } from "@/components/Microheader";
 import { RoleFoldButton } from "@/components/role/RoleFoldButton";
-import { fadeEndCell, leadStrip, matrixFadeWidth, nameText, stickyCell } from "@/components/accessgrid/gridStyles";
+import { fadeEndCell, leadStrip, matrixFadeWidth, stickyCell } from "@/components/accessgrid/gridStyles";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { levelOf, type PermissionDomain } from "@/models/PermissionLevel";
@@ -23,10 +23,8 @@ const cellClass = "border-b border-border px-2 group-hover/row:bg-accent/40";
 const MatrixRow = ({ label, children }: { label: string; children: ReactNode }) => (
   <tr className="group/row">
     <th scope="row" className={rowHead}>
-      <span className="relative block h-5">
-        <span className={nameText} title={label}>
-          {label}
-        </span>
+      <span className="line-clamp-2 py-1.5 leading-tight" title={label}>
+        {label}
       </span>
     </th>
     {children}
