@@ -17,8 +17,7 @@ interface RolesListPaneProps {
   selectedId: string | undefined;
 }
 
-// The workspace's roles, the Owner first, each with how many hold it;
-// under them, pinned outside the scroller so they stay in view, every role side by side and the members holding none.
+// Compare roles and No roles sit outside the scroller so they stay in view.
 export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const seesTeam = useSeesTeam();

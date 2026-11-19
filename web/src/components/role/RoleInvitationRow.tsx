@@ -21,8 +21,7 @@ const expires = (at: string): string => {
   return days <= 1 ? "expires within a day" : `expires in ${days} days`;
 };
 
-// An open link on the holders' grid: the link mark where a picture sits, who made it and when it expires, the other roles it
-// gives as chips, and its menu.
+// Titled by its expiry, which is what tells two links apart.
 export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, onRevoke }: RoleInvitationRowProps) => {
   const { open: confirm } = useConfirmationDialog();
   // What else the link gives besides the open role, as the holders show their other roles.

@@ -17,8 +17,7 @@ interface RoleDetailHeaderProps {
   backAlways?: boolean;
 }
 
-// The open pane's title and actions on one line, then its line and reach, stuck to the pane's top where there is room (the pin variant) so its links stay in reach.
-// Below 1024px a link back to the list leads the title's line; a pane that also takes the list's place keeps it at every width.
+// Pinned only where there is room (the pin variant), so the reach links stay in reach without crowding the holders.
 const backClass = "-ml-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground lg:hidden";
 
 export const RoleDetailHeader = ({ ref, title, line, owner = false, actions, tally, backAlways = false }: RoleDetailHeaderProps) => {

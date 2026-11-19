@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-// How many of a sideways scroller's columns (`[data-role-head]` cells) start past its right edge less the fade, so none shows; it
-// follows the scroller as it scrolls and resizes.
+// Columns starting past the scroller's edge less its fade, kept current as it scrolls and resizes.
 export const useHiddenColumns = (fade: number) => {
   const ref = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(0);

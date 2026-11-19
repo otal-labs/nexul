@@ -6,8 +6,7 @@ interface Fit {
   end: number;
 }
 
-// How many of a one-row wrapping container's children sit whole on its first row, the free width after the last of them, and
-// where that last one ends.
+// Children on a wrapping container's first row, the free width after them, and where the last one ends.
 export const useFittingChildren = <T extends HTMLElement>(count: number) => {
   const ref = useRef<T>(null);
   const [fit, setFit] = useState<Fit>({ fitting: count, slack: 0, end: 0 });

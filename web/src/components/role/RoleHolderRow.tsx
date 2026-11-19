@@ -25,8 +25,7 @@ interface RoleHolderRowProps {
   match?: string | undefined;
 }
 
-// A person in the open role (or in No roles): the whole row opens them, with their presence and other roles, and a menu to take
-// the role, view as them, or take them out of the workspace. An Owner's row has no menu; the Owner role is never given or taken here.
+// The Owner role is never given or taken here, so an Owner's row has no menu.
 export const RoleHolderRow = ({ person, onOpen, match }: RoleHolderRowProps) => {
   const workspace = useSelectedWorkspace();
   const workspaceName = workspace?.name ?? "this workspace";

@@ -39,8 +39,7 @@ interface ListPaneRowProps {
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
 export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
-  // On the title's line the meta sets inline in the title's line box, so a mono count sits on the title's baseline instead of
-  // centring in it.
+  // Inline in the title's line box, a mono count sits on the title's baseline instead of centring in it.
   const onTitleLine = metaOnTitleLine && cn("block h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const titleLineBox = metaOnTitleLine && cn("h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const ref = useRef<HTMLLIElement>(null);

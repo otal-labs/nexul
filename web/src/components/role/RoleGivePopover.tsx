@@ -18,8 +18,7 @@ interface RoleGivePopoverProps {
   person: TeamPerson;
 }
 
-// On No roles: the roles the viewer may give, each with its reach, one pick away from the person who holds none. It never runs past the window:
-// it holds to the room it has, scrolls with a fade, and a find field narrows it.
+// Keeps to the room it has and scrolls with a fade, so a long role list never runs past the window.
 export const RoleGivePopover = ({ person }: RoleGivePopoverProps) => {
   const [query, setQuery] = useState("");
   const workspace = useSelectedWorkspace();

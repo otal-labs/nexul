@@ -15,8 +15,7 @@ interface RoleLevelsGroupProps {
   permissions: string[];
 }
 
-// One of the role editor's sections, read-only: what the role holds, the areas it has no access to folded under one line,
-// and a section it doesn't reach at all as that line alone.
+// A section the role doesn't reach at all shows only its fold line.
 export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevelsGroupProps) => {
   const [showNone, setShowNone] = useState(false);
   const heldAbilities = domains.abilities.filter((ability) => permissions.includes(ability.value));

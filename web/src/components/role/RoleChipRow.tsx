@@ -5,8 +5,7 @@ import type { TeamRole } from "@/models/Team";
 
 const SHOWN = 3;
 
-// A person's roles on one line, set on the line's baseline: as many whole chips as the line holds, up to three, then the rest as
-// a mono count with every hidden name in its tooltip. Only a first chip too long for the line truncates.
+// Only a first chip too long for the line truncates; the rest give way whole to a mono count.
 export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
   const candidates = roles.slice(0, SHOWN);
   // The chips wrap onto a clipped second line; only those on the first count as shown.
