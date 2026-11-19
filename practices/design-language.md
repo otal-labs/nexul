@@ -1449,7 +1449,7 @@ quiet link per editor section with how many of its areas the role reaches in
 mono, then the highest level it holds as its glyph and word ("In projects 10/12 Delete"), the glyph between them so the count never reads as the level's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
-Then People, a band that pins under the role's header wherever the header pins, opaque to its edge, while the holders are in view: the microheader with its count in mono beside it, never joined by
+Then People, a band that pins under the role's header wherever the header pins, opaque to its edge and closed by the list's top hairline, while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds

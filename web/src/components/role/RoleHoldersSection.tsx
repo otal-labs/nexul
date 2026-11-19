@@ -42,42 +42,45 @@ export const RoleHoldersSection = () => {
   return (
     <section className="space-y-3" aria-labelledby="role-people-title">
       {/* Where the role header pins, the heading, its actions and the find field pin under the role's header, opaque to their edge, while the holders are in view. */}
-      <div className="sticky-crumbs -mx-4 mb-0! space-y-3 px-4 pb-3 after:hidden unpin:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-3 pin:pt-3">
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <Microheader id="role-people-title">People</Microheader>
-            {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-              <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+      <div className="sticky-crumbs -mx-4 mb-0! px-4 after:hidden unpin:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-3 pin:pt-3">
+        {/* The list's top hairline, here so a row passing under the band meets an edge. */}
+        <div className="space-y-3 border-b border-border pb-3">
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <Microheader id="role-people-title">People</Microheader>
+              {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+                <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+              )}
+            </div>
+            {changeable && givable && (
+              <div className="flex items-center gap-2">
+                <RoleAddPeoplePopover />
+                <CreateInvitationDialog role={role} onCreated={setCreated} />
+              </div>
             )}
           </div>
-          {changeable && givable && (
-            <div className="flex items-center gap-2">
-              <RoleAddPeoplePopover />
-              <CreateInvitationDialog role={role} onCreated={setCreated} />
-            </div>
+          {changeable && !givable && reason && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Lock aria-hidden className="mt-px size-3 shrink-0" />
+              {reason}
+            </p>
+          )}
+          {holders && holders.length > FIND_FROM && (
+            <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
           )}
         </div>
-        {changeable && !givable && reason && (
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <Lock aria-hidden className="mt-px size-3 shrink-0" />
-            {reason}
-          </p>
-        )}
-        {holders && holders.length > FIND_FROM && (
-          <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
-        )}
       </div>
       {created && <CreatedInvitationLink key={created.id} invitation={created} />}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {holders && holders.length === 0 && <EmptyRow flush className="flex min-h-14 items-center border-y border-border">Nobody holds {role?.name} yet.</EmptyRow>}
+      {holders && holders.length === 0 && <EmptyRow flush className="flex min-h-14 items-center border-b border-border">Nobody holds {role?.name} yet.</EmptyRow>}
       {matched && holders && holders.length > 0 && matched.length === 0 && (
-        <p role="status" className="flex min-h-14 items-center border-y border-border text-sm text-muted-foreground">
+        <p role="status" className="flex min-h-14 items-center border-b border-border text-sm text-muted-foreground">
           Nobody holding {role?.name} matches &ldquo;{query.trim()}&rdquo;.
         </p>
       )}
       {shown && shown.length > 0 && (
-        <EnterList aria-label={`People holding ${role?.name}`} className="border-t border-border">
+        <EnterList aria-label={`People holding ${role?.name}`}>
           {shown.map((person) => (
             <RoleHolderRow key={person.id} person={person} />
           ))}
