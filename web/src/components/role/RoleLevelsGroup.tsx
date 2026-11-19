@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Microheader } from "@/components/Microheader";
+import { cn } from "@/lib/utils";
 import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { RoleAbilityRow } from "@/components/role/RoleAbilityRow";
 import { RoleLevelRow } from "@/components/role/RoleLevelRow";
@@ -27,7 +28,7 @@ export const RoleLevelsGroup = ({ area, title, domains, permissions }: RoleLevel
   const rows = held > 0 || showNone;
 
   return (
-    <section id={roleSectionId(area)} className="scroll-mt-4 space-y-1 pin:scroll-mt-[calc(var(--role-header,0px)+1rem)]" aria-label={title}>
+    <section id={roleSectionId(area)} className={cn("scroll-mt-4 space-y-1 pin:scroll-mt-[calc(var(--role-header,0px)+1rem)]", !rows && "mb-2")} aria-label={title}>
       <div className="flex min-h-8 items-center gap-2">
         <Microheader>{title}</Microheader>
         {held > 0 && (

@@ -16,6 +16,7 @@ import { RoleInvitationsSection } from "@/components/role/RoleInvitationsSection
 import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
+import { cn } from "@/lib/utils";
 import type { CreatedInvitation } from "@/models/Invitation";
 import { roleHolders } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -56,10 +57,13 @@ export const RoleHoldersSection = () => {
                   <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
                 )}
               </span>
-              {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
+              {/* Its room is kept while the list is folded, so opening it never moves the field. */}
+              {holders && holders.length > FIND_FROM && (
+                <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className={cn("h-6", !(all && !needle) && "invisible")} />
+              )}
             </span>
-            <div className="flex min-w-0 flex-1 basis-96 items-center justify-end gap-2">
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="w-64 min-w-0 shrink" />}
+            <div className="flex min-w-0 flex-1 basis-md items-center justify-end gap-2">
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="w-64 min-w-44 shrink" />}
               {changeable && givable && (
                 <>
                   <RoleAddPeoplePopover />

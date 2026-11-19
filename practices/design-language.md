@@ -605,7 +605,7 @@ double-click resets to the 360px default, one width shared by every page,
 kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
 search field led by the search mark, its placeholder "Search" (`ListPaneHeader`; a list nobody creates in or searches, the
-Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers, the row's
+Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers (a row with nothing to preview, a play whose group already names it, takes the one-line 32px row), the row's
 own padding and its hover lift separate them: a 13px normal-weight title in
 `foreground` over a muted one-line preview, mono meta trailing right. A
 title wraps to two lines at most, the full text in its tooltip, and sets its
@@ -1453,9 +1453,9 @@ Then People, a band that pins under the role's header from 1024px (at the pane's
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
-more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, shrinking first, the field and actions taking a line of their own once they would have under 24rem, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
+more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, shrinking first but never under 11rem, the field and actions taking a line of their own once they would have under 28rem, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
-allows stays in reach, and a "Show fewer" beside the count in the band folds them back; a search shows
+allows stays in reach, and a "Show fewer" beside the count in the band folds them back, its room kept while folded so opening never moves the field; a search shows
 every match. Holders run in name order. Each holder
 is a hairline row, at least 56px, the whole row opening the person's account dialog (the one Settings → Team opens), lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
@@ -1479,7 +1479,7 @@ gives as chips, and a `…` holding Revoke link, which asks first; the links ste
 further down than the gaps above it and 12px over its first section: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
-"No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
+"No access" and a "Show 11 areas" toggle beside it, nothing more, 8px over the next section rather than a section's full gap. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
 own once the pane is 42rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
 muted line under it, and the level as its word in a fixed 80px slot on the right,
 on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
