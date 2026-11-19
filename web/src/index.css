@@ -3,9 +3,10 @@
 @import "@xyflow/react/dist/style.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
-/* A role pane pins its header and People band only where both leave room for the rows: 1024px wide and 800px tall. */
+/* A role pane pins its header and People band where both leave room for the rows (1024px wide, 800px tall); a shorter screen pins the band alone. */
 @custom-variant pin (@media (width >= 64rem) and (height >= 50rem));
 @custom-variant unpin (@media not ((width >= 64rem) and (height >= 50rem)));
+@custom-variant short-lg (@media (width >= 64rem) and (height < 50rem));
 
 /*
  * Nexul design tokens. The spec of record is practices/design-language.md.

@@ -1449,7 +1449,7 @@ quiet link per editor section with how many of its areas the role reaches in
 mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
-Then People, a band that pins under the role's header wherever the header pins, opaque to its edge and closed by the list's top hairline, while the holders are in view: the microheader with its count in mono beside it, never joined by
+Then People, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline with the band fade under it, while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
@@ -1504,7 +1504,7 @@ lines) over the holder count in mono (a muted dash, named Nobody, at none) with 
 has none); one row per area, its name wrapping to two lines before it cuts, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 held by no role" toggle on the band, so what tells the roles apart leads. A cell is the level as a
 `LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row: held slots filled, a level it could still hold an
-outline, a level the area lacks an empty slot, and its word; a cell the role has no access in
+outline, a level the area lacks a tick on the baseline, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
 baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and

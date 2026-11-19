@@ -43,8 +43,8 @@ export const RoleHoldersSection = () => {
 
   return (
     <section className="space-y-3" aria-labelledby="role-people-title">
-      {/* Where the role header pins, the heading, its actions and the find field pin under the role's header, opaque to their edge, while the holders are in view. */}
-      <div className="sticky-crumbs -mx-4 mb-0! px-4 after:hidden unpin:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-3 pin:pt-3">
+      {/* From 1024px the heading, its actions and the find field pin while the holders are in view: under the role's header where it pins, else at the top. */}
+      <div className="sticky-crumbs -mx-4 mb-0! px-4 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 short-lg:-mt-3 short-lg:pt-3 pin:top-(--role-header)! pin:-mt-5 pin:pt-5">
         {/* The list's top hairline, here so a row passing under the band meets an edge. */}
         <div className="space-y-3 border-b border-border pb-3">
           <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">

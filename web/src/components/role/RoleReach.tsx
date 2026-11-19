@@ -12,7 +12,7 @@ interface RoleReachProps {
 export const RoleReach = ({ catalog, permissions }: RoleReachProps) => {
   const reached = roleReach(catalog, permissions).filter(({ held }) => held > 0);
   return (
-    <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+    <span className="flex flex-wrap items-center gap-x-5 text-xs text-muted-foreground">
       {reached.length === 0 && <span>No access</span>}
       {reached.map(({ section, held, total, top }) => (
         <span key={section.area} className="inline-flex items-center gap-1.5 whitespace-nowrap">
