@@ -15,16 +15,19 @@ export const RoleLevelsSection = ({ role }: RoleLevelsSectionProps) => {
   const permissions = role.is_owner_role ? (catalog ?? []).map((entry) => entry.value) : role.permissions;
   const sections = ROLE_SECTIONS.map((section) => ({ ...section, domains: sectionDomains(catalog ?? [], section.area) }));
   return (
-    <section aria-labelledby="role-allows-title" className="@container space-y-6 pt-4">
+    <section aria-labelledby="role-allows-title" className="@container space-y-3 pt-4">
       <h3 id="role-allows-title" className="text-sm font-semibold">
         What {role.name} can do
       </h3>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {catalog &&
-        sections.map((section) => (
-          <RoleLevelsGroup key={section.area} area={section.area} title={section.title} domains={section.domains} permissions={permissions} />
-        ))}
+      {catalog && (
+        <div className="space-y-6">
+          {sections.map((section) => (
+            <RoleLevelsGroup key={section.area} area={section.area} title={section.title} domains={section.domains} permissions={permissions} />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

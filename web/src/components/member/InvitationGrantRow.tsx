@@ -24,7 +24,7 @@ export const InvitationGrantRow = ({ index, remove, removable }: InvitationGrant
 
   return (
     <li className="space-y-3">
-      <div className="flex min-h-11 flex-wrap items-center gap-2 border-b border-border py-1.5">
+      <div className="flex min-h-11 flex-wrap items-center gap-2 border-b border-border pb-3">
         <Controller
           control={control}
           name={`grants.${index}.workspace_id`}

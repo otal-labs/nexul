@@ -1477,7 +1477,7 @@ the role list under them as Invited, on the holders' grid: a link mark on a
 `surface-2` disc in the avatar's slot, rows that open nothing and so never lift, when it expires as its title ("Expires in 7
 days", what tells two links apart), over who made it and the other roles it
 gives as chips, and a `…` holding Revoke link, which asks first; the links step aside while a search runs. What it allows follows under its own heading, "What <role> can do", set 16px
-further down than the gaps above it: one microheader per
+further down than the gaps above it and 12px over its first section: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
@@ -1503,8 +1503,8 @@ with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, its name wrapping to two lines before it cuts, under a muted band for each of the editor's
 sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 held by no role" toggle on the band, so what tells the roles apart leads. A cell is the level as a
-`LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row, a level the area lacks drawn as an
-outline in its own slot, and its word; a cell the role has no access in
+`LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row: held slots filled, a level it could still hold an
+outline, a level the area lacks an empty slot, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
 baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and

@@ -6,7 +6,7 @@ interface LevelGlyphProps {
   className?: string;
 }
 
-// Read, Write and Delete from the left: filled up to the level, muted above it, outlined where the area has no such rung.
+// Read, Write and Delete from the left: filled up to the level, an outline above it, and an empty slot where the area has no such rung.
 export const LevelGlyph = ({ level, rungs = 3, className }: LevelGlyphProps) => (
   <span aria-hidden className={cn("inline-flex shrink-0 gap-px", className)}>
     {Array.from({ length: 3 }, (_, slot) => {
@@ -18,8 +18,8 @@ export const LevelGlyph = ({ level, rungs = 3, className }: LevelGlyphProps) => 
             "h-2 w-1.5",
             slot === 0 && "rounded-l-[2px]",
             slot === 2 && "rounded-r-[2px]",
-            missing && "border border-muted-foreground/45",
-            !missing && (slot < level ? "bg-foreground/75" : "bg-muted-foreground/60"),
+            !missing && slot < level && "bg-foreground/75",
+            !missing && slot >= level && "border border-muted-foreground/60",
           )}
         />
       );
