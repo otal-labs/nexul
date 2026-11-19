@@ -56,8 +56,8 @@ type Repo interface {
 	SaveProjectLink(ctx context.Context, link ProjectLink) error
 	// DeleteProjectLink clears userID's link and computer order for projectID, keeping the checkouts they picked.
 	DeleteProjectLink(ctx context.Context, userID, projectID string) error
-	// SaveCheckout remembers the T3 project userID picked for projectID on computerID.
-	SaveCheckout(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error
+	// SaveCheckout remembers the T3 project userID picked for one repository of projectID on a computer.
+	SaveCheckout(ctx context.Context, userID, projectID string, checkout Checkout) error
 }
 
 // SetupStore persists setup confirmations; each write carries its event for the outbox in the same transaction.

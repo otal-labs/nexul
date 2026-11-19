@@ -256,7 +256,14 @@ func (r *PairingRepo) GetProjectLink(ctx context.Context, userID, projectID stri
 		return pairing.ProjectLink{}, fmt.Errorf("list the computers of project link %s: %w", projectID, err)
 	}
 	for _, c := range computers {
-		link = withProjectComputer(link, c)
+		link.Computers = append(link.Computers, c.ComputerID)
+	}
+	checkouts, err := r.q.ListPairingProjectCheckouts(ctx, sqlcgen.ListPairingProjectCheckoutsParams{UserID: userID, ProjectID: projectID})
+	if err != nil {
+		return pairing.ProjectLink{}, fmt.Errorf("list the checkouts of project link %s: %w", projectID, err)
+	}
+	for _, c := range checkouts {
+		link.Checkouts = append(link.Checkouts, toCheckout(c))
 	}
 	return link, nil
 }
@@ -280,13 +287,27 @@ func (r *PairingRepo) ListProjectLinks(ctx context.Context, userID string) ([]pa
 		byProject[link.ProjectID] = link
 		order = append(order, link.ProjectID)
 	}
-	for _, c := range computers {
-		link, ok := byProject[c.ProjectID]
+	linkOf := func(projectID string) pairing.ProjectLink {
+		link, ok := byProject[projectID]
 		if !ok {
-			link = pairing.ProjectLink{UserID: userID, ProjectID: c.ProjectID}
-			order = append(order, c.ProjectID)
+			link = pairing.ProjectLink{UserID: userID, ProjectID: projectID}
+			order = append(order, projectID)
 		}
-		byProject[c.ProjectID] = withProjectComputer(link, c)
+		return link
+	}
+	for _, c := range computers {
+		link := linkOf(c.ProjectID)
+		link.Computers = append(link.Computers, c.ComputerID)
+		byProject[c.ProjectID] = link
+	}
+	checkouts, err := r.q.ListPairingProjectCheckoutsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list the checkouts of project links: %w", err)
+	}
+	for _, c := range checkouts {
+		link := linkOf(c.ProjectID)
+		link.Checkouts = append(link.Checkouts, toCheckout(c))
+		byProject[c.ProjectID] = link
 	}
 	slices.Sort(order)
 	out := make([]pairing.ProjectLink, 0, len(order))
@@ -296,16 +317,8 @@ func (r *PairingRepo) ListProjectLinks(ctx context.Context, userID string) ([]pa
 	return out, nil
 }
 
-// withProjectComputer adds one project computer row to link: a position places it in the project's order, and a T3
-// project is the checkout picked there.
-func withProjectComputer(link pairing.ProjectLink, c sqlcgen.PairingProjectComputer) pairing.ProjectLink {
-	if c.Position.Valid {
-		link.Computers = append(link.Computers, c.ComputerID)
-	}
-	if c.HarnessProjectID != "" {
-		link.Checkouts = append(link.Checkouts, pairing.Checkout{ComputerID: c.ComputerID, HarnessProjectID: c.HarnessProjectID})
-	}
-	return link
+func toCheckout(c sqlcgen.PairingProjectCheckout) pairing.Checkout {
+	return pairing.Checkout{ComputerID: c.ComputerID, Repository: c.Repository, HarnessProjectID: c.HarnessProjectID}
 }
 
 func toProjectLink(row sqlcgen.PairingProjectLink) (pairing.ProjectLink, error) {
@@ -346,7 +359,7 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 		}
 		for _, c := range l.Checkouts {
 			err := q.SetPairingProjectCheckout(ctx, sqlcgen.SetPairingProjectCheckoutParams{
-				UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: c.ComputerID, HarnessProjectID: c.HarnessProjectID,
+				UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: c.ComputerID, Repository: c.Repository, HarnessProjectID: c.HarnessProjectID,
 			})
 			if err != nil {
 				return fmt.Errorf("save the checkout on %s for project link %s: %w", c.ComputerID, l.ProjectID, classifyWriteErr(err))
@@ -375,13 +388,13 @@ func (r *PairingRepo) DeleteProjectLink(ctx context.Context, userID, projectID s
 	})
 }
 
-func (r *PairingRepo) SaveCheckout(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error {
+func (r *PairingRepo) SaveCheckout(ctx context.Context, userID, projectID string, c pairing.Checkout) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SetPairingProjectCheckout(ctx, sqlcgen.SetPairingProjectCheckoutParams{
-			UserID: userID, ProjectID: projectID, ComputerID: computerID, HarnessProjectID: harnessProjectID,
+			UserID: userID, ProjectID: projectID, ComputerID: c.ComputerID, Repository: c.Repository, HarnessProjectID: c.HarnessProjectID,
 		})
 		if err != nil {
-			return fmt.Errorf("save the checkout on %s for project %s: %w", computerID, projectID, classifyWriteErr(err))
+			return fmt.Errorf("save the checkout on %s for project %s: %w", c.ComputerID, projectID, classifyWriteErr(err))
 		}
 		return nil
 	})

@@ -67,6 +67,7 @@ Open **Plays** in the sidebar. Plays are grouped by type. A row shows when its l
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
+- **Works in**, the project repository its runs use: **App repository**, or **Tests repository** for a project that keeps its tests in a separate one. A project without one runs it in the app's. A run an automation starts from a git event works in that event's repository instead. See [Choose where turns run](/docs/guide/paired-computers/#choose-where-turns-run).
 - **Description**, shown as the button's tooltip.
 - **Instructions**, what the agent should do on every run.
 - **Enabled**, and **Excluded projects** where it never shows. The **Enabled** switch also sits beside **Edit** at the top of the play's page and saves as soon as you flip it.
@@ -162,7 +163,7 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 
 ## History
 
-A play keeps the last ten versions of its instructions, and **History** in the play page's ⋯ menu shows them. Each version is compared word by word with the one before it, with a list of versions on the right. An unedited built-in play reads **Built-in default**. Changes to its label, description, enabled switch, stage and excluded projects sit in the same list as single lines ("Enabled On → Off"); they show what happened and can't be picked.
+A play keeps the last ten versions of its instructions, and **History** in the play page's ⋯ menu shows them. Each version is compared word by word with the one before it, with a list of versions on the right. An unedited built-in play reads **Built-in default**. Changes to its label, description, enabled switch, stage, excluded projects and **Works in** sit in the same list as single lines ("Enabled On → Off"); they show what happened and can't be picked.
 
 **Restore** on an older version saves its text again as the newest, so nothing in the history is lost. It takes `plays:write`; anyone who can read the play can open its history.
 

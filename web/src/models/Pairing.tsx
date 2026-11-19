@@ -401,9 +401,11 @@ export interface PairingDefaults {
   clone_automatically: boolean;
 }
 
-// The T3 project the person picked for a project on one computer.
+// The T3 project the person picked for one repository of a project on one computer (ADR 0204).
 export interface Checkout {
   computer_id: string;
+  // owner/name in lowercase; "" for a pick from before picks were per repository.
+  repository: string;
   harness_project_id: string;
 }
 
@@ -511,7 +513,7 @@ export const ProjectLinkFormSchema = z.object({
   start_in: z.enum(["", StartIn.Folder, StartIn.Worktree]),
   placement: z.enum(["", Placement.InOrder, Placement.Spread]),
   computers: z.array(z.string()),
-  checkouts: z.array(z.object({ computer_id: z.string(), harness_project_id: z.string() })),
+  checkouts: z.array(z.object({ computer_id: z.string(), repository: z.string(), harness_project_id: z.string() })),
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;

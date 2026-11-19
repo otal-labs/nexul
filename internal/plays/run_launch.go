@@ -94,6 +94,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		return nil, err
 	}
 	defer release()
+	pick.Tests = play.Repository == RepositoryTests
 	choice, err := r.resolveHarness(ctx, trail, targetTitle, pick, mode)
 	if err != nil {
 		return nil, err

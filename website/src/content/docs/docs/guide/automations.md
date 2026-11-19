@@ -90,7 +90,7 @@ Two events mark a moment rather than one change. `ticket.unblocked` fires when a
 
 ## Start a play
 
-`ctx.runPlay` queues one of the workspace's ticket plays on a ticket, named by the play's label:
+`ctx.runPlay` queues one of the workspace's ticket plays on a ticket, named by the play's label. Called while handling a `git.*` event, the run works in that event's repository's checkout, so a review started from a pull request in a tests repository runs in its tests checkout:
 
 ```ts
 automation.on("ticket.test_failed", async (payload, ctx) => {

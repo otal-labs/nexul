@@ -27,7 +27,8 @@ func (a pairingProjectRemotes) ProjectRemotes(ctx context.Context, projectID str
 	out := make([]pairing.ProjectRemote, 0, len(repos))
 	for _, r := range repos {
 		if r.ConnectorID == "github" {
-			out = append(out, pairing.ProjectRemote{Remote: "github.com/" + strings.ToLower(r.FullName), App: r.Role == workspace.RepoRoleApp})
+			full := strings.ToLower(r.FullName)
+			out = append(out, pairing.ProjectRemote{Remote: "github.com/" + full, Repository: full, App: r.Role == workspace.RepoRoleApp})
 		}
 	}
 	return out, nil

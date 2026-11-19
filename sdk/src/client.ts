@@ -1,5 +1,5 @@
 import { ApiClient } from "./api-client.ts";
-import { buildCtx } from "./context.ts";
+import { buildCtx, eventRepository } from "./context.ts";
 import { defaultConfigValues, toJsonSchema, type ConfigSchema, type ConfigValues } from "./config-schema.ts";
 import type { Automation } from "./define-automation.ts";
 import type { EventPayloads, Topic } from "./events.generated.ts";
@@ -196,7 +196,7 @@ export class DialinClient<S extends ConfigSchema> {
       const line = JSON.stringify({ ts: new Date().toISOString(), run_id: runId, message, ...meta });
       ws.send(JSON.stringify(runLogFrame(runId, `${line}\n`)));
     };
-    const ctx = buildCtx(this.api, this.config, this.secrets, emitLog);
+    const ctx = buildCtx(this.api, this.config, this.secrets, emitLog, eventRepository(topic, frame.payload));
     const timeoutMs = this.opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     try {

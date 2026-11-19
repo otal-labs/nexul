@@ -27,6 +27,7 @@ const play = (overrides: Partial<Play> = {}): Play => ({
   enabled: true,
   show_when_stage: null,
   excluded_project_ids: [],
+  repository: "app",
   builtin_key: "investigate-crash",
   created_by: "",
   created_at: "",

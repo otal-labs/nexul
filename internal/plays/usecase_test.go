@@ -123,6 +123,23 @@ func TestUpdate_LeavesTypeUnchanged(t *testing.T) {
 	assert.False(t, updated.Enabled)
 }
 
+func TestUpdate_Repository_IsAppUntilSetAndKeptWhenOmitted(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, allowAll("owner"))
+	p, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc})
+	require.NoError(t, err)
+	assert.Equal(t, RepositoryApp, p.Repository)
+
+	p, err = s.Update(ctxAs("owner"), workspaceID, p.ID, UpdateInput{Label: "Doc", Repository: RepositoryTests})
+	require.NoError(t, err)
+	assert.Equal(t, RepositoryTests, p.Repository)
+	p, err = s.Update(ctxAs("owner"), workspaceID, p.ID, UpdateInput{Label: "Doc renamed"})
+	require.NoError(t, err)
+	assert.Equal(t, RepositoryTests, p.Repository, "a save that leaves it out, such as from an older client, keeps it")
+	_, err = s.Update(ctxAs("owner"), workspaceID, p.ID, UpdateInput{Label: "Doc", Repository: "docs"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+}
+
 // An editor never saw the excluded projects hidden from them, so saving keeps those ids (ADR 0097).
 func TestUpdate_KeepsExclusionsOfProjectsTheEditorCannotOpen(t *testing.T) {
 	repo := newFakeRepo()

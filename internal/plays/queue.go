@@ -67,6 +67,7 @@ type QueueItem struct {
 	SweepID       string       `json:"sweep_id" jsonschema:"The scheduled sweep that queued it; empty for a run a moment or an automation queued."`
 	SweepPosition int          `json:"sweep_position" jsonschema:"Its place in its sweep, which orders the sweep's runs within one priority."`
 	StartBy       *time.Time   `json:"start_by" jsonschema:"A sweep's run starts by this time or is skipped; null for no limit."`
+	Repository    string       `json:"repository" jsonschema:"The repository the run works on, as owner/name: the pull request's for a run an automation queued from a git event; empty for the play's own."`
 	// LockKey is what the run holds while it goes, from its auto play's one-at-a-time setting; empty when runs may overlap.
 	LockKey string `json:"-"`
 }

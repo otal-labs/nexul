@@ -102,9 +102,13 @@ type HarnessChoice struct {
 	Worktree    bool
 	// HarnessProjectID is the T3 project a person picked beside ComputerID, remembered for the project as the run starts.
 	HarnessProjectID string
-	Provider         string
-	Model            string
-	ModelOptions     []harness.OptionSetting
+	// Repository is the repository the run works on, as owner/name; empty takes the play's (ADR 0204).
+	Repository string
+	// Tests is a run of a play that works on the project's tests repository.
+	Tests        bool
+	Provider     string
+	Model        string
+	ModelOptions []harness.OptionSetting
 	// PassedOver are the computers the run could not land on before ComputerID, for its trail.
 	PassedOver []PassedOver
 }

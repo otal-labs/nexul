@@ -42,7 +42,7 @@ func newGateFixture(t *testing.T) *gateFixture {
 	chat := "default-proj"
 	_, err = svc.UpdateComputer(t.Context(), "u1", c.ID, ComputerPatch{ChatProjectID: &chat})
 	require.NoError(t, err)
-	require.NoError(t, repo.SaveCheckout(t.Context(), "u1", "proj-1", c.ID, "linked-proj"))
+	require.NoError(t, repo.SaveCheckout(t.Context(), "u1", "proj-1", Checkout{ComputerID: c.ID, HarnessProjectID: "linked-proj"}))
 	return &gateFixture{repo: repo, exch: exch, svc: svc, computer: c}
 }
 

@@ -211,4 +211,40 @@ describe("DialinClient protocol", () => {
     expect(logFrame?.log).toContain("hello from handler");
     client.stop();
   });
+
+  it("queues a play from a git event in that event's repository, and from any other event in the play's own", async () => {
+    const realFetch = globalThis.fetch;
+    const bodies: unknown[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ id: "q-1", state: "queued", reason: "" }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const automation = defineAutomation({ name: "x", description: "y" });
+      automation.on("git.pr_opened", async (_payload, ctx) => !!(await ctx.runPlay("Review", "t-1")));
+      automation.on("git.provider_event", async (_payload, ctx) => !!(await ctx.runPlay("Review", "t-2")));
+      automation.on("ticket.created", async (_payload, ctx) => !!(await ctx.runPlay("Review", "t-3")));
+      const client = new DialinClient(automation, { url: "http://instance", token: "dat_x" });
+      const { ws } = await connect(client);
+
+      for (const [runId, topic, payload] of [
+        ["r1", "git.pr_opened", { owner: "acme", repo: "acme-e2e", pr: { number: 1 } }],
+        ["r2", "git.provider_event", { provider: "github", repository: { full_name: "acme/acme" } }],
+        ["r3", "ticket.created", { ticket: { id: "t-3" } }],
+      ] as const) {
+        ws.emit({ type: "event", run_id: runId, event_id: runId, topic, payload });
+        await ws.sentFrame("run_finished", "run_crashed");
+        ws.sent.length = 0;
+      }
+
+      expect(bodies).toEqual([
+        { play: "Review", ticket_id: "t-1", repository: "acme/acme-e2e" },
+        { play: "Review", ticket_id: "t-2", repository: "acme/acme" },
+        { play: "Review", ticket_id: "t-3" },
+      ]);
+      client.stop();
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
 });

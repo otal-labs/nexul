@@ -129,7 +129,7 @@ func TestHandler_ProjectLink_GetSetClear(t *testing.T) {
 
 	rec = doRequest(routes, http.MethodPut, "/api/pairing/projects/proj-1", "u1", projectLinkRequest{
 		Provider: "claude", Model: "sonnet", Placement: PlacementSpread, Computers: []string{created.ID},
-		Checkouts: []Checkout{{ComputerID: created.ID, HarnessProjectID: "t3-proj-1"}},
+		Checkouts: []Checkout{{ComputerID: created.ID, Repository: "Acme/App", HarnessProjectID: "t3-proj-1"}},
 	})
 	require.Equal(t, http.StatusOK, rec.Code)
 	var link ProjectLink
@@ -138,7 +138,7 @@ func TestHandler_ProjectLink_GetSetClear(t *testing.T) {
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/projects", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"links":[{"project_id":"proj-1","provider":"claude","model":"sonnet","placement":"spread","computers":["`+created.ID+
-		`"],"checkouts":[{"computer_id":"`+created.ID+`","harness_project_id":"t3-proj-1"}],"updated_at":"`+link.UpdatedAt.Format(time.RFC3339Nano)+`"}]}`, rec.Body.String())
+		`"],"checkouts":[{"computer_id":"`+created.ID+`","repository":"acme/app","harness_project_id":"t3-proj-1"}],"updated_at":"`+link.UpdatedAt.Format(time.RFC3339Nano)+`"}]}`, rec.Body.String())
 
 	rec = doRequest(routes, http.MethodDelete, "/api/pairing/projects/proj-1", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -147,7 +147,7 @@ func TestHandler_ProjectLink_GetSetClear(t *testing.T) {
 	var afterClear ProjectLink
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &afterClear))
 	assert.Empty(t, afterClear.Computers, "clearing goes back to the person's order")
-	assert.Equal(t, []Checkout{{ComputerID: created.ID, HarnessProjectID: "t3-proj-1"}}, afterClear.Checkouts, "where the code is stays known")
+	assert.Equal(t, []Checkout{{ComputerID: created.ID, Repository: "acme/app", HarnessProjectID: "t3-proj-1"}}, afterClear.Checkouts, "where the code is stays known")
 }
 
 func TestHandler_ProjectLink_RefusesComputersThatAreNotTheirsOrListedTwice(t *testing.T) {
@@ -161,11 +161,12 @@ func TestHandler_ProjectLink_RefusesComputersThatAreNotTheirsOrListedTwice(t *te
 		req  projectLinkRequest
 		want int
 	}{
-		"someone else's computer in the list":    {projectLinkRequest{Computers: []string{theirs.ID}}, http.StatusNotFound},
-		"someone else's computer as a checkout":  {projectLinkRequest{Checkouts: []Checkout{{ComputerID: theirs.ID, HarnessProjectID: "p"}}}, http.StatusNotFound},
-		"a computer listed twice":                {projectLinkRequest{Computers: []string{mine.ID, mine.ID}}, http.StatusBadRequest},
-		"a checkout without its T3 project":      {projectLinkRequest{Checkouts: []Checkout{{ComputerID: mine.ID}}}, http.StatusBadRequest},
-		"a placement that is neither of the two": {projectLinkRequest{Placement: "random"}, http.StatusBadRequest},
+		"someone else's computer in the list":      {projectLinkRequest{Computers: []string{theirs.ID}}, http.StatusNotFound},
+		"someone else's computer as a checkout":    {projectLinkRequest{Checkouts: []Checkout{{ComputerID: theirs.ID, HarnessProjectID: "p"}}}, http.StatusNotFound},
+		"a computer listed twice":                  {projectLinkRequest{Computers: []string{mine.ID, mine.ID}}, http.StatusBadRequest},
+		"a checkout without its T3 project":        {projectLinkRequest{Checkouts: []Checkout{{ComputerID: mine.ID}}}, http.StatusBadRequest},
+		"a checkout of something not a repository": {projectLinkRequest{Checkouts: []Checkout{{ComputerID: mine.ID, Repository: "not a repo", HarnessProjectID: "p"}}}, http.StatusBadRequest},
+		"a placement that is neither of the two":   {projectLinkRequest{Placement: "random"}, http.StatusBadRequest},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

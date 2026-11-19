@@ -16,14 +16,15 @@ func TestPlay_Validate(t *testing.T) {
 		play    Play
 		wantErr bool
 	}{
-		{"valid ticket play", Play{Label: "Fix", Type: TypeTicket, ShowWhenStage: &progress}, false},
-		{"valid doc play", Play{Label: "Doc", Type: TypeDoc}, false},
+		{"valid ticket play", Play{Label: "Fix", Type: TypeTicket, ShowWhenStage: &progress, Repository: RepositoryApp}, false},
+		{"valid doc play", Play{Label: "Doc", Type: TypeDoc, Repository: RepositoryTests}, false},
 		{"empty label", Play{Label: "  ", Type: TypeDoc}, true},
 		{"invalid type", Play{Label: "X", Type: "bogus"}, true},
 		{"ticket play missing stage", Play{Label: "Fix", Type: TypeTicket}, true},
 		{"ticket play invalid stage", Play{Label: "Fix", Type: TypeTicket, ShowWhenStage: &bogus}, true},
 		{"doc play with stage", Play{Label: "Doc", Type: TypeDoc, ShowWhenStage: &progress}, true},
-		{"valid interview play", Play{Label: "Interview", Type: TypeInterview}, false},
+		{"valid interview play", Play{Label: "Interview", Type: TypeInterview, Repository: RepositoryApp}, false},
+		{"a repository that is neither role", Play{Label: "Doc", Type: TypeDoc, Repository: "docs"}, true},
 		{"interview play with stage", Play{Label: "Interview", Type: TypeInterview, ShowWhenStage: &progress}, true},
 	}
 	for _, tt := range tests {

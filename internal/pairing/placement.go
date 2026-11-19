@@ -23,7 +23,9 @@ type ProjectRemotes interface {
 // ProjectRemote is one repository of a project as T3 normalizes a remote: github.com/owner/name, lowercase.
 type ProjectRemote struct {
 	Remote string
-	// App is the repository the project deploys; it wins a checkout tie over a tests repository (ADR 0197).
+	// Repository is the same repository as owner/name, lowercase, which a checkout is kept under.
+	Repository string
+	// App is the repository the project deploys; a run that names no repository works on it (ADR 0204).
 	App bool
 }
 
@@ -47,10 +49,15 @@ type RunRequest struct {
 	ComputerIDs []string
 	// HarnessProjectID is the checkout picked on ComputerIDs' only computer.
 	HarnessProjectID string
-	Provider         string
-	Model            string
-	ModelOptions     []harness.OptionSetting
-	Room             Room
+	// Repository is the project repository the run works on, as owner/name; empty, or not one of the project's, takes
+	// the tests repository for Tests, else the app's (ADR 0204).
+	Repository string
+	// Tests is a run of a play that works on the project's tests repository.
+	Tests        bool
+	Provider     string
+	Model        string
+	ModelOptions []harness.OptionSetting
+	Room         Room
 	// Person is a run someone pressed: with no computer holding the project it asks where instead of failing.
 	Person bool
 	// Chat runs in the computer's chat folder when no computer has a checkout of the project.
@@ -252,7 +259,12 @@ func (s *Service) tryOption(ctx context.Context, p *plan, o option, live bool) (
 		if err := s.requireListedProject(ctx, p.req.UserID, c.ID, p.req.HarnessProjectID); err != nil {
 			return nil, nil, err
 		}
-		if err := s.repo.SaveCheckout(ctx, p.req.UserID, p.req.ProjectID, c.ID, p.req.HarnessProjectID); err != nil {
+		remotes, err := s.remotes(ctx, p)
+		if err != nil {
+			return nil, nil, err
+		}
+		pick := Checkout{ComputerID: c.ID, Repository: repositoryOf(p.req.repository(remotes)), HarnessProjectID: p.req.HarnessProjectID}
+		if err := s.repo.SaveCheckout(ctx, p.req.UserID, p.req.ProjectID, pick); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -365,7 +377,7 @@ func (s *Service) providerReady(ctx context.Context, p *plan, c Computer) (*miss
 }
 
 // checkout is the T3 project the run uses on c: the one picked for the run, the chat folder outside a project, else
-// the one picked for the project there, else the one checkout whose remote is a repository of the project.
+// the one picked there for the repository the run works on, else the one checkout whose remote is that repository.
 func (s *Service) checkout(ctx context.Context, p *plan, c Computer) (string, *miss, error) {
 	if p.req.HarnessProjectID != "" {
 		return p.req.HarnessProjectID, nil, nil
@@ -376,49 +388,75 @@ func (s *Service) checkout(ctx context.Context, p *plan, c Computer) (string, *m
 		}
 		return "", missing(c, PassOverNoChatFolder, c.Name+" has no chat folder"), nil
 	}
-	listed := func(id string) bool {
-		return c.Facts == nil || slices.ContainsFunc(c.Facts.Projects, func(hp harness.Project) bool { return hp.ID == id })
-	}
-	if picked := p.link.checkoutOn(c.ID); picked != "" && listed(picked) {
-		return picked, nil, nil
-	}
 	remotes, err := s.remotes(ctx, p)
 	if err != nil {
 		return "", nil, err
+	}
+	repo := p.req.repository(remotes)
+	listed := func(id string) bool {
+		return c.Facts == nil || slices.ContainsFunc(c.Facts.Projects, func(hp harness.Project) bool { return hp.ID == id })
+	}
+	if picked := p.link.checkoutOn(c, repo, remotes); picked != "" && listed(picked) {
+		return picked, nil, nil
 	}
 	var projects []harness.Project
 	if c.Facts != nil {
 		projects = c.Facts.Projects
 	}
-	matched, several := matchCheckout(projects, remotes)
+	matched, several := matchCheckout(projects, repo)
 	if matched != "" {
 		return matched, nil, nil
 	}
-	if several {
-		return "", missing(c, PassOverAmbiguousCheckout, c.Name+" has several checkouts of this project; pick one"), nil
+	what := "this project"
+	if len(remotes) > 1 {
+		what = repo.Repository
 	}
-	return "", missing(c, PassOverNoCheckout, c.Name+" doesn't have this project"), nil
+	if several {
+		return "", missing(c, PassOverAmbiguousCheckout, c.Name+" has several checkouts of "+what+"; pick one"), nil
+	}
+	return "", missing(c, PassOverNoCheckout, c.Name+" doesn't have "+what), nil
 }
 
-// matchCheckout is the one T3 project whose remote is a repository of the project, else the one whose repository is the
-// app; with several left it is "" and several.
-func matchCheckout(projects []harness.Project, remotes []ProjectRemote) (string, bool) {
-	var matches, apps []string
-	for _, hp := range projects {
-		i := slices.IndexFunc(remotes, func(r ProjectRemote) bool { return r.Remote == strings.ToLower(hp.Repository) })
-		if hp.Repository == "" || i < 0 {
-			continue
+// repository is the project repository the run works on: the one it names, else the tests repository for a tests
+// run, else the app's, else the first; nil when the project has none.
+func (r RunRequest) repository(remotes []ProjectRemote) *ProjectRemote {
+	named := strings.ToLower(strings.TrimSpace(r.Repository))
+	for _, want := range []func(ProjectRemote) bool{
+		func(pr ProjectRemote) bool { return named != "" && pr.Repository == named },
+		func(pr ProjectRemote) bool { return r.Tests && !pr.App },
+		func(pr ProjectRemote) bool { return pr.App },
+	} {
+		if i := slices.IndexFunc(remotes, want); i >= 0 {
+			return &remotes[i]
 		}
-		matches = append(matches, hp.ID)
-		if remotes[i].App {
-			apps = append(apps, hp.ID)
+	}
+	if len(remotes) == 0 {
+		return nil
+	}
+	return &remotes[0]
+}
+
+// repositoryOf is the key a checkout of repo is kept under; a project with no repository keeps its one under "".
+func repositoryOf(repo *ProjectRemote) string {
+	if repo == nil {
+		return ""
+	}
+	return repo.Repository
+}
+
+// matchCheckout is the one T3 project whose remote is repo; with several it is "" and several.
+func matchCheckout(projects []harness.Project, repo *ProjectRemote) (string, bool) {
+	if repo == nil {
+		return "", false
+	}
+	var matches []string
+	for _, hp := range projects {
+		if hp.Repository != "" && strings.ToLower(hp.Repository) == repo.Remote {
+			matches = append(matches, hp.ID)
 		}
 	}
 	if len(matches) == 1 {
 		return matches[0], false
-	}
-	if len(apps) == 1 {
-		return apps[0], false
 	}
 	return "", len(matches) > 1
 }

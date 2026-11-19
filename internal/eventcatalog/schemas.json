@@ -6416,6 +6416,13 @@
               "type": "string"
             }
           },
+          "repository": {
+            "type": "string",
+            "enum": [
+              "app",
+              "tests"
+            ]
+          },
           "builtin_key": {
             "type": "string"
           },
@@ -6441,6 +6448,7 @@
           "enabled",
           "show_when_stage",
           "excluded_project_ids",
+          "repository",
           "builtin_key",
           "created_by",
           "created_at",
@@ -6704,6 +6712,10 @@
         ],
         "description": "A sweep's run starts by this time or is skipped; null for no limit.",
         "format": "date-time"
+      },
+      "repository": {
+        "type": "string",
+        "description": "The repository the run works on, as owner/name: the pull request's for a run an automation queued from a git event; empty for the play's own."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6735,7 +6747,8 @@
       "outage_id",
       "sweep_id",
       "sweep_position",
-      "start_by"
+      "start_by",
+      "repository"
     ]
   },
   "play.queued": {
@@ -6930,6 +6943,10 @@
         ],
         "description": "A sweep's run starts by this time or is skipped; null for no limit.",
         "format": "date-time"
+      },
+      "repository": {
+        "type": "string",
+        "description": "The repository the run works on, as owner/name: the pull request's for a run an automation queued from a git event; empty for the play's own."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6961,7 +6978,8 @@
       "outage_id",
       "sweep_id",
       "sweep_position",
-      "start_by"
+      "start_by",
+      "repository"
     ]
   },
   "play.run_finished": {
@@ -7178,6 +7196,13 @@
               "type": "string"
             }
           },
+          "repository": {
+            "type": "string",
+            "enum": [
+              "app",
+              "tests"
+            ]
+          },
           "builtin_key": {
             "type": "string"
           },
@@ -7203,6 +7228,7 @@
           "enabled",
           "show_when_stage",
           "excluded_project_ids",
+          "repository",
           "builtin_key",
           "created_by",
           "created_at",

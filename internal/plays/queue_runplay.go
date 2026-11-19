@@ -17,6 +17,8 @@ type QueuePlayInput struct {
 	TicketID string
 	RunOn    RunOn
 	Priority Level
+	// Repository is the repository the run works on, as owner/name, from the git event the automation handles.
+	Repository string
 }
 
 // QueuePlay queues the ticket play an automation names by label, as its creator, through the auto play queue (ADR 0132).
@@ -56,7 +58,7 @@ func (r *Runner) QueuePlay(ctx context.Context, in QueuePlayInput) (*QueueItem, 
 }
 
 func (in QueuePlayInput) normalize() (QueuePlayInput, error) {
-	in.Play, in.TicketID = strings.TrimSpace(in.Play), strings.TrimSpace(in.TicketID)
+	in.Play, in.TicketID, in.Repository = strings.TrimSpace(in.Play), strings.TrimSpace(in.TicketID), strings.TrimSpace(in.Repository)
 	if in.Play == "" || in.TicketID == "" {
 		return in, fmt.Errorf("%w: play and ticket_id are required", apperrs.ErrInvalid)
 	}
@@ -82,6 +84,7 @@ func (r *Runner) enqueueAutomationRun(ctx context.Context, automationID string, 
 		ID: ids.New(), WorkspaceID: play.WorkspaceID, ProjectID: f.ProjectID, TargetType: TargetTicket, TargetID: in.TicketID,
 		PlayID: play.ID, PlayLabel: play.Label, AutomationID: automationID, PersonID: f.Developer, RunOn: in.RunOn,
 		Moment: MomentAutomation, Priority: in.Priority, Status: QueueQueued, Via: ViaAutomation, QueuedAt: now, NotBefore: now,
+		Repository: in.Repository,
 	}
 	if in.RunOn == RunOnTester {
 		it.PersonID = f.Tester

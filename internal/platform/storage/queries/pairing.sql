@@ -54,7 +54,7 @@ ON CONFLICT(user_id, project_id) DO UPDATE SET
   placement = excluded.placement, updated_at = excluded.updated_at;
 
 -- name: ListPairingProjectComputers :many
--- A person's computers for one project: those in its own order by position, then the ones only holding a checkout.
+-- A person's computers for one project, in its own order.
 SELECT * FROM pairing_project_computers WHERE user_id = ? AND project_id = ? ORDER BY position IS NULL, position, computer_id;
 
 -- name: ListPairingProjectComputersByUser :many
@@ -68,11 +68,17 @@ INSERT INTO pairing_project_computers (user_id, project_id, computer_id, positio
 ON CONFLICT(user_id, project_id, computer_id) DO UPDATE SET position = excluded.position;
 
 -- name: SetPairingProjectCheckout :exec
-INSERT INTO pairing_project_computers (user_id, project_id, computer_id, harness_project_id) VALUES (?, ?, ?, ?)
-ON CONFLICT(user_id, project_id, computer_id) DO UPDATE SET harness_project_id = excluded.harness_project_id;
+INSERT INTO pairing_project_checkouts (user_id, project_id, computer_id, repository, harness_project_id) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(user_id, project_id, computer_id, repository) DO UPDATE SET harness_project_id = excluded.harness_project_id;
+
+-- name: ListPairingProjectCheckouts :many
+SELECT * FROM pairing_project_checkouts WHERE user_id = ? AND project_id = ? ORDER BY computer_id, repository;
+
+-- name: ListPairingProjectCheckoutsByUser :many
+SELECT * FROM pairing_project_checkouts WHERE user_id = ? ORDER BY project_id, computer_id, repository;
 
 -- name: PrunePairingProjectComputers :exec
-DELETE FROM pairing_project_computers WHERE user_id = ? AND project_id = ? AND position IS NULL AND harness_project_id = '';
+DELETE FROM pairing_project_computers WHERE user_id = ? AND project_id = ? AND position IS NULL;
 
 -- name: DeletePairingProjectLink :exec
 DELETE FROM pairing_project_links WHERE user_id = ? AND project_id = ?;

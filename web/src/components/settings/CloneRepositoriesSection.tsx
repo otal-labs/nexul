@@ -7,7 +7,7 @@ interface CloneRepositoriesSectionProps {
   computerId: string;
   // owner/name of each repository the computer holds no T3 project for.
   repositories: string[];
-  onCloned: (harnessProjectId: string) => void;
+  onCloned: (harnessProjectId: string, repository: string) => void;
 }
 
 export const CloneRepositoriesSection = ({ computerId, repositories, onCloned }: CloneRepositoriesSectionProps) => {
@@ -21,7 +21,7 @@ export const CloneRepositoriesSection = ({ computerId, repositories, onCloned }:
       {canClone === false && <PairAgainToClone computerId={computerId} />}
       <div className="flex flex-wrap gap-2">
         {repositories.map((repository) => (
-          <CloneRepositoryButton key={repository} computerId={computerId} repository={repository} disabled={canClone === false} onCloned={onCloned} />
+          <CloneRepositoryButton key={repository} computerId={computerId} repository={repository} disabled={canClone === false} onCloned={(id) => onCloned(id, repository)} />
         ))}
       </div>
     </div>

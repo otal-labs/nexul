@@ -67,15 +67,15 @@ characters, up to 20 per computer) plus the ones Nexul derives from its facts: `
 `linux`, `macos` or `windows` from its OS. A play's needs are a list of labels, all of which must hold. An empty list
 needs nothing. Needs belong to the play, so a pressed run and an auto run of the same play land under the same rule.
 
-**Checkout**, for a project on a computer:
+**Checkout**, for the repository a run works on (ADR 0204: the git event's, else the play's role, else the app's) on a
+computer:
 
-1. The checkout picked for this person, project and computer, while the computer still lists it. A pick is kept for any
-   computer, in the project's list or not.
-2. Else the computer's T3 projects whose remote matches a repository of the project. One match wins. Several: keep the
-   ones whose repository's role is `app`; one left wins. More than one left, or several matches with no app among them,
-   is ambiguous.
+1. The checkout picked for this person, project, computer and repository, while the computer still lists it. A pick is
+   kept for any computer, in the project's list or not; one from before picks were per repository counts for the
+   repository it clones.
+2. Else the computer's T3 projects whose remote is that repository. One match wins; several are ambiguous.
 3. Else clone automatically, as today (computer-failover ticket 04).
-4. Else "doesn't have this project".
+4. Else "doesn't have this project", naming the repository when the project has several.
 
 ## Moving over
 

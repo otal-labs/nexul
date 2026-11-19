@@ -2,6 +2,9 @@
 
 Amends ADR 0165 and ADR 0156.
 
+Amended by ADR 0204: the app repository wins because a run that names no repository works on it; a tests run matches
+the tests repository's checkout instead.
+
 Three lists decided where a run went: the person's order, a project's own list, and an auto play's chosen computers,
 which replaced both for its runs. The one that won was not on the page a person looked at. On 2026-11-18 a Fix with AI
 run waited on a computer named only by its auto play, and the fix link opened a project page that did not list it.

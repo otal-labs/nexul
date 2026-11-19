@@ -1,6 +1,7 @@
 package plays
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -138,6 +139,8 @@ type CreateInput struct {
 	Enabled            bool
 	ShowWhenStage      *Stage
 	ExcludedProjectIDs []string
+	// Repository is app when empty.
+	Repository Repository
 }
 
 // UpdateInput is the owner-edited surface of an existing play; type is immutable after create (not included here).
@@ -148,6 +151,8 @@ type UpdateInput struct {
 	Enabled            bool
 	ShowWhenStage      *Stage
 	ExcludedProjectIDs []string
+	// Repository keeps the play's when empty.
+	Repository Repository
 }
 
 // List returns the plays of workspaceID the caller can see, sorted by label, each saying whether they can run it and
@@ -238,6 +243,7 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 		Enabled:            in.Enabled,
 		ShowWhenStage:      in.ShowWhenStage,
 		ExcludedProjectIDs: normalizeIDs(in.ExcludedProjectIDs),
+		Repository:         cmp.Or(in.Repository, RepositoryApp),
 		CreatedBy:          actorID(ctx),
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -289,6 +295,7 @@ func (s *Service) update(ctx context.Context, workspaceID, id string, in UpdateI
 	p.Enabled = in.Enabled
 	p.ShowWhenStage = in.ShowWhenStage
 	p.ExcludedProjectIDs = normalizeIDs(slices.Concat(in.ExcludedProjectIDs, s.unseenExclusions(ctx, p)))
+	p.Repository = cmp.Or(in.Repository, p.Repository)
 	p.UpdatedAt = s.now().UTC()
 	if err := p.Validate(); err != nil {
 		return nil, err
@@ -427,7 +434,7 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		}
 		p := &Play{
 			ID: ids.New(), WorkspaceID: workspaceID, Label: b.Label, Type: b.Type, Description: b.Description,
-			Instructions: instructions, Enabled: true, ShowWhenStage: b.ShowWhenStage, BuiltinKey: b.Key,
+			Instructions: instructions, Enabled: true, ShowWhenStage: b.ShowWhenStage, BuiltinKey: b.Key, Repository: RepositoryApp,
 			CreatedAt: now, UpdatedAt: now,
 		}
 		if err := p.Validate(); err != nil {
