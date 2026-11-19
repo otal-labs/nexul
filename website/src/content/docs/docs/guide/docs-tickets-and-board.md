@@ -26,7 +26,7 @@ Write in the editor with formatting, tables, task lists, and code blocks; type `
 
 ### Folders
 
-Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a right-click on a folder starts a doc in it, renames it, deletes it, or opens its **Permissions…**, whose rules reach every doc in it (see [People and access](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play)). Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu.
+Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a right-click on a folder starts a doc in it, renames it, deletes it, or opens its **Permissions…**, whose rules reach every doc in it (see [People and access](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play)). Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu, or in the **⋯** menu at the top of the open doc.
 
 ### Lock, clone, archive, and delete
 

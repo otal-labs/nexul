@@ -2,6 +2,7 @@ import { Ellipsis } from "lucide-react";
 import { useState } from "react";
 
 import { DocHistoryDialog } from "@/components/doc/DocHistoryDialog";
+import { DocMoveToFolderItem } from "@/components/doc/DocMoveToFolderItem";
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, 
             Unlock
           </ActionMenuItem>
         )}
+        <DocMoveToFolderItem doc={doc} />
         {!doc.archived && (
           <ActionMenuItem permission="docs:write" answer={answer("docs:write")} verb="archive docs" onSelect={onArchive}>
             Archive
