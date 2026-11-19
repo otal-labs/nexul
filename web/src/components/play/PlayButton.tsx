@@ -39,7 +39,7 @@ const disabledReason = (running: boolean, waiting: boolean, blocked: string | un
 export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className, mainClassName, compact = false }: PlayButtonProps) => {
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
-  const blocked = useRunBlockedReason(projectId);
+  const blocked = useRunBlockedReason(projectId, play.repository === "tests");
   const activeTrail = useActiveTrail(targetType, targetId);
   const liveState = usePlayRunStore((s) => (activeTrail ? s.frames[activeTrail.id]?.state : undefined));
   const stopTrail = useStopTrail();
