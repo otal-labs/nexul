@@ -507,7 +507,7 @@ Motion, beyond the shared core:
   animation, and since the rail keeps every icon where it was, only the
   labels change. Opening wipes them in from the rail's edge (`revealSidebar`,
   a clip-path over 220ms `--ease-out`); closing snaps. The sidebar starts as
-  the icon rail below 1024px.
+  the icon rail below 1280px, so a list pane and its open record both keep their width.
 - The one exception to the still field is the live field of a showcase
   surface (Pattern spec), which replaces the frame instead of sitting behind
   it and runs only on the signed-out home and sign-in.

@@ -37,7 +37,7 @@ export const RoleGivePopover = ({ person }: RoleGivePopoverProps) => {
           Give a role
         </ActionButton>
       </PopoverTrigger>
-      <PopoverContent align="end" collisionPadding={16} className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-xl flex-col gap-1.5 p-2">
+      <PopoverContent align="end" sideOffset={12} collisionPadding={16} className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-xl flex-col gap-1.5 p-2">
         <RoleFindField value={query} onChange={setQuery} placeholder="Search roles" label="Find a role" />
         {/* The heads keep the list's scrollbar gutter, so each lines up over its column. */}
         {shown.length > 0 && <RoleReachHead className="shrink-0 overflow-hidden px-2 pt-1 [scrollbar-gutter:stable]" />}
