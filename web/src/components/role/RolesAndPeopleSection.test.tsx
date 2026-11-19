@@ -195,8 +195,17 @@ describe("RolesAndPeopleSection", () => {
 
     const list = await holders("Owner");
     expect(list.getByText("Alice Moreau")).toBeInTheDocument();
-    expect(list.queryByRole("button")).not.toBeInTheDocument();
+    expect(list.queryByRole("button", { name: /^Actions for/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add people" })).not.toBeInTheDocument();
+  });
+
+  it("opens a holder's account from their row", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/r-dev");
+
+    await user.click((await holders("Developer")).getByRole("button", { name: "Open Lena Fischer" }));
+    expect(await screen.findByRole("dialog", { name: /Lena Fischer/ })).toBeInTheDocument();
   });
 
   it("lists the members holding no role under No roles", async () => {

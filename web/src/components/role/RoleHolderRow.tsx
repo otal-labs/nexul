@@ -17,11 +17,13 @@ import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface RoleHolderRowProps {
   person: TeamPerson;
+  // Opens the person's account dialog, the one Settings → Team opens.
+  onOpen: (personId: string) => void;
 }
 
-// A person in the open role (or in No roles): their presence and other roles, and a menu to take the role, view as
-// them, or take them out of the workspace. An Owner's row has no menu; the Owner role is never given or taken here.
-export const RoleHolderRow = ({ person }: RoleHolderRowProps) => {
+// A person in the open role (or in No roles): the whole row opens them, with their presence and other roles, and a menu to take
+// the role, view as them, or take them out of the workspace. An Owner's row has no menu; the Owner role is never given or taken here.
+export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
   const workspace = useSelectedWorkspace();
   const workspaceName = workspace?.name ?? "this workspace";
   const { role, givable, reason } = useOpenRole();
@@ -60,7 +62,12 @@ export const RoleHolderRow = ({ person }: RoleHolderRowProps) => {
     <li className="flex min-h-14 border-b border-border py-1">
       <div className={rowClass}>
         <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-7" />
-        <span className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => onOpen(person.id)}
+          aria-label={`Open ${personName(person)}`}
+          className="quiet-focus min-w-0 flex-1 text-left after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+        >
           <span dir="auto" className={cn("block truncate text-sm font-medium", person.status !== "active" && "text-muted-foreground")} title={personName(person)}>
             {personName(person)}
           </span>
@@ -76,9 +83,17 @@ export const RoleHolderRow = ({ person }: RoleHolderRowProps) => {
               )}
             </span>
           )}
-        </span>
-        {!owner && !role && <RoleGivePopover person={person} />}
-        {!owner && <RowActionsMenu subject={personName(person)} actions={actions} />}
+        </button>
+        {!owner && !role && (
+          <span className="relative">
+            <RoleGivePopover person={person} />
+          </span>
+        )}
+        {!owner && (
+          <span className="relative">
+            <RowActionsMenu subject={personName(person)} actions={actions} />
+          </span>
+        )}
       </div>
     </li>
   );

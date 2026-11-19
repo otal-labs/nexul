@@ -1458,7 +1458,7 @@ list, the count reading "2 of 33" while it narrows, a search with no match (whic
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach, and a "Show fewer" line folds them back; a search shows
 every match. Holders run in name order. Each holder
-is a hairline row, at least 56px, lifting to `accent` on hover in a fill
+is a hairline row, at least 56px, the whole row opening the person's account dialog (the one Settings → Team opens), lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
 over a muted line holding only what says something: Online as a status mark,
 when they were last seen in plain words (a grey dot would say nothing), Disabled
@@ -1474,7 +1474,7 @@ fading where it scrolls; it stays open so several can be added in a row, each on
 a toast. A link made here shows once above the holders. A count of zero is never shown
 beside a heading whose line already says nobody holds the role. The open links giving
 the role list under them as Invited, on the holders' grid: a link mark on a
-`surface-2` disc in the avatar's slot, when it expires as its title ("Expires in 7
+`surface-2` disc in the avatar's slot, rows that open nothing and so never lift, when it expires as its title ("Expires in 7
 days", what tells two links apart), over who made it and the other roles it
 gives as chips, and a `…` holding Revoke link, which asks first; the links step aside while a search runs. What it allows follows under its own heading, "What <role> can do", set 16px
 further down than the gaps above it: one microheader per

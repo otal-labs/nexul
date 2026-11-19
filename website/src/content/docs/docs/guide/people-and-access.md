@@ -33,7 +33,7 @@ A link is for someone without an account here. If a person who already has one o
 
 ## Manage people
 
-**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their roles as chips (three, then a count whose tooltip names the rest, or **No roles**) or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in, each with their roles there as chips and **View as**. Roles aren't changed here: **Change on Access** opens that workspace's **Roles and people** ([Give someone a role](#give-someone-a-role)).
+**Settings → Team** has two tabs. **People** lists everyone on the instance: **Online** for who is online and when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their roles as chips (three, then a count whose tooltip names the rest, or **No roles**) or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in, each with their roles there as chips and **View as**. Roles aren't changed here: **Change on Access** opens that workspace's **Roles and people** ([Give someone a role](#give-someone-a-role)).
 
 ### Setup progress
 
@@ -51,7 +51,7 @@ Team takes `accounts:read`, and shows everyone on the instance.
 
 ## Give someone a role
 
-Roles are given from the role. Open **Access → Roles and people** and pick a role from the list on the left, where each shows its description and how many people hold it. The role's page opens with its description and how much of each section it reaches (each a link down to that section), then lists its **People**, each with when they were last seen and the other roles they hold (past eight people, the list shows the first eight with **Show all** for the rest, and a find field narrows it), then what the role allows: the sections it reaches first, and the areas it has no access to folded under **Show** and their number.
+Roles are given from the role. Open **Access → Roles and people** and pick a role from the list on the left, where each shows its description and how many people hold it. The role's page opens with its description and how much of each section it reaches (each a link down to that section), then lists its **People**, each with when they were last seen and the other roles they hold, and a row that opens the person as **Settings → Team** does (past eight people, the list shows the first eight with **Show all** for the rest, and a find field narrows it), then what the role allows: the sections it reaches first, and the areas it has no access to folded under **Show** and their number.
 
 - **Add people** lists everyone you can see who doesn't hold the role, the workspace's members first, then people **Not in** the workspace **yet**, whom picking also adds to it. Search narrows the list, and it stays open so you can add several in a row.
 - **Invite** makes a link for someone without an account that starts with the role ticked ([Invite someone](#invite-someone)). The role's open links list under its people as **Invited**, each with a **…** menu to revoke it.

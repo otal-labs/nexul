@@ -1,7 +1,7 @@
 import { Link2 } from "lucide-react";
 
 import { RoleChipRow } from "@/components/role/RoleChipRow";
-import { rowClass } from "@/components/role/rowStyles";
+import { rowBase } from "@/components/role/rowStyles";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { ActiveInvitation } from "@/models/Invitation";
@@ -41,7 +41,7 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
 
   return (
     <li className="flex min-h-14 border-b border-border py-1">
-      <div className={rowClass}>
+      <div className={rowBase}>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2 text-muted-foreground">
           <Link2 aria-hidden className="size-3.5" />
         </span>

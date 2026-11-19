@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Container } from "@/components/Container";
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
@@ -5,6 +7,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { RoleDetailHeader } from "@/components/role/RoleDetailHeader";
 import { RoleHolderRow } from "@/components/role/RoleHolderRow";
+import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { roleless } from "@/models/Team";
@@ -14,6 +17,7 @@ import { personName } from "@/utils/TeamUtility";
 export const NoRolesDetail = () => {
   const workspace = useSelectedWorkspace();
   const { data: team, error, isPending } = useFetchTeam();
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
   const people = team && workspace ? roleless(team, workspace.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const name = workspace?.name ?? "this workspace";
 
@@ -26,10 +30,11 @@ export const NoRolesDetail = () => {
       {people && people.length > 0 && (
         <EnterList aria-label="People holding no role" className="border-t border-border">
           {people.map((person) => (
-            <RoleHolderRow key={person.id} person={person} />
+            <RoleHolderRow key={person.id} person={person} onOpen={setOpenPerson} />
           ))}
         </EnterList>
       )}
+      <TeamPersonDialog personId={openPerson} onClose={() => setOpenPerson(null)} />
     </Container>
   );
 };

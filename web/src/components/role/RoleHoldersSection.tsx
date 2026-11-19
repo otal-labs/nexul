@@ -13,6 +13,7 @@ import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { RoleAddPeoplePopover } from "@/components/role/RoleAddPeoplePopover";
 import { RoleHolderRow } from "@/components/role/RoleHolderRow";
 import { RoleInvitationsSection } from "@/components/role/RoleInvitationsSection";
+import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import type { CreatedInvitation } from "@/models/Invitation";
@@ -31,6 +32,7 @@ export const RoleHoldersSection = () => {
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
   const holders = team && role ? roleHolders(team, workspaceId, role.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const changeable = role !== undefined && !role.is_owner_role;
   const needle = query.trim().toLowerCase();
@@ -82,7 +84,7 @@ export const RoleHoldersSection = () => {
       {shown && shown.length > 0 && (
         <EnterList aria-label={`People holding ${role?.name}`}>
           {shown.map((person) => (
-            <RoleHolderRow key={person.id} person={person} />
+            <RoleHolderRow key={person.id} person={person} onOpen={setOpenPerson} />
           ))}
         </EnterList>
       )}
@@ -91,6 +93,7 @@ export const RoleHoldersSection = () => {
       )}
       {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="-ml-2" />}
       {!needle && <RoleInvitationsSection />}
+      <TeamPersonDialog personId={openPerson} onClose={() => setOpenPerson(null)} />
     </section>
   );
 };
