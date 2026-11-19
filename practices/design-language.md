@@ -1459,12 +1459,12 @@ allows stays in reach, and a "Show fewer" beside the count in the band folds the
 every match. Holders run in name order. Each holder
 is a hairline row, at least 56px, the whole row opening the person's account dialog (the one Settings → Team opens), lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
-over a muted line holding only what says something: Online as a status mark,
+over a muted line led by their handle in mono, so like names tell apart, then only what says something: Online as a status mark,
 when they were last seen in plain words (a grey dot would say nothing), Disabled
 or Removed with the name muted too and the avatar greyed, and their
 other roles as chips that overhang the line instead of growing it, their text
-on the line's baseline, as many chips as the line holds, measured (up to three, each at most 14rem with the rest of its name in its tooltip), and the rest
-as a mono "+N" 4px after the last of them; a row with none of these is the name alone. Its
+on the line's baseline, as many chips as the line holds, measured (up to three, each at most 14rem, 18rem from 1280px, with the rest of its name in its tooltip), and the rest
+as a mono "+N" 4px after the last of them; Its
 `…` holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
 popover of the people the viewer's Team shows, split under "In <workspace>" and

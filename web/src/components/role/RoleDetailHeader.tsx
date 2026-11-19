@@ -38,7 +38,7 @@ export const RoleDetailHeader = ({ ref, title, line, owner = false, actions, tal
       </div>
       {(line || tally) && (
         <div className="space-y-3">
-          {line && <p className="max-w-prose text-sm text-pretty text-muted-foreground">{line}</p>}
+          {line && <p className="max-w-prose text-sm text-balance text-muted-foreground">{line}</p>}
           {tally}
         </div>
       )}

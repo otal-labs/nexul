@@ -49,15 +49,17 @@ export const RoleHoldersSection = () => {
         <div className="space-y-3 border-b border-border pb-3">
           {/* The field sits with the actions, so a count changing width as you type never moves it; the line wraps before anything overlaps. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="flex shrink-0 items-baseline gap-2">
-              <Microheader id="role-people-title">People</Microheader>
-              {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-                <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
-              )}
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="flex items-baseline gap-2">
+                <Microheader id="role-people-title">People</Microheader>
+                {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+                  <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                )}
+              </span>
               {all && !needle && holders && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
             </span>
             <div className="flex flex-1 items-center justify-end gap-2">
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs min-w-32 flex-1" />}
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="w-72 min-w-32 shrink" />}
               {changeable && givable && (
                 <>
                   <RoleAddPeoplePopover />

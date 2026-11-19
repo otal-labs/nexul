@@ -13,7 +13,7 @@ interface PlayListRowProps {
 }
 
 // The group already names the type, so a row says only where a ticket play shows.
-const whereText = (play: WorkspacePlay) => play.type === "ticket" && play.show_when_stage && `On ${PLAY_STAGE_LABELS[play.show_when_stage]}`;
+const whereText = (play: WorkspacePlay) => play.type === "ticket" && play.show_when_stage && `On “${PLAY_STAGE_LABELS[play.show_when_stage]}”`;
 
 export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
   const wsPath = useWorkspacePath();

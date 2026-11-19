@@ -15,7 +15,7 @@ interface RoleFindFieldProps {
 export const RoleFindField = ({ value, onChange, placeholder, label, className }: RoleFindFieldProps) => (
   <div className={cn("relative shrink-0", className)}>
     <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-    <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-label={label} className="h-8 pr-8 pl-8" />
+    <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-label={label} className="h-8 pr-8 pl-8 text-xs" />
     {value && (
       <button
         type="button"

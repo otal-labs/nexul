@@ -13,6 +13,7 @@ import { useStartViewAs } from "@/hooks/ViewAsHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import { heldRoles, type TeamPerson } from "@/models/Team";
+import { loginHandle } from "@/models/User";
 import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface RoleHolderRowProps {
@@ -37,7 +38,6 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
   const owner = membership?.is_owner === true;
   // "Signed out" on every row of a long list says nothing; presence shows once it does.
   const seen = person.online || person.last_seen_at !== null;
-  const meta = seen || person.status !== "active" || others.length > 0;
 
   const remove = async () => {
     const ok = await confirm({
@@ -71,18 +71,18 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
           <span dir="auto" className={cn("block truncate text-sm font-medium", person.status !== "active" && "text-muted-foreground")} title={personName(person)}>
             {personName(person)}
           </span>
-          {meta && (
-            <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-              {person.online && <SettingsStatus tone="success">Online</SettingsStatus>}
-              {seen && !person.online && <span className="shrink-0">{presenceText(person)}</span>}
-              <AccountStatusLabel status={person.status} />
-              {others.length > 0 && (
-                <span className="-my-0.5 flex min-w-0 flex-1">
-                  <RoleChipRow roles={others} />
-                </span>
-              )}
-            </span>
-          )}
+          {/* The handle leads, so two people with like names tell apart; presence, status and other roles follow. */}
+          <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <span className="shrink-0 font-mono">{loginHandle(person.login)}</span>
+            {person.online && <SettingsStatus tone="success">Online</SettingsStatus>}
+            {seen && !person.online && <span className="shrink-0">{presenceText(person)}</span>}
+            <AccountStatusLabel status={person.status} />
+            {others.length > 0 && (
+              <span className="-my-0.5 flex min-w-0 flex-1">
+                <RoleChipRow roles={others} />
+              </span>
+            )}
+          </span>
         </button>
         {!owner && !role && (
           <span className="relative">

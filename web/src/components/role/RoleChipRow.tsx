@@ -21,7 +21,7 @@ export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
         <span ref={ref} className={cn("relative flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-1 overflow-hidden", hidden.length > 0 && "pr-8")}>
           {candidates.map((role) => (
             <span key={role.id} className="flex min-w-0">
-              <RoleChip name={role.name} className="max-w-56" />
+              <RoleChip name={role.name} className="max-w-56 xl:max-w-72" />
             </span>
           ))}
         </span>
