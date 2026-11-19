@@ -17,13 +17,13 @@ interface RoleMatrixGroupProps {
   held: string[][];
 }
 
-const rowHead = cn(stickyCell, matrixAreaWidth, "h-9 border-b border-border pr-3 pl-6 text-left font-normal group-hover/row:bg-linear-to-r group-hover/row:from-accent/40 group-hover/row:to-accent/40");
+const rowHead = cn(stickyCell, matrixAreaWidth, "h-9 border-b border-border py-1.5 pr-3 pl-6 text-left font-normal group-hover/row:bg-linear-to-r group-hover/row:from-accent/40 group-hover/row:to-accent/40");
 const cellClass = "border-b border-border px-2 group-hover/row:bg-accent/40";
 
 const MatrixRow = ({ label, children }: { label: string; children: ReactNode }) => (
   <tr className="group/row">
     <th scope="row" className={rowHead}>
-      <span className="line-clamp-2 -translate-y-px py-1.5 leading-tight text-balance" title={label}>
+      <span className="line-clamp-2 -translate-y-px leading-tight text-balance" title={label}>
         {label}
       </span>
     </th>
