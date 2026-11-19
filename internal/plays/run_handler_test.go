@@ -3,6 +3,7 @@ package plays
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -244,6 +245,33 @@ func TestRunHandler_Active(t *testing.T) {
 	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs/active?target_ids=t-1", "", starter).Code)
+}
+
+func TestRunHandler_Running_CountsEachWorkspacesRunsTheCallerCanRead(t *testing.T) {
+	f := newRunnerFixture()
+	h := NewRunHandler(f.runner, nil).Routes()
+	seed := func(id, ws, project string, state TrailState) {
+		require.NoError(t, f.trails.CreateTrail(t.Context(), &Trail{ID: id, WorkspaceID: ws, PlayID: fixPlayID, TargetType: TargetTicket,
+			TargetID: id, ProjectID: project, StarterID: "someone", State: state, StartedAt: fixedNow}))
+	}
+	seed("tr-1", workspaceID, projectID, TrailRunning)
+	seed("tr-2", workspaceID, projectID, TrailStarting)
+	seed("tr-3", foreignWS, foreignPrj, TrailRunning)
+	seed("tr-waiting", workspaceID, projectID, TrailWaiting)
+	seed("tr-done", workspaceID, projectID, TrailDone)
+	seed("tr-hidden", workspaceID, otherProj, TrailRunning)
+	f.perm.hideProject(starter, otherProj)
+
+	rec := do(t, h, http.MethodGet, "/api/plays/runs/running", "", starter)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `{"workspaces":{"workspace-1":2,"ws-2":1}}`, rec.Body.String(), "a waiting or finished run is not counted, nor one on a project the caller cannot open")
+
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/running", "", "stranger")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"workspaces":{}}`, rec.Body.String(), "a caller without plays:read sees no count rather than an error")
+
+	f.trails.listErr = errors.New("disk gone")
+	assert.Equal(t, http.StatusInternalServerError, do(t, h, http.MethodGet, "/api/plays/runs/running", "", starter).Code)
 }
 
 func TestRunHandler_Answer(t *testing.T) {

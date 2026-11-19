@@ -24,6 +24,7 @@ export const getTrailKey = "getTrail";
 export const getActiveTrailsKey = "getActiveTrails";
 export const getLatestChoicesKey = "getLatestChoices";
 export const getPlayRunsKey = "getPlayRuns";
+export const getRunningByWorkspaceKey = "getRunningByWorkspace";
 
 // Each run with only its newest step, which is all a row shows; a thread reads every step with useFetchTrailsWithSteps.
 export const useFetchTrails = (targetType: PlayType, targetId: string) =>
@@ -95,6 +96,13 @@ const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefin
 export const useFetchActiveTrails = (projectId: string | undefined) => useFetchActiveTargets("ticket", projectId);
 
 export const useFetchActiveDocTrails = (projectId: string) => useFetchActiveTargets("doc", projectId);
+
+// The workspace switcher's spinners: how many runs are going in each workspace, by workspace id.
+export const useFetchRunningByWorkspace = () =>
+  useQuery({
+    queryKey: [getRunningByWorkspaceKey],
+    queryFn: async () => (await api.get<{ workspaces: Record<string, number> }>("/api/plays/runs/running")).data.workspaces,
+  });
 
 // Errors render inside the run dialog, so no toast here.
 export const useRunPlay = () => {
@@ -305,7 +313,7 @@ export const useDocRunState = (projectId: string, docId: string): TrailState | u
 
 export const trailFollower: LiveFollower = {
   // Activity only moves the store, and a memory read refetches the run too; a state change refetches the run, its target's
-  // and its play's runs, its project's active set, and the plays list whose rows read the play's run health.
+  // and its play's runs, its project's active set, the switcher's running counts, and the plays list whose rows read the play's run health.
   "play.run": (run: RunFrame & RunPlace, { client }) => {
     const previous = usePlayRunStore.getState().frames[run.trail_id]?.state;
     usePlayRunStore.getState().applyFrame(run);
@@ -318,6 +326,7 @@ export const trailFollower: LiveFollower = {
       client.invalidateQueries({ queryKey: [getActiveTrailsKey, run.target_type, run.project_id], exact: true }),
       client.invalidateQueries({ queryKey: [getPlayRunsKey, run.play_id] }),
       client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, run.workspace_id], exact: true }),
+      client.invalidateQueries({ queryKey: [getRunningByWorkspaceKey], exact: true }),
     ]);
   },
 };
