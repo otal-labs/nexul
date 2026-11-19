@@ -41,7 +41,7 @@ export const NoRolesDetail = () => {
             <Microheader id="no-roles-people">People</Microheader>
             <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle ? `${shown.length} of ${people.length}` : people.length}</span>
           </div>
-          {people.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${people.length} people`} label="Find a person" className="max-w-xs" />}
+          {people.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs" />}
           {shown.length === 0 && (
             <p role="status" className="flex min-h-14 items-center border-y border-border text-sm text-muted-foreground">
               Nobody here matches &ldquo;{query.trim()}&rdquo;.

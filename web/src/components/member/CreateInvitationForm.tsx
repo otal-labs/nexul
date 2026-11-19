@@ -39,7 +39,7 @@ export const CreateInvitationForm = ({ onCreated }: CreateInvitationFormProps) =
   });
 
   return (
-    <div className="scroll-edge max-h-[min(60vh,32rem)] space-y-5 overflow-x-hidden overflow-y-auto pr-1 pb-6">
+    <div className="space-y-5 pb-2">
       {errors.grants?.message && <p role="alert" className="text-sm text-destructive">{errors.grants.message}</p>}
       {errors.root?.serverError?.message && <p role="alert" className="text-sm text-destructive">{errors.root.serverError.message}</p>}
       <fieldset className="space-y-2"><legend className="text-sm font-medium">Link expires in</legend><Controller control={control} name="expires_in_days" render={({ field }) => <RadioGroup value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))} className="grid grid-cols-2 gap-2"><label className="flex items-center gap-2 rounded-md border p-3 text-sm"><RadioGroupItem value="1" />1 day</label><label className="flex items-center gap-2 rounded-md border p-3 text-sm"><RadioGroupItem value="7" />7 days</label></RadioGroup>} /></fieldset>

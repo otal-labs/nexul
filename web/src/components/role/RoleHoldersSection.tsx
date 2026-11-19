@@ -48,11 +48,14 @@ export const RoleHoldersSection = () => {
         {/* The list's top hairline, here so a row passing under the band meets an edge. */}
         <div className="space-y-3 border-b border-border pb-3">
           <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-            <div className="flex items-baseline gap-2">
-              <Microheader id="role-people-title">People</Microheader>
-              {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-                <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
-              )}
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex shrink-0 items-baseline gap-2">
+                <Microheader id="role-people-title">People</Microheader>
+                {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
+                  <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                )}
+              </span>
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search" label="Find a person" className="max-w-xs min-w-40 flex-1" />}
             </div>
             {changeable && givable && (
               <div className="flex items-center gap-2">
@@ -66,9 +69,6 @@ export const RoleHoldersSection = () => {
               <Lock aria-hidden className="mt-px size-3 shrink-0" />
               {reason}
             </p>
-          )}
-          {holders && holders.length > FIND_FROM && (
-            <RoleFindField value={query} onChange={setQuery} placeholder={`Search ${holders.length} people`} label="Find a person" className="max-w-xs" />
           )}
         </div>
       </div>
