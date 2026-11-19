@@ -6,7 +6,7 @@
 enterprise license guide carries a hidden placeholder where they go.
 
 - [x] Prices: the enterprise license guide says to contact sales. No amount is written in this repository, which is public
-- [ ] Where to buy and renew a key, and the contact address for a key, a domain change or support (the contact address is in the guide; the license portal and the Whop store link go in once each is live)
+- [ ] Where to buy and renew a key, and the contact address for a key, a domain change or support (the contact address is in the guide; the license portal goes in once it is live. The Whop store is a separate offer with its own prices and terms: never link it to the portal or describe the two together, and ask the owner before it goes on any page)
 - [ ] Support reply time, and what installs and pilots include (reply time is in the guide; what installs and pilots include is not)
 - [x] Refund policy for monthly and yearly keys
 - [ ] Terms of service and privacy policy, and the legal entity named in them

@@ -15,7 +15,7 @@ A key covers one instance and every enterprise feature, with no limit on people.
 
 To get one, write to [sales@nexul.io](mailto:sales@nexul.io) with the instance's full public address, as it appears under **Instance URL** in Settings → Instance, and the name the key should carry. We reply within 2 business days. The key arrives as one block of text starting with `nexul-license-1.`.
 
-[//]: # "TODO(pre-release/07-launch-copy): the license portal and the OTAL store on Whop, once each is live"
+[//]: # "TODO(pre-release/07-launch-copy): the license portal at cloud.nexul.io, once it is live"
 
 ### Plans
 
