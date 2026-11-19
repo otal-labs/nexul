@@ -1453,7 +1453,7 @@ Then People, headed in 14px semibold like "What <role> can do" with its count in
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
-more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, filling the room between the count (sized for its widest reading, "33 of 33") and the actions, never under 11rem; below a 40rem band the field takes its own line under the heading while the actions stay on the heading's, Invite by link showing its link mark alone there (its name in its label), the count reading "2 of 33" while it narrows and each match underlined in the name or handle (`MatchText`), matches starting a word listed first, a search with no match (which drops the count) a
+more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, filling the room between the count (sized for its widest reading, "33 of 33") and the actions, never under 11rem; below a 40rem band the field takes its own line under the heading while the actions stay on the heading's, Invite by link showing its link mark alone there when the field shares the band (its name in its label), the count reading "2 of 33" while it narrows and each match underlined in the name or handle (`MatchText`), matches starting a word listed first, a search with no match (which drops the count) a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach, and a "Show fewer" right after the count in the band folds them back, the two sharing a slot sized for their widest reading so neither opening nor searching moves the field; a search shows
 every match. Holders run in name order. Each holder
@@ -1500,7 +1500,7 @@ lie to the right (the heads fade under it like the cells; Compare roles leaves t
 them into view, clear of the counts and menus; the Owner first where it is shown
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it, shown on hover or focus where the device can hover (Edit, Duplicate, Clone to workspace, Delete; the Owner's
-has none); one row per area, its name wrapping to two lines before it cuts (three below 1024px, where the area column narrows to 152px), under a muted band for each of the editor's
+has none); one row per area, its name wrapping to two lines before it cuts (three below 1024px, where the area column narrows to 176px), under a muted band for each of the editor's
 sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 held by no role" toggle on the band, so what tells the roles apart leads. A cell is the level as a
 `LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row: held slots filled, a level it could still hold an
 outline, a level the area lacks a tick on the baseline, and its word; a cell the role has no access in
@@ -1581,7 +1581,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), a find field past eight roles, then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium over the
-role's description in muted 12px on one line across the row's full width (whole in its tooltip), then the role's reach in the same three columns, named once under the muted line (`RoleReach`, `RoleReachHead`), the box on the name's line however tall the row grows. Under a "Can't
+role's description in muted 12px across the row's full width, two lines at most (whole in its tooltip), then the role's reach in the same three columns, named once under the muted line and pinned at the top of the dialog's scroll (`RoleReach`, `RoleReachHead`), the box on the name's line however tall the row grows. Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in

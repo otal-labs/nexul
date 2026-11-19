@@ -83,7 +83,7 @@ export const RoleHoldersSection = () => {
             {changeable && givable && (
               <div className="ml-auto flex shrink-0 items-center gap-2">
                 <RoleAddPeoplePopover />
-                <CreateInvitationDialog role={role} onCreated={setCreated} />
+                <CreateInvitationDialog role={role} onCreated={setCreated} markAloneWhenNarrow={(holders?.length ?? 0) > FIND_FROM} />
               </div>
             )}
           </div>

@@ -32,9 +32,9 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
   // 48px is the end fade's width, which a column under it still counts as hidden behind.
   const { ref, hidden, more } = useHiddenColumns(48);
   return (
-    <div ref={ref} className={cn("-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint]", stableGutter && "[scrollbar-gutter:stable]", snapScroller, "scroll-ps-38")}>
+    <div ref={ref} className={cn("-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint]", stableGutter && "[scrollbar-gutter:stable]", snapScroller, "scroll-ps-44")}>
       {/* Fixed layout gives every role column one share of the width; the floor keeps each at least 96px beside the area column, scrolling past it. */}
-      <table style={{ "--role-columns": ordered.length } as CSSProperties} className="w-full min-w-[calc(9.5rem+var(--role-columns)*6rem+3rem)] table-fixed lg:min-w-[calc(15rem+var(--role-columns)*6rem+3rem)] border-separate border-spacing-0 text-sm [&_tbody:last-child_tr:last-child>*]:border-b-0">
+      <table style={{ "--role-columns": ordered.length } as CSSProperties} className="w-full min-w-[calc(11rem+var(--role-columns)*6rem+3rem)] table-fixed lg:min-w-[calc(15rem+var(--role-columns)*6rem+3rem)] border-separate border-spacing-0 text-sm [&_tbody:last-child_tr:last-child>*]:border-b-0">
         <thead>
           <tr>
             <th scope="col" className={cn(stickyCell, matrixAreaWidth, microheaderClass, "top-0 z-30 border-b border-border pr-3 pb-[9px] pl-6 text-left align-bottom")}>
@@ -50,7 +50,7 @@ export const RoleMatrix = ({ roles, catalog, workspaceId, holdersOf, stableGutte
                   type="button"
                   onClick={more}
                   aria-label={`Show ${hidden} more ${hidden === 1 ? "role" : "roles"}`}
-                  className="relative z-10 mr-2 inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-card px-1.5 font-mono text-xs text-foreground tabular-nums hover:bg-accent"
+                  className="relative z-10 mr-3.5 inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-card px-1.5 font-mono text-xs text-foreground tabular-nums hover:bg-accent"
                 >
                   +{hidden}
                   <ChevronRight aria-hidden className="size-3.5" />

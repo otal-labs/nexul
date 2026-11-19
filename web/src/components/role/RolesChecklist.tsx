@@ -59,7 +59,8 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
       <p className="text-xs text-muted-foreground">Everything these roles allow, combined.</p>
       {allGivable.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search roles" label="Find a role" className="mt-2" />}
       {needle && givable.length === 0 && <p className="py-3 text-sm text-muted-foreground">No role matches.</p>}
-      {givable.length > 0 && <RoleReachHead className="pt-2 pl-7" />}
+      {/* The column names stay at the top of the dialog's scroll, so a cell far down still says its section. */}
+      {givable.length > 0 && <RoleReachHead className="sticky -top-1 z-10 bg-popover pt-2 pb-1 pl-7" />}
       {!choices && !error && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {givable.length > 0 && (
