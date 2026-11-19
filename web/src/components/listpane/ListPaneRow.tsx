@@ -48,9 +48,17 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.
   const cornerMeta = metaOnTitleLine && !!detail && !!meta && !hasActions && !trailing;
 
-  // A deep link can select a row far down the list.
+  // A deep link can select a row far down the list; when that scrolls it, the top edge then lands between rows, never mid-row.
   useEffect(() => {
-    if (selected) ref.current?.scrollIntoView?.({ block: "nearest" });
+    const row = ref.current;
+    if (!selected || !row) return;
+    const scroller = row.closest<HTMLElement>(".scroll-edge");
+    const before = scroller?.scrollTop;
+    row.scrollIntoView?.({ block: "nearest" });
+    if (!scroller || scroller.scrollTop === before) return;
+    const edge = scroller.getBoundingClientRect().top;
+    const cut = [...scroller.querySelectorAll("li")].find((li) => li.getBoundingClientRect().top < edge && li.getBoundingClientRect().bottom > edge);
+    if (cut) scroller.scrollTop += cut.getBoundingClientRect().bottom - edge;
   }, [selected]);
 
   return (
