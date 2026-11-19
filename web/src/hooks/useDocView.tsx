@@ -1,22 +1,41 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
+
+import { waitingCount } from "@nexul/client-core/clarification";
 
 import { useFetchDocClarification } from "@/hooks/DocHooks";
 import { useDocBuiltinPlays } from "@/hooks/PlayHooks";
-import { waitingCount } from "@nexul/client-core/clarification";
+import { useFetchTicketsByDoc } from "@/hooks/TicketHooks";
 import type { Doc } from "@/models/Doc";
 
-export type DocView = "doc" | "questions";
+export type DocView = "doc" | "tickets" | "questions";
 
-// Which of the doc page's two views shows: Questions when some wait as the page opens, then the viewer's pick; the
-// switch hides when the doc has no clarification and the viewer can't start one.
+const VIEW_PARAM = "view";
+
+// The doc page's view: the URL's ?view= when that view is offered, else Questions while some wait as the page opens.
 export const useDocView = (doc: Doc) => {
+  const [params, setParams] = useSearchParams();
   const { data: clarification } = useFetchDocClarification(doc.id);
   const { clarify } = useDocBuiltinPlays(doc.project_id);
-  const [chosen, setChosen] = useState<DocView | null>(null);
-  const waiting = clarification ? waitingCount(clarification) : 0;
-  const switchable = !!clarification && (clarification.rounds.length > 0 || (clarification.can_close && !!clarify));
+  const { data: tickets } = useFetchTicketsByDoc(doc.id);
   // Picked once, as the clarification first arrives, so answering the last question never swaps the view away.
-  if (chosen === null && clarification) setChosen(waiting > 0 ? "questions" : "doc");
-  const view: DocView = switchable ? (chosen ?? "doc") : "doc";
-  return { switchable, waiting, view, setView: setChosen };
+  const [opened, setOpened] = useState<DocView | null>(null);
+  const waiting = clarification ? waitingCount(clarification) : 0;
+  if (opened === null && clarification) setOpened(waiting > 0 ? "questions" : "doc");
+  const ticketCount = tickets?.length ?? 0;
+  const questions = !!clarification && (clarification.rounds.length > 0 || (clarification.can_close && !!clarify));
+  const offered = (view: DocView) => view === "doc" || (view === "tickets" && ticketCount > 0) || (view === "questions" && questions);
+  const asked = params.get(VIEW_PARAM) as DocView | null;
+  const wanted = asked ?? opened ?? "doc";
+  const view: DocView = offered(wanted) ? wanted : "doc";
+  const setView = (next: DocView) =>
+    setParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set(VIEW_PARAM, next);
+        return nextParams;
+      },
+      { replace: true },
+    );
+  return { switchable: ticketCount > 0 || questions, questions, ticketCount, waiting, view, setView };
 };

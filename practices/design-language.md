@@ -858,9 +858,15 @@ to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
 is three lines with no closing hairline (`actionsOn="crumbs"`): the
 breadcrumb with the actions on its right, pinned to the top of the record's
 scroll on `panel-opaque` so the actions never scroll away, with a 16px fade
-under it once scrolled (`sticky-crumbs`) (Doc | Questions first, then a
-hairline divider, Plays, watch, thread and the `…` menu; they wrap under the
-breadcrumb rather than cut it), the title with the pane's full width, and
+under it once scrolled (`sticky-crumbs`, whose fade rests unseen on a doc too
+short to scroll, so it never washes the title). The view switch (Doc | Tickets N |
+Questions) is held right after the breadcrumb, and Plays, watch, thread and the
+`…` menu sit at the right, wrapping under the breadcrumb rather than cutting it or
+running past the pane; the "On this page" button keeps its place, unseen, off the
+doc view, so nothing in the row shifts as the view changes. The `…` menu holds the
+doc's actions only, each with its icon (Create ticket from this doc, History,
+Permissions…, Lock or Unlock, Move to folder, Archive or Restore), the same size however many
+tickets the doc has. The title follows with the pane's full width, and
 the meta line (up to three 24px faces, the live dot and its word, live or
 offline, then the mono date; a lone green dot read as a second status). Watch is always the open eye with its count, ink while you
 watch and muted while you don't. The body sits straight on the page panel
@@ -1872,7 +1878,7 @@ look, and the job picks the control, never the page:
 - Segmented control (`ToggleGroup variant="segmented"`, size `xs`): two to
   five views, filters or modes of the same content, held in the page and
   never in the path: Connected / Not connected, All / Errors, Doc |
-  Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
+  Tickets | Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
   well with a hairline ring and a 2px inset, holding a raised thumb (`card`,
   the hairline ring drawn inside its edge so a line of the well shows
   between the two rings, `shadow-card`; in dark, `foreground` at 14% over
@@ -1901,9 +1907,18 @@ nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
 list (`ConnectorsSection`'s Connected and Not connected) is not a tab; it is a
 segmented control.
 
-Doc questions. A doc with a clarification heads its page with a "Doc |
-Questions N" segmented control (not `PageTabs`: the two are views of one
-record, and the choice stays in the page, never the path), N being the questions waiting in mono. Questions takes the article's
+Doc views. A doc heads its page with a "Doc | Tickets N | Questions N"
+segmented control (not `PageTabs`: these are views of one record, so the
+choice is the page's `?view=` query, never a path segment, and a shared link
+opens on it). Tickets shows once tickets name the doc as their source, N
+their count; Questions once the doc has a clarification or the viewer may
+start one, N the questions waiting, both in mono. Tickets takes the
+article's place: one muted line ("12 tickets · 3 done · Open board", the
+counts in mono), then one 32px row per ticket in the order they were
+written, the whole row a link: the ticket's column mark (`StatusMark`, the
+one the ticket rail shows), the mono key and the title, truncated, on a
+grid shared by every row so the titles line up. `DocTicketsView` is the
+reference. Questions takes the article's
 place in the same card: a "Questions" heading over one state line (the trail
 icon, a medium label, a muted detail), the next action trailing right for
 people who may close it, then one `QuestionSection` per round of numbered
@@ -2094,6 +2109,7 @@ The web app's pattern decisions, each with what it was picked over.
 | A stack page is ops tabs (Overview, Deploys, Logs) with its configuration behind a Settings tab, Deploy in the header | Against the settings shell for the whole page: the three daily views shared a 12rem section nav with five configuration sections, so logs and the deploy list got about half the width, the deploy action was the last card under every service, and the history repeated a day header on each deploy. A Settings tab holding the section nav is the one place a tab holds a section nav, because a stack is a record you watch first and configure second |
 | A body's code block is a `surface-2` well in both modes, its language picker inside the well (2026-10-30) | Against the `#0b0b0b` console on any canvas: on a dark panel it was a quiet box, on a white panel the heaviest thing on the page. The picker sat 10px above the block at 9px in a grey of its own and read as a stray caption |
 | Body headings at 20, 18 and 16px, not 26, 21 and 17px | Against the old scale (an `h1` at 26px sat next to the 28px page title and the two read as one level) and 20, 17 and 15px (a 15px `h3` is smaller than the 16px text it opens, so only weight told it from a paragraph); the 1.9em lead-in does the separating the size no longer has to |
+| A doc's tickets are a Tickets view beside Doc and Questions, kept in the `?view=` query, and its `…` menu holds only its actions (2026-11-19) | The menu listed every ticket the doc spawned as boxed cards under its actions: at 12 tickets it was taller than the page, at 40 it ran off the window with no scroll, and the cards were not links. A view of the record gives each ticket a 32px linked row with its column mark; the query keeps the pick across a reload and in a shared link where page state lost it, and a query is not a path, so the views stay one page |
 
 ### Motion baseline
 

@@ -59,6 +59,8 @@ interface PageHeaderProps {
   crumbs?: Crumb[];
   meta?: ReactNode;
   actions?: ReactNode;
+  // Held right after the breadcrumb when actionsOn is "crumbs", so it never moves with the actions.
+  afterCrumbs?: ReactNode;
   // "crumbs" puts the actions on the breadcrumb's line, so the title keeps the pane's full width (the doc pane).
   actionsOn?: "title" | "crumbs";
   // A mark before the title and its meta line, centred on the pair: the board's project mark.
@@ -68,13 +70,14 @@ interface PageHeaderProps {
   className?: string;
 }
 
-export const PageHeader = ({ title, crumbs, meta, actions, actionsOn = "title", leading, actionsClassName, className }: PageHeaderProps) => (
+export const PageHeader = ({ title, crumbs, meta, actions, afterCrumbs, actionsOn = "title", leading, actionsClassName, className }: PageHeaderProps) => (
   <>
   {actionsOn === "crumbs" && (
     // Outside the header so it stays pinned for the whole record; its 24px lead sits under the scroller's top fade.
     <div className="sticky-crumbs -mt-6 flex min-h-7 flex-wrap items-center gap-x-4 gap-y-2 pt-6 pb-2">
       {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="min-w-0" />}
-      {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
+      {afterCrumbs && <div className="flex shrink-0 items-center">{afterCrumbs}</div>}
+      {actions && <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>}
     </div>
   )}
   <header className={cn("border-b border-border pb-5", className)}>

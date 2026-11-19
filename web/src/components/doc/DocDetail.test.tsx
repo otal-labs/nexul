@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LiveSocket } from "@nexul/client-core/liveSocket";
@@ -60,7 +60,9 @@ const writer = ["docs:read", "docs:write"];
 
 const noClarification = { rounds: [], running: false, closed: false, can_answer: true, can_close: false };
 
-const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
+const LocationSpy = () => <p data-testid="location">{useLocation().search}</p>;
+
+const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer, path = "/") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   // Prime the profile cache (production warms it via OnboardingGate): the collab
   // session's `name` is a session-rebuilding dep, so it must be present on the first render.
@@ -72,7 +74,8 @@ const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: stri
   client.setQueryData([getMyRoleKey, "ws-1"], { role_name: "Member", permissions });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
+        <LocationSpy />
         <DocDetail
           doc={shown}
           workspaceId="ws-1"
@@ -87,8 +90,8 @@ const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: stri
   );
 };
 
-const renderDetail = async (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
-  const result = renderDetailRaw(socket, shown, permissions);
+const renderDetail = async (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer, path = "/") => {
+  const result = renderDetailRaw(socket, shown, permissions, path);
   await flushConnect();
   return result;
 };
@@ -410,7 +413,7 @@ describe("DocDetail", () => {
     await renderDetail(new FakeSocket());
 
     expect(await screen.findByLabelText("Body")).toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: "Doc or questions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Doc views" })).not.toBeInTheDocument();
   });
 
   it("opens on the Questions view while questions wait, counting them on the switch, and switches back to the doc", async () => {
@@ -448,6 +451,55 @@ describe("DocDetail", () => {
     await user.click(screen.getByRole("radio", { name: "Doc" }));
     expect(screen.queryByText("Who books the van?")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Body")).toBeVisible();
+  });
+
+  const ticket = (n: number, title: string, status: string) => ({
+    id: `t-${n}`, project_id: "p-1", number: n, title, body: "", status, doc_id: "doc-1", position: 0,
+    created_at: "2026-08-02T12:00:00Z", updated_at: "2026-08-02T12:00:00Z",
+  });
+
+  const withTickets = (permissions: string[] = writer) => {
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+      if (url === "/api/tickets") return { data: [ticket(1, "Write migrations", "s-done"), ticket(2, "Wire FTS", "s-open")] };
+      if (url === "/api/statuses") return { data: [{ id: "s-open", name: "Open", kind: "backlog", icon: "" }, { id: "s-done", name: "Done", kind: "done", icon: "" }] };
+      if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Atlas", prefix: "ATL" } };
+      return defaultGet!(url);
+    });
+  };
+
+  it("opens the Tickets view the URL names, one link per ticket under the done count, and keeps the next pick in the URL", async () => {
+    const user = userEvent.setup();
+    withTickets();
+    await renderDetail(new FakeSocket(), doc, writer, "/?view=tickets");
+
+    expect(await screen.findByRole("radio", { name: "Tickets, 2" })).toBeChecked();
+    const view = screen.getByRole("region", { name: "Tickets" });
+    await waitFor(() => expect(view).toHaveTextContent(/2\s*tickets\s*·\s*1\s*done/));
+    expect(await within(view).findByRole("link", { name: /ATL-1\s*Write migrations/ })).toHaveAttribute("href", expect.stringContaining("/tickets/ATL-1"));
+    expect(within(view).getByRole("link", { name: /ATL-2\s*Wire FTS/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Body")).not.toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: "Doc" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("?view=doc");
+    expect(screen.queryByRole("region", { name: "Tickets" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Body")).toBeVisible();
+  });
+
+  it("keeps the … menu to its actions, each named, however many tickets the doc has", async () => {
+    const user = userEvent.setup();
+    const everything = [...writer, "tickets:write", "permissions:write", "docs:lock"];
+    withTickets(everything);
+    await renderDetail(new FakeSocket(), doc, everything);
+    await screen.findByRole("radio", { name: "Tickets, 2" });
+
+    await user.click(screen.getByRole("button", { name: "Doc actions" }));
+    const menu = await screen.findByRole("dialog");
+    expect(within(menu).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Create ticket from this doc", "History", "Permissions…", "Lock", "Archive",
+    ]);
+    expect(within(menu).queryByText("Write migrations")).not.toBeInTheDocument();
   });
 
   it("hides the Trail section for a caller without docs:thread", async () => {

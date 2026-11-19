@@ -93,10 +93,10 @@ describe("DocPage", () => {
 
     renderPage();
     expect(await screen.findByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
-    // Actions and linked tickets live behind the settings-cog toggle.
-    await user.click(await screen.findByRole("button", { name: "Doc actions" }));
-    expect(await screen.findByText("Write migrations")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create ticket from this doc" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("radio", { name: /^Tickets/ }));
+    expect(await screen.findByRole("link", { name: /Write migrations/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Doc actions" }));
+    expect(await screen.findByRole("button", { name: "Create ticket from this doc" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Permissions…" })).not.toBeInTheDocument();
   });
 
