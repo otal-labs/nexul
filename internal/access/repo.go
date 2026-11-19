@@ -65,6 +65,8 @@ type DocScope struct {
 	WorkspaceID string
 	ProjectID   string
 	FolderID    string
+	// Folders are the folders a folder sits inside, outermost first; a doc's scope leaves them to its folder's.
+	Folders []string
 }
 
 // DocWorkspaceResolver resolves docs' projects and workspaces so HasPermission applies to docs too.

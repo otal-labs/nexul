@@ -8,7 +8,12 @@ import (
 
 type saveFolderRequest struct {
 	ProjectID string `json:"project_id"`
+	ParentID  string `json:"parent_id"`
 	Name      string `json:"name"`
+}
+
+type moveFolderRequest struct {
+	ParentID string `json:"parent_id"`
 }
 
 type moveDocRequest struct {
@@ -30,7 +35,7 @@ func (h *Handler) createFolder(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	f, err := h.svc.CreateFolder(r.Context(), req.ProjectID, req.Name)
+	f, err := h.svc.CreateFolder(r.Context(), req.ProjectID, req.ParentID, req.Name)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -52,7 +57,23 @@ func (h *Handler) renameFolder(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, f)
 }
 
-// deleteFolder moves the folder's docs to the project's default folder; it never deletes a doc.
+// moveFolder puts the folder inside parent_id, or at the top when it is empty.
+func (h *Handler) moveFolder(w http.ResponseWriter, r *http.Request) {
+	var req moveFolderRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	f, err := h.svc.MoveFolder(r.Context(), r.PathValue("id"), req.ParentID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, f)
+}
+
+// deleteFolder deletes the folder and the folders inside it and moves all their docs to its parent, or to the project's
+// default folder; it never deletes a doc.
 func (h *Handler) deleteFolder(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.DeleteFolder(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)

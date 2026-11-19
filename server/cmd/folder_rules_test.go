@@ -22,7 +22,7 @@ func TestFolderRules_MovingADocChangesWhatReachesIt(t *testing.T) {
 	t.Parallel()
 	f := newPermFixture(t)
 	s := f.svc
-	folder, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, "Sales")
+	folder, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, "", "Sales")
 	require.NoError(t, err)
 	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "folder", []string{folder.ID}, access.Targets{RoleIDs: []string{"role-reader"}},
 		[]permissions.Action{permissions.DocsRead}, access.StateDeny))
@@ -87,7 +87,7 @@ func TestFolderRules_GoWithTheirProject(t *testing.T) {
 func TestFolderRules_FramesReachWhomTheyName(t *testing.T) {
 	t.Parallel()
 	f := newPermFixture(t)
-	folder, err := f.svc.docsSvc.CreateFolder(as(uOwner), pGeneral, "Sales")
+	folder, err := f.svc.docsSvc.CreateFolder(as(uOwner), pGeneral, "", "Sales")
 	require.NoError(t, err)
 	a := liveAudience{access: f.svc.accessSvc, tickets: f.svc.ticketsSvc, chat: f.svc.chatSvc, deploy: f.svc.deploySvc}
 	person := access.GrantEvent{ResourceType: "folder", ResourceID: folder.ID, Target: access.TargetPerson, UserID: uPlain, ActorID: uOwner}
@@ -97,4 +97,68 @@ func TestFolderRules_FramesReachWhomTheyName(t *testing.T) {
 	role := access.GrantEvent{ResourceType: "folder", ResourceID: folder.ID, Target: access.TargetRole, RoleID: "role-reader", ActorID: uOwner}
 	assert.True(t, a.allows(as(uReader), access.TopicGrantChanged, role), "a holder of the role")
 	assert.False(t, a.allows(as(uWriter), access.TopicGrantChanged, role))
+}
+
+// TestFolderRules_ReachEveryFolderInside: a folder's Deny reaches a doc any depth inside it, on every read; a nearer
+// folder's Allow turns it back, and the reader still sees the folders on the way to it.
+func TestFolderRules_ReachEveryFolderInside(t *testing.T) {
+	t.Parallel()
+	f := newPermFixture(t)
+	s := f.svc
+	clients, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, "", "Clients")
+	require.NoError(t, err)
+	acme, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, clients.ID, "Acme")
+	require.NoError(t, err)
+	drafts, err := s.docsSvc.CreateFolder(as(uOwner), pGeneral, acme.ID, "Drafts")
+	require.NoError(t, err)
+	_, err = s.docsSvc.MoveToFolder(as(uOwner), f.doc, drafts.ID)
+	require.NoError(t, err)
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "folder", []string{clients.ID}, access.Targets{RoleIDs: []string{"role-reader"}},
+		[]permissions.Action{permissions.DocsRead}, access.StateDeny))
+	docList := tool(t, docs.MCPTools(s.docsSvc), "doc_list")
+	reaches := func() (bool, []string) {
+		t.Helper()
+		reader := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), s.accessSvc.NewMemo())
+		can, err := s.accessSvc.Can(reader, uReader, f.doc, permissions.DocsRead)
+		require.NoError(t, err)
+		_, getErr := s.docsSvc.Get(reader, f.doc)
+		listed, _ := callPage(t, s.accessSvc, docList, uReader, `{}`)
+		folders, err := s.docsSvc.ListFolders(reader, pGeneral)
+		require.NoError(t, err)
+		var names []string
+		for _, fl := range folders {
+			names = append(names, fl.Name)
+		}
+		assert.Equal(t, can, getErr == nil, "a read answers as the check")
+		assert.Equal(t, can, assert.ObjectsAreEqual([]string{f.doc}, listed), "doc_list answers as the check")
+		return can, names
+	}
+
+	can, names := reaches()
+	assert.False(t, can, "Clients' Deny reaches two folders down")
+	assert.NotContains(t, names, "Drafts")
+
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "folder", []string{acme.ID}, access.Targets{RoleIDs: []string{"role-reader"}},
+		[]permissions.Action{permissions.DocsRead}, access.StateAllow))
+	can, names = reaches()
+	assert.True(t, can, "Acme's Allow is nearer than Clients' Deny")
+	assert.Equal(t, []string{"Clients", "Acme", "Drafts"}, names, "the folders on the way to a readable doc show")
+
+	_, err = s.docsSvc.MoveFolder(as(uOwner), acme.ID, "")
+	require.NoError(t, err)
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "folder", []string{acme.ID}, access.Targets{RoleIDs: []string{"role-reader"}},
+		[]permissions.Action{permissions.DocsRead}, access.StateFallback))
+	can, _ = reaches()
+	assert.True(t, can, "moved out of Clients, Acme no longer takes its Deny")
+
+	_, err = s.docsSvc.MoveFolder(as(uOwner), acme.ID, drafts.ID)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a folder can't go inside a folder within it")
+	assert.Equal(t, "invalid: a folder can't go inside itself or a folder within it", err.Error(), "the refusal reads as one sentence")
+
+	require.NoError(t, s.docsSvc.DeleteFolder(as(uOwner), acme.ID))
+	moved, err := f.store.Docs.GetByID(context.Background(), f.doc)
+	require.NoError(t, err)
+	assert.Equal(t, testutil.GeneralMainFolderID, moved.FolderID, "a top-level folder's docs, any depth inside, move to Main")
+	_, err = f.store.Docs.GetFolder(context.Background(), drafts.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "the folders inside went with it")
 }

@@ -431,6 +431,7 @@ type DocFolder struct {
 	IsDefault int64
 	CreatedAt int64
 	UpdatedAt int64
+	ParentID  string
 }
 
 type DocSettle struct {

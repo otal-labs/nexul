@@ -290,3 +290,15 @@ func TestProjectTools_DocFolders(t *testing.T) {
 	web, _ := f.folders.ListFolders(t.Context(), "p-2")
 	assert.Equal(t, "Main", web[0].Name)
 }
+
+func TestProjectTools_DocFolders_NestAndMove(t *testing.T) {
+	f := newFixture(t)
+	got, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1",
+		"doc_folders":{"create":[{"name":"Clients"},{"name":"Acme","parent_id":"f-clients"}]}}`)
+	require.NoError(t, err)
+	assert.Contains(t, got.(projectUpdateResult).Project.DocFolders, docFolderResult{ID: "f-acme", Name: "Acme", ParentID: "f-clients"})
+
+	got, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","doc_folders":{"update":[{"id":"f-acme","parent_id":""}]}}`)
+	require.NoError(t, err)
+	assert.Contains(t, got.(projectUpdateResult).Project.DocFolders, docFolderResult{ID: "f-acme", Name: "Acme"}, "an empty parent_id moves it to the top, an omitted name keeps it")
+}

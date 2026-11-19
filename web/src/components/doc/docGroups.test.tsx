@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { groupDocs, type DocListGroups } from "@/components/doc/docGroups";
+import { groupDocs, type DocFolderGroup, type DocListGroups } from "@/components/doc/docGroups";
 import type { DocListItem } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
 
 const folder = (id: string, name: string, isDefault = false): DocFolder => ({
   id,
   project_id: "project-1",
+  parent_id: "",
   name,
   is_default: isDefault,
   created_at: "2026-01-01T00:00:00Z",
@@ -80,5 +81,27 @@ describe("groupDocs", () => {
   it("while searching, hides folders without a match and keeps every doc in a folder's count", () => {
     const groups = groupDocs({ docs, folders, sortBy: "created_at", pinnedIds: ["roadmap"], match: (d) => d.id.startsWith("EP0") });
     expect(shape(groups)).toEqual({ pinned: [], folders: [["GetSource", ["EP02", "EP01"], 2]] });
+  });
+});
+
+describe("groupDocs with folders inside folders", () => {
+  const clients = { ...folder("f-clients", "Clients") };
+  const acme = { ...folder("f-acme", "Acme"), parent_id: "f-clients" };
+  const drafts = { ...folder("f-drafts", "Drafts"), parent_id: "f-acme" };
+  const nested = [main, acme, clients, drafts];
+  const nestedDocs = [doc("brief", "f-acme", "2026-01-02T09:00:00Z"), doc("draft", "f-drafts", "2026-01-03T09:00:00Z"), doc("roadmap", "f-main", "2026-01-01T09:00:00Z")];
+  const tree = (groups: DocFolderGroup[]): unknown[] => groups.map((g) => [g.folder.name, g.docs.map((d) => d.id), g.total, tree(g.folders)]);
+
+  it("puts each folder under its parent and counts the docs of every folder inside", () => {
+    const groups = groupDocs({ docs: nestedDocs, folders: nested, sortBy: "created_at", pinnedIds: [] });
+    expect(tree(groups.folders)).toEqual([
+      ["Main", ["roadmap"], 1, []],
+      ["Clients", [], 2, [["Acme", ["brief"], 2, [["Drafts", ["draft"], 1, []]]]]],
+    ]);
+  });
+
+  it("while searching, keeps the folders on the way to a match and drops the rest", () => {
+    const groups = groupDocs({ docs: nestedDocs, folders: nested, sortBy: "created_at", pinnedIds: [], match: (d) => d.id === "draft" });
+    expect(tree(groups.folders)).toEqual([["Clients", [], 2, [["Acme", [], 2, [["Drafts", ["draft"], 1, []]]]]]]);
   });
 });

@@ -625,7 +625,7 @@ whoever may manage the record's access, then Delete in destructive), each item
 hidden without its permission and the browser's own menu back when none is left;
 Docs adds Pin first, which needs no permission and lifts the doc into a leading
 Pinned group kept in the browser, and Move to folder after Lock, a submenu of the
-project's folders with the current one checked. A submenu portals out of its
+project's folders in tree order, each named by its path ("Clients / Acme"), with the current one checked. A submenu portals out of its
 parent menu, which scrolls and would clip it.
 Group labels are 11px uppercase mono, with no rule under them or after the group. Before a row is picked, the open pane says
 so with the compact orbit around the list's own icon (the one its sidebar
@@ -643,16 +643,18 @@ is the state slot, the title in 13px medium on the baseline of its mono time,
 and one muted line: the folder and either the run's state or "created by" and the creator and
 the doc's first line, its blocks apart by " · ". An empty project's overview is the `EmptyState` with
 `New doc`; the list then shows its header alone. Docs groups its rows by
-folder below Pinned, the default folder first and the rest in creation order:
+folder below Pinned, the default folder first and the rest in creation order, each folder's own folders nested under its row above its docs and stepped in 20px a level, so a chevron sits under its parent's folder icon:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
 the folder's own name in 12px medium sans, sentence case, and a muted mono
-count in the rows' time column, and it toggles on
+count of every doc in it and inside it in the rows' time column, and it toggles on
 click, collapsed folders kept per browser and project. On hover and focus a
 `+` (new doc in that folder, never on the default folder, which the header's
 `+` already fills) takes the count's place, and a right-click opens New doc,
-Rename, then Delete (never on the default folder). Doc rows start their state slot under the folder icon, and an empty folder is
+New folder (one inside it), Move to folder (Top level, then every folder outside its own subtree; never on the default
+folder), Rename, then Delete (never on the default folder), whose confirm says the folders inside go with it and where
+its docs move. Doc rows start their state slot under the folder icon, and an empty folder is
 its header alone, its count reading 0. A search shows matching docs inside their folders, hides the
-folders without a match, and opens collapsed ones while it runs. The header
+folders with no match in or inside them, and opens collapsed ones while it runs. The header
 puts a ghost menu button before them that names the sort and the view ("Created",
 "Archived · Edited"), holding Sort by and Show archived, and a ghost
 `FolderPlus` (New folder) beside the `+`, for writers only. Below 1024px the

@@ -112,7 +112,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 func docListTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_list", "List docs",
 		"Lists docs by title, or full-text searches them when query is set, optionally within one project or one folder. "+
-			"A folder groups a project's docs one level deep: every doc lives in exactly one, the default folder Main unless placed elsewhere, and project_get lists them. "+
+			"A folder groups a project's docs, and may nest: every doc lives in exactly one, the default folder Main unless placed elsewhere, and project_get lists them. "+
 			"Use it to find a doc's id, then doc_get to read its body. "+
 			"Returns items without bodies, each with its folder_id, ranked by relevance with a query and oldest first without one; "+
 			"archived docs are hidden unless include_archived is set.",

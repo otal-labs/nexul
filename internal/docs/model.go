@@ -104,10 +104,12 @@ type DocListItem struct {
 	ClarificationClosed bool `json:"clarification_closed,omitempty"`
 }
 
-// Folder groups a project's docs one level deep; each project has one default folder, which is never deleted.
+// Folder groups a project's docs, inside another folder or at the top; each project has one default folder, which is
+// never deleted or moved.
 type Folder struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"project_id"`
+	ParentID  string    `json:"parent_id" jsonschema:"The folder this one sits inside; empty for a top-level folder."`
 	Name      string    `json:"name"`
 	IsDefault bool      `json:"is_default" jsonschema:"The project's default folder, where new docs land; it is never deleted."`
 	CreatedAt time.Time `json:"created_at"`

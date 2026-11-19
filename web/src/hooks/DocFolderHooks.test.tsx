@@ -5,7 +5,7 @@ import { docFolderFollower } from "@/hooks/DocFolderHooks";
 import type { DocFolder } from "@/models/DocFolder";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
-const specs: DocFolder = { id: "f-1", project_id: "p-1", name: "Specs", is_default: false, created_at: "", updated_at: "" };
+const specs: DocFolder = { id: "f-1", project_id: "p-1", parent_id: "", name: "Specs", is_default: false, created_at: "", updated_at: "" };
 
 describe("the doc folder follower", () => {
   it("renames and drops folders in their project's list, and refetches only that list for a new one", async () => {

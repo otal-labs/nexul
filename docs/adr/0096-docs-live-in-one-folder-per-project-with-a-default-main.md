@@ -37,3 +37,5 @@ inside a doc and as the frontend's Section component; nested folders; a doc with
 tools, which the tool ceiling has no room for when the project's tools already carry its other child collections.
 
 Amends ADR 0025, whose "a project's docs are a flat list" no longer holds. Decided 2026-10-01.
+
+Amended by ADR 0205: folders nest to any depth, and deleting one moves its docs to its parent.

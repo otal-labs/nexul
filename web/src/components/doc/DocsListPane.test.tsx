@@ -12,7 +12,7 @@ import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocArchiveStore } from "@/stores/docArchiveStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 
-const main: DocFolder = { id: "f-main", project_id: "project-1", name: "Main", is_default: true, created_at: "", updated_at: "" };
+const main: DocFolder = { id: "f-main", project_id: "project-1", parent_id: "", name: "Main", is_default: true, created_at: "", updated_at: "" };
 
 vi.mock("@/hooks/useWorkspacePath", () => ({ useWorkspacePath: () => (path: string) => path }));
 vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));

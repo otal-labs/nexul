@@ -12,9 +12,10 @@ vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: () => false }
 vi.mock("@/components/doc/DocListRow", () => ({ DocListRow: ({ doc }: { doc: DocListItem }) => <li>{doc.title}</li> }));
 
 const group = (projectId: string): DocFolderGroup => ({
-  folder: { id: "f-gs", project_id: projectId, name: "GetSource", is_default: false, created_at: "", updated_at: "" },
+  folder: { id: "f-gs", project_id: projectId, parent_id: "", name: "GetSource", is_default: false, created_at: "", updated_at: "" },
   docs: [{ id: "d-1", title: "EP01", folder_id: "f-gs" } as DocListItem],
   total: 1,
+  folders: [],
 });
 
 const savedCollapsed = () => JSON.parse(localStorage.getItem("doc-folders-collapsed") ?? "{}").state?.collapsed;
@@ -40,5 +41,29 @@ describe("DocFolderSection", () => {
 
     rerender(<DocFolderSection group={group("p-1")} projectToken="p" selectedId={undefined} forceOpen />);
     expect(screen.getByText("EP01")).toBeInTheDocument();
+  });
+});
+
+describe("DocFolderSection inside another", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useDocFolderStore.setState({ collapsed: {} });
+  });
+
+  it("shows the folders inside before its docs, and collapsing it hides both", async () => {
+    const inner: DocFolderGroup = {
+      folder: { id: "f-acme", project_id: "p-1", parent_id: "f-gs", name: "Acme", is_default: false, created_at: "", updated_at: "" },
+      docs: [{ id: "d-2", title: "Brief", folder_id: "f-acme" } as DocListItem],
+      total: 1,
+      folders: [],
+    };
+    render(<DocFolderSection group={{ ...group("p-1"), total: 2, folders: [inner] }} projectToken="p" selectedId={undefined} forceOpen={false} />);
+    const acme = screen.getByRole("region", { name: "Acme" });
+    expect(acme.compareDocumentPosition(screen.getByText("EP01")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Brief")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /GetSource/ }));
+    expect(screen.queryByRole("region", { name: "Acme" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Brief")).not.toBeInTheDocument();
   });
 });

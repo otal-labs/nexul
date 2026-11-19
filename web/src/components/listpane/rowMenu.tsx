@@ -44,7 +44,7 @@ export const contextParts: MenuParts = {
   RadioItem: Context.ContextMenuRadioItem,
 };
 
-export type GatedRowAction = "onNewDoc" | "lock" | "archive" | "moveTo" | "onEdit" | "onRename" | "onClone" | "onHistory";
+export type GatedRowAction = "onNewDoc" | "onNewFolder" | "lock" | "archive" | "moveTo" | "onEdit" | "onRename" | "onClone" | "onHistory";
 
 /** Each action is hidden when it is omitted (the viewer lacks the permission). */
 export interface RowMenu {
@@ -56,6 +56,8 @@ export interface RowMenu {
   /** A DM's or thread's bots, which have no settings page to live on. */
   onBots?: (() => void) | undefined;
   onNewDoc?: (() => void) | undefined;
+  /** A folder inside this one. */
+  onNewFolder?: (() => void) | undefined;
   /** Pin and Unpin are a personal view setting, so nothing gates them. */
   pin?: { pinned: boolean; onToggle: () => void } | undefined;
   lock?: { locked: boolean; onToggle: () => void } | undefined;
@@ -80,7 +82,7 @@ export interface RowMenu {
 
 // The row's own actions, before Permissions… and Delete.
 export const hasOwnActions = (m: RowMenu) =>
-  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.archive || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone || !!m.onHistory;
+  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.onNewFolder || !!m.pin || !!m.sidebar || !!m.lock || !!m.archive || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone || !!m.onHistory;
 
 // Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
 export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>

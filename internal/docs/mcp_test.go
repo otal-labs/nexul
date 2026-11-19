@@ -223,7 +223,7 @@ func TestDocList(t *testing.T) {
 func TestDocTools_Folders(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	getSource, err := s.CreateFolder(testCtx(), "project-1", "GetSource")
+	getSource, err := s.CreateFolder(testCtx(), "project-1", "", "GetSource")
 	require.NoError(t, err)
 	stays := mustDoc(t, s, "project-1", "Roadmap", "")
 

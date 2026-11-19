@@ -911,8 +911,8 @@ func (d *docFolders) ListFolders(_ context.Context, projectID string) ([]*docs.F
 	return out, nil
 }
 
-func (d *docFolders) CreateFolder(_ context.Context, projectID, name string) (*docs.Folder, error) {
-	f := &docs.Folder{ID: "f-" + strings.ToLower(name), ProjectID: projectID, Name: name}
+func (d *docFolders) CreateFolder(_ context.Context, projectID, parentID, name string) (*docs.Folder, error) {
+	f := &docs.Folder{ID: "f-" + strings.ToLower(name), ProjectID: projectID, ParentID: parentID, Name: name}
 	d.items = append(d.items, f)
 	return f, nil
 }
@@ -921,6 +921,16 @@ func (d *docFolders) RenameFolder(_ context.Context, id, name string) (*docs.Fol
 	for _, f := range d.items {
 		if f.ID == id {
 			f.Name = name
+			return f, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (d *docFolders) MoveFolder(_ context.Context, id, parentID string) (*docs.Folder, error) {
+	for _, f := range d.items {
+		if f.ID == id {
+			f.ParentID = parentID
 			return f, nil
 		}
 	}

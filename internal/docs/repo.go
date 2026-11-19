@@ -20,10 +20,15 @@ type FolderRepo interface {
 	ListFolders(ctx context.Context, projectID string) ([]*Folder, error)
 	GetFolder(ctx context.Context, id string) (*Folder, error)
 	DefaultFolder(ctx context.Context, projectID string) (*Folder, error)
-	// CreateFolder returns ErrConflict when the project already has a folder of that name, ignoring case.
+	// FolderSubtree returns the folder's id and the ids of every folder inside it, at any depth.
+	FolderSubtree(ctx context.Context, id string) ([]string, error)
+	// CreateFolder returns ErrConflict when the parent already holds a folder of that name, ignoring case.
 	CreateFolder(ctx context.Context, f *Folder, evts ...eventbus.OutboxEvent) error
-	RenameFolder(ctx context.Context, f *Folder, evts ...eventbus.OutboxEvent) error
-	// DeleteFolder moves the folder's docs into toFolderID and deletes the folder in one transaction.
+	// UpdateFolder writes the folder's name and parent: ErrConflict for a sibling's name, ErrInvalid for a parent
+	// inside the folder itself.
+	UpdateFolder(ctx context.Context, f *Folder, evts ...eventbus.OutboxEvent) error
+	// DeleteFolder deletes the folder and every folder inside it, with their rules, and moves their docs into
+	// toFolderID, in one transaction.
 	DeleteFolder(ctx context.Context, id, toFolderID string, evts ...eventbus.OutboxEvent) error
 	SetDocFolder(ctx context.Context, docID, folderID string, evts ...eventbus.OutboxEvent) error
 }

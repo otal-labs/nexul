@@ -10,12 +10,13 @@ import (
 )
 
 const createDocFolder = `-- name: CreateDocFolder :exec
-INSERT INTO doc_folders (id, project_id, name, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO doc_folders (id, project_id, parent_id, name, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDocFolderParams struct {
 	ID        string
 	ProjectID string
+	ParentID  string
 	Name      string
 	IsDefault int64
 	CreatedAt int64
@@ -26,6 +27,7 @@ func (q *Queries) CreateDocFolder(ctx context.Context, arg CreateDocFolderParams
 	_, err := q.db.ExecContext(ctx, createDocFolder,
 		arg.ID,
 		arg.ProjectID,
+		arg.ParentID,
 		arg.Name,
 		arg.IsDefault,
 		arg.CreatedAt,
@@ -34,29 +36,29 @@ func (q *Queries) CreateDocFolder(ctx context.Context, arg CreateDocFolderParams
 	return err
 }
 
-const deleteDocFolder = `-- name: DeleteDocFolder :execrows
-DELETE FROM doc_folders WHERE id = ?
+const deleteDocFolderRules = `-- name: DeleteDocFolderRules :exec
+DELETE FROM permission_overwrites WHERE resource_type = 'folder' AND resource_id IN (SELECT value FROM json_each(?1))
 `
 
-func (q *Queries) DeleteDocFolder(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteDocFolder, id)
+func (q *Queries) DeleteDocFolderRules(ctx context.Context, ids interface{}) error {
+	_, err := q.db.ExecContext(ctx, deleteDocFolderRules, ids)
+	return err
+}
+
+const deleteDocFolders = `-- name: DeleteDocFolders :execrows
+DELETE FROM doc_folders WHERE id IN (SELECT value FROM json_each(?1))
+`
+
+func (q *Queries) DeleteDocFolders(ctx context.Context, ids interface{}) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDocFolders, ids)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteDocFolderRules = `-- name: DeleteDocFolderRules :exec
-DELETE FROM permission_overwrites WHERE resource_type = 'folder' AND resource_id = ?
-`
-
-func (q *Queries) DeleteDocFolderRules(ctx context.Context, resourceID string) error {
-	_, err := q.db.ExecContext(ctx, deleteDocFolderRules, resourceID)
-	return err
-}
-
 const getDefaultDocFolder = `-- name: GetDefaultDocFolder :one
-SELECT id, project_id, name, is_default, created_at, updated_at FROM doc_folders WHERE project_id = ? AND is_default = 1
+SELECT id, project_id, name, is_default, created_at, updated_at, parent_id FROM doc_folders WHERE project_id = ? AND is_default = 1
 `
 
 func (q *Queries) GetDefaultDocFolder(ctx context.Context, projectID string) (DocFolder, error) {
@@ -69,12 +71,13 @@ func (q *Queries) GetDefaultDocFolder(ctx context.Context, projectID string) (Do
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return i, err
 }
 
 const getDocFolder = `-- name: GetDocFolder :one
-SELECT id, project_id, name, is_default, created_at, updated_at FROM doc_folders WHERE id = ?
+SELECT id, project_id, name, is_default, created_at, updated_at, parent_id FROM doc_folders WHERE id = ?
 `
 
 func (q *Queries) GetDocFolder(ctx context.Context, id string) (DocFolder, error) {
@@ -87,28 +90,90 @@ func (q *Queries) GetDocFolder(ctx context.Context, id string) (DocFolder, error
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ParentID,
 	)
 	return i, err
 }
 
-const getDocFolderScope = `-- name: GetDocFolderScope :one
-SELECT f.project_id, p.workspace_id FROM doc_folders f JOIN projects p ON p.id = f.project_id WHERE f.id = ?
+const listDocFolderChain = `-- name: ListDocFolderChain :many
+WITH RECURSIVE up AS (
+  SELECT f.id AS id, f.parent_id AS parent_id, 0 AS depth FROM doc_folders f WHERE f.id = ?
+  UNION ALL
+  SELECT f.id, f.parent_id, up.depth + 1 FROM up JOIN doc_folders f ON f.id = up.parent_id WHERE up.depth < 100
+)
+SELECT up.id, up.depth, f.project_id, p.workspace_id FROM up JOIN doc_folders f ON f.id = up.id JOIN projects p ON p.id = f.project_id
+ORDER BY up.depth DESC
 `
 
-type GetDocFolderScopeRow struct {
+type ListDocFolderChainRow struct {
+	ID          string
+	Depth       int64
 	ProjectID   string
 	WorkspaceID string
 }
 
-func (q *Queries) GetDocFolderScope(ctx context.Context, id string) (GetDocFolderScopeRow, error) {
-	row := q.db.QueryRowContext(ctx, getDocFolderScope, id)
-	var i GetDocFolderScopeRow
-	err := row.Scan(&i.ProjectID, &i.WorkspaceID)
-	return i, err
+func (q *Queries) ListDocFolderChain(ctx context.Context, id string) ([]ListDocFolderChainRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDocFolderChain, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDocFolderChainRow
+	for rows.Next() {
+		var i ListDocFolderChainRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Depth,
+			&i.ProjectID,
+			&i.WorkspaceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDocFolderSubtree = `-- name: ListDocFolderSubtree :many
+WITH RECURSIVE down AS (
+  SELECT CAST(?1 AS TEXT) AS id
+  UNION
+  SELECT f.id FROM down JOIN doc_folders f ON f.parent_id = down.id
+)
+SELECT id FROM down
+`
+
+func (q *Queries) ListDocFolderSubtree(ctx context.Context, id string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listDocFolderSubtree, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDocFoldersByProject = `-- name: ListDocFoldersByProject :many
-SELECT id, project_id, name, is_default, created_at, updated_at FROM doc_folders WHERE project_id = ? ORDER BY is_default DESC, created_at, id
+SELECT id, project_id, name, is_default, created_at, updated_at, parent_id FROM doc_folders WHERE project_id = ? ORDER BY is_default DESC, created_at, id
 `
 
 func (q *Queries) ListDocFoldersByProject(ctx context.Context, projectID string) ([]DocFolder, error) {
@@ -127,6 +192,7 @@ func (q *Queries) ListDocFoldersByProject(ctx context.Context, projectID string)
 			&i.IsDefault,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ParentID,
 		); err != nil {
 			return nil, err
 		}
@@ -142,35 +208,17 @@ func (q *Queries) ListDocFoldersByProject(ctx context.Context, projectID string)
 }
 
 const moveDocsToFolder = `-- name: MoveDocsToFolder :exec
-UPDATE docs SET folder_id = ?1 WHERE folder_id = ?2
+UPDATE docs SET folder_id = ?1 WHERE folder_id IN (SELECT value FROM json_each(?2))
 `
 
 type MoveDocsToFolderParams struct {
-	ToFolderID   string
-	FromFolderID string
+	ToFolderID    string
+	FromFolderIds interface{}
 }
 
 func (q *Queries) MoveDocsToFolder(ctx context.Context, arg MoveDocsToFolderParams) error {
-	_, err := q.db.ExecContext(ctx, moveDocsToFolder, arg.ToFolderID, arg.FromFolderID)
+	_, err := q.db.ExecContext(ctx, moveDocsToFolder, arg.ToFolderID, arg.FromFolderIds)
 	return err
-}
-
-const renameDocFolder = `-- name: RenameDocFolder :execrows
-UPDATE doc_folders SET name = ?, updated_at = ? WHERE id = ?
-`
-
-type RenameDocFolderParams struct {
-	Name      string
-	UpdatedAt int64
-	ID        string
-}
-
-func (q *Queries) RenameDocFolder(ctx context.Context, arg RenameDocFolderParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, renameDocFolder, arg.Name, arg.UpdatedAt, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
 
 const setDocFolder = `-- name: SetDocFolder :execrows
@@ -184,6 +232,30 @@ type SetDocFolderParams struct {
 
 func (q *Queries) SetDocFolder(ctx context.Context, arg SetDocFolderParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setDocFolder, arg.FolderID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateDocFolder = `-- name: UpdateDocFolder :execrows
+UPDATE doc_folders SET name = ?, parent_id = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateDocFolderParams struct {
+	Name      string
+	ParentID  string
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) UpdateDocFolder(ctx context.Context, arg UpdateDocFolderParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateDocFolder,
+		arg.Name,
+		arg.ParentID,
+		arg.UpdatedAt,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}

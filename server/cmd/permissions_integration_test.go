@@ -346,16 +346,16 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			return err
 		}, map[string]string{uOwner: ok, uCopier: ok, uEditor: forbidden, uCloner: forbidden, uWriter: notFound, uOutsider: notFound}},
 		{"docs: create a folder", func(ctx context.Context) error {
-			_, err := s.docsSvc.CreateFolder(ctx, "project-general", "Folder "+actorID(ctx))
+			_, err := s.docsSvc.CreateFolder(ctx, "project-general", "", "Folder "+actorID(ctx))
 			return err
 		}, map[string]string{uOwner: ok, uEditor: ok, uReader: forbidden, uOutsider: notFound}},
 		{"docs: delete a folder", func(ctx context.Context) error {
-			folder, err := s.docsSvc.CreateFolder(context.Background(), "project-general", "Doomed "+actorID(ctx))
+			folder, err := s.docsSvc.CreateFolder(context.Background(), "project-general", "", "Doomed "+actorID(ctx))
 			require.NoError(t, err)
 			return s.docsSvc.DeleteFolder(ctx, folder.ID)
 		}, map[string]string{uOwner: ok, uEditor: ok, uReader: forbidden, uOutsider: notFound}},
 		{"docs: move a doc to a folder", func(ctx context.Context) error {
-			folder, err := s.docsSvc.CreateFolder(context.Background(), "project-general", "Target "+actorID(ctx))
+			folder, err := s.docsSvc.CreateFolder(context.Background(), "project-general", "", "Target "+actorID(ctx))
 			require.NoError(t, err)
 			_, err = s.docsSvc.MoveToFolder(ctx, f.doc, folder.ID)
 			return err

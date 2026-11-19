@@ -14,6 +14,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
+import { folderOptions } from "@/utils/DocFolderTreeUtility";
 
 // A doc row's menu: an action the viewer lacks is locked or left out (ADR 0152), and the server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu => {
@@ -72,7 +73,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu =
     archive: offered("archive") ? { archived: doc.archived, onToggle: () => (doc.archived ? restoreDoc : archiveDoc).mutate(doc.id) } : undefined,
     moveTo:
       offered("moveTo") && folders && folders.length > 1
-        ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }
+        ? { label: "Move to folder", options: folderOptions(folders), currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }
         : undefined,
     onClone: offered("onClone") ? () => void clone() : undefined,
     permissions: { entity, onOpen: () => void openPermissions(entity) },

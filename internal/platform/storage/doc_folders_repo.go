@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/docs"
@@ -52,14 +53,34 @@ func (r *DocsRepo) CreateFolder(ctx context.Context, f *docs.Folder, evts ...eve
 	})
 }
 
-func (r *DocsRepo) RenameFolder(ctx context.Context, f *docs.Folder, evts ...eventbus.OutboxEvent) error {
+func (r *DocsRepo) FolderSubtree(ctx context.Context, id string) ([]string, error) {
+	ids, err := r.q.ListDocFolderSubtree(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("folders inside %s: %w", id, err)
+	}
+	return ids, nil
+}
+
+// UpdateFolder checks the new parent against the folder's subtree inside the write, so two crossing moves can't make a
+// loop.
+func (r *DocsRepo) UpdateFolder(ctx context.Context, f *docs.Folder, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).RenameDocFolder(ctx, sqlcgen.RenameDocFolderParams{Name: f.Name, UpdatedAt: f.UpdatedAt.Unix(), ID: f.ID})
+		q := r.q.WithTx(tx)
+		if f.ParentID != "" {
+			subtree, err := q.ListDocFolderSubtree(ctx, f.ID)
+			if err != nil {
+				return fmt.Errorf("folders inside %s: %w", f.ID, err)
+			}
+			if slices.Contains(subtree, f.ParentID) {
+				return fmt.Errorf("%w: a folder can't go inside itself or a folder within it", apperrs.ErrInvalid)
+			}
+		}
+		n, err := q.UpdateDocFolder(ctx, sqlcgen.UpdateDocFolderParams{Name: f.Name, ParentID: f.ParentID, UpdatedAt: f.UpdatedAt.Unix(), ID: f.ID})
 		if err != nil {
-			return fmt.Errorf("rename folder %s: %w", f.ID, classifyWriteErr(err))
+			return fmt.Errorf("update folder %s: %w", f.ID, classifyWriteErr(err))
 		}
 		if n == 0 {
-			return fmt.Errorf("rename folder %s: %w", f.ID, apperrs.ErrNotFound)
+			return fmt.Errorf("update folder %s: %w", f.ID, apperrs.ErrNotFound)
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
@@ -68,17 +89,22 @@ func (r *DocsRepo) RenameFolder(ctx context.Context, f *docs.Folder, evts ...eve
 func (r *DocsRepo) DeleteFolder(ctx context.Context, id, toFolderID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		if err := q.MoveDocsToFolder(ctx, sqlcgen.MoveDocsToFolderParams{ToFolderID: toFolderID, FromFolderID: id}); err != nil {
+		subtree, err := q.ListDocFolderSubtree(ctx, id)
+		if err != nil {
+			return fmt.Errorf("folders inside %s: %w", id, err)
+		}
+		gone := idsJSON(subtree)
+		if err := q.MoveDocsToFolder(ctx, sqlcgen.MoveDocsToFolderParams{ToFolderID: toFolderID, FromFolderIds: gone}); err != nil {
 			return fmt.Errorf("move docs out of folder %s: %w", id, err)
 		}
-		n, err := q.DeleteDocFolder(ctx, id)
+		n, err := q.DeleteDocFolders(ctx, gone)
 		if err != nil {
 			return fmt.Errorf("delete folder %s: %w", id, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("delete folder %s: %w", id, apperrs.ErrNotFound)
 		}
-		if err := q.DeleteDocFolderRules(ctx, id); err != nil {
+		if err := q.DeleteDocFolderRules(ctx, gone); err != nil {
 			return fmt.Errorf("delete the rules of folder %s: %w", id, err)
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
@@ -101,7 +127,7 @@ func (r *DocsRepo) SetDocFolder(ctx context.Context, docID, folderID string, evt
 
 func insertDocFolder(ctx context.Context, q *sqlcgen.Queries, f *docs.Folder) error {
 	err := q.CreateDocFolder(ctx, sqlcgen.CreateDocFolderParams{
-		ID: f.ID, ProjectID: f.ProjectID, Name: f.Name, IsDefault: int64(boolInt(f.IsDefault)),
+		ID: f.ID, ProjectID: f.ProjectID, ParentID: f.ParentID, Name: f.Name, IsDefault: int64(boolInt(f.IsDefault)),
 		CreatedAt: f.CreatedAt.Unix(), UpdatedAt: f.UpdatedAt.Unix(),
 	})
 	if err != nil {
@@ -112,7 +138,7 @@ func insertDocFolder(ctx context.Context, q *sqlcgen.Queries, f *docs.Folder) er
 
 func toFolder(row sqlcgen.DocFolder) *docs.Folder {
 	return &docs.Folder{
-		ID: row.ID, ProjectID: row.ProjectID, Name: row.Name, IsDefault: row.IsDefault != 0,
+		ID: row.ID, ProjectID: row.ProjectID, ParentID: row.ParentID, Name: row.Name, IsDefault: row.IsDefault != 0,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 }
