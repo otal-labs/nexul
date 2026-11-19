@@ -24,7 +24,7 @@ export const RoleListRow = ({ id, name, line, selected, count, owner = false, de
     <ListPaneRow
       to={wsPath(`/access/roles/${id}`)}
       title={name}
-      snippet={line}
+      {...(line && { detail: <span dir="auto" className="truncate">{line}</span> })}
       selected={selected}
       metaOnTitleLine
       dense={dense}

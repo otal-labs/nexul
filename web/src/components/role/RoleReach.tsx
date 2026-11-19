@@ -1,5 +1,4 @@
 import { LevelGlyph } from "@/components/access/LevelGlyph";
-import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { levelName } from "@/models/PermissionLevel";
@@ -41,7 +40,7 @@ export const RoleReach = ({ catalog, permissions }: RoleReachProps) => (
 
 // The section names over a picker's reach columns, once at the top of the list.
 export const RoleReachHead = ({ className }: { className?: string }) => (
-  <div aria-hidden className={cn(reachColumns, microheaderClass, className)}>
+  <div aria-hidden className={cn(reachColumns, "text-micro text-muted-foreground", className)}>
     {ROLE_SECTIONS.map((section) => (
       <span key={section.area}>{section.title}</span>
     ))}

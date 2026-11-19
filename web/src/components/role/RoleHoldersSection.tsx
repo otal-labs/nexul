@@ -51,8 +51,8 @@ export const RoleHoldersSection = () => {
       {/* From 1024px the heading, its actions and the find field pin while the holders are in view: under the role's header where it pins, else at the top. */}
       <div className="sticky-crumbs band-edge -mx-4 mb-0! px-4 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-5 pin:pt-5">
         {/* The list's top hairline, here so a row passing under the band meets an edge. */}
-        <div className="space-y-3 border-b border-border pb-3">
-          {/* The field sits with the actions, so a count changing width never moves it; it shrinks first, then the actions wrap under it. */}
+        <div className="@container space-y-3 border-b border-border pb-3">
+          {/* Wide, the field sits between the count and the actions; narrow, it takes its own line and the actions stay on the heading's. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
             {/* One 32px line, centred, whether or not the field and actions share it, so the heading never shifts. */}
             <span className="flex h-8 shrink-0 items-center">
@@ -77,15 +77,15 @@ export const RoleHoldersSection = () => {
                 )}
               </span>
             </span>
-            <div className="flex min-w-0 flex-1 basis-md items-center justify-end gap-2">
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="min-w-44 flex-1" />}
-              {changeable && givable && (
-                <>
-                  <RoleAddPeoplePopover />
-                  <CreateInvitationDialog role={role} onCreated={setCreated} />
-                </>
-              )}
-            </div>
+            {holders && holders.length > FIND_FROM && (
+              <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="min-w-44 flex-1 @max-[40rem]:order-last @max-[40rem]:basis-full" />
+            )}
+            {changeable && givable && (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <RoleAddPeoplePopover />
+                <CreateInvitationDialog role={role} onCreated={setCreated} />
+              </div>
+            )}
           </div>
           {changeable && !givable && reason && (
             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">

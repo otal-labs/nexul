@@ -24,7 +24,7 @@ export const RoleInvitationsSection = () => {
         <Microheader id="role-invitations-title">Invited</Microheader>
         <span className="font-mono text-micro text-muted-foreground tabular-nums">{pending.length}</span>
       </div>
-      <EnterList aria-label="Open invitation links" className="border-t border-border">
+      <EnterList aria-label="Open invitation links">
         {pending.map((invitation) => (
           <RoleInvitationRow
             key={invitation.id}
