@@ -1453,7 +1453,7 @@ Then People, a band that pins under the role's header from 1024px (at the pane's
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
-more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, shrinking first but never under 11rem, the field and actions taking a line of their own once they would have under 28rem, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
+more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, filling the room between the count (sized for its widest reading, "33 of 33") and the actions, never under 11rem, the field and actions taking a line of their own once they would have under 28rem, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
 allows stays in reach, and a "Show fewer" beside the count in the band folds them back, its room kept while folded so opening never moves the field; a search shows
 every match. Holders run in name order. Each holder

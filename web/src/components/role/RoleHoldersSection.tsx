@@ -53,8 +53,12 @@ export const RoleHoldersSection = () => {
             <span className="flex shrink-0 items-center gap-2">
               <span className="flex items-baseline gap-2">
                 <Microheader id="role-people-title">People</Microheader>
-                {holders && holders.length > 0 && !(needle && matched?.length === 0) && (
-                  <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                {holders && holders.length > 0 && (holders.length > FIND_FROM || !(needle && matched?.length === 0)) && (
+                  // Sized for its widest reading, "33 of 33", and kept empty on no match, so the field beside it never moves while a search runs.
+                  <span className="font-mono text-micro text-muted-foreground tabular-nums" style={holders.length > FIND_FROM ? { minWidth: `${String(holders.length).length * 2 + 4}ch` } : undefined}>
+                    {needle && matched && matched.length > 0 && `${matched.length} of ${holders.length}`}
+                    {!needle && holders.length}
+                  </span>
                 )}
               </span>
               {/* Its room is kept while the list is folded, so opening it never moves the field. */}
@@ -63,7 +67,7 @@ export const RoleHoldersSection = () => {
               )}
             </span>
             <div className="flex min-w-0 flex-1 basis-md items-center justify-end gap-2">
-              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="w-64 min-w-44 shrink" />}
+              {holders && holders.length > FIND_FROM && <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="min-w-44 flex-1" />}
               {changeable && givable && (
                 <>
                   <RoleAddPeoplePopover />
