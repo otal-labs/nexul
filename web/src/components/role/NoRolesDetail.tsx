@@ -49,7 +49,7 @@ export const NoRolesDetail = () => {
           {shown.length > 0 && (
             <EnterList aria-label="People holding no role" className="border-t border-border">
               {shown.map((person) => (
-                <RoleHolderRow key={person.id} person={person} onOpen={setOpenPerson} />
+                <RoleHolderRow key={person.id} person={person} onOpen={setOpenPerson} match={needle} />
               ))}
             </EnterList>
           )}

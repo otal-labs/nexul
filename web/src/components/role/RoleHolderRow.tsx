@@ -1,3 +1,4 @@
+import { MatchText } from "@/components/MatchText";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { RoleChipRow } from "@/components/role/RoleChipRow";
 import { RoleGivePopover } from "@/components/role/RoleGivePopover";
@@ -20,11 +21,13 @@ interface RoleHolderRowProps {
   person: TeamPerson;
   // Opens the person's account dialog, the one Settings → Team opens.
   onOpen: (personId: string) => void;
+  // The search narrowing the list, marked in the name and handle.
+  match?: string | undefined;
 }
 
 // A person in the open role (or in No roles): the whole row opens them, with their presence and other roles, and a menu to take
 // the role, view as them, or take them out of the workspace. An Owner's row has no menu; the Owner role is never given or taken here.
-export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
+export const RoleHolderRow = ({ person, onOpen, match }: RoleHolderRowProps) => {
   const workspace = useSelectedWorkspace();
   const workspaceName = workspace?.name ?? "this workspace";
   const { role, givable, reason } = useOpenRole();
@@ -69,11 +72,13 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
           className="quiet-focus min-w-0 flex-1 text-left after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
         >
           <span dir="auto" className={cn("block truncate text-sm font-medium", person.status !== "active" && "text-muted-foreground")} title={personName(person)}>
-            {personName(person)}
+            <MatchText text={personName(person)} match={match} />
           </span>
           {/* The handle leads, so two people with like names tell apart; presence, status and other roles follow. */}
           <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-            <span className="shrink-0 font-mono">{loginHandle(person.login)}</span>
+            <span className="shrink-0 font-mono">
+              <MatchText text={loginHandle(person.login)} match={match} />
+            </span>
             {person.online && <SettingsStatus tone="success">Online</SettingsStatus>}
             {seen && !person.online && <span className="shrink-0">{presenceText(person)}</span>}
             <AccountStatusLabel status={person.status} />
