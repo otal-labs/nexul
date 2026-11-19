@@ -65,7 +65,7 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 			"The returned url carries the only copy of the link's secret and is never shown again, so hand it straight "+
 			"to the person being invited; invitation_list shows the invitation without it, and invitation_delete "+
 			"revokes it.",
-		mcptool.Hints{Additive: true, Local: true},
+		mcptool.Hints{Additive: true, Local: true, MintsCredential: true},
 		func(ctx context.Context, in invitationCreateIn) (any, error) {
 			grants, err := invitationGrants(in.Grants)
 			if err != nil {

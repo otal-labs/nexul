@@ -24,7 +24,7 @@ type Hints struct {
 	Idempotent bool
 	// Local: the tool touches only Nexul's own database, never GitHub, Cloudflare, a harness, or a machine.
 	Local bool
-	// MintsCredential: the result hands out a token or install command, so a sign-in grant may not call it (ADR 0204).
+	// MintsCredential: the result hands out a token, link or install command, so a sign-in grant may not call it (ADR 0204).
 	MintsCredential bool
 }
 

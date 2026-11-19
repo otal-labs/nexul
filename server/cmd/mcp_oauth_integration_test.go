@@ -307,7 +307,7 @@ func TestMCPOAuth_Grant_WorksOnlyOnMCPAndMintsNoCredentialThatOutlivesIt(t *test
 
 	assert.Equal(t, http.StatusUnauthorized, callAPI(t, h, http.MethodPost, "/api/auth/tokens", access, `{"name":"escape"}`).Code, "the gateway refuses a grant")
 	assert.Equal(t, http.StatusUnauthorized, callAPI(t, h, http.MethodGet, "/api/auth/me", access, "").Code)
-	for _, tool := range []string{"computer_mcp_token_create", "computer_create", "automation_token_create", "automation_create"} {
+	for _, tool := range []string{"computer_mcp_token_create", "computer_create", "automation_token_create", "automation_create", "invitation_create", "botwebhook_create", "botwebhook_update", "botwebhook_list"} {
 		assert.Contains(t, callToolResult(t, h, access, tool, `{}`), "A signed-in app cannot create credentials", tool)
 	}
 	assert.NotContains(t, callToolResult(t, h, pat, "computer_mcp_token_create", `{}`), "signed-in app", "a pasted token still may")

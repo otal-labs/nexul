@@ -17,12 +17,14 @@ Decision: the instance is its own OAuth authorization server for its MCP endpoin
   authenticates through the same path with the person's own permissions, and a revoke stops both its tokens at once.
 - **A grant works only where it was issued, and mints nothing that outlives it.** Its token authenticates at `/mcp`
   alone, never the HTTP gateway or a live socket, and a tool that hands out a credential (a personal, computer or
-  automation token, or a computer's install command) refuses it. Otherwise a client could mint itself a token that
+  automation token, a computer's install command, an invitation link or a bot's webhook URL) refuses it. Otherwise a client could mint itself a token that
   survives the revoke.
 - **Codes live in memory** for their minute. A restart mid-sign-in means approving again.
 
 The trade-off: a grant holds every permission its person does, as a pasted token does; there are no scopes to narrow
-it, because nothing in the permission table maps onto them yet. Behind a proxy every client shares one address, so the
+it, because nothing in the permission table maps onto them yet. So what it changes as the person, such as a role or
+another account's access, stays changed after the revoke; only the credentials it could hand itself are held back.
+The tools that hand one out are marked one by one, so a new such tool is open to grants until it is marked. Behind a proxy every client shares one address, so the
 registration throttle is shared too.
 
 Rejected: a separate grants table, which would need its own list, revoke and authentication path beside the token one;

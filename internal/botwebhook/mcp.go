@@ -62,7 +62,7 @@ func botListTool(s *Service) mcptool.Tool {
 			"A bot is a named poster that outside systems drive through a webhook URL, up to ten live ones per conversation; use this to find a bot's id before botwebhook_update. "+
 			"stopped says why a live bot can't post, and url, the bot's credential, appears only with botwebhook:write. "+
 			"deleted true lists the deleted bots instead, the ones botwebhook_update deleted false restores.",
-		mcptool.Hints{ReadOnly: true, Local: true},
+		mcptool.Hints{ReadOnly: true, Local: true, MintsCredential: true},
 		func(ctx context.Context, in botListIn) (any, error) {
 			bots, err := s.List(ctx, in.ConversationID, in.Deleted)
 			if err != nil {
@@ -81,7 +81,7 @@ func botCreateTool(s *Service) mcptool.Tool {
 		"Creates a bot in a conversation, so an outside system such as a CI job or a monitor can post there through the bot's webhook URL. "+
 			"The bot's name shows on each post unless the sender overrides it. "+
 			"Returns the new bot with its url, which is the credential to hand to the sender; botwebhook_list shows it again to anyone holding botwebhook:write.",
-		mcptool.Hints{Additive: true, Local: true},
+		mcptool.Hints{Additive: true, Local: true, MintsCredential: true},
 		func(ctx context.Context, in botCreateIn) (any, error) {
 			b, err := s.Create(ctx, in.ConversationID, in.Name, in.Avatar)
 			if err != nil {
@@ -98,7 +98,7 @@ func botUpdateTool(s *Service) mcptool.Tool {
 			"deleted true ends the URL for good until deleted false restores the bot under a fresh one, and a deleted bot takes no other change until restored. "+
 			"A bot's posts stay in the conversation after a rename, an avatar change, or a delete, because each keeps the name and avatar it showed. "+
 			"Returns the bot, with its url when you hold botwebhook:write and it is live.",
-		mcptool.Hints{Local: true},
+		mcptool.Hints{Local: true, MintsCredential: true},
 		func(ctx context.Context, in botUpdateIn) (any, error) {
 			b, err := s.Update(ctx, in.ID, Changes{Name: in.Name, Avatar: in.Avatar, Regenerate: in.Regenerate, Deleted: in.Deleted})
 			if err != nil {
