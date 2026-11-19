@@ -106,8 +106,8 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, r projectReaders) 
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
 			"(each with the body_template a new ticket fills), labels with colors, repositories "+
 			"(each with its role, app or tests), where its tests live, and its doc folders (the default Main first, "+
-			"where a new doc goes unless doc_create names another), and its GitHub issue syncs. It also returns delete_impact, the tickets, repositories, "+
-			"and services that block deleting it, and its setup: whether the project "+
+			"where a new doc goes unless doc_create names another), and its GitHub issue syncs. It also returns delete_impact, "+
+			"the tickets, repositories, services, and docs that block deleting it, and its setup: whether the project "+
 			"wizard was finished and which steps were done or skipped. "+
 			"Who is in the project is set by its rules, which permission_overwrite_list "+
 			"reads and permission_overwrite_update changes. Call it before ticket_create or ticket_update to get valid "+

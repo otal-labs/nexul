@@ -74,6 +74,10 @@ If the App's installation on the repository's account hasn't accepted the Issues
 
 Agents turn it on with `project_update` and `github_issue_sync`, naming the `repository` as `owner/name` with `enabled` set to `true`. `mode` set to `all` syncs every issue instead of the labelled ones, and `label` picks another label. `project_get` shows each repository's sync.
 
+## Remove a project
+
+**Remove project**, in the project's **Settings → Danger zone**, deletes it for good and takes `projects:delete`. Only an empty project can be removed: while it still holds tickets, repositories, services or docs, archived docs included, the button stays off and **Still holds** under it counts each. Move its tickets to another project or delete them, detach its repositories, delete its services and docs, and the button turns on. Agents use `project_delete`, and `project_get` shows the same counts under `delete_impact`.
+
 ## Rename a workspace
 
 A workspace has a name and a URL slug, as in `/acme/board`. Change both in **Configuration → General**, with `workspaces:write`.

@@ -249,6 +249,11 @@ func (r *ProjectsRepo) CountServices(ctx context.Context, projectID string) (int
 	return r.count(ctx, projectID, "stacks")
 }
 
+// CountDocs counts archived docs too: a doc's project_id has no cascade, so any doc blocks the delete.
+func (r *ProjectsRepo) CountDocs(ctx context.Context, projectID string) (int, error) {
+	return r.count(ctx, projectID, "docs")
+}
+
 // CountTicketUsage groups the project's tickets by status, category, type and label in four indexed reads.
 func (r *ProjectsRepo) CountTicketUsage(ctx context.Context, projectID string) (workspace.TicketUsage, error) {
 	byStatus, err := r.q.CountProjectTicketsByStatus(ctx, nullString(projectID))

@@ -8,7 +8,7 @@ import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import type { Project } from "@/models/Project";
+import { holdsNothing, type Project } from "@/models/Project";
 import { projectPeopleRules } from "@/models/ProjectPeople";
 import { RepoRole } from "@/enums/Project";
 import { STATUS_STAGES } from "@/models/Status";
@@ -30,7 +30,7 @@ const SizeMeta = ({ project }: { project: Project }) => {
   const canReadStacks = useAreaAccess(project.id)?.("stacks") ?? false;
   const { data: services } = useFetchServices(project.id, canReadStacks);
   const serviceCount = canReadStacks ? services?.length : impact?.services;
-  const empty = impact && impact.tickets + impact.repos + impact.services === 0;
+  const empty = impact && holdsNothing(impact);
   return (
     <Facts
       parts={[
@@ -39,6 +39,7 @@ const SizeMeta = ({ project }: { project: Project }) => {
         impact && !empty && count(impact.tickets, "ticket"),
         impact && !empty && count(impact.repos, "repo"),
         impact && !empty && serviceCount !== undefined && count(serviceCount, "service"),
+        impact && !empty && count(impact.docs, "doc"),
       ]}
     />
   );
