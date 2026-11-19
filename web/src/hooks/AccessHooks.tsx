@@ -141,6 +141,8 @@ export const useCanOpenSection = (section: SettingsSection): boolean =>
 // Whether the viewer may open an area's page; undefined while that is still loading.
 export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
+  // The wizard makes a project or names its own, so the project last in view (maybe another workspace's) doesn't gate it.
+  const anyProject = useAnyProjectAreaAccess();
   const managesAccess = useManagesAccess();
   const managesRoles = useAnyProjectAreaAccessOf(MANAGES_ROLES);
   const managesMembers = useAnyProjectAreaAccessOf(MANAGES_MEMBERS);
@@ -148,7 +150,7 @@ export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
     if (area === "access") return managesAccess === undefined ? undefined : managesAccess || managesRoles === true || managesMembers === true;
-    if (area === "wizard") return can && canOpenWizard(can);
+    if (area === "wizard") return anyProject && canOpenWizard(anyProject);
     return can && can(area);
   };
 };
