@@ -284,9 +284,9 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
 });
 
 describe("RolesAndPeopleSection, a long list of holders", () => {
-  it("shows a role's first eight holders, all of them on Show all and eight again on Show fewer, and every match while searching", async () => {
+  it("shows a role's first eight holders, all of them on Show all and eight again on Show fewer, and every match while searching, those starting a word first", async () => {
     serve();
-    const crowd = Array.from({ length: 12 }, (_, i) => person(`p${i}`, `Person ${String(i).padStart(2, "0")}`, ["r-dev"]));
+    const crowd = [...Array.from({ length: 12 }, (_, i) => person(`p${i}`, `Person ${String(i).padStart(2, "0")}`, ["r-dev"])), person("sonja", "Sonja Berg", ["r-dev"])];
     const served = mocks.get.getMockImplementation()!;
     mocks.get.mockImplementation(async (url: string) => (url === "/api/team" ? { data: { ...team, people: [...team.people, ...crowd] } } : served(url)));
     const user = userEvent.setup();
@@ -297,8 +297,12 @@ describe("RolesAndPeopleSection, a long list of holders", () => {
     await user.type(screen.getByRole("textbox", { name: "Find a person" }), "Person 1");
     expect(list.getAllByRole("listitem").map((row) => row.textContent)).toEqual([expect.stringContaining("Person 10"), expect.stringContaining("Person 11")]);
     await user.clear(screen.getByRole("textbox", { name: "Find a person" }));
-    await user.click(screen.getByRole("button", { name: "Show all 14" }));
-    expect(list.getAllByRole("listitem")).toHaveLength(14);
+    // "so" starts Sonja but sits inside every Person, so Sonja leads though the list runs in name order.
+    await user.type(screen.getByRole("textbox", { name: "Find a person" }), "so");
+    expect(list.getAllByRole("listitem")[0]).toHaveTextContent("Sonja Berg");
+    await user.clear(screen.getByRole("textbox", { name: "Find a person" }));
+    await user.click(screen.getByRole("button", { name: "Show all 15" }));
+    expect(list.getAllByRole("listitem")).toHaveLength(15);
     await user.click(screen.getByRole("button", { name: "Show fewer" }));
     expect(list.getAllByRole("listitem")).toHaveLength(8);
   });

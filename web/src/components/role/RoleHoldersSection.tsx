@@ -16,9 +16,13 @@ import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import type { CreatedInvitation } from "@/models/Invitation";
-import { roleHolders } from "@/models/Team";
+import { roleHolders, type TeamPerson } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { personName } from "@/utils/TeamUtility";
+
+// Whether a search starts a word of the name or handle ("Ai" in Aiko), which ranks above a match inside one (Nikolai).
+const startsAWord = (person: TeamPerson, needle: string): boolean =>
+  `${personName(person)} ${person.login}`.toLowerCase().split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(needle));
 
 // Past this many holders a find field leads the list and the rest wait behind Show all.
 const FIND_FROM = 8;
@@ -35,7 +39,9 @@ export const RoleHoldersSection = () => {
   const holders = team && role ? roleHolders(team, workspaceId, role.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const changeable = role !== undefined && !role.is_owner_role;
   const needle = query.trim().toLowerCase();
-  const matched = holders?.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle));
+  const matched = holders
+    ?.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle))
+    .sort((a, b) => Number(!startsAWord(a, needle)) - Number(!startsAWord(b, needle)));
   // A search shows every match; otherwise a long list stops at its first rows, so what the role allows stays in reach.
   const capped = !all && !needle && (matched?.length ?? 0) > FIND_FROM;
   const shown = capped ? matched?.slice(0, FIND_FROM) : matched;
