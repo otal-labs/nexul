@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch, Controller } from "react-hook-form";
+import { PlusIcon } from "lucide-react";
 
-import { Microheader } from "@/components/Microheader";
+import { Microheader, microheaderClass } from "@/components/Microheader";
+import { Button } from "@/components/ui/button";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { InvitationGrantRow } from "@/components/member/InvitationGrantRow";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -37,11 +39,11 @@ export const CreateInvitationForm = ({ onCreated }: CreateInvitationFormProps) =
   });
 
   return (
-    <div className="max-h-[min(60vh,32rem)] space-y-5 overflow-y-auto pr-1">
+    <div className="space-y-5 pb-2">
       {errors.grants?.message && <p role="alert" className="text-sm text-destructive">{errors.grants.message}</p>}
       {errors.root?.serverError?.message && <p role="alert" className="text-sm text-destructive">{errors.root.serverError.message}</p>}
-      <fieldset className="space-y-2"><legend className="text-sm font-medium">Link expires in</legend><Controller control={control} name="expires_in_days" render={({ field }) => <RadioGroup value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))} className="grid grid-cols-2 gap-2"><label className="flex items-center gap-2 rounded-md border p-3 text-sm"><RadioGroupItem value="1" />1 day</label><label className="flex items-center gap-2 rounded-md border p-3 text-sm"><RadioGroupItem value="7" />7 days</label></RadioGroup>} /></fieldset>
-      <div className="space-y-2"><div className="flex items-center justify-between"><Microheader>Workspace access</Microheader><button type="button" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" onClick={() => append({ workspace_id: "", role_ids: [] })}>Add workspace</button></div><ul className="space-y-5">{fields.map((field, index) => <InvitationGrantRow key={field.id} index={index} remove={remove} />)}</ul></div>
+      <fieldset className="space-y-2"><legend className={microheaderClass}>Link expires in</legend><Controller control={control} name="expires_in_days" render={({ field }) => <RadioGroup value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))} className="grid grid-cols-2 gap-2"><label className="flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm transition-colors duration-150 ease-standard has-[[data-state=checked]]:border-foreground/40 has-[[data-state=checked]]:bg-accent"><RadioGroupItem value="1" />1 day</label><label className="flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm transition-colors duration-150 ease-standard has-[[data-state=checked]]:border-foreground/40 has-[[data-state=checked]]:bg-brand/10"><RadioGroupItem value="7" />7 days</label></RadioGroup>} /></fieldset>
+      <div className="space-y-2"><div className="flex items-center justify-between"><Microheader>Workspace access</Microheader><Button type="button" variant="ghost" size="sm" className="-mr-2" onClick={() => append({ workspace_id: "", role_ids: [] })}><PlusIcon aria-hidden />Add workspace</Button></div><ul className="space-y-5">{fields.map((field, index) => <InvitationGrantRow key={field.id} index={index} remove={remove} removable={fields.length > 1} />)}</ul></div>
     </div>
   );
 };

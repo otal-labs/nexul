@@ -63,7 +63,7 @@ describe("TeamSection", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
-  it("shows when each person was last online with a dot that is green only while they are online, and names an account status only when it blocks sign-in", async () => {
+  it("shows when each person was last online, with a green mark only while they are online, and names an account status only when it blocks sign-in", async () => {
     const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
       id, login: id, name, avatar_url: "", status: "active", created_at: "", providers: [], online: false, last_seen_at: null, workspaces: [], ...extra,
@@ -78,21 +78,21 @@ describe("TeamSection", () => {
       ],
     });
 
-    const dotOf = (row: HTMLElement) => row.querySelector("[data-presence]");
+    const dotOf = (row: HTMLElement) => row.querySelector(".bg-success");
     const ann = await screen.findByRole("button", { name: "Open Ann" });
     expect(ann).toHaveTextContent("Online");
     expect(ann).not.toHaveTextContent(/active/i);
-    expect(dotOf(ann)).toHaveClass("bg-success");
+    expect(dotOf(ann)).not.toBeNull();
 
     const cy = screen.getByRole("button", { name: "Open Cy" });
     expect(cy).toHaveTextContent("Last seen 2h ago");
-    expect(dotOf(cy)).not.toHaveClass("bg-success");
+    expect(dotOf(cy)).toBeNull();
     expect(screen.getByRole("button", { name: "Open Dee" })).toHaveTextContent("Signed out");
 
     const eve = screen.getByRole("button", { name: "Open Eve" });
     expect(eve).toHaveTextContent("Last seen 3d ago");
     expect(eve).toHaveTextContent("Disabled");
-    expect(dotOf(eve)).not.toHaveClass("bg-success");
+    expect(dotOf(eve)).toBeNull();
   });
 
   it("shows a person's roles as chips, three then a count, and says when there are none", async () => {
@@ -165,7 +165,7 @@ describe("TeamSection", () => {
     const accepted = within(await screen.findByRole("region", { name: "Accepted in the last 30 days" }));
     const row = await accepted.findByRole("button", { name: "Open Bob" });
     expect(row).toHaveTextContent("Editor in Nexul · invited by Alice");
-    expect(row).toHaveTextContent("1 of 2 set up· computer not added");
+    expect(row).toHaveTextContent("1 of 2 set up, computer not added");
     expect(row).toHaveTextContent("accepted 2d ago");
     const ended = within(screen.getByRole("region", { name: "Expired or deleted in the last 30 days" }));
     expect(ended.getByRole("listitem")).toHaveTextContent("Nexul · Editorby Alice · made 5d agoended 4d ago");

@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-
+import { HeaderFacts } from "@/components/HeaderFacts";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import type { YourSettingsSection } from "@/components/you/YourSettingsNav";
 import { useFetchMe, useFetchSettings, useListPATs, useListSessions } from "@/hooks/AuthHooks";
@@ -16,22 +15,11 @@ import { loginHandle } from "@/models/User";
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-// Facts, not a tagline: what the section holds right now. Each reads the query its section already loads.
-const Facts = ({ parts }: { parts: (ReactNode | false | undefined)[] }) => (
-  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-    {parts.filter(Boolean).map((part, i) => (
-      <span key={i} className="inline-flex items-center gap-2">
-        {i > 0 && <span aria-hidden>·</span>}
-        {part}
-      </span>
-    ))}
-  </span>
-);
 
 const ProfileMeta = () => {
   const { data: me } = useFetchMe();
   return (
-    <Facts
+    <HeaderFacts
       parts={[me && <span className="font-mono">{loginHandle(me.user.login)}</span>, me && `Joined ${formatShortDate(me.user.created_at)}`]}
     />
   );
@@ -42,7 +30,7 @@ const AppearanceMeta = () => {
   const mode = useThemeStore((s) => s.appearanceMode);
   const theme = useThemeStore((s) => s.theme);
   const modeText: Record<typeof mode, string> = { system: `System, ${theme}`, dark: "Dark", light: "Light" };
-  return <Facts parts={[`${getThemeDefinition(themeId).label} theme`, modeText[mode]]} />;
+  return <HeaderFacts parts={[`${getThemeDefinition(themeId).label} theme`, modeText[mode]]} />;
 };
 
 const SecurityMeta = () => {
@@ -50,7 +38,7 @@ const SecurityMeta = () => {
   const { data: pats } = useListPATs();
   const active = pats?.tokens.filter((token) => !token.revoked_at).length;
   return (
-    <Facts
+    <HeaderFacts
       parts={[
         sessions && `${count(sessions.sessions.length, "device")} signed in`,
         active !== undefined && count(active, "active token"),
@@ -61,19 +49,19 @@ const SecurityMeta = () => {
 
 const PairingMeta = () => {
   const { data: computers } = useListComputers();
-  return <Facts parts={[computers && count(computers.length, "computer")]} />;
+  return <HeaderFacts parts={[computers && count(computers.length, "computer")]} />;
 };
 
 const InstanceMeta = () => {
   const { data: settings } = useFetchSettings();
-  return <Facts parts={["Instance-wide", settings && <span className="font-mono">{settings.instance_url}</span>]} />;
+  return <HeaderFacts parts={["Instance-wide", settings && <span className="font-mono">{settings.instance_url}</span>]} />;
 };
 
 const TeamMeta = () => {
   const { data: team } = useFetchTeam();
   const { data: invitations } = useFetchInvitations();
   return (
-    <Facts
+    <HeaderFacts
       parts={[
         "Instance-wide",
         team && count(team.people.length, "person", "people"),
@@ -87,7 +75,7 @@ const SignInMeta = () => {
   const { data: settings } = useFetchSettings();
   const state = (on: boolean | undefined) => (on ? "on" : "off");
   return (
-    <Facts
+    <HeaderFacts
       parts={[
         "Instance-wide",
         settings && `Discord ${state(settings.discord_oauth_configured)}`,
@@ -100,14 +88,14 @@ const SignInMeta = () => {
 const ConnectorsMeta = () => {
   const { data } = useFetchConnectors();
   const connected = data?.filter((entry) => entry.status.configured).length;
-  return <Facts parts={["Instance-wide", data && `${connected} of ${data.length} connected`]} />;
+  return <HeaderFacts parts={["Instance-wide", data && `${connected} of ${data.length} connected`]} />;
 };
 
 const DnsMeta = () => {
   const { data: gateways } = useFetchGateways();
   const { data: exposures } = useFetchExposures();
   return (
-    <Facts
+    <HeaderFacts
       parts={["Instance-wide", gateways && count(gateways.length, "gateway"), exposures && count(exposures.length, "hostname")]}
     />
   );
@@ -116,7 +104,7 @@ const DnsMeta = () => {
 const TemplatesMeta = () => {
   const { data } = useFetchTemplates();
   const edited = data?.filter((template) => template.edited).length;
-  return <Facts parts={["Instance-wide", data && `${count(data.length, "template")}, ${edited} edited`]} />;
+  return <HeaderFacts parts={["Instance-wide", data && `${count(data.length, "template")}, ${edited} edited`]} />;
 };
 
 interface SettingsHeaderMetaProps {

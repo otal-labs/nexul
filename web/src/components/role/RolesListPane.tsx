@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Columns3, UserX } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
-import { ListPaneGroup } from "@/components/listpane/ListPaneGroup";
+import { ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { RoleListRow } from "@/components/role/RoleListRow";
 import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
@@ -16,38 +17,44 @@ interface RolesListPaneProps {
   selectedId: string | undefined;
 }
 
-// The workspace's roles, the Owner first and outside the count as the page header counts them, each with how many hold it; then the members holding none, and every role side by side.
+// Compare roles and No roles sit outside the scroller so they stay in view.
 export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const seesTeam = useSeesTeam();
   const { data: team } = useFetchTeam(seesTeam);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const needle = search.trim().toLowerCase();
+  const matches = (role: Role) => !needle || `${role.name} ${role.description}`.toLowerCase().includes(needle);
   const owners = roles.filter((role) => role.is_owner_role);
   const others = roles.filter((role) => !role.is_owner_role);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ListPaneHeader title="Roles" count={others.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} />
-      <div className="scroll-edge min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 [scrollbar-gutter:stable]">
-        <EnterList aria-label="Roles" className="pt-1">
-          {[...owners, ...others].map((role) => (
+      <ListPaneHeader title="Roles" count={roles.length} newLabel="New role" newPermission="roles:write" newVerb="create roles" onNew={() => setCreating(true)} search={search} onSearch={setSearch} />
+      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable_both-edges]">
+        <EnterList aria-label="Roles">
+          {[...owners, ...others].filter(matches).map((role) => (
             <RoleListRow
               key={role.id}
               id={role.id}
               name={role.name}
-              line={role.description}
+              line={role.description || (role.is_owner_role ? "Holds everything here" : "")}
               owner={role.is_owner_role}
               selected={role.id === selectedId}
               count={team && roleHolders(team, workspaceId, role.id).length}
             />
           ))}
         </EnterList>
-        <ListPaneGroup label="Overview">
-          <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="Every role side by side" selected={selectedId === COMPARE_ROLES} />
+        {needle && ![...owners, ...others].some(matches) && <ListPaneNoMatch onClear={() => setSearch("")} />}
+      </div>
+      <div className="shrink-0 overflow-y-hidden border-t border-border pt-3 [scrollbar-gutter:stable_both-edges]">
+        <EnterList aria-label="Overview">
+          <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense icon={<Columns3 aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === COMPARE_ROLES} />
           {seesTeam && (
-            <RoleListRow id={NO_ROLES} name="No roles" line="Members who see nothing yet" selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
+            <RoleListRow id={NO_ROLES} name="No roles" line="" dense icon={<UserX aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
           )}
-        </ListPaneGroup>
+        </EnterList>
       </div>
       <RoleEditorDialog open={creating} onClose={() => setCreating(false)} />
     </div>

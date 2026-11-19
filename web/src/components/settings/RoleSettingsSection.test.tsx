@@ -55,7 +55,8 @@ const matrixRow = (area: string) =>
   within(screen.getByRole("rowheader", { name: area }).closest("tr")!)
     .getAllByRole("cell")
     .filter((cell) => !cell.hasAttribute("aria-hidden"))
-    .map((cell) => cell.textContent || within(cell).queryByLabelText("Yes")?.getAttribute("aria-label") || "");
+    // What a screen reader hears: a labelled mark (a check, a dash for None or No) by its label, anything else by its text.
+    .map((cell) => cell.querySelector("[aria-label]")?.getAttribute("aria-label") ?? cell.textContent ?? "");
 
 const rowNames = () =>
   within(screen.getByRole("tabpanel"))
@@ -147,7 +148,7 @@ describe("RoleSettingsSection", () => {
     renderSection();
 
     await screen.findByRole("columnheader", { name: /Editor/ });
-    expect(screen.getAllByRole("columnheader").slice(0, 3).map((head) => head.textContent)).toEqual(["Area", "Ownernobody", "Editornobody"]);
+    expect(screen.getAllByRole("columnheader").slice(0, 3).map((head) => head.textContent)).toEqual(["Area", "Owner—", "Editor—"]);
     expect(matrixRow("Members")).toEqual(["Write", "Write"]);
     expect(matrixRow("Roles")).toEqual(["Delete+1", "Read"]);
     expect(matrixRow("Runners")).toEqual(["Read", "None"]);
@@ -399,7 +400,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByLabelText("0 people");
+    await screen.findAllByLabelText("Nobody");
     await openMenu(user, "Editor", "Delete");
     await user.click(await screen.findByRole("button", { name: "Delete role" }));
 
@@ -427,7 +428,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findAllByLabelText("0 people");
+    await screen.findAllByLabelText("Nobody");
     await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
     const item = await screen.findByRole("button", { name: "Clone to workspace…" });
     expect(item).toHaveAttribute("aria-disabled", "true");

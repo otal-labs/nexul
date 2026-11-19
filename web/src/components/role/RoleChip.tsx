@@ -1,8 +1,10 @@
-// A role is a tag, not a state: a neutral hairline pill, never tinted, never the accent.
-export const RoleChip = ({ name }: { name: string }) => (
+import { cn } from "@/lib/utils";
+
+// A role is a tag: a neutral hairline pill, never tinted or the accent; 1px top padding sets its text on the meta line's baseline.
+export const RoleChip = ({ name, className }: { name: string; className?: string }) => (
   <span
     title={name}
-    className="inline-flex h-5 max-w-40 min-w-0 items-center rounded-full border border-border bg-foreground/[0.04] px-2 text-micro leading-none font-medium text-foreground/85"
+    className={cn("inline-flex h-5 max-w-48 min-w-0 items-center rounded-full border border-border px-2 pt-px text-micro leading-none font-medium text-muted-foreground", className)}
   >
     <span className="truncate">{name}</span>
   </span>

@@ -102,7 +102,7 @@ describe("Team dialog", () => {
     const rows = wizard.getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
       "Your computerNo paired computer with its setup confirmedNot done",
-      "Get the phone appThey chose to skip it; it comes back if a role gives it againSkipped· 2d ago",
+      "Get the phone appThey chose to skip it; it comes back if a role gives it againSkipped, 2d ago",
     ]);
     expect(wizard.getByText("Done: Profile, Connect GitHub")).toBeInTheDocument();
   });

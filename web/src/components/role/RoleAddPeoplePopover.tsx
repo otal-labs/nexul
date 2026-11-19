@@ -3,8 +3,8 @@ import { UserPlus } from "lucide-react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { microheaderClass } from "@/components/Microheader";
+import { RoleFindField } from "@/components/role/RoleFindField";
 import { RolePersonOption } from "@/components/role/RolePersonOption";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam, useRoleHolders } from "@/hooks/TeamHooks";
@@ -30,7 +30,9 @@ export const RoleAddPeoplePopover = () => {
     return !membership || (!membership.is_owner && !holds(heldRoles(membership).map((held) => held.id)));
   });
   const needle = query.trim().toLowerCase();
-  const shown = candidates.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle));
+  const shown = candidates
+    .filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle))
+    .sort((a, b) => personName(a).localeCompare(personName(b), undefined, { numeric: true }));
   const inWorkspace = shown.filter((person) => person.workspaces.some((m) => m.workspace_id === workspace.id));
   const elsewhere = shown.filter((person) => !inWorkspace.includes(person));
 
@@ -46,10 +48,10 @@ export const RoleAddPeoplePopover = () => {
           Add people
         </ActionButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-1">
-        <div className="flex flex-col gap-1">
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a person" aria-label="Find a person" className="h-8" />
-          <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+      <PopoverContent align="end" className="w-88 p-2">
+        <div className="flex flex-col gap-1.5">
+          <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="m-1" />
+          <div className="scroll-edge flex max-h-72 flex-col gap-0.5 overflow-y-auto pb-2">
             {inWorkspace.length > 0 && <p className={cn(microheaderClass, "px-2 pt-1.5 pb-0.5")}>In {workspace.name}</p>}
             {inWorkspace.map((person) => (
               <RolePersonOption key={person.id} person={person} disabled={holders.pending} onPick={pick} />
@@ -60,7 +62,6 @@ export const RoleAddPeoplePopover = () => {
             ))}
             {team && shown.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">{needle ? "Nobody matches." : `Everyone you can see holds ${role.name}.`}</p>}
           </div>
-          <p className="border-t border-border px-2 pt-2 pb-1 text-xs text-muted-foreground">Someone without an account here gets an invitation instead.</p>
         </div>
       </PopoverContent>
     </Popover>

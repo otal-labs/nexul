@@ -115,6 +115,7 @@ in the three token files; this table holds the roles.
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
 | `field-warm` / `field-mid` / `field-low` | warm: `brand`'s hue, L 0.5, 70% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.45, 50% chroma, 30% alpha | warm: `brand`'s hue, L 0.93, 50% chroma, 40% alpha; mid: `card` at 55%; low: `brand`'s hue, L 0.93, 40% chroma, 28% alpha | the light field's glows, each a relative colour or a mix of palette tokens, never a literal hue; a grey brand adds no stain. The still field behind the app draws warm and low only: `field-mid` lit the middle, under the panels, whose flat fill turned its falloff into a disc, so it stays for the showcase surfaces' live field | web only; site and phone ship the one palette, with `field-warm`, `field-pink` and `field-cool` at fixed values (phone: `--color-field-warm`, `-pink`, `-cool`) |
 | `shape-sm` to `shape-2xl` | 4, 6, 8, 12, 16px | same | the radius scale behind `rounded-sm` to `rounded-2xl`, see [Shape and depth](#shape-and-depth) | phone: `--radius-*` directly; web: Brutalism zeroes every step |
+| `radius-gap` | 12px less `shape-xl`, never below 0 | same | what a pane's scroller adds back as padding where a square palette leaves its radius inset at 0, so content sits at one height in every palette | web only |
 | `console` / `console-edge` / `console-ink` / `console-control` | `#0b0b0b` / `#232323` / `#d4d4d4` / `#a3a3a3` | same | the docs' code blocks: the console fill, its hairline, its text and its copy button, dark in both modes | site only; its token hues are in `website/src/lib/shiki-mono.ts` |
 | `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
@@ -506,7 +507,7 @@ Motion, beyond the shared core:
   animation, and since the rail keeps every icon where it was, only the
   labels change. Opening wipes them in from the rail's edge (`revealSidebar`,
   a clip-path over 220ms `--ease-out`); closing snaps. The sidebar starts as
-  the icon rail below 1024px.
+  the icon rail below 1280px, so a list pane and its open record both keep their width.
 - The one exception to the still field is the live field of a showcase
   surface (Pattern spec), which replaces the frame instead of sitting behind
   it and runs only on the signed-out home and sign-in.
@@ -603,8 +604,8 @@ dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 360px default, one width shared by every page,
 kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
-search field (`ListPaneHeader`; a list nobody creates in or searches, the
-Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers, the row's
+search field led by the search mark, its placeholder "Search" (`ListPaneHeader`; a list nobody creates in or searches, the
+Inbox, leaves the last two out). Rows are about 56px with 12px sides and no dividers (a row with nothing to preview, a play whose group already names it, takes the one-line 32px row), the row's
 own padding and its hover lift separate them: a 13px normal-weight title in
 `foreground` over a muted one-line preview, mono meta trailing right. A
 title wraps to two lines at most, the full text in its tooltip, and sets its
@@ -614,7 +615,10 @@ row whose record already shows its details when open (Docs) is one line at
 empty at rest, the title truncated with its full text in the tooltip, then the
 mono time the list is sorted by ("14m", "20 Oct"). The
 selected row is the current row (`brand` tint, medium-weight ink label, 2px `brand` edge), so it alone is heavy; a hover is
-`bg-accent` lift, never a boxed border. A row's actions are its right-click menu,
+`bg-accent` lift, never a boxed border; both fills round at 6px with 2px between rows so a hovered row never
+runs into the current one, and while the row has keyboard focus its edge steps
+4px in so the focus ring stays whole. A row the list scrolls to keeps clear of
+the bottom fade. A row's actions are its right-click menu,
 opened at the pointer while the row holds `bg-accent`, never a `…` button beside
 it (Lock, Clone, then Permissions… with a shield between two separators for
 whoever may manage the record's access, then Delete in destructive), each item
@@ -661,9 +665,11 @@ rounded edge on one flat line. Once scrolled, the top fades over 24px too,
 growing with the first 24px of scroll so the first row at rest is never
 washed out. The open record's scroller sits inset by the panel's radius top
 and bottom, and the list's at the bottom, so no scrollbar runs under the
-rounded corners. Every list scroller keeps a stable scrollbar gutter, and so
-does each band of `ListPaneHeader`, so the `+` and the search field end on
-the rows' edge. In a grouped list (Docs, Memories, Plays) the group row you
+rounded corners. Every list scroller keeps a stable scrollbar gutter on both
+edges, and so does each band of `ListPaneHeader`, so the `+` and the search
+field end on the rows' edge and the current row's tint sits as far from the
+panel's left edge as from its right. A meta on the title's line (`metaOnTitleLine`)
+sets inline in that line, so a mono count sits on the title's baseline. In a grouped list (Docs, Memories, Plays) the group row you
 are scrolled into stays pinned at the top on `panel-opaque`, 36px tall, and
 the top fade runs under it instead of over it (`sticky-group-head`).
 `ListDetailLayout` and `ListPaneRow` in
@@ -1392,9 +1398,9 @@ the text below that; a rule above the first row and between rows. A list
 inside a card is the same: hairline rows straight on the card, about 56px, no
 box of their own and no hover lift unless the row is a link. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
-detail (Connected · by Alice 20d ago, Active · last used 9d ago, Revoked 8 Oct),
+detail 16px after it, set apart by space alone ("Connected" then "by Alice 20d ago", "Active" then "last used 9d ago", "Revoked 8 Oct"),
 never a chip; an active account says nothing, only one that can't sign in
-(Disabled, Removed). Destructive actions that are not the card's job are ghost
+(Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job are ghost
 buttons that turn `destructive` on hover, kept apart from the primary action,
 and ask before they act. A card that edits values saves from its footer with
 `SettingsSaveBar`: the strip is always there; Save is the primary button,
@@ -1406,7 +1412,7 @@ shows the value picked while it saves, and only a failed save says so, in an
 error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
-(`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
+(`SettingsHeaderMeta`: Nexul theme, Dark; 2 gateways, 3 hostnames), each fact 16px from the next with no dot between, and marks
 instance sections Instance-wide. On Your settings, Configuration and a project's settings the open section is the page
 title ("Security" or "Labels" under a `Settings` crumb, "Mention chips" under the workspace and
 `Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
@@ -1425,43 +1431,81 @@ and the words between names stay in the UI sans. A row's state sits on its secon
 row's presence, a connector's, which drops the word its tab already says.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
-pane, above) inside the tab: the roles, the Owner first with a muted crown and
-left out of the header's count as the page header leaves it out, each row its
-name over its description with the holder count in mono trailing (left out for
-a viewer the server shows no Team); then an Overview group of Compare roles and
-No roles. The `+` in the pane's
-header is New role. Before a row is picked the open pane is the placeholder,
-"Select a role" over the role count; below 1024px a muted "Roles" link with a
-chevron leads the open pane back to the list. The open role is one page: its
-name (16px semibold, the crown before the Owner's) over its description, with
-an outline Edit and the role's `…` menu at the right (none for the Owner); then
-People, a microheader with the count and, for whoever may give the role,
-outline Add people and Invite to <role> at its right, or a lock and the reason
-under it when the role holds more than they do; then each holder as a hairline
-row, about 56px, the 28px avatar and the name in 14px medium over a muted line
-of their presence and their other roles as chips, with a `…` holding Take
-<role>, View as <first name> and, in destructive, Remove from <workspace>, which
-asks first. An Owner's row has no menu. Add people is a popover of the people
-the viewer's Team shows, split under "In <workspace>" and "Not in <workspace>
-yet" microheaders, with a search field on top; it stays open so several can be
-added in a row, each one saving at once and saying so in a toast. A link made
-here shows once above the holders, and the open links giving the role list
-under them as Invited. What it allows follows: one microheader per editor
-section, its areas as hairline rows in two columns once the pane is 42rem
-wide, the name on the left (muted at None) and the level as a `LevelGlyph` and
-its word on the right, extra verbs after it, a yes-or-no permission as a check
-or a muted No. No roles is the same page with only the holders; Compare roles
-holds the role matrix (below). `RolesAndPeopleSection` and `RoleDetail` in
-`web/src/components/role/` are the reference.
+pane, above) inside the tab: the roles, the Owner first with a muted crown after its name, every role
+in the header's count as in the page header's, each row its name over its
+description with the holder count in mono on the title's baseline (left out at
+none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
+a hairline so they stay in view however many roles there are, two one-line rows at
+the list's 32px pitch and on its gutter, Compare roles and No roles, each led by a muted mark. The Owner's row
+reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role, and its search field narrows the
+roles by name and description. From 1024px the tab opens on the
+first role after the Owner, and below it the list is the page; below 1024px
+a muted "Roles" link with a chevron leads the open pane's title line back to the list. The
+open role is one page, its header on the list header's line and pinned to the
+pane's top on a screen at least 1024px wide and 800px tall, on `panel-opaque` (`sticky-crumbs`), so its section links stay in reach; on a smaller one it scrolls with the pane so the holders get the height. Its header is the name (16px semibold, the crown before
+the Owner's) with an outline Edit and the role's `…` menu on the same line at
+every width (none for the Owner), then the description and, 12px under it, one
+quiet link per editor section with how many of its areas the role reaches in
+mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with one faint dotted rule under the whole reach, glyph included, that turns solid on hover, one section per line below 40rem, each jumping to its section below the
+holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
+plain words, not a link.
+Then People, headed in 14px semibold like "What <role> can do" with its count in mono, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline and fading over 16px from it, so a passing row's rule never doubles it and a resting row's name stays clear, while the holders are in view: the microheader with its count in mono beside it, never joined by
+a middle dot, and, for whoever may give the role, outline Add people and Invite by
+link (with a link mark, naming the role only in its accessible name, so a long
+name never wraps the row) at its right, or a lock and the reason under it when the role holds
+more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, filling the room between the count (sized for its widest reading, "33 of 33") and the actions, never under 11rem; below a 40rem band the field takes its own line under the heading while the actions stay on the heading's, Invite by link showing its link mark alone there when the field shares the band (its name in its label), the count reading "2 of 33" while it narrows and each match underlined in the name or handle (`MatchText`), matches starting a word listed first, a search with no match (which drops the count) a
+hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
+allows stays in reach, and a "Show fewer" right after the count in the band folds them back, the two sharing a slot sized for their widest reading so neither opening nor searching moves the field; a search shows
+every match. Holders run in name order. Each holder
+is a hairline row, at least 56px, the whole row opening the person's account dialog (the one Settings → Team opens), lifting to `accent` on hover in a fill
+inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
+over a muted line led by their handle in mono, so like names tell apart, its parts 16px apart, then only what says something: Online as a status mark,
+when they were last seen in plain words (a grey dot would say nothing), Disabled
+or Removed with the name muted too and the avatar greyed, and their
+other roles as chips that overhang the line instead of growing it, their text
+on the line's baseline, as many chips as the line holds, measured (up to three, each at most 14rem, 18rem from 1280px, with the rest of its name in its tooltip), and the rest
+as a mono "+N" 4px after the last of them; Its
+`…` (shown on hover or focus where the device can hover, always on touch, as the settings lists do) holds Take <role>, View as <first name> and, in destructive, Remove from
+<workspace>, which asks first. An Owner's row has no menu. Add people is a
+popover of the people the viewer's Team shows, split under "In <workspace>" and
+"Not in <workspace> yet" microheaders, with a search field on top and the list
+fading where it scrolls; it stays open so several can be added in a row, each one saving at once and saying so in
+a toast. A link made here shows once above the holders. A count of zero is never shown
+beside a heading whose line already says nobody holds the role. The open links giving
+the role list under them as Invited, on the holders' grid: a link mark on a
+`surface-2` disc in the avatar's slot, rows that open nothing and so never lift, when it expires as its title ("Expires in 7
+days", what tells two links apart), over who made it and the other roles it
+gives as chips, and a `…` holding Revoke link, which asks first; the links step aside while a search runs. What it allows follows under its own heading, "What <role> can do", set 16px
+further down than the gaps above it and 12px over its first section: one microheader per
+editor section, in the editor's order, with how many of its areas the role
+reaches in mono ("10/12"); a section it doesn't reach is that microheader with
+"No access" and a "Show 11 areas" toggle beside it, nothing more, 8px over the next section rather than a section's full gap. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
+own once the pane is 36rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
+muted line under it, and the level as its word in a fixed 80px slot on the right,
+on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
+permission reads Yes with a check in the glyph's slot, or a muted No. The areas a role has no
+access to fold under one ghost line ("Show 2 with no access"), which opens them
+in place, instantly. No roles is the same page with only the holders, each with an
+outline Give a role that opens the roles the viewer may give in a popover that
+keeps to the room it has, scrolls with a fade and leads with a find field, each
+role named with its description muted beside its name on one line (whole in its tooltip) over the role's reach in three columns named once at the top of the list in muted 11px sans, quieter than the section heads (Instance, Workspace, In projects; each cell the header's count, "up to" and top level as glyph and word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
+leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
+width, and holds the role matrix (below). `RolesAndPeopleSection` and
+`RoleDetail` in `web/src/components/role/` are the reference.
 
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
-read-only, in the access grid's frame: one column per role, the Owner first
+read-only, in the access grid's frame: one column per role, the columns sharing the
+width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
+lie to the right (the heads fade under it like the cells; Compare roles leaves the Owner out, the Settings matrix keeps it), and a "+5" control, a 28px hairline button in `foreground` ink, at the top of that fade while columns are hidden that scrolls
+them into view, clear of the counts and menus; the Owner first where it is shown
 with a crown, each head the name (cut like the grids' heads, three 13-character
-lines) over the holder count in mono, beside the role's `…` menu (Edit, Duplicate, Clone to workspace, Delete; the Owner's
-has none); one row per area, under a muted band for each of the editor's
-sections, Instance, Workspace and In projects. A cell is the level as a
-`LevelGlyph` and its word, muted at None, with a mono "+1" on the word's
-baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted No. Deleting a role
+lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it, shown on hover or focus where the device can hover (Edit, Duplicate, Clone to workspace, Delete; the Owner's
+has none); one row per area, its name wrapping to two lines before it cuts (three below 1024px, where the area column narrows to 176px), under a muted band for each of the editor's
+sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 held by no role" toggle on the band, so what tells the roles apart leads. A cell is the level as a
+`LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row: held slots filled, a level it could still hold an
+outline, a level the area lacks a tick on the baseline, and its word; a cell the role has no access in
+is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
+baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and
 `RoleMatrixHead` in `web/src/components/settings/` are the reference.
 
@@ -1535,16 +1579,16 @@ account), which apply at once, and Close. `TeamPersonDialog` and
 Roles checklist. Wherever several roles are picked at once (each workspace of
 an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
-these roles allow, combined."), then one hairline row per role you may give, at
-least 44px, the whole row the checkbox's label, the name in 14px medium and the
-role's tally trailing (two levels at most, as `RoleAccessSummary` draws it). Under a "Can't
+these roles allow, combined."), a find field past eight roles, then one hairline row per role you may give, at
+least 44px, the whole row the checkbox's label, the name in 14px medium over the
+role's description in muted 12px across the row's full width, two lines at most (whole in its tooltip), then the role's reach in the same three columns, named once under the muted line and pinned at the top of the dialog's scroll (`RoleReach`, `RoleReachHead`), the box on the name's line however tall the row grows. Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in
 (`settle-in`): a warning for a member, "Pick at least one role" on an
 invitation, whose Create link waits for one. A role is shown elsewhere as a
-chip: a neutral `rounded-full` hairline pill at 20px, `foreground` at 4%, 11px
-medium, never tinted; three then a mono `+N` with the rest in its tooltip, and
+chip: a neutral `rounded-full` hairline pill at 20px with no fill, so its muted text holds 4.5:1 in every palette, 11px
+medium in `muted-foreground` so it sits under the name, never tinted; three then a mono `+N` with the rest in its tooltip, and
 a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
 `web/src/components/role/` are the reference.
 

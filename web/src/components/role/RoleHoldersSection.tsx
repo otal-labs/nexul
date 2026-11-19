@@ -5,17 +5,27 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Microheader } from "@/components/Microheader";
 import { CreatedInvitationLink } from "@/components/member/CreatedInvitationLink";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
+import { RoleFindField } from "@/components/role/RoleFindField";
+import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { RoleAddPeoplePopover } from "@/components/role/RoleAddPeoplePopover";
 import { RoleHolderRow } from "@/components/role/RoleHolderRow";
 import { RoleInvitationsSection } from "@/components/role/RoleInvitationsSection";
+import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import type { CreatedInvitation } from "@/models/Invitation";
-import { roleHolders } from "@/models/Team";
+import { roleHolders, type TeamPerson } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { personName } from "@/utils/TeamUtility";
+
+// Whether a search starts a word of the name or handle ("Ai" in Aiko), which ranks above a match inside one (Nikolai).
+const startsAWord = (person: TeamPerson, needle: string): boolean =>
+  `${personName(person)} ${person.login}`.toLowerCase().split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(needle));
+
+// Past this many holders a find field leads the list and the rest wait behind Show all.
+const FIND_FROM = 8;
 
 // Who holds the open role, with the ways to give it: to someone here, or by a link to someone new.
 export const RoleHoldersSection = () => {
@@ -23,38 +33,89 @@ export const RoleHoldersSection = () => {
   const { role, givable, reason } = useOpenRole();
   const { data: team, error, isPending } = useFetchTeam();
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
-  const holders = team && role ? roleHolders(team, workspaceId, role.id) : undefined;
+  const [query, setQuery] = useState("");
+  const [all, setAll] = useState(false);
+  const [openPerson, setOpenPerson] = useState<string | null>(null);
+  const holders = team && role ? roleHolders(team, workspaceId, role.id).sort((a, b) => personName(a).localeCompare(personName(b))) : undefined;
   const changeable = role !== undefined && !role.is_owner_role;
+  const needle = query.trim().toLowerCase();
+  const matched = holders
+    ?.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle))
+    .sort((a, b) => Number(!startsAWord(a, needle)) - Number(!startsAWord(b, needle)));
+  // A search shows every match; otherwise a long list stops at its first rows, so what the role allows stays in reach.
+  const capped = !all && !needle && (matched?.length ?? 0) > FIND_FROM;
+  const shown = capped ? matched?.slice(0, FIND_FROM) : matched;
 
   return (
     <section className="space-y-3" aria-labelledby="role-people-title">
-      <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-        <Microheader id="role-people-title">People{holders && ` · ${holders.length}`}</Microheader>
-        {changeable && givable && (
-          <div className="flex items-center gap-2">
-            <RoleAddPeoplePopover />
-            <CreateInvitationDialog role={role} onCreated={setCreated} />
+      {/* From 1024px the heading, its actions and the find field pin while the holders are in view: under the role's header where it pins, else at the top. */}
+      <div className="sticky-crumbs band-edge -mx-4 mb-0! px-4 max-lg:relative! sm:-mr-3.5 sm:-ml-6 sm:pr-3.5 sm:pl-6 pin:top-(--role-header)! pin:-mt-5 pin:pt-5">
+        {/* The list's top hairline, here so a row passing under the band meets an edge. */}
+        <div className="@container space-y-3 border-b border-border pb-3">
+          {/* Wide, the field sits between the count and the actions; narrow, it takes its own line and the actions stay on the heading's. */}
+          <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
+            {/* One 32px line, centred, whether or not the field and actions share it, so the heading never shifts. */}
+            <span className="flex h-8 shrink-0 items-center">
+              <span className="flex shrink-0 items-baseline gap-2">
+                <h3 id="role-people-title" className="text-sm font-semibold">People</h3>
+                {holders && holders.length > 0 && (
+                  // The count and Show fewer share a cell with an invisible copy of their widest reading, so the field never moves.
+                  <span className="grid items-center">
+                    {holders.length > FIND_FROM && (
+                      <span aria-hidden className="invisible col-start-1 row-start-1 flex items-center gap-2">
+                        <span className="font-mono text-micro tabular-nums">{`${holders.length} of ${holders.length}`}</span>
+                        <RoleFoldButton open onToggle={() => undefined} label="Show fewer" className="h-5" />
+                      </span>
+                    )}
+                    <span className="col-start-1 row-start-1 flex items-center gap-2">
+                      {!(needle && matched?.length === 0) && (
+                        <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                      )}
+                      {all && !needle && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-5" />}
+                    </span>
+                  </span>
+                )}
+              </span>
+            </span>
+            {holders && holders.length > FIND_FROM && (
+              <RoleFindField value={query} onChange={setQuery} placeholder="Search people" label="Find a person" className="min-w-44 flex-1 @max-[40rem]:order-last @max-[40rem]:basis-full" />
+            )}
+            {changeable && givable && (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <RoleAddPeoplePopover />
+                <CreateInvitationDialog role={role} onCreated={setCreated} markAloneWhenNarrow={(holders?.length ?? 0) > FIND_FROM} />
+              </div>
+            )}
           </div>
-        )}
+          {changeable && !givable && reason && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Lock aria-hidden className="mt-px size-3 shrink-0" />
+              {reason}
+            </p>
+          )}
+        </div>
       </div>
-      {changeable && !givable && reason && (
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Lock aria-hidden className="mt-px size-3 shrink-0" />
-          {reason}
-        </p>
-      )}
       {created && <CreatedInvitationLink key={created.id} invitation={created} />}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {holders && holders.length === 0 && <EmptyRow flush>Nobody holds {role?.name} yet.</EmptyRow>}
-      {holders && holders.length > 0 && (
-        <EnterList aria-label={`People holding ${role?.name}`} className="border-t border-border">
-          {holders.map((person) => (
-            <RoleHolderRow key={person.id} person={person} />
+      {holders && holders.length === 0 && <EmptyRow flush className="flex min-h-14 items-center border-b border-border">Nobody holds {role?.name} yet.</EmptyRow>}
+      {matched && holders && holders.length > 0 && matched.length === 0 && (
+        <p role="status" className="flex min-h-14 items-center border-b border-border text-sm text-muted-foreground">
+          Nobody holding {role?.name} matches &ldquo;{query.trim()}&rdquo;.
+        </p>
+      )}
+      {shown && shown.length > 0 && (
+        <EnterList aria-label={`People holding ${role?.name}`}>
+          {shown.map((person) => (
+            <RoleHolderRow key={person.id} person={person} onOpen={setOpenPerson} match={needle} />
           ))}
         </EnterList>
       )}
-      <RoleInvitationsSection />
+      {capped && holders && (
+        <RoleFoldButton open={false} onToggle={() => setAll(true)} label={`Show all ${holders.length}`} className="-ml-2" />
+      )}
+      {!needle && <RoleInvitationsSection />}
+      <TeamPersonDialog personId={openPerson} onClose={() => setOpenPerson(null)} />
     </section>
   );
 };

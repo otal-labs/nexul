@@ -17,13 +17,13 @@ const lineOf = (p: TeamPerson) => render(<ul><li><TeamGapLine person={p} /></li>
 
 describe("TeamGapLine", () => {
   it.each([
-    ["names the one step left", person({ steps: [step("github", "done"), step("computer", "left")] }), "2 of 3 set up· computer not added"],
-    ["names the first of several and counts the rest", person({ steps: [step("github", "left"), step("computer", "left"), step("phone", "left")] }), "1 of 4 set up· GitHub not connected +2"],
-    ["says only that the wizard was never opened", person({ first_run_done: false, steps: [step("github", "left")] }), "0 of 2 set up· hasn't opened the wizard yet"],
-    ["counts and names what was skipped, with nothing left", person({ steps: [step("github", "done"), step("phone", "skipped")] }), "2 of 3 set up· skipped phone app"],
-    ["names a person in no project when no role gives the step", person({ in_a_project: false, steps: [step("github", "done")] }), "2 of 3 set up· not in a project yet"],
-    ["each wording of a step left", person({ steps: [step("deploy_server", "left")] }), "1 of 2 set up· deploy server not added"],
-    ["and the phone's", person({ steps: [step("phone", "left")] }), "1 of 2 set up· phone app not set up"],
+    ["names the one step left", person({ steps: [step("github", "done"), step("computer", "left")] }), "2 of 3 set up, computer not added"],
+    ["names the first of several and counts the rest", person({ steps: [step("github", "left"), step("computer", "left"), step("phone", "left")] }), "1 of 4 set up, GitHub not connected +2"],
+    ["says only that the wizard was never opened", person({ first_run_done: false, steps: [step("github", "left")] }), "0 of 2 set up, hasn't opened the wizard yet"],
+    ["counts and names what was skipped, with nothing left", person({ steps: [step("github", "done"), step("phone", "skipped")] }), "2 of 3 set up, skipped phone app"],
+    ["names a person in no project when no role gives the step", person({ in_a_project: false, steps: [step("github", "done")] }), "2 of 3 set up, not in a project yet"],
+    ["each wording of a step left", person({ steps: [step("deploy_server", "left")] }), "1 of 2 set up, deploy server not added"],
+    ["and the phone's", person({ steps: [step("phone", "left")] }), "1 of 2 set up, phone app not set up"],
   ])("%s", (_, p, want) => {
     expect(lineOf(p)).toBe(want);
   });

@@ -12,10 +12,10 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() }, errorMessage: vi.fn() }));
 
-const renderNav = async (collapsed = false) => {
+const renderNav = async (collapsed = false, at = "/") => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[at]}>
         <DeploySidebarNav collapsed={collapsed} />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -53,6 +53,16 @@ describe("DeploySidebarNav", () => {
 
     await user.click(header);
     expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
+  });
+
+  it("keeps the page you're on under the folded header, so it stays marked", async () => {
+    useSidebarStore.setState({ workspaceNavOpen: true });
+    const user = userEvent.setup();
+    await renderNav(false, "/acme/runners");
+
+    await user.click(screen.getByRole("button", { name: "Workspace" }));
+    expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Configuration/ })).not.toBeInTheDocument();
   });
 
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {

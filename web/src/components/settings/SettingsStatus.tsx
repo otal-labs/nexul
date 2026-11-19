@@ -15,7 +15,7 @@ const dotClass: Record<SettingsStatusTone, string> = {
 interface SettingsStatusProps {
   tone: SettingsStatusTone;
   children: ReactNode;
-  /** A muted second part after a dot, such as who connected it and when. */
+  /** A muted second part 16px after the state, such as who connected it and when. */
   detail?: ReactNode;
   className?: string;
 }
@@ -25,12 +25,11 @@ export const SettingsStatus = ({ tone, children, detail, className }: SettingsSt
   <span className={cn("inline-flex min-w-0 items-center gap-1.5 text-xs", className)}>
     <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard", dotClass[tone])} />
     <span className={cn("shrink-0 font-medium", tone === "muted" ? "text-muted-foreground" : "text-foreground")}>{children}</span>
-    {/* The dot takes the same gap on both sides as everything else on the line; the hidden space keeps the text readable. */}
+    {/* Space alone sets the detail apart; the hidden comma keeps it a separate phrase when read aloud. */}
     {detail && (
-      <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
-        <span aria-hidden>·</span>
-        <span className="sr-only"> </span>
-        <span className="min-w-0 truncate">{detail}</span>
+      <span className="ml-2.5 min-w-0 truncate text-muted-foreground">
+        <span className="sr-only">, </span>
+        {detail}
       </span>
     )}
   </span>

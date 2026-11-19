@@ -1,3 +1,4 @@
+import { HeaderFacts } from "@/components/HeaderFacts";
 import { PageHeader } from "@/components/PageHeader";
 import { RolesAndPeopleSection } from "@/components/role/RolesAndPeopleSection";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
@@ -17,7 +18,7 @@ export const AccessRolesView = () => {
         className="mb-6 shrink-0"
         crumbs={[crumb]}
         title="Access"
-        meta={roles && <span className="font-mono text-xs text-muted-foreground">{countLabel(roles.filter((role) => !role.is_owner_role).length, "role", "roles")}</span>}
+        meta={roles && <HeaderFacts parts={[countLabel(roles.length, "role", "roles")]} />}
       />
       <RolesAndPeopleSection />
     </>

@@ -58,7 +58,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-3.5 right-3.5 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] ease-standard hover:bg-accent hover:text-foreground">
+        <DialogPrimitive.Close className="absolute top-5.5 right-4 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] ease-standard hover:bg-accent hover:text-foreground">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -77,12 +77,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-// The part of a long dialog that scrolls, between a header and footer that stay put.
+// The part of a long dialog that scrolls, between a header and footer that stay put; positioned, so nothing inside it overflows the dialog.
 function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("-mx-6 -my-1 min-h-0 flex-1 overflow-y-auto px-6 py-1", className)}
+      className={cn("scroll-edge relative -mx-6 -my-1 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-1", className)}
       {...props}
     />
   );
@@ -121,7 +121,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-pretty text-muted-foreground", className)}
       {...props}
     />
   );

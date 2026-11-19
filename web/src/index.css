@@ -3,6 +3,10 @@
 @import "@xyflow/react/dist/style.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* A role pane pins its header and People band where both leave room for the rows (1024px wide, 800px tall); a shorter screen pins the band alone. */
+@custom-variant pin (@media (width >= 64rem) and (height >= 50rem));
+@custom-variant unpin (@media not ((width >= 64rem) and (height >= 50rem)));
+@custom-variant short-lg (@media (width >= 64rem) and (height < 50rem));
 
 /*
  * Nexul design tokens. The spec of record is practices/design-language.md.
@@ -34,6 +38,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-focus: var(--focus);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-warning-mark: var(--warning-mark);
@@ -90,6 +95,8 @@
   --shape-md: 0.375rem;
   --shape-lg: 0.5rem;
   --shape-xl: 0.75rem;
+  /* What a panel's radius inset leaves short of 12px: zero by default, the whole 12px in a palette with square panels. */
+  --radius-gap: max(0px, calc(0.75rem - var(--shape-xl)));
   --shape-2xl: 1rem;
 
   /* canvas < surface-2 (wells inside a panel) < panel < card < popover */
@@ -1378,6 +1385,11 @@ button.mention-chip:hover {
     0 24px,
     calc(100% - 40px) 100%;
 }
+/* A scroller holding a pinned band (`sticky-crumbs`) keeps only its bottom fade: the band draws its own fade under it, and the
+   top one would wash the band. The fade ends where the content does, above a square palette's bottom padding, and is 24px, so a heading resting there still reads. */
+.scroll-edge:has(.sticky-crumbs) {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - min(var(--scroll-edge), 1.5rem) - var(--radius-gap)), transparent calc(100% - var(--radius-gap)));
+}
 /* A grouped list pins the group it is scrolled into; its top fade then runs under that opaque row instead of over it. */
 .sticky-group-head {
   position: sticky;
@@ -1412,6 +1424,11 @@ button.mention-chip:hover {
     animation: crumbs-fade linear both;
     animation-timeline: scroll();
     animation-range: 0 24px;
+  }
+  /* A pinned band over hairline rows fades over 16px from its own rule, so a passing row's rule never doubles it and a resting row's name stays clear. */
+  .sticky-crumbs.band-edge::after {
+    height: 1rem;
+    background: linear-gradient(var(--panel-opaque), transparent);
   }
 }
 @keyframes crumbs-fade {

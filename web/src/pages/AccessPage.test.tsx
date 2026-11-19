@@ -82,7 +82,8 @@ describe("AccessPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Who's in each project" })).toBeInTheDocument();
-    expect(screen.getByText("2 projects · 2 roles")).toBeInTheDocument();
+    expect(screen.getByText("2 projects")).toBeInTheDocument();
+    expect(screen.getByText("2 roles")).toBeInTheDocument();
     expect(screen.getByText("1 project lists nobody yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Client in Marketing site" }));
@@ -172,7 +173,9 @@ describe("AccessPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Access" })).toBeInTheDocument();
-    expect(screen.getByText("2 projects · 1 public channel · 2 roles")).toBeInTheDocument();
+    expect(screen.getByText("2 projects")).toBeInTheDocument();
+    expect(screen.getByText("1 public channel")).toBeInTheDocument();
+    expect(screen.getByText("3 roles")).toBeInTheDocument();
     expect(screen.getByText("Set up")).toBeInTheDocument();
     expect(screen.getByText(/by alice, just now/)).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Client in Storefront" }));
@@ -196,7 +199,8 @@ describe("AccessPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByText("12 projects · 2 roles")).toBeInTheDocument();
+    expect(await screen.findByText("12 projects")).toBeInTheDocument();
+    expect(screen.getByText("3 roles")).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Public channels" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Roles" })).not.toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: "Filter projects" }), "Project 1");

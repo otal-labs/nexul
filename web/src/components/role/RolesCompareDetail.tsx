@@ -19,13 +19,13 @@ export const RolesCompareDetail = () => {
   const error = rolesError ?? catalogError;
 
   return (
-    <Container className="space-y-6 py-6 sm:pr-3.5">
-      <RoleDetailHeader title="Compare roles" line="Every role side by side: what each can open and change here." />
+    <Container className="space-y-5 pt-0 pb-6 sm:pr-3.5">
+      <RoleDetailHeader title="Compare roles" line="The Owner holds everything, so it isn't listed." backAlways />
       {(rolesPending || catalogPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
-        <div className="px-6 pb-6">
-          <RoleMatrix roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={(roleId) => team && roleHolders(team, workspaceId, roleId)} />
+        <div className="overflow-hidden rounded-lg border border-border bg-card px-6 pb-6 shadow-card">
+          <RoleMatrix stableGutter={false} hideOwner roles={roles} catalog={catalog} workspaceId={workspaceId} holdersOf={(roleId) => team && roleHolders(team, workspaceId, roleId)} />
         </div>
       )}
     </Container>

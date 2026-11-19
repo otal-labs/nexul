@@ -5,10 +5,10 @@ interface AccountStatusLabelProps {
   status: AccountStatus;
 }
 
-// Only an account that can't sign in says so; an active one needs no word, its presence already reads beside it.
+// Only an account that can't sign in says so, Disabled in plain words (its muted name already marks it); an active one needs no word.
 export const AccountStatusLabel = ({ status }: AccountStatusLabelProps) => (
   <>
-    {status === "disabled" && <SettingsStatus tone="warning">Disabled</SettingsStatus>}
+    {status === "disabled" && <span className="shrink-0 text-xs text-muted-foreground">Disabled</span>}
     {status === "removed" && <SettingsStatus tone="destructive">Removed</SettingsStatus>}
   </>
 );

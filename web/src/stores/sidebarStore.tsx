@@ -14,8 +14,8 @@ export type SidebarStore = {
 export const useSidebarStore = create<SidebarStore>()(
   persist(
     (set) => ({
-      // At 768px an open sidebar leaves the page too little width, so it starts as the icon rail below 1024px.
-      collapsed: window.innerWidth < 1024,
+      // Below 1280px an open sidebar leaves a list pane and its open record too little width, so it starts as the icon rail.
+      collapsed: window.innerWidth < 1280,
       toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
       workspaceNavOpen: false,
       toggleWorkspaceNav: () => set((s) => ({ workspaceNavOpen: !s.workspaceNavOpen })),

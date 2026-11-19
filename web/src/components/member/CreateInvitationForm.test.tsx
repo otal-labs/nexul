@@ -37,6 +37,29 @@ describe("CreateInvitationForm", () => {
     });
   });
 
+  it("offers Remove on a workspace only once the link admits to two, so it always admits somewhere", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <CreateInvitationDialog onCreated={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Invite" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(await dialog.findByText("Roles in Acme")).toBeInTheDocument();
+    expect(dialog.queryByRole("button", { name: /^Remove workspace/ })).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole("button", { name: "Add workspace" }));
+    await user.click(dialog.getByRole("button", { name: "Remove workspace 2" }));
+    expect(dialog.queryByRole("button", { name: /^Remove workspace/ })).not.toBeInTheDocument();
+
+    // An open dialog stays in the shared confirmation root into the next case.
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("holds Create link until a role is ticked, then sends every role ticked", async () => {
     mocks.post.mockResolvedValue({ data: { id: "inv-1", url: "https://nexul.example.com/invite#t", grants: [] } });
     const user = userEvent.setup();
@@ -61,7 +84,7 @@ describe("CreateInvitationForm", () => {
     );
   });
 
-  it("explains who the link is for and shows each role's description under its name", async () => {
+  it("explains who the link is for and shows each role's description under its name, then its reach as its page words it", async () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -74,10 +97,12 @@ describe("CreateInvitationForm", () => {
     expect(await screen.findByText("Roles in Acme")).toBeInTheDocument();
 
     expect(
-      screen.getByText("For someone without an account here. Pick the workspaces and the roles the link gives, then copy it and send it yourself. It works once."),
+      screen.getByText("For someone without an account. The link works once."),
     ).toBeInTheDocument();
     const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
     expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();
     expect(within(labelOf("Owner")).getByText("Runs the workspace.")).toBeInTheDocument();
+    expect(within(labelOf("Client")).getByText("In projects: 1 of 1, up to Read")).toBeInTheDocument();
+    expect(within(labelOf("Developer")).getByText("In projects: 1 of 1, up to Write")).toBeInTheDocument();
   });
 });

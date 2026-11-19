@@ -117,3 +117,27 @@ export const roleChangeCount = (
   ) +
   apart(steps, loadedSteps) +
   fields.filter(Boolean).length;
+
+// Whether a role holds anything in an area: a level, or one of its extra verbs.
+export const holdsArea = (domain: PermissionDomain, permissions: readonly string[]): boolean =>
+  levelOf(domain, [...permissions]) > 0 || domain.extras.some((extra) => permissions.includes(extra.value));
+
+export interface SectionReach {
+  section: RoleSection;
+  held: number;
+  total: number;
+  // The highest level the role holds in any of the section's areas.
+  top: number;
+}
+
+// How far a role reaches in each of the editor's sections, the one summary of a role every screen shows.
+export const roleReach = (catalog: PermissionInfo[], permissions: readonly string[]): SectionReach[] =>
+  ROLE_SECTIONS.map((section) => {
+    const domains = sectionDomains(catalog, section.area);
+    const held = domains.abilities.filter((ability) => permissions.includes(ability.value)).length + domains.areas.filter((domain) => holdsArea(domain, permissions)).length;
+    const top = Math.max(0, ...domains.areas.map((domain) => levelOf(domain, [...permissions])));
+    return { section, held, top, total: domains.abilities.length + domains.areas.length };
+  });
+
+// The id of a section on a role's page, which the header's links jump to.
+export const roleSectionId = (area: PermissionArea): string => `role-section-${area}`;

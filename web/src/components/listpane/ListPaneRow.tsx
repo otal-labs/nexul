@@ -29,6 +29,8 @@ interface ListPaneRowProps {
   trailing?: ReactNode;
   /** One truncated line at a 32px pitch instead of up to two wrapped lines. */
   dense?: boolean;
+  /** One line of title with its full text in the tooltip, for a list whose rows keep one height (roles). */
+  oneLineTitle?: boolean;
   /** Sets meta and trailing on the title's first line instead of centring them on a row whose title may wrap. */
   metaOnTitleLine?: boolean;
   /** Loads what the row opens once the pointer rests on it or it takes focus. */
@@ -36,16 +38,26 @@ interface ListPaneRowProps {
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
-  const onTitleLine = metaOnTitleLine && "mt-2 h-lh text-row";
+export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
+  // Inline in the title's line box, a mono count sits on the title's baseline instead of centring in it.
+  const onTitleLine = metaOnTitleLine && cn("block h-lh text-row", dense ? "mt-1.5" : "mt-2");
+  const titleLineBox = metaOnTitleLine && cn("h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const ref = useRef<HTMLLIElement>(null);
   const hasActions = !!actions;
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.
   const cornerMeta = metaOnTitleLine && !!detail && !!meta && !hasActions && !trailing;
 
-  // A deep link can select a row far down the list.
+  // A deep link can select a row far down the list; when that scrolls it, the top edge then lands between rows, never mid-row.
   useEffect(() => {
-    if (selected) ref.current?.scrollIntoView?.({ block: "nearest" });
+    const row = ref.current;
+    if (!selected || !row) return;
+    const scroller = row.closest<HTMLElement>(".scroll-edge");
+    const before = scroller?.scrollTop;
+    row.scrollIntoView?.({ block: "nearest" });
+    if (!scroller || scroller.scrollTop === before) return;
+    const edge = scroller.getBoundingClientRect().top;
+    const cut = [...scroller.querySelectorAll("li")].find((li) => li.getBoundingClientRect().top < edge && li.getBoundingClientRect().bottom > edge);
+    if (cut) scroller.scrollTop += cut.getBoundingClientRect().bottom - edge;
   }, [selected]);
 
   return (
@@ -54,22 +66,22 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
         ref={ref}
         {...prefetch}
         className={cn(
-          "group relative flex gap-2 px-3 transition-colors duration-150 ease-standard",
+          "group relative my-0.5 flex scroll-my-10 gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && !detail && (dense ? "min-h-8" : "min-h-10"),
           (snippet !== "" || !!detail) && "min-h-14",
           selected ? currentRowFillClass : "hover:bg-accent",
         )}
       >
-        {selected && <CurrentRowEdge />}
+        {selected && <CurrentRowEdge className="z-10 group-has-[:focus-visible]:left-1" />}
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}
-          className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-sm focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
+          className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
         >
           <span className={cn("flex min-w-0 items-start gap-1.5 text-row", cornerMeta && "pr-12")}>
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
-            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", muted && "text-muted-foreground", dense ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
+            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", muted && "text-muted-foreground", dense || oneLineTitle ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
               {title}
             </span>
             {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}
@@ -104,7 +116,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
             {actions}
           </div>
         )}
-        {!!trailing && <div className={cn("relative z-10 flex shrink-0 items-center", onTitleLine)}>{trailing}</div>}
+        {!!trailing && <div className={cn("relative z-10 flex shrink-0 items-center", titleLineBox)}>{trailing}</div>}
       </li>
     </RowContextMenu>
   );

@@ -18,7 +18,7 @@ export const PlayHealthLine = ({ health }: PlayHealthLineProps) => {
 
   return (
     <>
-      {!last && <p className="font-mono text-xs text-muted-foreground">Not run yet</p>}
+      {!last && <p className="text-xs text-muted-foreground">Not run yet</p>}
       {last && (
         // Each figure leads with its dot, which a wrapped line pushes into the clipped margin, so no line starts or ends on one.
         <p className="overflow-hidden font-mono text-xs text-muted-foreground tabular-nums">

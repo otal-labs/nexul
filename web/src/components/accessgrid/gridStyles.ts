@@ -14,3 +14,7 @@ export const fadeEndCell = "grid-fade-end sticky right-0 z-10 w-4 min-w-4 border
 export const fillerCell = "border-b border-border";
 // The grid scrolls sideways a whole role column at a time, so it never rests on half a column under the sticky ones.
 export const snapScroller = "snap-x snap-proximity scroll-ps-50 lg:scroll-ps-60";
+// The role matrix has no filler, so its columns share the spare width; its end fade is wide enough to read as more to scroll.
+export const matrixFadeWidth = "w-12 min-w-12";
+// Below 1024px the matrix's area column narrows, its names wrapping to two lines, so another role column fits.
+export const matrixAreaWidth = "w-44 min-w-44 max-w-44";
