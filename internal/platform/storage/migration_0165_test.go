@@ -10,11 +10,11 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
-// TestMigration0164_ACheckoutFromBeforeIsKeptForTheRepositoryItClones upgrades a project whose order names one
+// TestMigration0165_ACheckoutFromBeforeIsKeptForTheRepositoryItClones upgrades a project whose order names one
 // computer and whose other computer only held a checkout, plus a play and a queued run: the order and both checkouts
 // read back, each checkout under no repository, and the play and the run work on the app.
-func TestMigration0164_ACheckoutFromBeforeIsKeptForTheRepositoryItClones(t *testing.T) {
-	db := migrateBefore(t, "0164")
+func TestMigration0165_ACheckoutFromBeforeIsKeptForTheRepositoryItClones(t *testing.T) {
+	db := migrateBefore(t, "0165")
 	_, err := db.Exec(`
 INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-alice', 'alice', 1, 1);
 INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, updated_at) VALUES ('p-web', 'Web', 'WEB', 0, 'workspace-default', 0, 0);
@@ -31,7 +31,7 @@ INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, pl
     ('q-1', 'workspace-default', 'p-web', 'ticket', 't-1', 'play-fix', 'Fix', '', 'u-alice', 'developer', 'automation', 'automation', 1, 'queued', 1, 1);`)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0164 and every later migration apply on top, as an upgrade would")
+	require.NoError(t, Migrate(db), "0165 and every later migration apply on top, as an upgrade would")
 	s := New(db, testEncKey)
 	ctx := t.Context()
 
