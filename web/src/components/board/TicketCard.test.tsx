@@ -104,11 +104,18 @@ describe("TicketCard", () => {
     expect(chip).toHaveClass(...labelPillColor("urgent").split(" "));
   });
 
-  it("mutes every type icon but a bug's, so the type never adds a second accent to the card", async () => {
+  it("mutes a type icon with no colour set unless it is a bug, so the type never adds a second accent to the card", async () => {
     mockTicketType("Feature");
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     const badge = (await screen.findByText("Feature")).closest('[data-slot="no-fill-badge"]');
     expect(badge?.querySelector("svg")).toHaveClass("text-muted-foreground");
+  });
+
+  it("draws any type's icon in the colour its owner set", async () => {
+    mockTicketType("Feature", "emerald");
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    const badge = (await screen.findByText("Feature")).closest('[data-slot="no-fill-badge"]');
+    expect(badge?.querySelector("svg")).toHaveClass(...ticketTypeColor("Feature", "emerald").split(" "));
   });
 
   it("keeps a bug icon's configured colour over the hashed one", async () => {

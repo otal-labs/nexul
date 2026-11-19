@@ -806,8 +806,9 @@ and "Waiting 1m", timed from when that work started; muted, not the run's
 spinner holds still under reduced motion. The title takes the
 card's full width under it, in 13px (`text-row`) at weight 450 (`font-book`; 500 read as bold at that
 size on a dark card), at most three lines. A blocked card adds "Blocked by" and
-the key on a line of its own. Last comes the type as its icon (a bug in its
-fuchsia, every other type muted) and at most two labels, each an 18px pill in its
+the key on a line of its own. Last comes the type as its icon (in the colour
+the owner set on the type, else a bug in its fuchsia and every other type muted)
+and at most two labels, each an 18px pill in its
 own hue (the hue at 15% under its 800 ink, 300 in dark, 900 for lime and
 amber; 6:1 or better on the card; an owner's own hex at 15% under the hex mixed
 65% into `foreground`, ADR 0176), any more as "+N" naming them in its tooltip. Labels
