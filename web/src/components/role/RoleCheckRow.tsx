@@ -23,7 +23,7 @@ export const RoleCheckRow = ({ choice, catalog, checked, onToggle }: RoleCheckRo
       <Checkbox id={id} checked={checked} disabled={!givable} onCheckedChange={() => onToggle(role.id)} className="mt-0.5" />
       <label htmlFor={id} className={cn("min-w-0 flex-1", givable && "cursor-pointer")}>
         <span className={cn("block truncate text-sm font-medium", !givable && "text-muted-foreground")}>{role.name}</span>
-        {role.description && <span className="line-clamp-2 text-xs leading-4.5 text-muted-foreground" title={role.description}>{role.description}</span>}
+        {role.description && <span className="line-clamp-2 text-xs leading-4.5 text-pretty text-muted-foreground" title={role.description}>{role.description}</span>}
         {givable && (
           <span className="mt-1 block">
             <RoleReach catalog={catalog} permissions={role.permissions} />
