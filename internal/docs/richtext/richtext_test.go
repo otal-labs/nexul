@@ -97,6 +97,8 @@ func TestMarkdownRoundTrip_KeepsSourceText(t *testing.T) {
 		{"code in table cells", "| Code | Meaning |\n| --- | --- |\n| `session_checkpoint/1` | `target_not_met` |"},
 		{"task list", "- [ ] a\n- [x] b"},
 		{"nested task list", "- [ ] a\n  - [x] nested\n  - plain\n- [ ] c"},
+		{"list nested under a numbered item", "1. Move the ticket:\n   - Merged: testing.\n   - Open: review.\n2. Next."},
+		{"list nested under a two-digit number", "9. nine\n10. ten\n    - nested\n11. eleven"},
 		{"task item with marks", "- [x] a **bold** [l](https://example.com)"},
 		{"code span holding a backtick", "run ``a`b_c`` here"},
 		{"code span edged by backticks", "quote `` `x_y` `` literally"},
