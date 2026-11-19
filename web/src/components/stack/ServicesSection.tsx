@@ -4,6 +4,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { settingsListClass } from "@/components/settings/SettingsRow";
+import { ServiceDeployModes } from "@/components/stack/ServiceDeployModes";
 import { ServiceRow } from "@/components/stack/ServiceRow";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
@@ -51,6 +52,8 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
         </EnterList>
       )}
       {services && services.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{summary(services)}</p>}
+      {/* Until the exposures load, or without dns:read, every service would read as having no hostname. */}
+      {exposures && services && services.length > 0 && <ServiceDeployModes services={services} hostnamesOf={hostnamesOf} />}
     </SettingsCard>
   );
 };

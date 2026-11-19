@@ -827,8 +827,8 @@ _Avoid_: Alert, warning
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with
-addresses, and ports (published ones with their host port, the rest as reachable
-on the container's networks only). The only source of a service's observed facts;
+addresses, ports (published ones with their host port, the rest as reachable
+on the container's networks only), and whether it has a healthcheck. The only source of a service's observed facts;
 the compose file remains the only source of its declared ones.
 _Avoid_: Status report, inspect result
 
@@ -841,6 +841,13 @@ checked out, reported with the terminal result); a deploy that failed before
 the checkout retries its ref, and one that recorded neither cannot be retried.
 The failed deploy stays in the history and `deploy.retried` names the new one.
 _Avoid_: Redeploy (that pulls an image again), re-run
+
+**Swap**:
+How a deploy replaces a service a hostname routes to: a second container starts
+beside the running one, takes its name once its healthcheck passes, and the old
+one stops, so the gateway never loses it. A service that cannot run twice, or
+has no healthcheck, restarts in place instead (ADR 0206).
+_Avoid_: Blue-green, rolling update (one container per service, swapped once)
 
 **Tests repository**:
 A second repository a project may attach to hold its tests. Never deployed:

@@ -46,6 +46,14 @@ A stack adopted by [importing what's already running](/docs/guide/runners/#impor
 
 A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
 
+### Deploys without downtime
+
+A service a hostname routes to through a gateway is swapped, not restarted. The runner starts the new container next to the old one, waits for its healthcheck to pass, gives it the old container's name, which is the name the gateway sends traffic to, and then stops the old one. The deploy's log names each step: `start new`, `wait healthy`, `swap` and `stop old`. Connections already open to the old container finish there; during the rename itself, a few tens of milliseconds, a new connection can fail once.
+
+If the new container turns unhealthy, stops, or is not healthy within five minutes, the runner removes it and the deploy fails with the healthcheck's last output, while the old container goes on serving. Fix what the log shows and deploy again.
+
+A service restarts in place instead when it has no hostname, publishes a port on the host (two copies cannot hold one port), has no healthcheck, is not running yet, sets `container_name` or runs more than one container. Under the services on **Overview**, one line names the services a deploy swaps and another the ones it restarts and why, from what the runner last reported; the deploy's log has the final word, `<service> restarts in place:` with the reason, and is the only place a `container_name` shows. A service whose container already runs its current config and image is left alone, as before. A healthcheck comes from the compose file's `healthcheck:` or the image's `HEALTHCHECK`. Do not route a hostname to a database or another service that keeps state in a volume: for a moment two copies run on it.
+
 ## Environment
 
 **Settings → Environment** lists the stack's variables, a name and a value each. Values show as dots until you click **Reveal values**. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.

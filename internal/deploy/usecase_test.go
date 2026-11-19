@@ -280,6 +280,37 @@ func TestDeploy_NoGatewayJoinWhenNoneServesTheNetwork(t *testing.T) {
 	assert.Empty(t, payload.JoinNetworks)
 }
 
+// A deploy names the stack's services some exposure routes to, which the runner swaps; a failed lookup swaps nothing.
+func TestDeploy_SwapServices_NameTheRoutedServices(t *testing.T) {
+	tests := []struct {
+		name string
+		join fakeGatewayJoin
+		want []string
+	}{
+		{name: "routed services are named", join: fakeGatewayJoin{routed: []string{"c-web", "c-elsewhere"}}, want: []string{"web"}},
+		{name: "nothing routed swaps nothing", join: fakeGatewayJoin{}},
+		{name: "a failed lookup swaps nothing", join: fakeGatewayJoin{routed: []string{"c-web"}, err: assert.AnError}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			stacks := newFakeStackRepo()
+			stack := validStack()
+			require.NoError(t, stacks.Create(t.Context(), &stack))
+			containers := newFakeContainerRepo()
+			require.NoError(t, containers.Create(t.Context(), &Container{ID: "c-web", StackID: stack.ID, Name: "web"}))
+			require.NoError(t, containers.Create(t.Context(), &Container{ID: "c-db", StackID: stack.ID, Name: "db"}))
+			s := newTestServiceWith(repo, stacks, containers, newFakeProjects(), newFakeBus())
+			s.SetGatewayJoin(tt.join)
+
+			_, err := s.Deploy(t.Context(), validRequest())
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want, deployRequestedPayload(t, repo.of(TopicDeployRequested)).SwapServices)
+		})
+	}
+}
+
 func TestDeploy_PortsPassThrough(t *testing.T) {
 	repo := newFakeRepo()
 	bus := newFakeBus()
@@ -1011,8 +1042,9 @@ func TestHandleStatusChanged(t *testing.T) {
 			Services: []ObservedService{
 				{
 					Name: "web", ContainerName: "api-web-1", Image: "nginx:1", Status: "healthy",
-					Networks: []Network{{Name: "api_default", Address: "172.18.0.2"}},
-					Ports:    []string{"8080:80/tcp"},
+					Networks:    []Network{{Name: "api_default", Address: "172.18.0.2"}},
+					Ports:       []string{"8080:80/tcp"},
+					Healthcheck: new(true),
 				},
 				{Name: "cache", ContainerName: "api-cache-1", Image: "redis:7", Status: "running"},
 			},
@@ -1034,6 +1066,7 @@ func TestHandleStatusChanged(t *testing.T) {
 		assert.Equal(t, "api-web-1", web.ContainerName)
 		assert.Equal(t, []Network{{Name: "api_default", Address: "172.18.0.2"}}, web.Networks)
 		assert.Equal(t, []string{"8080:80/tcp"}, web.Ports)
+		assert.Equal(t, new(true), web.Healthcheck, "whether the container has a healthcheck is kept for the stack page")
 
 		worker := byName["worker"]
 		assert.Equal(t, ServiceStatusStopped, worker.Status, "a service missing from the report is marked stopped, never deleted")
@@ -1041,6 +1074,7 @@ func TestHandleStatusChanged(t *testing.T) {
 		cache := byName["cache"]
 		assert.NotEmpty(t, cache.ID, "a container the report finds with no matching row gets a fresh id")
 		assert.Equal(t, ServiceStatusRunning, cache.Status)
+		assert.Nil(t, cache.Healthcheck, "a runner that does not say leaves it unknown")
 	})
 
 	t.Run("a compose stack's placeholder row leaves once a report shows what runs", func(t *testing.T) {

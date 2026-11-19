@@ -51,6 +51,8 @@ type ExposureManager interface {
 // last step can rejoin it; found is false when no gateway currently serves it.
 type GatewayJoin interface {
 	GatewayForStackNetwork(ctx context.Context, network string) (gatewayContainer string, found bool, err error)
+	// RoutedContainerIDs lists the containers (services.id) some exposure routes a hostname to.
+	RoutedContainerIDs(ctx context.Context) ([]string, error)
 }
 
 // SecretReaders is the runner seam a deploy with secret references asks which managers a machine's runners can read.
@@ -313,7 +315,9 @@ func (s *Service) start(ctx context.Context, req DeployRequest, retryOf string) 
 		CreatedAt: now, UpdatedAt: now,
 	}
 	gatewayContainer, joinNetworks := s.resolveGatewayJoin(ctx, stack)
-	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicDeployRequested, Payload: req.toEvent(d, stack, gatewayContainer, joinNetworks)}}
+	requested := req.toEvent(d, stack, gatewayContainer, joinNetworks)
+	requested.SwapServices = s.routedServices(ctx, stack)
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicDeployRequested, Payload: requested}}
 	if retryOf != "" {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeployRetried, Payload: DeployRetriedEvent{
 			ID: d.ID, RetryOf: retryOf, StackID: stack.ID, Ref: req.Ref, Image: req.Image,
@@ -828,6 +832,29 @@ func (s *Service) resolveGatewayJoin(ctx context.Context, stack *Stack) (string,
 	return container, []string{network}
 }
 
+// routedServices names the stack's services a gateway routes to, the ones a deploy swaps; a failed lookup swaps
+// nothing, so the deploy restarts them as before instead of failing.
+func (s *Service) routedServices(ctx context.Context, stack *Stack) []string {
+	if s.gatewayJoin == nil {
+		return nil
+	}
+	routed, err := s.gatewayJoin.RoutedContainerIDs(ctx)
+	if err != nil || len(routed) == 0 {
+		return nil
+	}
+	containers, err := s.services.ListByStack(ctx, stack.ID)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, c := range containers {
+		if slices.Contains(routed, c.ID) {
+			names = append(names, c.Name)
+		}
+	}
+	return names
+}
+
 // checkSlugUnique rejects a duplicate (machine, slug) pair; excludingID lets an update keep its own slug.
 func (s *Service) checkSlugUnique(ctx context.Context, stack *Stack, excludingID string) error {
 	existing, err := s.stacks.GetBySlugAndMachine(ctx, stack.Slug, stack.Machine)
@@ -979,7 +1006,7 @@ func (s *Service) reconcileServices(ctx context.Context, deployID string, observ
 		c := &Container{
 			ID: ids.New(), StackID: d.StackID, Name: o.Name,
 			ContainerName: o.ContainerName, Image: o.Image, Status: ServiceStatus(o.Status),
-			Networks: o.Networks, Ports: o.Ports, ObservedAt: now,
+			Networks: o.Networks, Ports: o.Ports, ObservedAt: now, Healthcheck: o.Healthcheck,
 		}
 		if prev, ok := byName[o.Name]; ok {
 			c.ID = prev.ID

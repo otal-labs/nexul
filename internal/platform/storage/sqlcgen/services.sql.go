@@ -7,11 +7,12 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createContainer = `-- name: CreateContainer :exec
-INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateContainerParams struct {
@@ -25,6 +26,7 @@ type CreateContainerParams struct {
 	Networks      string
 	Ports         string
 	ObservedAt    int64
+	Healthcheck   sql.NullInt64
 }
 
 func (q *Queries) CreateContainer(ctx context.Context, arg CreateContainerParams) error {
@@ -39,6 +41,7 @@ func (q *Queries) CreateContainer(ctx context.Context, arg CreateContainerParams
 		arg.Networks,
 		arg.Ports,
 		arg.ObservedAt,
+		arg.Healthcheck,
 	)
 	return err
 }
@@ -62,7 +65,7 @@ func (q *Queries) DeleteContainersByStack(ctx context.Context, stackID string) e
 }
 
 const getContainer = `-- name: GetContainer :one
-SELECT id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at FROM services WHERE id = ?
+SELECT id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck FROM services WHERE id = ?
 `
 
 func (q *Queries) GetContainer(ctx context.Context, id string) (Service, error) {
@@ -79,6 +82,7 @@ func (q *Queries) GetContainer(ctx context.Context, id string) (Service, error) 
 		&i.Networks,
 		&i.Ports,
 		&i.ObservedAt,
+		&i.Healthcheck,
 	)
 	return i, err
 }
@@ -112,7 +116,7 @@ func (q *Queries) ListContainerNamesByMachine(ctx context.Context, machine strin
 }
 
 const listContainersByStack = `-- name: ListContainersByStack :many
-SELECT id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at FROM services WHERE stack_id = ? ORDER BY name
+SELECT id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck FROM services WHERE stack_id = ? ORDER BY name
 `
 
 func (q *Queries) ListContainersByStack(ctx context.Context, stackID string) ([]Service, error) {
@@ -135,6 +139,7 @@ func (q *Queries) ListContainersByStack(ctx context.Context, stackID string) ([]
 			&i.Networks,
 			&i.Ports,
 			&i.ObservedAt,
+			&i.Healthcheck,
 		); err != nil {
 			return nil, err
 		}
@@ -150,8 +155,8 @@ func (q *Queries) ListContainersByStack(ctx context.Context, stackID string) ([]
 }
 
 const upsertContainer = `-- name: UpsertContainer :exec
-INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO services (id, stack_id, name, declared, container_name, image, status, networks, ports, observed_at, healthcheck)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (stack_id, name) DO UPDATE SET
     declared = excluded.declared,
     container_name = excluded.container_name,
@@ -159,7 +164,8 @@ ON CONFLICT (stack_id, name) DO UPDATE SET
     status = excluded.status,
     networks = excluded.networks,
     ports = excluded.ports,
-    observed_at = excluded.observed_at
+    observed_at = excluded.observed_at,
+    healthcheck = excluded.healthcheck
 `
 
 type UpsertContainerParams struct {
@@ -173,6 +179,7 @@ type UpsertContainerParams struct {
 	Networks      string
 	Ports         string
 	ObservedAt    int64
+	Healthcheck   sql.NullInt64
 }
 
 func (q *Queries) UpsertContainer(ctx context.Context, arg UpsertContainerParams) error {
@@ -187,6 +194,7 @@ func (q *Queries) UpsertContainer(ctx context.Context, arg UpsertContainerParams
 		arg.Networks,
 		arg.Ports,
 		arg.ObservedAt,
+		arg.Healthcheck,
 	)
 	return err
 }

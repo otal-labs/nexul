@@ -96,8 +96,11 @@ type ShellExecutor struct {
 	// tempDir holds upgrade report files; reportPoll is how often a running upgrade's report is checked.
 	tempDir    string
 	reportPoll time.Duration
-	log        *slog.Logger
-	registry   func() secretref.Registry
+	// healthyTimeout and healthyPoll bound how long and how often a swap waits for its new container's healthcheck.
+	healthyTimeout time.Duration
+	healthyPoll    time.Duration
+	log            *slog.Logger
+	registry       func() secretref.Registry
 	// fingerprints is shared with the secret check, so a copy of the executor made per deploy still writes the same files.
 	fingerprints *Fingerprints
 }
@@ -113,7 +116,7 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 	}
 	return &ShellExecutor{
 		cmd: cmd, rawCmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
-		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log, registry: cfg.Registry,
+		tempDir: os.TempDir(), reportPoll: 2 * time.Second, healthyTimeout: healthyTimeout, healthyPoll: healthyPoll, log: log, registry: cfg.Registry,
 		fingerprints: cfg.Fingerprints,
 	}
 }
@@ -365,8 +368,7 @@ func (e *ShellExecutor) deployBuilt(ctx context.Context, req DeployRequestedEven
 func (e *ShellExecutor) startBuilt(ctx context.Context, req DeployRequestedEvent, checkout string, logs *logStream) error {
 	switch req.Strategy {
 	case "compose":
-		args := composeArgs(req, "up", "-d", "--remove-orphans")
-		return e.runStreamed(ctx, checkout, logs, cmdString("docker", args), "docker", args...)
+		return e.composeUp(ctx, req, checkout, logs)
 	case "run", "":
 		return e.runContainer(ctx, req, logs)
 	default:
@@ -383,14 +385,15 @@ func composeArgs(req DeployRequestedEvent, verb ...string) []string {
 	return append(args, verb...)
 }
 
-// runContainer replaces the slug's previous container with a fresh `docker run`; only the run itself is
+// replaceContainer replaces the slug's previous container with a fresh `docker run`; only the run itself is
 // streamed, since the rm and network probes are expected to fail on a first deploy and say nothing useful.
 // The label names the container and image but never the args: env values ride `-e` and are secrets.
-func (e *ShellExecutor) runContainer(ctx context.Context, req DeployRequestedEvent, logs *logStream) error {
-	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug)
+func (e *ShellExecutor) replaceContainer(ctx context.Context, req DeployRequestedEvent, logs *logStream) error {
+	// The -next and -old leftovers of a swap the runner died in would otherwise keep running beside it.
+	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug, req.StackSlug+"-next", req.StackSlug+"-old")
 	e.ensureNetwork(ctx, req.Network)
 	label := "docker run --name " + req.StackSlug + " " + req.Image
-	return e.runStreamed(ctx, "", logs, label, "docker", runArgs(req)...)
+	return e.runStreamed(ctx, "", logs, label, "docker", runArgsNamed(req, req.StackSlug)...)
 }
 
 // runStreamed runs one deploy-phase command with its output streamed under label, flushing when it ends.
@@ -576,12 +579,12 @@ func (e *ShellExecutor) output(ctx context.Context, name string, args ...string)
 	return strings.TrimSpace(buf.String()), nil
 }
 
-// runArgs builds `docker run` for the run strategy, naming the container after the stack's slug (spec §4 step 2).
+// runArgsNamed builds `docker run` for the run strategy, naming the container name: the stack's slug, or a swap's new container.
 // The container survives a host reboot on its own (unless-stopped: a deliberate stop stays stopped); compose
 // stacks carry their own restart policy.
-func runArgs(req DeployRequestedEvent) []string {
+func runArgsNamed(req DeployRequestedEvent, name string) []string {
 	// host.docker.internal is how a container reaches a service on the host, such as a native Nexul server.
-	args := []string{"run", "-d", "--restart", "unless-stopped", "--name", req.StackSlug, "--add-host", "host.docker.internal:host-gateway"}
+	args := []string{"run", "-d", "--restart", "unless-stopped", "--name", name, "--add-host", "host.docker.internal:host-gateway"}
 	if req.Network != "" {
 		args = append(args, "--network", req.Network)
 	}

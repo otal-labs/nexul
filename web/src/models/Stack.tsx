@@ -254,6 +254,8 @@ export interface Container {
   // "host:container/proto" when published on the host, "container/proto" when reachable only on its networks.
   ports?: string[];
   observed_at?: string;
+  // Whether the container has a healthcheck, which a deploy needs to swap it; absent until a runner reports it.
+  healthcheck?: boolean;
 }
 
 export interface ContainerPort {

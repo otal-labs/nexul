@@ -24,7 +24,12 @@ func (f fakeGatewayLookup) NetworkHasGateway(_ context.Context, network string) 
 // fakeGatewayJoin is an in-memory deploy.GatewayJoin for use-case tests.
 type fakeGatewayJoin struct {
 	containers map[string]string
+	routed     []string
 	err        error
+}
+
+func (f fakeGatewayJoin) RoutedContainerIDs(context.Context) ([]string, error) {
+	return f.routed, f.err
 }
 
 func (f fakeGatewayJoin) GatewayForStackNetwork(_ context.Context, network string) (string, bool, error) {

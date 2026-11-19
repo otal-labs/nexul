@@ -115,6 +115,22 @@ func TestServicesRepo_Upsert_InsertsThenUpdatesByStackAndName(t *testing.T) {
 	assert.Equal(t, "api", got[0].ContainerName)
 }
 
+// A healthcheck round-trips as yes, no, or not known, which a runner too old to report it leaves.
+func TestServicesRepo_Upsert_KeepsWhetherTheContainerHasAHealthcheck(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedStackForContainers(t, s, "stack-1")
+	for _, want := range []*bool{nil, new(true), new(false)} {
+		svc := newTestContainer("svc-1", "stack-1")
+		svc.Healthcheck = want
+		require.NoError(t, s.Services.Upsert(t.Context(), svc))
+
+		got, err := s.Services.Get(t.Context(), "svc-1")
+		require.NoError(t, err)
+		assert.Equal(t, want, got.Healthcheck)
+	}
+}
+
 func TestServicesRepo_DeleteByStack(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
