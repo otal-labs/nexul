@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,12 +27,15 @@ func TestOnSessionUpdate_BackgroundWork_ShowsOnTheTicketUntilItEndsOrTheComputer
 	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "th-1", IsTicketThread: true, TicketID: "t-1"})
 	conv.seen["conv-1"] = "run-7"
 	live := &fakeLive{}
-	svc := NewService(Config{Conversations: conv, Live: live})
+	started := time.Date(2026, 11, 19, 9, 30, 0, 0, time.UTC)
+	now := started
+	svc := NewService(Config{Conversations: conv, Live: live, Now: func() time.Time { return now }})
 	monitoring := harness.SessionUpdate{SessionID: "th-1", Latest: "run-7", Background: true}
 
 	svc.OnSessionUpdate("u-1", "c-2", monitoring)
+	now = started.Add(time.Minute)
 	svc.OnSessionUpdate("u-1", "c-2", monitoring)
-	assert.Equal(t, map[string]bool{"t-1": true}, svc.BackgroundTickets([]string{"t-1", "t-9"}))
+	assert.Equal(t, map[string]time.Time{"t-1": started}, svc.BackgroundTickets([]string{"t-1", "t-9"}), "a repeat report keeps when the work started")
 	assert.Empty(t, svc.BackgroundTickets([]string{"t-9"}), "only the tickets asked about")
 
 	dropped, err := json.Marshal(presenceChanged{ComputerID: "c-2", State: "connecting"})

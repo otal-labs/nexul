@@ -336,7 +336,12 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	for target, it := range items {
 		queued[target] = it.ID
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started, "queued": queued, "background": h.runner.backgroundTargets(targetType, listed)})
+	since := h.runner.backgroundTargets(targetType, listed)
+	background := make(map[string]bool, len(since))
+	for target := range since {
+		background[target] = true
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started, "queued": queued, "background": background, "background_since": since})
 }
 
 func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {

@@ -15,6 +15,7 @@ export const CardRunMarks = ({ ticketId }: { ticketId: string }) => {
   const turnStartedAt = useTicketAgentTurnStart(ticketId);
   const turning = runState === undefined && turnStartedAt !== undefined;
   const background = activeTrails?.background[ticketId] === true && runState === undefined && !turning;
+  const backgroundSince = activeTrails?.background_since[ticketId];
 
   return (
     <>
@@ -49,13 +50,15 @@ export const CardRunMarks = ({ ticketId }: { ticketId: string }) => {
         </>
       )}
       {background && (
-        // The one live pulse, on the in-flight hue: the turn has ended, but a command, monitor or subagent it started still runs.
-        <span
-          role="img"
-          aria-label="Working in the background"
-          title="Working in the background in T3 Code"
-          className="size-1.5 shrink-0 rounded-full bg-warning-mark animate-[status-pulse_2.4s_ease-standard_infinite] motion-reduce:animate-none"
-        />
+        // Muted, not the run's amber: the turn has ended and only a command, monitor or subagent it started still runs.
+        <>
+          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-muted-foreground" role="img" aria-label="Working in the background">
+            <title>Working in the background in T3 Code</title>
+          </LoaderCircle>
+          <span className="-ml-0.5 whitespace-nowrap" aria-hidden>
+            Waiting{backgroundSince !== undefined && <> <RunTimer startedAt={backgroundSince} /></>}
+          </span>
+        </>
       )}
     </>
   );

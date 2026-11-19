@@ -270,14 +270,15 @@ describe("TicketCard", () => {
     expect(screen.queryByLabelText("Agent working")).not.toBeInTheDocument();
   });
 
-  it("marks work the turn left running in the background, never beside a spinner", async () => {
+  it("shows work the turn left running in the background as waiting since it started, never beside a run spinner", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
-      if (url === "/api/plays/runs/active") return { data: { active: {}, background: { "t-1": true } } };
+      if (url === "/api/plays/runs/active") return { data: { active: {}, background: { "t-1": true }, background_since: { "t-1": new Date(Date.now() - 90_000).toISOString() } } };
       return { data: [] };
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByLabelText("Working in the background")).toBeInTheDocument();
+    expect(screen.getByText("Waiting")).toHaveTextContent("Waiting 1m");
 
     act(() => useAgentStreamStore.getState().setStream("c-1", { messageId: "", text: "", streaming: true, ticketId: "t-1" }));
     expect(screen.getByLabelText("Agent working")).toBeInTheDocument();

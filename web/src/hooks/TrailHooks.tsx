@@ -71,13 +71,14 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
 
 // Target id to trail id; waiting holds the subset stopped on a question to the user, started each run's start time,
 // queued the targets with a run waiting in the queue, to its queue item id, background the tickets whose thread has
-// harness work running past its turn.
+// harness work running past its turn, and background_since when that work started.
 export interface ActiveTargets {
   active: Record<string, string>;
   waiting: Record<string, string>;
   started: Record<string, string>;
   queued: Record<string, string>;
   background: Record<string, boolean>;
+  background_since: Record<string, string>;
 }
 
 // One request per project and target type, named by the project so the URL stays one size however big the board.
@@ -86,7 +87,7 @@ const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefin
     queryKey: [getActiveTrailsKey, targetType, projectId],
     queryFn: async (): Promise<ActiveTargets> => {
       const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, project_id: projectId } });
-      return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {}, queued: data.queued ?? {}, background: data.background ?? {} };
+      return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {}, queued: data.queued ?? {}, background: data.background ?? {}, background_since: data.background_since ?? {} };
     },
     enabled: !!projectId,
   });
