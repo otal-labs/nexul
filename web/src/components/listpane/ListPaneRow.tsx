@@ -59,7 +59,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
         ref={ref}
         {...prefetch}
         className={cn(
-          "group relative my-px mr-1 flex scroll-my-10 gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
+          "group relative my-0.5 flex scroll-my-10 gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && !detail && (dense ? "min-h-8" : "min-h-10"),
           (snippet !== "" || !!detail) && "min-h-14",

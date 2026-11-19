@@ -40,7 +40,7 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
   };
 
   return (
-    <li className="flex min-h-14 border-b border-border py-1">
+    <li className="group/row flex min-h-14 border-b border-border py-1">
       <div className={rowBase}>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2 text-muted-foreground">
           <Link2 aria-hidden className="size-3.5" />
@@ -56,7 +56,9 @@ export const RoleInvitationRow = ({ invitation, workspaceId, openName, inviter, 
             )}
           </span>
         </span>
-        <RowActionsMenu subject={`Invite link, ${when}, by ${inviter}`} actions={[{ label: "Revoke link", destructive: true, permission: "members:write", verb: "revoke invitations", onSelect: () => void revoke() }]} />
+        <span className="flex [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100">
+          <RowActionsMenu subject={`Invite link, ${when}, by ${inviter}`} actions={[{ label: "Revoke link", destructive: true, permission: "members:write", verb: "revoke invitations", onSelect: () => void revoke() }]} />
+        </span>
       </div>
     </li>
   );

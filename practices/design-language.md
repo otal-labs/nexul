@@ -1455,7 +1455,7 @@ link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
 more than they do. Past eight holders a find field (with a clear button, its placeholder "Search people", since the role list's search sits beside it) sits on the People line with Add people and Invite by link, so the count changing width never moves it, filling the room between the count (sized for its widest reading, "33 of 33") and the actions, never under 11rem, the field and actions taking a line of their own once they would have under 28rem, never past the pane, the count reading "2 of 33" while it narrows, a search with no match (which drops the count) a
 hairline row of its own, and the list stops at its first eight with a "Show all 33" line under them, so what the role
-allows stays in reach, and a "Show fewer" beside the count in the band folds them back, its room kept while folded so opening never moves the field; a search shows
+allows stays in reach, and a "Show fewer" right after the count in the band folds them back, the two sharing a slot sized for their widest reading so neither opening nor searching moves the field; a search shows
 every match. Holders run in name order. Each holder
 is a hairline row, at least 56px, the whole row opening the person's account dialog (the one Settings → Team opens), lifting to `accent` on hover in a fill
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
@@ -1465,7 +1465,7 @@ or Removed with the name muted too and the avatar greyed, and their
 other roles as chips that overhang the line instead of growing it, their text
 on the line's baseline, as many chips as the line holds, measured (up to three, each at most 14rem, 18rem from 1280px, with the rest of its name in its tooltip), and the rest
 as a mono "+N" 4px after the last of them; Its
-`…` holds Take <role>, View as <first name> and, in destructive, Remove from
+`…` (shown on hover or focus where the device can hover, always on touch, as the settings lists do) holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
 popover of the people the viewer's Team shows, split under "In <workspace>" and
 "Not in <workspace> yet" microheaders, with a search field on top and the list

@@ -59,7 +59,7 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
   ];
 
   return (
-    <li className="flex min-h-14 border-b border-border py-1">
+    <li className="group/row flex min-h-14 border-b border-border py-1">
       <div className={rowClass}>
         <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className={cn("size-7", person.status !== "active" && "opacity-50 grayscale")} />
         <button
@@ -90,7 +90,7 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
           </span>
         )}
         {!owner && (
-          <span className="relative">
+          <span className="relative [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100">
             <RowActionsMenu subject={personName(person)} actions={actions} />
           </span>
         )}

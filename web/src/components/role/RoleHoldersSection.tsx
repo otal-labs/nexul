@@ -16,7 +16,6 @@ import { RoleInvitationsSection } from "@/components/role/RoleInvitationsSection
 import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useOpenRole } from "@/hooks/RoleHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
-import { cn } from "@/lib/utils";
 import type { CreatedInvitation } from "@/models/Invitation";
 import { roleHolders } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -50,20 +49,24 @@ export const RoleHoldersSection = () => {
         <div className="space-y-3 border-b border-border pb-3">
           {/* The field sits with the actions, so a count changing width never moves it; it shrinks first, then the actions wrap under it. */}
           <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="flex shrink-0 items-center gap-2">
-              <span className="flex items-baseline gap-2">
-                <Microheader id="role-people-title">People</Microheader>
-                {holders && holders.length > 0 && (holders.length > FIND_FROM || !(needle && matched?.length === 0)) && (
-                  // Sized for its widest reading, "33 of 33", and kept empty on no match, so the field beside it never moves while a search runs.
-                  <span className="font-mono text-micro text-muted-foreground tabular-nums" style={holders.length > FIND_FROM ? { minWidth: `${String(holders.length).length * 2 + 4}ch` } : undefined}>
-                    {needle && matched && matched.length > 0 && `${matched.length} of ${holders.length}`}
-                    {!needle && holders.length}
+            <span className="flex shrink-0 items-baseline gap-2">
+              <Microheader id="role-people-title">People</Microheader>
+              {holders && holders.length > 0 && (
+                // The count and Show fewer share a cell with an invisible copy of their widest reading, so the field never moves.
+                <span className="grid items-center">
+                  {holders.length > FIND_FROM && (
+                    <span aria-hidden className="invisible col-start-1 row-start-1 flex items-center gap-2">
+                      <span className="font-mono text-micro tabular-nums">{`${holders.length} of ${holders.length}`}</span>
+                      <RoleFoldButton open onToggle={() => undefined} label="Show fewer" className="h-6" />
+                    </span>
+                  )}
+                  <span className="col-start-1 row-start-1 flex items-center gap-2">
+                    {!(needle && matched?.length === 0) && (
+                      <span className="font-mono text-micro text-muted-foreground tabular-nums">{needle && matched ? `${matched.length} of ${holders.length}` : holders.length}</span>
+                    )}
+                    {all && !needle && holders.length > FIND_FROM && <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className="h-6" />}
                   </span>
-                )}
-              </span>
-              {/* Its room is kept while the list is folded, so opening it never moves the field. */}
-              {holders && holders.length > FIND_FROM && (
-                <RoleFoldButton open onToggle={() => setAll(false)} label="Show fewer" className={cn("h-6", !(all && !needle) && "invisible")} />
+                </span>
               )}
             </span>
             <div className="flex min-w-0 flex-1 basis-md items-center justify-end gap-2">
