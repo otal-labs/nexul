@@ -39,8 +39,8 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
       <PopoverContent align="start" className="w-44 p-1">
         <div className="flex flex-col gap-0.5">
           {types.map((type) => (
-            <button key={type.id} type="button" className={menuItemClass} onClick={() => onSetType(ticket.id, type.id)}>
-              <TicketTypeOption name={type.name} selected={type.id === current?.id} iconClassName={ticketTypeColor(type.name)} />
+            <button key={type.id} type="button" className={menuItemClass} style={hueStyle(type.color)} onClick={() => onSetType(ticket.id, type.id)}>
+              <TicketTypeOption name={type.name} selected={type.id === current?.id} iconClassName={ticketTypeColor(type.name, type.color)} />
             </button>
           ))}
           {types.length === 0 && <p className="px-2.5 py-1.5 text-xs text-muted-foreground">No types</p>}

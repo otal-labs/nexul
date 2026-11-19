@@ -11,7 +11,7 @@ import { CardPerson } from "@/components/board/CardPerson";
 import { CardRunMarks } from "@/components/board/CardRunMarks";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
-import { hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
+import { hasColor, hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
@@ -23,6 +23,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
+import { isBugType } from "@/models/TicketType";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface TicketCardProps {
@@ -49,8 +50,8 @@ export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBo
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
   const [labelsRef, fitting, labelSlack] = useFittingChildren<HTMLSpanElement>(Math.min(labels.length, CARD_LABELS));
-  // A bug keeps its red; every other type's icon is muted, so the card's colour is its labels and its status, not a second accent.
-  const typeIconColor = type.trim().toLowerCase() === "bug" ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
+  // Only an owner-set colour or a bug tints the icon, so an unset type never adds a second accent to the card.
+  const typeIconColor = hasColor(ticketType?.color) || isBugType(type) ? ticketTypeColor(type, ticketType?.color) : "text-muted-foreground";
 
   const hiddenLabels = labels.slice(fitting);
   const labelRun = labels.length > 0 && (
