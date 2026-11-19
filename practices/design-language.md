@@ -1462,7 +1462,7 @@ is a hairline row, at least 56px, the whole row opening the person's account dia
 inset 4px from its hairlines and 8px past its content, rounded at 6px, the 28px avatar and the name in 14px medium
 over a muted line holding only what says something: Online as a status mark,
 when they were last seen in plain words (a grey dot would say nothing), Disabled
-or Removed with the name muted too, and their
+or Removed with the name muted too and the avatar greyed, and their
 other roles as chips that overhang the line instead of growing it, their text
 on the line's baseline, as many whole chips as the line holds, measured (up to three), and the rest
 as a mono "+N" 4px after the last of them; a row with none of these is the name alone. Its
@@ -1480,7 +1480,7 @@ gives as chips, and a `…` holding Revoke link, which asks first; the links ste
 further down than the gaps above it and 12px over its first section: one microheader per
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
-"No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as hairline rows in two columns that flow on their
+"No access" and a "Show 11 areas" toggle beside it, nothing more. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
 own once the pane is 42rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
 muted line under it, and the level as its word in a fixed 80px slot on the right,
 on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
@@ -1489,7 +1489,7 @@ access to fold under one ghost line ("Show 2 with no access"), which opens them
 in place, instantly. No roles is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with its description on one line across the row (whole in its tooltip) over the role's reach as the header words it ("Workspace 9/15 up to Delete", every section with its count and top level as glyph and word, or No access, `RoleReach`), each row as tall as its content. Compare roles
+role named with its description on one line across the row (whole in its tooltip) over the role's reach in three columns named once at the top of the list (Instance, Workspace, In projects; each cell the header's count and top level as glyph and word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -1497,8 +1497,8 @@ width, and holds the role matrix (below). `RolesAndPeopleSection` and
 Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
 read-only, in the access grid's frame: one column per role, the columns sharing the
 width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
-lie to the right (the heads fade under it like the cells), and a "+5" control, a 28px hairline button in `foreground` ink, at the top of that fade while columns are hidden that scrolls
-them into view, clear of the counts and menus; the Owner first
+lie to the right (the heads fade under it like the cells; Compare roles leaves the Owner out, the Settings matrix keeps it), and a "+5" control, a 28px hairline button in `foreground` ink, at the top of that fade while columns are hidden that scrolls
+them into view, clear of the counts and menus; the Owner first where it is shown
 with a crown, each head the name (cut like the grids' heads, three 13-character
 lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, its name wrapping to two lines before it cuts, under a muted band for each of the editor's
@@ -1582,7 +1582,7 @@ an invitation) every role shows at once, never a dropdown, straight on the
 surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
 these roles allow, combined."), then one hairline row per role you may give, at
 least 44px, the whole row the checkbox's label, the name in 14px medium over the
-role's description in muted 12px on one line across the row's full width (whole in its tooltip), then the role's reach as the header words it (`RoleReach`), the box on the name's line however tall the row grows. Under a "Can't
+role's description in muted 12px on one line across the row's full width (whole in its tooltip), then the role's reach in the same three columns, named once under the muted line (`RoleReach`, `RoleReachHead`), the box on the name's line however tall the row grows. Under a "Can't
 give" microheader sit the Owner role and the roles holding more than you hold:
 disabled boxes that keep the person's tick, muted names, and a lock with the
 reason. With nothing ticked a `warning` triangle and one muted line settle in

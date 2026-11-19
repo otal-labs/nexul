@@ -5,6 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
 import { RoleCheckRow } from "@/components/role/RoleCheckRow";
+import { RoleReachHead } from "@/components/role/RoleReach";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useRoleChoices } from "@/hooks/RoleHooks";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ export const RolesChecklist = ({ workspaceId, value, onChange, title, emptyNote 
         )}
       </div>
       <p className="text-xs text-muted-foreground">Everything these roles allow, combined.</p>
+      {givable.length > 0 && <RoleReachHead className="pt-2 pl-7" />}
       {!choices && !error && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {givable.length > 0 && (

@@ -61,7 +61,7 @@ export const RoleHolderRow = ({ person, onOpen }: RoleHolderRowProps) => {
   return (
     <li className="flex min-h-14 border-b border-border py-1">
       <div className={rowClass}>
-        <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="size-7" />
+        <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className={cn("size-7", person.status !== "active" && "opacity-50 grayscale")} />
         <button
           type="button"
           onClick={() => onOpen(person.id)}

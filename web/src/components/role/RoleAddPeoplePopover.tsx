@@ -30,7 +30,9 @@ export const RoleAddPeoplePopover = () => {
     return !membership || (!membership.is_owner && !holds(heldRoles(membership).map((held) => held.id)));
   });
   const needle = query.trim().toLowerCase();
-  const shown = candidates.filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle));
+  const shown = candidates
+    .filter((person) => !needle || `${personName(person)} ${person.login}`.toLowerCase().includes(needle))
+    .sort((a, b) => personName(a).localeCompare(personName(b), undefined, { numeric: true }));
   const inWorkspace = shown.filter((person) => person.workspaces.some((m) => m.workspace_id === workspace.id));
   const elsewhere = shown.filter((person) => !inWorkspace.includes(person));
 

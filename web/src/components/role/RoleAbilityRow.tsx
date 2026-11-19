@@ -10,7 +10,7 @@ interface RoleAbilityRowProps {
 
 // A yes-or-no permission: a check and Yes in the level slot, or a muted No, the word where a level's word starts.
 export const RoleAbilityRow = ({ ability, held }: RoleAbilityRowProps) => (
-  <div className="flex min-h-10 break-inside-avoid items-baseline justify-between gap-3 border-b border-border py-2.5">
+  <div className="flex min-h-10 break-inside-avoid items-baseline justify-between gap-3 border-t border-border py-2.5">
     <dt className={cn("min-w-0 truncate text-sm", !held && "text-muted-foreground")} title={ability.label}>
       {ability.label}
     </dt>

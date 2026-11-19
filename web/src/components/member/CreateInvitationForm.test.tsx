@@ -102,7 +102,7 @@ describe("CreateInvitationForm", () => {
     const labelOf = (name: string) => screen.getByText(name).closest("label") as HTMLElement;
     expect(within(labelOf("Client")).getByText("Follows along and reads tickets.")).toBeInTheDocument();
     expect(within(labelOf("Owner")).getByText("Runs the workspace.")).toBeInTheDocument();
-    expect(labelOf("Client")).toHaveTextContent("In projects1/1up toRead");
-    expect(labelOf("Developer")).toHaveTextContent("In projects1/1up toWrite");
+    expect(within(labelOf("Client")).getByText("In projects: 1 of 1, up to Read")).toBeInTheDocument();
+    expect(within(labelOf("Developer")).getByText("In projects: 1 of 1, up to Write")).toBeInTheDocument();
   });
 });
