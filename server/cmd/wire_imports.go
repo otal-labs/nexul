@@ -151,7 +151,7 @@ func (f importShelf) Folder(ctx context.Context, projectID, name string) (string
 			return "", err
 		}
 		for _, folder := range folders {
-			if strings.EqualFold(strings.TrimSpace(folder.Name), strings.TrimSpace(name)) {
+			if folder.ParentID == "" && strings.EqualFold(strings.TrimSpace(folder.Name), strings.TrimSpace(name)) {
 				return folder.ID, nil
 			}
 		}
@@ -160,7 +160,7 @@ func (f importShelf) Folder(ctx context.Context, projectID, name string) (string
 	if id, err := find(); err != nil || id != "" {
 		return id, err
 	}
-	folder, err := f.docs.CreateFolder(ctx, projectID, name)
+	folder, err := f.docs.CreateFolder(ctx, projectID, "", name)
 	if errors.Is(err, apperrs.ErrConflict) {
 		return find()
 	}

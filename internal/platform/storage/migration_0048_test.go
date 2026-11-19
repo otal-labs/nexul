@@ -85,7 +85,7 @@ func TestDocFolders_NamesAreUniquePerProjectIgnoringCase(t *testing.T) {
 
 	err := s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-dup", ProjectID: "project-general", Name: "getsource"})
 	require.ErrorIs(t, err, apperrs.ErrConflict)
-	err = s.Docs.RenameFolder(ctx, &docs.Folder{ID: "f-other", Name: "GETSOURCE"})
+	err = s.Docs.UpdateFolder(ctx, &docs.Folder{ID: "f-other", Name: "GETSOURCE"})
 	require.ErrorIs(t, err, apperrs.ErrConflict, "a rename into a taken name conflicts too")
 	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-gs-2", ProjectID: "p-two", Name: "GetSource"}), "another project may reuse it")
 	err = s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-main-2", ProjectID: "p-two", Name: "Spare", IsDefault: true})

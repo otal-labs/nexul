@@ -15,7 +15,7 @@ import { asReader, settle } from "@/test/viewer";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "error" }));
 
-const folder = (id: string, name: string, isDefault: boolean): DocFolder => ({ id, project_id: "p-1", name, is_default: isDefault, created_at: "", updated_at: "" });
+const folder = (id: string, name: string, isDefault: boolean): DocFolder => ({ id, project_id: "p-1", parent_id: "", name, is_default: isDefault, created_at: "", updated_at: "" });
 const folders = [folder("f-main", "Main", true), folder("f-ref", "Reference", false)];
 
 const doc: DocListItem = {

@@ -7,6 +7,7 @@ import {
   EyeOffIcon,
   FilePlusIcon,
   FolderInputIcon,
+  FolderPlusIcon,
   HistoryIcon,
   LockIcon,
   LockOpenIcon,
@@ -53,6 +54,11 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
       {m.onNewDoc && (
         <Entry ui={ui} gate={m.gates?.onNewDoc} icon={FilePlusIcon} onSelect={m.onNewDoc}>
           New doc
+        </Entry>
+      )}
+      {m.onNewFolder && (
+        <Entry ui={ui} gate={m.gates?.onNewFolder} icon={FolderPlusIcon} onSelect={m.onNewFolder}>
+          New folder
         </Entry>
       )}
       {m.pin && (

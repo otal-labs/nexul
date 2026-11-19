@@ -81,13 +81,23 @@ func (r *DocsRepo) ScopesOf(ctx context.Context, ids []string) (map[string]acces
 	return out, nil
 }
 
-// FolderScope returns the project and workspace a folder lives in, for access; ErrNotFound for an unknown folder.
+// FolderScope returns the project and workspace a folder lives in and the folders it sits inside, for access;
+// ErrNotFound for an unknown folder.
 func (r *DocsRepo) FolderScope(ctx context.Context, id string) (access.DocScope, error) {
-	row, err := r.q.GetDocFolderScope(ctx, id)
+	rows, err := r.q.ListDocFolderChain(ctx, id)
 	if err != nil {
-		return access.DocScope{}, fmt.Errorf("scope of folder %s: %w", id, notFoundIfNoRows(err))
+		return access.DocScope{}, fmt.Errorf("scope of folder %s: %w", id, err)
 	}
-	return access.DocScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID}, nil
+	if len(rows) == 0 {
+		return access.DocScope{}, fmt.Errorf("scope of folder %s: %w", id, apperrs.ErrNotFound)
+	}
+	scope := access.DocScope{WorkspaceID: rows[0].WorkspaceID, ProjectID: rows[0].ProjectID, FolderID: id, Folders: []string{}}
+	for _, row := range rows {
+		if row.Depth > 0 {
+			scope.Folders = append(scope.Folders, row.ID)
+		}
+	}
+	return scope, nil
 }
 
 func (r *DocsRepo) List(ctx context.Context) ([]*docs.Doc, error) {

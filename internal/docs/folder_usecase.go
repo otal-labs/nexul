@@ -14,7 +14,7 @@ import (
 )
 
 // ListFolders returns a project's folders, the default first; a viewer without docs:write sees only the folders
-// holding a doc they can open, which folder rules decide with the doc's own.
+// holding a doc they can open, which folder rules decide with the doc's own, and the folders those sit inside.
 func (s *Service) ListFolders(ctx context.Context, projectID string) ([]*Folder, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
@@ -35,15 +35,22 @@ func (s *Service) ListFolders(ctx context.Context, projectID string) ([]*Folder,
 		return nil, fmt.Errorf("list docs for project %s: %w", projectID, err)
 	}
 	reads := s.canEach(ctx, ds, permissions.DocsRead)
+	parents := make(map[string]string, len(folders))
+	for _, f := range folders {
+		parents[f.ID] = f.ParentID
+	}
 	holding := map[string]bool{}
 	for _, d := range ds {
-		holding[d.FolderID] = holding[d.FolderID] || reads[d.ID]
+		for id := d.FolderID; reads[d.ID] && id != "" && !holding[id]; id = parents[id] {
+			holding[id] = true
+		}
 	}
 	return slices.DeleteFunc(folders, func(f *Folder) bool { return !holding[f.ID] }), nil
 }
 
-// CreateFolder adds a folder to a project (docs:write); a name another folder there has, ignoring case, conflicts.
-func (s *Service) CreateFolder(ctx context.Context, projectID, name string) (*Folder, error) {
+// CreateFolder adds a folder to a project (docs:write), inside parentID or at the top when it is empty; a name another
+// folder of that parent has, ignoring case, conflicts.
+func (s *Service) CreateFolder(ctx context.Context, projectID, parentID, name string) (*Folder, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
@@ -55,8 +62,12 @@ func (s *Service) CreateFolder(ctx context.Context, projectID, name string) (*Fo
 	if err := s.requireProject(ctx, projectID, permissions.DocsWrite); err != nil {
 		return nil, err
 	}
+	parentID, err = s.parentIn(ctx, projectID, parentID)
+	if err != nil {
+		return nil, err
+	}
 	now := s.now().UTC()
-	f := &Folder{ID: ids.New(), ProjectID: projectID, Name: name, CreatedAt: now, UpdatedAt: now}
+	f := &Folder{ID: ids.New(), ProjectID: projectID, ParentID: parentID, Name: name, CreatedAt: now, UpdatedAt: now}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFolderCreated, Payload: FolderEvent{Folder: *f, ActorID: actorID(ctx)}}
 	if err := s.repo.CreateFolder(ctx, f, evt); err != nil {
 		return nil, folderWriteErr(name, err)
@@ -74,18 +85,46 @@ func (s *Service) RenameFolder(ctx context.Context, id, name string) (*Folder, e
 	if err != nil {
 		return nil, err
 	}
-	previous := f.Name
 	renamed := *f
 	renamed.Name = name
-	renamed.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFolderUpdated, Payload: FolderUpdatedEvent{Folder: renamed, PreviousName: previous, ActorID: actorID(ctx)}}
-	if err := s.repo.RenameFolder(ctx, &renamed, evt); err != nil {
-		return nil, folderWriteErr(name, err)
-	}
-	return &renamed, nil
+	return s.updateFolder(ctx, f, &renamed)
 }
 
-// DeleteFolder deletes a folder (docs:write) and moves its docs to the project's default folder, which is never deleted.
+// MoveFolder puts a folder inside parentID, or at the top when it is empty (docs:write), with every folder and doc in
+// it; the default folder stays at the top, and no folder goes inside itself.
+func (s *Service) MoveFolder(ctx context.Context, id, parentID string) (*Folder, error) {
+	f, err := s.writableFolder(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	parentID, err = s.parentIn(ctx, f.ProjectID, parentID)
+	if err != nil {
+		return nil, err
+	}
+	if f.ParentID == parentID {
+		return f, nil
+	}
+	if f.IsDefault {
+		return nil, fmt.Errorf("%w: %s is the project's default folder, which stays at the top level", apperrs.ErrInvalid, f.Name)
+	}
+	moved := *f
+	moved.ParentID = parentID
+	return s.updateFolder(ctx, f, &moved)
+}
+
+func (s *Service) updateFolder(ctx context.Context, from, to *Folder) (*Folder, error) {
+	to.UpdatedAt = s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFolderUpdated, Payload: FolderUpdatedEvent{
+		Folder: *to, PreviousName: from.Name, PreviousParentID: from.ParentID, ActorID: actorID(ctx),
+	}}
+	if err := s.repo.UpdateFolder(ctx, to, evt); err != nil {
+		return nil, folderWriteErr(to.Name, err)
+	}
+	return to, nil
+}
+
+// DeleteFolder deletes a folder and every folder inside it (docs:write) and moves all their docs to its parent, or to
+// the project's default folder, which is never deleted, when it is top-level.
 func (s *Service) DeleteFolder(ctx context.Context, id string) error {
 	f, err := s.writableFolder(ctx, id)
 	if err != nil {
@@ -94,15 +133,38 @@ func (s *Service) DeleteFolder(ctx context.Context, id string) error {
 	if f.IsDefault {
 		return fmt.Errorf("%w: %s is the project's default folder, which can be renamed but not deleted", apperrs.ErrInvalid, f.Name)
 	}
-	main, err := s.repo.DefaultFolder(ctx, f.ProjectID)
+	to, err := s.folderIn(ctx, f.ProjectID, f.ParentID)
 	if err != nil {
-		return fmt.Errorf("default folder of project %s: %w", f.ProjectID, err)
+		return err
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFolderDeleted, Payload: FolderDeletedEvent{Folder: *f, MovedToFolderID: main.ID, ActorID: actorID(ctx)}}
-	if err := s.repo.DeleteFolder(ctx, f.ID, main.ID, evt); err != nil {
+	evts, err := s.folderDeletedEvents(ctx, f, to)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteFolder(ctx, f.ID, to, evts...); err != nil {
 		return fmt.Errorf("delete folder %s: %w", id, err)
 	}
 	return nil
+}
+
+// folderDeletedEvents is one doc.folder.deleted per folder of f's subtree, f first.
+func (s *Service) folderDeletedEvents(ctx context.Context, f *Folder, to string) ([]eventbus.OutboxEvent, error) {
+	subtree, err := s.repo.FolderSubtree(ctx, f.ID)
+	if err != nil {
+		return nil, fmt.Errorf("folders inside %s: %w", f.ID, err)
+	}
+	folders, err := s.repo.ListFolders(ctx, f.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("list folders for project %s: %w", f.ProjectID, err)
+	}
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicFolderDeleted, Payload: FolderDeletedEvent{Folder: *f, MovedToFolderID: to, ActorID: actorID(ctx)}}}
+	for _, inner := range folders {
+		if inner.ID == f.ID || !slices.Contains(subtree, inner.ID) {
+			continue
+		}
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFolderDeleted, Payload: FolderDeletedEvent{Folder: *inner, MovedToFolderID: to, ActorID: actorID(ctx)}})
+	}
+	return evts, nil
 }
 
 // MoveToFolder moves a doc into another folder of its project, needing docs:write on the doc; a locked doc moves too.
@@ -145,12 +207,21 @@ func (s *Service) folderIn(ctx context.Context, projectID, folderID string) (str
 	}
 	f, err := s.repo.GetFolder(ctx, folderID)
 	if errors.Is(err, apperrs.ErrNotFound) || (err == nil && f.ProjectID != projectID) {
-		return "", fmt.Errorf("%w: folder %s is not a folder of this doc's project", apperrs.ErrInvalid, folderID)
+		return "", fmt.Errorf("%w: folder %s is not a folder of this project", apperrs.ErrInvalid, folderID)
 	}
 	if err != nil {
 		return "", fmt.Errorf("get folder %s: %w", folderID, err)
 	}
 	return f.ID, nil
+}
+
+// parentIn resolves where a new or moved folder of projectID sits: inside parentID when it is one of the project's
+// folders, at the top when it is empty.
+func (s *Service) parentIn(ctx context.Context, projectID, parentID string) (string, error) {
+	if strings.TrimSpace(parentID) == "" {
+		return "", nil
+	}
+	return s.folderIn(ctx, projectID, parentID)
 }
 
 func (s *Service) writableFolder(ctx context.Context, id string) (*Folder, error) {
@@ -177,7 +248,10 @@ func folderName(name string) (string, error) {
 
 func folderWriteErr(name string, err error) error {
 	if errors.Is(err, apperrs.ErrConflict) {
-		return fmt.Errorf("%w: this project already has a folder named %s", apperrs.ErrConflict, name)
+		return fmt.Errorf("%w: a folder named %s is already there", apperrs.ErrConflict, name)
+	}
+	if errors.Is(err, apperrs.ErrInvalid) {
+		return err
 	}
 	return fmt.Errorf("save folder %s: %w", name, err)
 }

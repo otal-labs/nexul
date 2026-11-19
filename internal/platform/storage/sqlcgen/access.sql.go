@@ -416,13 +416,18 @@ func (q *Queries) ListAccessGridRules(ctx context.Context, workspaceID string) (
 }
 
 const listDocChainRules = `-- name: ListDocChainRules :many
-SELECT po.resource_id AS doc_id, po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
+WITH RECURSIVE chain AS (
+  SELECT d.id AS doc_id, d.folder_id AS folder_id, 0 AS depth FROM docs d WHERE d.id IN (SELECT value FROM json_each(?1))
+  UNION ALL
+  SELECT c.doc_id, f.parent_id, c.depth + 1 FROM chain c JOIN doc_folders f ON f.id = c.folder_id
+  WHERE f.parent_id != '' AND c.depth < 100
+)
+SELECT po.resource_id AS doc_id, CAST(-1 AS INTEGER) AS depth, po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
 WHERE po.resource_type = 'doc' AND po.resource_id IN (SELECT value FROM json_each(?1))
   AND (po.user_id = ?2 OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2))
 UNION ALL
-SELECT d.id AS doc_id, pf.resource_type, pf.resource_id, pf.target, pf.user_id, pf.role_id, pf.allow, pf.deny, pf.created_at, pf.updated_at FROM docs d JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = d.folder_id
-WHERE d.id IN (SELECT value FROM json_each(?1))
-  AND (pf.user_id = ?2 OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2))
+SELECT c.doc_id, c.depth, pf.resource_type, pf.resource_id, pf.target, pf.user_id, pf.role_id, pf.allow, pf.deny, pf.created_at, pf.updated_at FROM chain c JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = c.folder_id
+WHERE pf.user_id = ?2 OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2)
 `
 
 type ListDocChainRulesParams struct {
@@ -432,6 +437,7 @@ type ListDocChainRulesParams struct {
 
 type ListDocChainRulesRow struct {
 	DocID        string
+	Depth        int64
 	ResourceType string
 	ResourceID   string
 	Target       string
@@ -454,6 +460,7 @@ func (q *Queries) ListDocChainRules(ctx context.Context, arg ListDocChainRulesPa
 		var i ListDocChainRulesRow
 		if err := rows.Scan(
 			&i.DocID,
+			&i.Depth,
 			&i.ResourceType,
 			&i.ResourceID,
 			&i.Target,
@@ -478,7 +485,7 @@ func (q *Queries) ListDocChainRules(ctx context.Context, arg ListDocChainRulesPa
 }
 
 const listDocRuleTurns = `-- name: ListDocRuleTurns :many
-WITH folder_states AS (
+WITH RECURSIVE folder_own AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (
     SELECT po.resource_id, 0 AS by_role,
@@ -495,6 +502,13 @@ WITH folder_states AS (
       AND rf.project_id IN (SELECT value FROM json_each(?3))
   ) u
   GROUP BY u.resource_id
+), folder_states AS (
+  SELECT f.id AS resource_id, fo.state AS state, 0 AS depth FROM doc_folders f LEFT JOIN folder_own fo ON fo.resource_id = f.id
+  WHERE f.parent_id = '' AND f.project_id IN (SELECT value FROM json_each(?3))
+  UNION ALL
+  SELECT f.id, COALESCE(fo.state, p.state), p.depth + 1 FROM folder_states p JOIN doc_folders f ON f.parent_id = p.resource_id
+  LEFT JOIN folder_own fo ON fo.resource_id = f.id
+  WHERE p.depth < 100
 ), doc_states AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (

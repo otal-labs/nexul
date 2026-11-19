@@ -1,10 +1,12 @@
 package storage
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -155,11 +157,16 @@ func (r *AccessRepo) DocRules(ctx context.Context, docIDs []string, userID strin
 		return nil, fmt.Errorf("get doc rules for %s: %w", userID, err)
 	}
 	byDoc := map[string][]sqlcgen.PermissionOverwrite{}
+	depths := map[string]map[string]int64{}
 	for _, row := range rows {
 		byDoc[row.DocID] = append(byDoc[row.DocID], sqlcgen.PermissionOverwrite{
 			ResourceType: row.ResourceType, ResourceID: row.ResourceID, Target: row.Target, UserID: row.UserID, RoleID: row.RoleID,
 			Allow: row.Allow, Deny: row.Deny, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		})
+		if depths[row.DocID] == nil {
+			depths[row.DocID] = map[string]int64{}
+		}
+		depths[row.DocID][row.ResourceID] = row.Depth
 	}
 	out := make(map[string]*access.DocRules, len(byDoc))
 	for docID, owned := range byDoc {
@@ -168,10 +175,12 @@ func (r *AccessRepo) DocRules(ctx context.Context, docIDs []string, userID strin
 			return nil, err
 		}
 		chain := &access.DocRules{Doc: rules[docID]}
-		for id, r := range rules {
-			if id != docID {
-				chain.Folder = r
-			}
+		folders := slices.Collect(maps.Keys(rules))
+		folders = slices.DeleteFunc(folders, func(id string) bool { return id == docID })
+		// The folder furthest up the tree comes first, so the nearest rule is the last to apply.
+		slices.SortFunc(folders, func(a, b string) int { return cmp.Compare(depths[docID][b], depths[docID][a]) })
+		for _, id := range folders {
+			chain.Folders = append(chain.Folders, rules[id])
 		}
 		out[docID] = chain
 	}

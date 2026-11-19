@@ -3704,6 +3704,10 @@
           "project_id": {
             "type": "string"
           },
+          "parent_id": {
+            "type": "string",
+            "description": "The folder this one sits inside; empty for a top-level folder."
+          },
           "name": {
             "type": "string"
           },
@@ -3723,6 +3727,7 @@
         "required": [
           "id",
           "project_id",
+          "parent_id",
           "name",
           "is_default",
           "created_at",
@@ -3750,6 +3755,10 @@
           "project_id": {
             "type": "string"
           },
+          "parent_id": {
+            "type": "string",
+            "description": "The folder this one sits inside; empty for a top-level folder."
+          },
           "name": {
             "type": "string"
           },
@@ -3769,6 +3778,7 @@
         "required": [
           "id",
           "project_id",
+          "parent_id",
           "name",
           "is_default",
           "created_at",
@@ -3783,7 +3793,7 @@
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "description": "A doc folder was deleted; its docs moved to the project's default folder, never deleted.",
+    "description": "A doc folder was deleted, one event for it and one for each folder inside it, which went with it; their docs moved to moved_to_folder_id (the deleted folder's parent, or the project's default folder for a top-level one), never deleted.",
     "required": [
       "folder",
       "moved_to_folder_id"
@@ -3801,6 +3811,10 @@
           "project_id": {
             "type": "string"
           },
+          "parent_id": {
+            "type": "string",
+            "description": "The folder this one sits inside; empty for a top-level folder."
+          },
           "name": {
             "type": "string"
           },
@@ -3820,6 +3834,7 @@
         "required": [
           "id",
           "project_id",
+          "parent_id",
           "name",
           "is_default",
           "created_at",
@@ -3829,15 +3844,20 @@
       "previous_name": {
         "type": "string"
       },
+      "previous_parent_id": {
+        "type": "string",
+        "description": "The folder it sat inside before; empty when it was top-level."
+      },
       "actor_id": {
         "type": "string"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "description": "A doc folder was renamed.",
+    "description": "A doc folder was renamed, or moved into another folder or to the top level.",
     "required": [
       "folder",
-      "previous_name"
+      "previous_name",
+      "previous_parent_id"
     ]
   },
   "doc.moved": {

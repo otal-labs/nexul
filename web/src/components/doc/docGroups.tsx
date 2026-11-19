@@ -1,5 +1,6 @@
 import type { DocListItem, DocSortField } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
+import { folderTree } from "@/utils/DocFolderTreeUtility";
 
 export interface DocGroup {
   label: string;
@@ -10,12 +11,15 @@ export interface DocFolderGroup {
   folder: DocFolder;
   /** The folder's listed rows: matching, not pinned, newest first. */
   docs: DocListItem[];
-  /** Every doc in the folder the viewer can open, pinned and unmatched ones included. */
+  /** Every doc the viewer can open in the folder and the folders inside it, pinned and unmatched ones included. */
   total: number;
+  /** The folders inside it, in the server's order. */
+  folders: DocFolderGroup[];
 }
 
 export interface DocListGroups {
   pinned: DocListItem[];
+  /** The top-level folders, each holding the folders inside it. */
   folders: DocFolderGroup[];
 }
 
@@ -25,7 +29,7 @@ interface GroupDocsInput {
   folders: DocFolder[];
   sortBy: DocSortField;
   pinnedIds: string[];
-  /** Set while a search runs; folders with nothing matching are left out. */
+  /** Set while a search runs; folders with nothing matching, in them or inside them, are left out. */
   match?: ((doc: DocListItem) => boolean) | undefined;
 }
 
@@ -39,11 +43,23 @@ export const groupDocs = ({ docs, folders, sortBy, pinnedIds, match }: GroupDocs
   const pinned = pinnedIds.flatMap((id) => byId.get(id) ?? []);
   const pinnedSet = new Set(pinned.map((doc) => doc.id));
   const newestFirst = shown.filter((doc) => !pinnedSet.has(doc.id)).sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
-  const groups = folders.map((folder) => ({
-    folder,
-    docs: newestFirst.filter((doc) => folderOf(doc) === folder.id),
-    total: docs.filter((doc) => folderOf(doc) === folder.id).length,
-  }));
+  const tree = folderTree(folders);
+  const build = (parentId: string, depth: number): DocFolderGroup[] =>
+    tree
+      .filter((node) => node.depth === depth && (depth === 0 || node.folder.parent_id === parentId))
+      .map(({ folder }) => {
+        const inside = build(folder.id, depth + 1);
+        const own = docs.filter((doc) => folderOf(doc) === folder.id).length;
+        return {
+          folder,
+          docs: newestFirst.filter((doc) => folderOf(doc) === folder.id),
+          total: own + inside.reduce((sum, g) => sum + g.total, 0),
+          folders: match ? inside.filter(holdsAMatch) : inside,
+        };
+      });
+  const groups = build("", 0);
   if (!match) return { pinned, folders: groups };
-  return { pinned, folders: groups.filter((g) => g.docs.length > 0) };
+  return { pinned, folders: groups.filter(holdsAMatch) };
 };
+
+const holdsAMatch = (g: DocFolderGroup): boolean => g.docs.length > 0 || g.folders.length > 0;

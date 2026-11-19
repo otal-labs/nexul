@@ -22,6 +22,7 @@ import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
 import { projectToken, type Project } from "@/models/Project";
+import { folderChain } from "@/utils/DocFolderTreeUtility";
 
 interface DocsListPaneProps {
   docs: DocListItem[];
@@ -57,12 +58,14 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
   const states = useDocRunStates(project.id, openable.map((doc) => doc.id));
   const attention = overviewLists(openable, states).attention.map((item) => item.doc);
   const expandFolder = useDocFolderStore((s) => s.expand);
-  const selectedFolderId = docs.find((doc) => doc.id === selectedId)?.folder_id;
+  const selectedFolderIds = folderChain(folders ?? [], docs.find((doc) => doc.id === selectedId)?.folder_id ?? "")
+    .map((f) => f.id)
+    .join(",");
 
-  // Opening a doc shows where it lives; collapsing that folder afterwards still sticks.
+  // Opening a doc shows where it lives, every folder on the way open; collapsing one afterwards still sticks.
   useEffect(() => {
-    if (selectedFolderId) expandFolder(project.id, selectedFolderId);
-  }, [selectedId, selectedFolderId, project.id, expandFolder]);
+    for (const id of selectedFolderIds.split(",").filter(Boolean)) expandFolder(project.id, id);
+  }, [selectedId, selectedFolderIds, project.id, expandFolder]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

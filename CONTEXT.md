@@ -666,16 +666,19 @@ mentioned whether or not they watch, and does not make them a watcher.
 _Avoid_: Follower, subscriber
 
 **Folder**:
-A group of a project's docs, one level deep: every doc lives in exactly one
-folder of its project. Each project has a default folder, Main, where a new
-doc lands unless it was started in another folder; it can be renamed but
-never deleted, and deleting any other folder moves its docs there, never
+A group of a project's docs: every doc lives in exactly one folder of its
+project, and a folder sits at the top or inside another folder of it, up to ten
+deep. Each project has a default folder, Main, where a new doc lands unless it
+was started in another folder; it can be renamed and hold folders but is never
+moved or deleted. Deleting any other folder deletes the folders inside it and
+moves all their docs to its parent, or to Main for a top-level folder, never
 deleting one. A doc copied into another project lands in that project's
-default folder. Made, renamed, and deleted, and docs moved between them, with
-`docs:write`; a reader sees only the folders holding a doc they can open. Its
-Permission overwrites reach every doc in it, between the project's and the
-doc's own, so moving a doc changes which reach it; they are written with
-`permissions:write` on the folder and deleted with it.
+default folder. Made, renamed, moved, and deleted, and docs moved between them,
+with `docs:write`; a reader sees only the folders holding a doc they can open
+and the folders those sit inside. Its Permission overwrites reach every doc and
+folder inside it, between the project's and the doc's own, the nearest folder's
+winning, so moving a doc or a folder changes which reach it; they are written
+with `permissions:write` on the folder and deleted with it.
 _Avoid_: Category (that groups tickets on the board), section (a heading
 inside a doc), collection (the retired workspace-wide doc grouping)
 

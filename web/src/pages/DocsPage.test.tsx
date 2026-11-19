@@ -233,7 +233,7 @@ describe("DocsPage", () => {
   });
 
   it.each([
-    ["a writer", ["docs:read", "docs:write"], ["New doc", "Rename", "Permissions…", "Delete"], false],
+    ["a writer", ["docs:read", "docs:write"], ["New doc", "New folder", "Move to folder", "Rename", "Permissions…", "Delete"], false],
     ["a reader", ["docs:read"], ["Permissions…"], true],
   ])("offers %s who manages a folder's access Permissions… on its right-click menu", async (_, permissions, items, needsAccessRead) => {
     const user = userEvent.setup();
@@ -332,7 +332,7 @@ describe("DocsPage", () => {
     const dialog = await screen.findByRole("dialog", { name: "New folder" });
     await user.type(within(dialog).getByLabelText("Name"), "Episodes");
     await user.click(within(dialog).getByRole("button", { name: "Create folder" }));
-    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/folders", { project_id: "p-1", name: "Episodes" }));
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/folders", { project_id: "p-1", parent_id: "", name: "Episodes" }));
 
     await user.pointer({ keys: "[MouseRight]", target: await inList("GetSource") });
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));

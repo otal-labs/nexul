@@ -39,8 +39,8 @@ func Topics() []eventbus.Topic {
 		{Name: TopicMoved, Payload: MovedEvent{}, Description: "A doc moved to another folder of its project; doc carries its new folder_id."},
 		{Name: TopicSettled, Payload: SettledEvent{}, Description: "A signed-in person's edits to a doc stopped for ten minutes; an agent's edits over MCP and an automation's never open the window. first is true when the doc was created inside it, so a doc created and then edited settles once, as created. An archived doc never settles."},
 		{Name: TopicFolderCreated, Payload: FolderEvent{}},
-		{Name: TopicFolderUpdated, Payload: FolderUpdatedEvent{}, Description: "A doc folder was renamed."},
-		{Name: TopicFolderDeleted, Payload: FolderDeletedEvent{}, Description: "A doc folder was deleted; its docs moved to the project's default folder, never deleted."},
+		{Name: TopicFolderUpdated, Payload: FolderUpdatedEvent{}, Description: "A doc folder was renamed, or moved into another folder or to the top level."},
+		{Name: TopicFolderDeleted, Payload: FolderDeletedEvent{}, Description: "A doc folder was deleted, one event for it and one for each folder inside it, which went with it; their docs moved to moved_to_folder_id (the deleted folder's parent, or the project's default folder for a top-level one), never deleted."},
 		{Name: TopicWatchersChanged, Payload: WatchersChangedEvent{}, Description: "Someone started or stopped watching a doc, choosing to; a watcher gets the doc's change notifications. Being added for creating or editing the doc rides doc.created and doc.updated instead."},
 		{Name: TopicClarificationRoundStarted, Payload: ClarificationRoundEvent{}, Description: "A Clarify via AI run opened a doc's next round of questions; it is being written until the round ends."},
 		{Name: TopicClarificationRoundPosted, Payload: ClarificationPostedEvent{}, Description: "A running round posted its questions, or found no gaps left and wrote the doc instead."},
@@ -93,14 +93,16 @@ type FolderEvent struct {
 	ActorID string `json:"actor_id,omitempty"`
 }
 
-// FolderUpdatedEvent is the doc.folder.updated payload, sent when a folder is renamed.
+// FolderUpdatedEvent is the doc.folder.updated payload, sent when a folder is renamed or moved into another folder.
 type FolderUpdatedEvent struct {
-	Folder       Folder `json:"folder"`
-	PreviousName string `json:"previous_name"`
-	ActorID      string `json:"actor_id,omitempty"`
+	Folder           Folder `json:"folder"`
+	PreviousName     string `json:"previous_name"`
+	PreviousParentID string `json:"previous_parent_id" jsonschema:"The folder it sat inside before; empty when it was top-level."`
+	ActorID          string `json:"actor_id,omitempty"`
 }
 
-// FolderDeletedEvent is the doc.folder.deleted payload; the folder's docs moved to MovedToFolderID, never deleted.
+// FolderDeletedEvent is the doc.folder.deleted payload, one per folder of the deleted subtree; their docs moved to
+// MovedToFolderID, never deleted.
 type FolderDeletedEvent struct {
 	Folder          Folder `json:"folder"`
 	MovedToFolderID string `json:"moved_to_folder_id"`

@@ -36,7 +36,10 @@ func catalogActions(keep func(permissions.Info) bool) []permissions.Action {
 
 // entity is what an explanation is about: where it lives, what opens and manages it, and what its rules may set.
 type entity struct {
-	kind, id, workspaceID, projectID, folderID string
+	kind, id, workspaceID, projectID string
+	// folders are the folders whose rules reach the entity, outermost first: a doc's folder and those it sits inside, or
+	// the folders a folder sits inside.
+	folders []string
 	// machine is the name of the machine a stack deploys to.
 	machine      string
 	open, manage permissions.Action
@@ -48,7 +51,10 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 	switch resourceType {
 	case resourceTypeDoc:
 		scope := s.docScopes(ctx, []string{resourceID})[resourceID]
-		e.workspaceID, e.projectID, e.folderID = scope.WorkspaceID, scope.ProjectID, scope.FolderID
+		e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+		if scope.FolderID != "" {
+			e.folders = append(slices.Clone(s.folderScope(ctx, scope.FolderID).Folders), scope.FolderID)
+		}
 		e.open, e.manage, e.actions = permissions.DocsRead, permissions.PermissionsWrite, docActions
 		return e, nil
 	case resourceTypeFolder:
@@ -56,8 +62,8 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 		if scope.ProjectID == "" {
 			return e, fmt.Errorf("%w: folder %s", apperrs.ErrNotFound, resourceID)
 		}
-		// A folder opens to whoever is in its project; its rules decide only the docs in it.
-		e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+		// A folder opens to whoever is in its project; its rules decide only the docs and folders in it.
+		e.workspaceID, e.projectID, e.folders = scope.WorkspaceID, scope.ProjectID, scope.Folders
 		e.open, e.manage, e.actions = permissions.Member, permissions.PermissionsWrite, docActions
 		return e, nil
 	case resourceTypeStack:
@@ -265,7 +271,7 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		return nil, fmt.Errorf("rules for role %s on %s %s: %w", roleID, e.kind, e.id, err)
 	}
 	ws := workspaceLayers{workspaceID: e.workspaceID, member: true, owner: held.IsOwner, roles: RolesHeld(held)}
-	inProject, inFolder, err := s.roleRulesAround(ctx, e, roleID)
+	inProject, inFolders, err := s.roleRulesAround(ctx, e, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +290,8 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		return nil, err
 	}
 	for _, a := range e.actions {
-		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolder, own[e.id], private)
-		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a), private)
+		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolders, own[e.id], private)
+		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolders, atFallback(own[e.id], a), private)
 		if a == permissions.DeploysWrite {
 			with, src = refusedBy(with, src, noDeploy)
 			without, from = refusedBy(without, from, noDeploy)
@@ -307,19 +313,21 @@ func requireSee(answers []Answer) {
 	answers[run].Requires = &Requirement{Action: permissions.PlaysRead, Sentence: answers[see].Source.Sentence}
 }
 
-// roleRulesAround is roleID's rules on e's project, unless e is the project, and on a doc's folder.
-func (s *Service) roleRulesAround(ctx context.Context, e entity, roleID string) (inProject, inFolder []*Overwrite, err error) {
+// roleRulesAround is roleID's rules on e's project, unless e is the project, and on each folder around e, outermost first.
+func (s *Service) roleRulesAround(ctx context.Context, e entity, roleID string) (inProject []*Overwrite, inFolders [][]*Overwrite, err error) {
 	if e.projectID != "" && e.kind != resourceTypeProject {
 		if inProject, err = s.roleRulesOn(ctx, resourceTypeProject, e.projectID, roleID); err != nil {
 			return nil, nil, err
 		}
 	}
-	if e.folderID != "" {
-		if inFolder, err = s.roleRulesOn(ctx, resourceTypeFolder, e.folderID, roleID); err != nil {
+	for _, id := range e.folders {
+		inFolder, err := s.roleRulesOn(ctx, resourceTypeFolder, id, roleID)
+		if err != nil {
 			return nil, nil, err
 		}
+		inFolders = append(inFolders, inFolder)
 	}
-	return inProject, inFolder, nil
+	return inProject, inFolders, nil
 }
 
 // roleRulesOn is roleID's rules on one entity.
@@ -340,9 +348,9 @@ func atFallback(rules []*Overwrite, action permissions.Action) []*Overwrite {
 	return out
 }
 
-// roleAnswer is a holder of roleID alone asking for action on e, given its rules on e's project, a doc's folder and e;
-// on a private channel the holder is taken to be one of its members.
-func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, inFolder, own []*Overwrite, private bool) (bool, Source) {
+// roleAnswer is a holder of roleID alone asking for action on e, given its rules on e's project, the folders around e
+// and e; on a private channel the holder is taken to be one of its members.
+func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject []*Overwrite, inFolders [][]*Overwrite, own []*Overwrite, private bool) (bool, Source) {
 	if e.kind == resourceTypeChannel && action == permissions.ChannelsRead && !ws.owner {
 		src := sourceOf(SourceEveryMember, resourceTypeChannel, e.id, TargetRole, roleID, true)
 		if private {
@@ -350,7 +358,11 @@ func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.
 		}
 		return applyRules(true, src, &Rules{Roles: own}, []string{roleID}, action)
 	}
-	chain := []*Rules{{Roles: inFolder}, {Roles: own}}
+	chain := make([]*Rules, 0, len(inFolders)+1)
+	for _, inFolder := range inFolders {
+		chain = append(chain, &Rules{Roles: inFolder})
+	}
+	chain = append(chain, &Rules{Roles: own})
 	if e.kind == resourceTypeProject {
 		inProject, chain = own, nil
 	}

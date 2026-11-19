@@ -79,3 +79,5 @@ wipe with a one-time setup. Accepted 2026-10-13, when the switch was tested by u
 Amended by ADR 0150: a channel's rules also set `channels:post`, which roles hold and posting in it takes.
 
 Amended by ADR 0198: a role is given and taken from the role, on the Access page's Roles and people tab.
+
+Amended by ADR 0205: the chain holds every folder around a doc, from the top down, the nearest winning.

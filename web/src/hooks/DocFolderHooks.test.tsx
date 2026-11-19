@@ -5,7 +5,7 @@ import { docFolderFollower } from "@/hooks/DocFolderHooks";
 import type { DocFolder } from "@/models/DocFolder";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
-const specs: DocFolder = { id: "f-1", project_id: "p-1", name: "Specs", is_default: false, created_at: "", updated_at: "" };
+const specs: DocFolder = { id: "f-1", project_id: "p-1", parent_id: "", name: "Specs", is_default: false, created_at: "", updated_at: "" };
 
 describe("the doc folder follower", () => {
   it("renames and drops folders in their project's list, and refetches only that list for a new one", async () => {
@@ -21,6 +21,19 @@ describe("the doc folder follower", () => {
 
     await followFrame(docFolderFollower, "doc.folder.deleted", { folder: specs, moved_to_folder_id: "f-0" }, client);
     expect(client.getQueryData(["getDocFolders", "p-1"])).toEqual([]);
+  });
+
+  it("refetches the docs and the project's folders when a folder moves, since other folders' rules now reach its docs", async () => {
+    const client = seeded([
+      [["getDocFolders", "p-1"], [specs]],
+      [["getDocFolders", "p-2"], []],
+      [["getDocs"], []],
+    ]);
+    await followFrame(docFolderFollower, "doc.folder.updated", { folder: { ...specs, name: "Plans" }, previous_parent_id: "" }, client);
+    expect(isStale(client, ["getDocs"])).toBe(false);
+
+    await followFrame(docFolderFollower, "doc.folder.updated", { folder: { ...specs, parent_id: "f-0" }, previous_parent_id: "" }, client);
+    expect([isStale(client, ["getDocs"]), isStale(client, ["getDocFolders", "p-1"]), isStale(client, ["getDocFolders", "p-2"])]).toEqual([true, true, false]);
   });
 
   it("refetches the doc and folder lists when a folder's rule changes, and nothing for another entity's", async () => {

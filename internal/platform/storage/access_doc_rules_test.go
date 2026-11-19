@@ -142,10 +142,10 @@ func TestAccessRepo_DocRules_ReadsTheFolderWithTheDoc(t *testing.T) {
 	got, err := s.Access.DocRules(ctx, []string{"doc-05", "doc-10", "doc-03"}, "u-r")
 	require.NoError(t, err)
 	require.Len(t, got, 2)
-	assert.Equal(t, "role-r", got["doc-05"].Folder.Roles[0].RoleID)
+	assert.Equal(t, "role-r", got["doc-05"].Folders[0].Roles[0].RoleID)
 	assert.Equal(t, "u-r", got["doc-05"].Doc.Person.UserID)
 	assert.Nil(t, got["doc-10"].Doc)
-	assert.Equal(t, "f-ops", got["doc-10"].Folder.Roles[0].ResourceID)
+	assert.Equal(t, "f-ops", got["doc-10"].Folders[0].Roles[0].ResourceID)
 
 	require.NoError(t, s.Docs.SetDocFolder(ctx, "doc-10", "folder-general-main"))
 	got, err = s.Access.DocRules(ctx, []string{"doc-10"}, "u-r")

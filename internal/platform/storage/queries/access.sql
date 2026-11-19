@@ -72,16 +72,21 @@ WHERE resource_type = sqlc.arg(resource_type) AND resource_id = sqlc.arg(resourc
 ORDER BY role_id;
 
 -- name: ListDocChainRules :many
-SELECT po.resource_id AS doc_id, po.* FROM permission_overwrites po
+WITH RECURSIVE chain AS (
+  SELECT d.id AS doc_id, d.folder_id AS folder_id, 0 AS depth FROM docs d WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(doc_ids)))
+  UNION ALL
+  SELECT c.doc_id, f.parent_id, c.depth + 1 FROM chain c JOIN doc_folders f ON f.id = c.folder_id
+  WHERE f.parent_id != '' AND c.depth < 100
+)
+SELECT po.resource_id AS doc_id, CAST(-1 AS INTEGER) AS depth, po.* FROM permission_overwrites po
 WHERE po.resource_type = 'doc' AND po.resource_id IN (SELECT value FROM json_each(sqlc.arg(doc_ids)))
   AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)))
 UNION ALL
-SELECT d.id AS doc_id, pf.* FROM docs d JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = d.folder_id
-WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(doc_ids)))
-  AND (pf.user_id = sqlc.arg(user_id) OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)));
+SELECT c.doc_id, c.depth, pf.* FROM chain c JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = c.folder_id
+WHERE pf.user_id = sqlc.arg(user_id) OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id));
 
 -- name: ListDocRuleTurns :many
-WITH folder_states AS (
+WITH RECURSIVE folder_own AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (
     SELECT po.resource_id, 0 AS by_role,
@@ -98,6 +103,13 @@ WITH folder_states AS (
       AND rf.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
   ) u
   GROUP BY u.resource_id
+), folder_states AS (
+  SELECT f.id AS resource_id, fo.state AS state, 0 AS depth FROM doc_folders f LEFT JOIN folder_own fo ON fo.resource_id = f.id
+  WHERE f.parent_id = '' AND f.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
+  UNION ALL
+  SELECT f.id, COALESCE(fo.state, p.state), p.depth + 1 FROM folder_states p JOIN doc_folders f ON f.parent_id = p.resource_id
+  LEFT JOIN folder_own fo ON fo.resource_id = f.id
+  WHERE p.depth < 100
 ), doc_states AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (

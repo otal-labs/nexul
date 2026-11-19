@@ -128,7 +128,7 @@ func (f *fakeRepo) DocRules(_ context.Context, docIDs []string, userID string) (
 	for _, id := range docIDs {
 		chain := &DocRules{}
 		if ow, err := f.get(resourceTypeFolder, f.docFolders[id], userID); err == nil {
-			chain.Folder = &Rules{Person: ow}
+			chain.Folders = []*Rules{{Person: ow}}
 		}
 		ow, err := f.get(resourceTypeDoc, id, userID)
 		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
@@ -137,7 +137,7 @@ func (f *fakeRepo) DocRules(_ context.Context, docIDs []string, userID string) (
 		if err == nil {
 			chain.Doc = &Rules{Person: ow}
 		}
-		if chain.Folder != nil || chain.Doc != nil {
+		if chain.Folders != nil || chain.Doc != nil {
 			out[id] = chain
 		}
 	}

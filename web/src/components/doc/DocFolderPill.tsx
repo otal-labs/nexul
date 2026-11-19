@@ -4,6 +4,7 @@ import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { PillPicker } from "@/components/PillPicker";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import type { SaveDocFormData } from "@/models/Doc";
+import { folderOptions, folderPath } from "@/utils/DocFolderTreeUtility";
 
 // The New doc header's folder pill; a folder from another project reads as the picked project's default.
 export const DocFolderPill = () => {
@@ -15,7 +16,7 @@ export const DocFolderPill = () => {
 
   return (
     <>
-      <PillPicker label={folder?.name ?? "Folder"} items={folders} onPick={(id) => setValue("folder_id", id)} />
+      <PillPicker label={folder ? folderPath(folders, folder.id) : "Folder"} items={folderOptions(folders)} onPick={(id) => setValue("folder_id", id)} />
       <ChevronRightIcon className="size-3.5 text-muted-foreground" aria-hidden />
     </>
   );

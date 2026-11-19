@@ -46,6 +46,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/folders", h.listFolders)
 	mux.HandleFunc("POST /api/docs/folders", h.createFolder)
 	mux.HandleFunc("PUT /api/docs/folders/{id}", h.renameFolder)
+	mux.HandleFunc("POST /api/docs/folders/{id}/move", h.moveFolder)
 	mux.HandleFunc("DELETE /api/docs/folders/{id}", h.deleteFolder)
 	mux.HandleFunc("POST /api/docs/{id}/move", h.move)
 	mux.HandleFunc("POST /api/docs/{id}/archive", h.archive)

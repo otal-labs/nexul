@@ -1,6 +1,7 @@
 package access
 
 import (
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -33,18 +34,19 @@ type Rules struct {
 	Roles  []*Overwrite
 }
 
-// DocRules are the rules reaching one person on a doc's folder and on the doc itself, read together.
+// DocRules are the rules reaching one person on a doc's folders and on the doc itself, read together.
 type DocRules struct {
-	Folder *Rules
-	Doc    *Rules
+	// Folders are the rules of the doc's folder and each folder it sits inside, outermost first.
+	Folders []*Rules
+	Doc     *Rules
 }
 
-// chain is the rules from the project inward: the folder's, then the doc's.
+// chain is the rules from the project inward: each folder's, then the doc's.
 func (r *DocRules) chain() []*Rules {
 	if r == nil {
 		return nil
 	}
-	return []*Rules{r.Folder, r.Doc}
+	return append(slices.Clone(r.Folders), r.Doc)
 }
 
 // User is mirrored here so access never imports auth (ADR 0017).

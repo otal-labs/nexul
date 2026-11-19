@@ -8,6 +8,7 @@ import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import type { Doc } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
 import { dropRow, type LiveFollower } from "@/lib/live";
+import { folderPath } from "@/utils/DocFolderTreeUtility";
 
 export const getDocFoldersKey = "getDocFolders";
 
@@ -21,18 +22,18 @@ export const docFoldersQuery = (projectId: string) =>
 
 export const useFetchDocFolders = (projectId: string) => useQuery(docFoldersQuery(projectId));
 
-// A folder's name by id; a doc whose folder is not listed yet reads as the default folder's, as the list groups it.
+// A folder's path by id ("Clients / Acme"); a doc whose folder is not listed yet reads as the default folder's, as the list groups it.
 export const useDocFolderNames = (projectId: string) => {
   const { data: folders } = useFetchDocFolders(projectId);
   const fallback = folders?.find((f) => f.is_default)?.name ?? "";
-  return (folderId: string) => folders?.find((f) => f.id === folderId)?.name ?? fallback;
+  return (folderId: string) => (folders && folderPath(folders, folderId)) || fallback;
 };
 
 export const useCreateDocFolder = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("docs:write", async (input: { projectId: string; name: string }) =>
-      (await api.post<DocFolder>("/api/docs/folders", { project_id: input.projectId, name: input.name })).data),
+    mutationFn: requires("docs:write", async (input: { projectId: string; parentId?: string | undefined; name: string }) =>
+      (await api.post<DocFolder>("/api/docs/folders", { project_id: input.projectId, parent_id: input.parentId ?? "", name: input.name })).data),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDocFoldersKey] });
       toast.success("Folder created");
@@ -54,7 +55,21 @@ export const useRenameDocFolder = () => {
   });
 };
 
-// The folder's docs move to the project's default folder; none is deleted.
+// An empty parentId puts the folder at the top level; everything inside it moves with it.
+export const useMoveDocFolder = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("docs:write", async (input: { id: string; parentId: string }) =>
+      (await api.post<DocFolder>(`/api/docs/folders/${input.id}/move`, { parent_id: input.parentId })).data),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getDocFoldersKey] });
+      toast.success("Folder moved");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// The folder goes with every folder inside it; their docs move to its parent, or the default folder; none is deleted.
 export const useDeleteDocFolder = () => {
   const client = useQueryClient();
   return useMutation({
@@ -89,6 +104,10 @@ interface FolderPayload {
   folder: DocFolder;
 }
 
+interface FolderUpdatedPayload extends FolderPayload {
+  previous_parent_id?: string;
+}
+
 interface GrantPayload {
   resource_type: string;
 }
@@ -101,7 +120,10 @@ export const docFolderFollower: LiveFollower = {
     Promise.all([client.invalidateQueries({ queryKey: [getDocsKey] }), client.invalidateQueries({ queryKey: [getDocFoldersKey] })]),
   "doc.folder.created": ({ folder }: FolderPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true }),
-  "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>
-    client.setQueryData<DocFolder[]>([getDocFoldersKey, folder.project_id], (list) => list?.map((f) => (f.id === folder.id ? folder : f))),
+  // A move changes which folders' rules reach the docs inside, so what each viewer may see is read again.
+  "doc.folder.updated": ({ folder, previous_parent_id: from }: FolderUpdatedPayload, { client }) =>
+    (from ?? folder.parent_id) === folder.parent_id
+      ? client.setQueryData<DocFolder[]>([getDocFoldersKey, folder.project_id], (list) => list?.map((f) => (f.id === folder.id ? folder : f)))
+      : Promise.all([client.invalidateQueries({ queryKey: [getDocsKey] }), client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true })]),
   "doc.folder.deleted": ({ folder }: FolderPayload, { client }) => dropRow(client, [getDocFoldersKey, folder.project_id], folder.id),
 };

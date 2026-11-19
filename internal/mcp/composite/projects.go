@@ -18,8 +18,9 @@ import (
 // DocFolders is the slice of the docs use-cases project_get and project_update read and change doc folders through.
 type DocFolders interface {
 	ListFolders(ctx context.Context, projectID string) ([]*docs.Folder, error)
-	CreateFolder(ctx context.Context, projectID, name string) (*docs.Folder, error)
+	CreateFolder(ctx context.Context, projectID, parentID, name string) (*docs.Folder, error)
 	RenameFolder(ctx context.Context, id, name string) (*docs.Folder, error)
+	MoveFolder(ctx context.Context, id, parentID string) (*docs.Folder, error)
 	DeleteFolder(ctx context.Context, id string) error
 }
 
@@ -65,6 +66,7 @@ type issueSyncResult struct {
 type docFolderResult struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
+	ParentID  string `json:"parent_id"`
 	IsDefault bool   `json:"is_default"`
 }
 
@@ -209,7 +211,7 @@ func projectDocFolders(ctx context.Context, d DocFolders, projectID string) ([]d
 	}
 	out := make([]docFolderResult, 0, len(folders))
 	for _, f := range folders {
-		out = append(out, docFolderResult{ID: f.ID, Name: f.Name, IsDefault: f.IsDefault})
+		out = append(out, docFolderResult{ID: f.ID, Name: f.Name, ParentID: f.ParentID, IsDefault: f.IsDefault})
 	}
 	return out, nil
 }
@@ -232,7 +234,7 @@ type projectUpdateIn struct {
 	Icon          *string            `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. An empty string clears it."`
 	Prefix        *string            `json:"prefix,omitempty" jsonschema:"2 to 5 letters or digits, starting with a letter, such as REF, for a project that has no prefix yet; an existing prefix never changes."`
 	Position      *int               `json:"position,omitempty" jsonschema:"The project's place in the workspace's order, 0 for first."`
-	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (in the repository that deploys), separate (in a tests repository), or an empty string to withdraw the answer."`
+	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (the repository that deploys), separate (a tests repository), or empty to withdraw it."`
 	AddRepos      []repoAddIn        `json:"add_repos,omitempty" jsonschema:"Repositories to attach; a repository belongs to one project only."`
 	RemoveRepos   []repoRefIn        `json:"remove_repos,omitempty" jsonschema:"Repositories of this project to detach."`
 	IssueSync     *issueSyncIn       `json:"github_issue_sync,omitempty" jsonschema:"Syncs one of its GitHub repositories' issues to tickets."`
@@ -241,7 +243,7 @@ type projectUpdateIn struct {
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
 	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project; coloring a label no ticket uses yet makes it."`
 	RemoveLabels  []string           `json:"remove_labels,omitempty" jsonschema:"Labels to delete; only a label no ticket in the project carries can go."`
-	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. The default folder, Main, takes new docs and can be renamed but never deleted."`
+	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, move, or delete; the default, Main, takes new docs and is never deleted."`
 	Setup         *setupIn           `json:"setup,omitempty" jsonschema:"The project wizard's record of this project, as project_get shows it under setup."`
 }
 
@@ -254,24 +256,26 @@ type issueSyncIn struct {
 
 type setupIn struct {
 	StackID  *string           `json:"stack_id,omitempty" jsonschema:"The exact stack the wizard created or adopted; empty clears it."`
-	EnvKeys  *[]string         `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; an empty list clears them. Values belong to the stack."`
-	Finished *bool             `json:"finished,omitempty" jsonschema:"true finishes setup, so the sidebar lists the project's pages instead of Continue setup; false reopens it."`
+	EnvKeys  *[]string         `json:"env_keys,omitempty" jsonschema:"Detected env var names; empty clears them."`
+	Finished *bool             `json:"finished,omitempty" jsonschema:"true finishes setup, so the sidebar lists the project's pages, not Continue setup; false reopens it."`
 	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, people, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
 }
 
 type docFolderChanges struct {
 	Create []docFolderCreateIn `json:"create,omitempty" jsonschema:"New folders, listed after the existing ones."`
-	Update []docFolderUpdateIn `json:"update,omitempty" jsonschema:"Folders to rename, the default one included."`
-	Delete []string            `json:"delete,omitempty" jsonschema:"Ids of folders to delete; their docs move to the default folder."`
+	Update []docFolderUpdateIn `json:"update,omitempty" jsonschema:"Folders to rename or move."`
+	Delete []string            `json:"delete,omitempty" jsonschema:"Ids of folders to delete, with those inside; their docs move to the parent folder."`
 }
 
 type docFolderCreateIn struct {
-	Name string `json:"name" jsonschema:"The folder's name, unique in the project ignoring case."`
+	Name     string `json:"name" jsonschema:"The folder's name, unique among its siblings."`
+	ParentID string `json:"parent_id,omitempty" jsonschema:"The folder to create it in; omitted for top level."`
 }
 
 type docFolderUpdateIn struct {
-	ID   string `json:"id" jsonschema:"The folder's id, from project_get's doc_folders."`
-	Name string `json:"name" jsonschema:"The folder's new name, unique in the project ignoring case."`
+	ID       string  `json:"id" jsonschema:"The folder's id, from project_get's doc_folders."`
+	Name     string  `json:"name,omitempty" jsonschema:"The new name; omitted keeps it."`
+	ParentID *string `json:"parent_id,omitempty" jsonschema:"The folder to move it into; empty for top level."`
 }
 
 type repoAddIn struct {
@@ -358,9 +362,8 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, r projectReader
 	return mcptool.New("project_update", "Update project",
 		"Changes a project's name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories and syncs their GitHub issues; creates, changes, reorders (position), and deletes its "+
-			"status columns, categories, and ticket types; makes, colors, and deletes labels; creates, renames, and deletes doc "+
-			"folders (doc_update moves a doc between them); and finishes or reopens its setup "+
-			"and marks project wizard steps done or skipped. The changes apply in the order the fields are listed here, creates "+
+			"status columns, categories, and ticket types; colors and deletes labels; creates, renames, nests, and deletes doc "+
+			"folders (doc_update moves a doc between them); and sets its setup and wizard steps. The changes apply in the order the fields are listed here, creates "+
 			"before updates before deletes, and stop at the first failure. Colors are cyan, emerald, orange, fuchsia, lime, or a #rrggbb hex. "+
 			"Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
 			"shows it, with new ids.",
@@ -451,7 +454,7 @@ func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
 	var steps []step
 	for i, f := range c.Create {
 		steps = append(steps, step{fmt.Sprintf("doc_folders.create[%d]", i), "", func(ctx context.Context) error {
-			return discard(u.folders.CreateFolder(ctx, u.id, f.Name))
+			return discard(u.folders.CreateFolder(ctx, u.id, f.ParentID, f.Name))
 		}})
 	}
 	for i, f := range c.Update {
@@ -459,7 +462,15 @@ func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
 			if err := u.ownsFolder(ctx, f.ID); err != nil {
 				return err
 			}
-			return discard(u.folders.RenameFolder(ctx, f.ID, f.Name))
+			if f.Name != "" {
+				if _, err := u.folders.RenameFolder(ctx, f.ID, f.Name); err != nil {
+					return err
+				}
+			}
+			if f.ParentID == nil {
+				return nil
+			}
+			return discard(u.folders.MoveFolder(ctx, f.ID, *f.ParentID))
 		}})
 	}
 	for i, id := range c.Delete {

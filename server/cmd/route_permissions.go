@@ -145,6 +145,7 @@ var routePermissions = map[string][]string{
 	"POST /api/docs/folders":                                        {"docs:write"},
 	"DELETE /api/docs/folders/{id}":                                 {"docs:write"},
 	"PUT /api/docs/folders/{id}":                                    {"docs:write"},
+	"POST /api/docs/folders/{id}/move":                              {"docs:write"},
 	"POST /api/docs/import":                                         {"docs:write"},
 	"DELETE /api/docs/{id}":                                         {"docs:delete"},
 	"PUT /api/docs/{id}":                                            {"docs:write"},

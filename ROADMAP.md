@@ -122,7 +122,8 @@ Reading takes the `stacks:logs` permission, because output can carry secrets.
 
 ### Docs folders, pinning and order
 
-A project's docs are grouped into folders, with a default Main folder; move,
+A project's docs are grouped into folders, with a default Main folder, and a
+folder can hold folders of its own, its rules reaching everything inside; move,
 rename and delete them from the Docs page, and agents manage them over MCP.
 Pin a doc to keep it at the top of the list (kept per browser). The list is
 ordered by creation date, with a toggle for last edited, and the Docs and

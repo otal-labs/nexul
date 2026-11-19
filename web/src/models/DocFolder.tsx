@@ -1,9 +1,11 @@
 import { z } from "zod";
 
-/** A project's group of docs, one level deep; the default one holds new docs and is never deleted. */
+/** A project's group of docs, at the top or inside another folder; the default one holds new docs and is never deleted or moved. */
 export interface DocFolder {
   id: string;
   project_id: string;
+  /** The folder it sits inside; empty at the top level. */
+  parent_id: string;
   name: string;
   is_default: boolean;
   created_at: string;

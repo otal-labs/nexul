@@ -123,7 +123,8 @@ func (s *Service) check(ctx context.Context, userID, workspaceID, projectID stri
 	})
 }
 
-// chain is the rules reaching userID on each entity from the project inward: a doc's folder then the doc, or the resource.
+// chain is the rules reaching userID on each entity from the project inward: a doc's folders then the doc, a folder's
+// enclosing folders then the folder, or the resource.
 func (s *Service) chain(ctx context.Context, resourceType, resourceID, userID string) []*Rules {
 	if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
 		return nil
@@ -131,7 +132,13 @@ func (s *Service) chain(ctx context.Context, resourceType, resourceID, userID st
 	if resourceType == resourceTypeDoc {
 		return s.docRules(ctx, []string{resourceID}, userID)[resourceID].chain()
 	}
-	return []*Rules{s.rules(ctx, resourceType, resourceID, userID)}
+	var chain []*Rules
+	if resourceType == resourceTypeFolder {
+		for _, id := range s.folderScope(ctx, resourceID).Folders {
+			chain = append(chain, s.rules(ctx, resourceTypeFolder, id, userID))
+		}
+	}
+	return append(chain, s.rules(ctx, resourceType, resourceID, userID))
 }
 
 // decide answers from layers already read, then from chain, read only if they leave it open, the nearest rule winning.
