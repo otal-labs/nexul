@@ -15,6 +15,10 @@ Decision: the instance is its own OAuth authorization server for its MCP endpoin
 - **A grant is a personal access token row.** It carries the client, an access token that expires after an hour, and a
   refresh token that rotates on each use. So it lists, shows its last use and revokes exactly as a pasted token does,
   authenticates through the same path with the person's own permissions, and a revoke stops both its tokens at once.
+- **A grant works only where it was issued, and mints nothing that outlives it.** Its token authenticates at `/mcp`
+  alone, never the HTTP gateway or a live socket, and a tool that hands out a credential (a personal, computer or
+  automation token, or a computer's install command) refuses it. Otherwise a client could mint itself a token that
+  survives the revoke.
 - **Codes live in memory** for their minute. A restart mid-sign-in means approving again.
 
 The trade-off: a grant holds every permission its person does, as a pasted token does; there are no scopes to narrow

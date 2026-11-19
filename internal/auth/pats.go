@@ -113,28 +113,33 @@ func tokenEvent(topic string, p PersonalAccessToken) eventbus.OutboxEvent {
 
 // AuthenticatePAT is used instead of Verify when the token carries the dep_ prefix.
 func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error) {
+	user, _, err := s.authenticatePAT(ctx, raw)
+	return user, err
+}
+
+func (s *Service) authenticatePAT(ctx context.Context, raw string) (*User, *PersonalAccessToken, error) {
 	pat, err := s.cfg.PATs.GetByHash(ctx, hashToken(raw))
 	if err != nil {
-		return nil, apperrs.ErrUnauthorized
+		return nil, nil, apperrs.ErrUnauthorized
 	}
 	if pat.RevokedAt != nil {
-		return nil, apperrs.ErrUnauthorized
+		return nil, nil, apperrs.ErrUnauthorized
 	}
 	if pat.ExpiresAt != nil && !s.cfg.Now().Before(*pat.ExpiresAt) {
-		return nil, apperrs.ErrUnauthorized
+		return nil, nil, apperrs.ErrUnauthorized
 	}
 	user, err := s.cfg.Users.GetUserByID(ctx, pat.UserID)
 	if err != nil {
-		return nil, apperrs.ErrUnauthorized
+		return nil, nil, apperrs.ErrUnauthorized
 	}
 	if !accountIsActive(user.AccountStatus) {
-		return nil, apperrs.ErrUnauthorized
+		return nil, nil, apperrs.ErrUnauthorized
 	}
 	if pat.LastUsedAt == nil || s.cfg.Now().Sub(*pat.LastUsedAt) >= patTouchInterval {
 		// Best-effort last-used stamp; a write failure must not reject an otherwise valid request.
 		_ = s.cfg.PATs.TouchLastUsed(ctx, pat.ID)
 	}
-	return user, nil
+	return user, pat, nil
 }
 
 // newToken mints a raw bearer: prefix + 32 bytes of randomness, base64url; sessions and PATs share it.

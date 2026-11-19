@@ -320,3 +320,29 @@ func TestRequireMCPAuth_NamesTheMetadataOnlyWhenSignInIsOn(t *testing.T) {
 	s.RequireMCPAuth(next).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/mcp", nil))
 	assert.Contains(t, rec.Header().Get("WWW-Authenticate"), `resource_metadata="http://example.com/.well-known/oauth-protected-resource/mcp"`)
 }
+
+func TestGrant_AuthenticatesOnlyWhereSignInIssuedIt(t *testing.T) {
+	s, _, _, userID := newOAuthHarness(t)
+	clientID := mustClient(t, s)
+	tokens, err := s.ExchangeOAuthCode(t.Context(), clientID, approvedCode(t, s, userID, clientID), testRedirect, testVerifier)
+	require.NoError(t, err)
+	var grant string
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		grant = GrantFromCtx(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+	call := func(h http.Handler, target string, header bool) int {
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		if header {
+			req.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	assert.Equal(t, http.StatusUnauthorized, call(s.RequireAuth(next), "/api/auth/me", true))
+	assert.Equal(t, http.StatusUnauthorized, call(s.RequireWS(next), "/ws/events?token="+tokens.AccessToken, false))
+	assert.Equal(t, http.StatusOK, call(s.RequireMCPAuth(next), "/mcp", true))
+	assert.Equal(t, clientID, grant)
+}

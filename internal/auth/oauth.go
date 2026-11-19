@@ -263,8 +263,7 @@ func validPKCEValue(v string) bool {
 	return true
 }
 
-// DecideOAuth answers the consent page: approved, a one-minute code for userID; refused, access_denied. Either way
-// it returns the client's redirect with the answer and state.
+// DecideOAuth answers the consent page with the client's redirect: a one-minute code for userID, or access_denied.
 func (s *Service) DecideOAuth(ctx context.Context, userID string, req OAuthRequest, approve bool) (string, error) {
 	if ViewerFromCtx(ctx) != nil {
 		return "", fmt.Errorf("%w: stop viewing as someone else to sign an app in", apperrs.ErrForbidden)

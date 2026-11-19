@@ -297,5 +297,19 @@ func TestMCPOAuth_Grant_HoldsNoMoreThanItsPersonsPermissions(t *testing.T) {
 	viaPAT := callToolResult(t, h, bobPAT, "instance_get", `{}`)
 	assert.Contains(t, viaPAT, "instance:read", "bob's role lacks instance:read")
 	assert.Equal(t, viaPAT, callToolResult(t, h, access, "instance_get", `{}`), "the grant is refused exactly as his own token is")
-	assert.Equal(t, http.StatusForbidden, callAPI(t, h, http.MethodGet, "/api/auth/accounts", access, "").Code)
+}
+
+func TestMCPOAuth_Grant_WorksOnlyOnMCPAndMintsNoCredentialThatOutlivesIt(t *testing.T) {
+	t.Parallel()
+	h, store, svc := newRouter(t)
+	userID, pat := signedInOwner(t, store, svc)
+	_, access, _ := signIn(t, h, svc, userID)
+
+	assert.Equal(t, http.StatusUnauthorized, callAPI(t, h, http.MethodPost, "/api/auth/tokens", access, `{"name":"escape"}`).Code, "the gateway refuses a grant")
+	assert.Equal(t, http.StatusUnauthorized, callAPI(t, h, http.MethodGet, "/api/auth/me", access, "").Code)
+	for _, tool := range []string{"computer_mcp_token_create", "computer_create", "automation_token_create", "automation_create"} {
+		assert.Contains(t, callToolResult(t, h, access, tool, `{}`), "A signed-in app cannot create credentials", tool)
+	}
+	assert.NotContains(t, callToolResult(t, h, pat, "computer_mcp_token_create", `{}`), "signed-in app", "a pasted token still may")
+	assert.Equal(t, http.StatusOK, mcpStatus(t, h, access).Code)
 }

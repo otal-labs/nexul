@@ -107,7 +107,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"workspace for good. The result carries the token this one time only, so hand it to the "+
 				"automation's code straight away, and use automation_token_create to replace a lost one. Enable it with "+
 				"automation_update once its code has dialed in. Needs automations:write in that workspace.",
-			mcptool.Hints{Additive: true, Local: true},
+			mcptool.Hints{Additive: true, Local: true, MintsCredential: true},
 			func(ctx context.Context, in automationCreateIn) (any, error) {
 				a, token, err := s.Create(ctx, actorIDFromCtx(ctx), in.WorkspaceID, in.Name, in.Scopes)
 				if err != nil {
@@ -148,7 +148,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"working at once and its live connection drops. The result carries the new token this one time "+
 				"only, so hand it to the automation's code straight away. To cut access without a replacement, "+
 				"use automation_update with revoke_token instead. Needs automations:write in the automation's workspace.",
-			mcptool.Hints{Local: true},
+			mcptool.Hints{Local: true, MintsCredential: true},
 			func(ctx context.Context, in automationIDIn) (any, error) {
 				a, token, err := s.MintToken(ctx, actorIDFromCtx(ctx), in.ID)
 				if err != nil {

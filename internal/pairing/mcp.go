@@ -301,7 +301,7 @@ func computerCreateTool(s *Service) mcptool.Tool {
 			"last code expired, or to move a computer paired before the Nexul app onto it, keeping its links, setup, "+
 			"MCP token and trails. A computer that had a tunnel still runs cloudflared; sudo cloudflared service "+
 			"uninstall removes it (in an administrator PowerShell on Windows, without sudo).",
-		mcptool.Hints{Additive: true, Local: true},
+		mcptool.Hints{Additive: true, Local: true, MintsCredential: true},
 		func(ctx context.Context, in computerCreateIn) (any, error) {
 			e, err := createComputer(ctx, s, in)
 			if err != nil {
@@ -504,7 +504,7 @@ func computerMCPTokenCreateTool(s *Service) mcptool.Tool {
 			"providers' MCP configs, revoking the one it had. The token is returned only in this response, hidden "+
 			"in saved transcripts, so show it only to the computer's owner. computer_setup_run mints one on its "+
 			"own, so call this only to rotate the token by hand.",
-		mcptool.Hints{Local: true},
+		mcptool.Hints{Local: true, MintsCredential: true},
 		func(ctx context.Context, in computerIDIn) (any, error) {
 			return s.MintMCPToken(ctx, mcpActorID(ctx), in.ComputerID)
 		})

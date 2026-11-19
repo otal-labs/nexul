@@ -369,8 +369,8 @@ func (h *Handler) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Token != "" {
 		rawAuth := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		user, _, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
-		if authErr != nil || user == nil {
+		user, _, grant, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
+		if authErr != nil || user == nil || grant != "" {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}

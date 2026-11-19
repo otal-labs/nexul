@@ -16,7 +16,14 @@ const (
 	userCtxKey    ctxKey = "user"
 	sessionCtxKey ctxKey = "session"
 	viewerCtxKey  ctxKey = "viewer"
+	grantCtxKey   ctxKey = "grant"
 )
+
+// GrantFromCtx returns the MCP client whose sign-in grant the request came in on; "" for any other credential.
+func GrantFromCtx(ctx context.Context) string {
+	g, _ := ctx.Value(grantCtxKey).(string)
+	return g
+}
 
 // UserFromCtx returns the authenticated user record set by RequireAuth, or nil when unauthenticated.
 func UserFromCtx(ctx context.Context) *User {
@@ -51,12 +58,13 @@ func ViewerFromCtx(ctx context.Context) *identity.ViewerRef {
 
 // RequireAuth resolves the full User into context, or 401s; a setup pass resolves to the setup identity (setup.go).
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
-	return s.requireAuth(next, func(*http.Request) string { return bearerChallenge })
+	return s.requireAuth(next, false, func(*http.Request) string { return bearerChallenge })
 }
 
-// RequireMCPAuth is RequireAuth whose 401 names the protected-resource metadata, where an MCP client starts sign-in.
+// RequireMCPAuth is RequireAuth for the MCP endpoint, the one resource a sign-in grant is issued for; its 401 names
+// the protected-resource metadata, where an MCP client starts sign-in.
 func (s *Service) RequireMCPAuth(next http.Handler) http.Handler {
-	return s.requireAuth(next, func(r *http.Request) string {
+	return s.requireAuth(next, true, func(r *http.Request) string {
 		if !s.OAuthEnabled() {
 			return bearerChallenge
 		}
@@ -66,19 +74,23 @@ func (s *Service) RequireMCPAuth(next http.Handler) http.Handler {
 
 const bearerChallenge = `Bearer realm="nexul"`
 
-func (s *Service) requireAuth(next http.Handler, challenge func(*http.Request) string) http.Handler {
+func (s *Service) requireAuth(next http.Handler, allowGrant bool, challenge func(*http.Request) string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 		if s.cfg.Users == nil || token == "" {
 			unauthorized(w, challenge(r))
 			return
 		}
-		user, ses, err := s.authenticate(r, token)
-		if err != nil {
+		user, ses, grant, err := s.authenticate(r, token)
+		if err != nil || grant != "" && !allowGrant {
 			unauthorized(w, challenge(r))
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), user, ses)))
+		ctx := withPrincipal(r.Context(), user, ses)
+		if grant != "" {
+			ctx = context.WithValue(ctx, grantCtxKey, grant)
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -88,20 +100,25 @@ func unauthorized(w http.ResponseWriter, challenge string) {
 	httpx.WriteError(w, apperrs.ErrUnauthorized)
 }
 
-// authenticate resolves a Bearer token (session, PAT or setup pass) to its user; every path re-reads its store.
-func (s *Service) authenticate(r *http.Request, token string) (*User, *Session, error) {
+// authenticate resolves a Bearer token (session, PAT or setup pass) to its user, and a sign-in grant to its client;
+// every path re-reads its store.
+func (s *Service) authenticate(r *http.Request, token string) (*User, *Session, string, error) {
 	if isSetupPass(token) {
 		user, err := s.authenticateSetupPass(r, token)
-		return user, nil, err
+		return user, nil, "", err
 	}
 	if isPAT(token) {
 		if s.cfg.PATs == nil {
-			return nil, nil, apperrs.ErrUnauthorized
+			return nil, nil, "", apperrs.ErrUnauthorized
 		}
-		user, err := s.AuthenticatePAT(r.Context(), token)
-		return user, nil, err
+		user, pat, err := s.authenticatePAT(r.Context(), token)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		return user, nil, pat.OAuthClientID, nil
 	}
-	return s.AuthenticateSession(r.Context(), token, httpx.ClientAddr(r))
+	user, ses, err := s.AuthenticateSession(r.Context(), token, httpx.ClientAddr(r))
+	return user, ses, "", err
 }
 
 // RequireWS guards a WS endpoint: a browser can't set Authorization on a WS upgrade, so the SPA uses a query param.
@@ -116,8 +133,8 @@ func (s *Service) RequireWS(next http.Handler) http.Handler {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}
-		user, ses, err := s.authenticate(r, token)
-		if err != nil {
+		user, ses, grant, err := s.authenticate(r, token)
+		if err != nil || grant != "" {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}

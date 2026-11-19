@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -411,4 +412,22 @@ func TestAdapter_TakesARequestTheSizeOfAnEncodedUpload(t *testing.T) {
 	res, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_get", Arguments: map[string]any{"fail": encodedUpload}})
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
+}
+
+func TestToolHandler_ASignInGrant_MayNotCallAToolThatMintsACredential(t *testing.T) {
+	called := 0
+	tool := mcptool.New("thing_token_create", "Mint", "Mints.", mcptool.Hints{Local: true, MintsCredential: true},
+		func(context.Context, struct{}) (any, error) { called++; return "dep_secret", nil })
+	handler := toolHandler(tool, &limiters{byActor: map[string]*rate.Limiter{}}, nil, slog.New(slog.DiscardHandler))
+	req := &sdk.CallToolRequest{Params: &sdk.CallToolParamsRaw{Name: tool.Name, Arguments: json.RawMessage(`{}`)}}
+
+	res, err := handler(identity.WithActor(t.Context(), identity.Actor{ID: "u1", Grant: "client-1"}), req)
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+	assert.Zero(t, called, "the tool never runs for a grant")
+
+	res, err = handler(identity.WithActor(t.Context(), identity.Actor{ID: "u1"}), req)
+	require.NoError(t, err)
+	assert.False(t, res.IsError, "a pasted token may")
+	assert.Equal(t, 1, called)
 }

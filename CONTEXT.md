@@ -1420,7 +1420,7 @@ computer has at most one of its own, "Nexul MCP on <computer>", revoked when
 its setup is un-confirmed or it is removed; a saved transcript shows any
 personal access token as `[redacted token]`. An MCP client that signed in
 holds one too, a sign-in grant named after the client, whose access token
-lasts an hour and is renewed by its refresh token (ADR 0198).
+lasts an hour and is renewed by its refresh token (ADR 0204).
 
 **Sign-in identity**:
 One provider account attached to a user: GitHub, Google, Discord or the instance's Single sign-on provider, keyed by

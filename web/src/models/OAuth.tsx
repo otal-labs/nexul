@@ -21,11 +21,12 @@ export const isFollowableRedirect = (to: string): boolean => {
   }
 };
 
-// Where approving sends the person back to, as they would recognise it: a site's host, or an app's own scheme.
+// Where approving sends the person back to: a site's host, or an app's scheme with it, since any app may claim a host.
 export const redirectTarget = (uri: string): string => {
   try {
     const url = new URL(uri);
-    return url.host || url.protocol.replace(/:$/, "");
+    if (url.protocol === "https:" || url.protocol === "http:") return url.host;
+    return `${url.protocol}//${url.host}`;
   } catch {
     return uri;
   }
