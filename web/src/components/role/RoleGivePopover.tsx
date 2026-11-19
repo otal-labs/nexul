@@ -37,7 +37,7 @@ export const RoleGivePopover = ({ person }: RoleGivePopoverProps) => {
           Give a role
         </ActionButton>
       </PopoverTrigger>
-      <PopoverContent align="end" className="flex max-h-[min(24rem,var(--radix-popover-content-available-height))] w-xl flex-col gap-1.5 p-2">
+      <PopoverContent align="end" className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-xl flex-col gap-1.5 p-2">
         <RoleFindField value={query} onChange={setQuery} placeholder="Search roles" label="Find a role" />
         <div className="scroll-edge flex min-h-0 flex-col gap-1 overflow-y-auto pb-2">
           {shown.map((choice) => (

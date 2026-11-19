@@ -1425,6 +1425,11 @@ button.mention-chip:hover {
     animation-timeline: scroll();
     animation-range: 0 24px;
   }
+  /* A pinned band over hairline rows stays opaque 12px past its own rule, so a row's rule never shows as a second line. */
+  .sticky-crumbs.band-edge::after {
+    height: 1.25rem;
+    background: linear-gradient(var(--panel-opaque) 0.75rem, transparent);
+  }
 }
 @keyframes crumbs-fade {
   from {

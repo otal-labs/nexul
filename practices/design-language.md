@@ -1440,7 +1440,7 @@ the list's 32px pitch and on its gutter, Compare roles and No roles, each led by
 reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role, and its search field narrows the
 roles by name and description. From 1024px the tab opens on the
 first role after the Owner, and below it the list is the page; below 1024px
-a muted "Roles" link with a chevron leads the open pane back to the list. The
+a muted "Roles" link with a chevron leads the open pane's title line back to the list. The
 open role is one page, its header on the list header's line and pinned to the
 pane's top on a screen at least 1024px wide and 800px tall, on `panel-opaque` (`sticky-crumbs`), so its section links stay in reach; on a smaller one it scrolls with the pane so the holders get the height. Its header is the name (16px semibold, the crown before
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
@@ -1449,7 +1449,7 @@ quiet link per editor section with how many of its areas the role reaches in
 mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with a small arrow down, each jumping to its section below the
 holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
 plain words, not a link.
-Then People, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline with the band fade under it, while the holders are in view: the microheader with its count in mono beside it, never joined by
+Then People, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline and opaque 12px past it before its fade, so a passing row's rule never doubles it, while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
 name never wraps the row) at its right, or a lock and the reason under it when the role holds
@@ -1465,7 +1465,7 @@ when they were last seen in plain words (a grey dot would say nothing), Disabled
 or Removed with the name muted too, and their
 other roles as chips that overhang the line instead of growing it, their text
 on the line's baseline, as many whole chips as the line holds, measured (up to three), and the rest
-as a mono "+N"; a row with none of these is the name alone. Its
+as a mono "+N" 4px after the last of them; a row with none of these is the name alone. Its
 `…` holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
 popover of the people the viewer's Team shows, split under "In <workspace>" and
