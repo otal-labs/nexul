@@ -229,19 +229,19 @@ func TestRunHandler_Active(t *testing.T) {
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1", "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=doc&target_ids=t-1", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs/active?target_ids=t-1", "", starter).Code)
 }
@@ -327,19 +327,19 @@ func TestRunHandler_Active_ByProject(t *testing.T) {
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id="+projectID, "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{}}`, rec.Body.String(), "each run is still checked against plays:read")
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{},"queued":{},"background":{},"background_since":{}}`, rec.Body.String(), "each run is still checked against plays:read")
 
 	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id=proj-other", "", starter).Code)
 }
 
 // fakeBackground reports background work on the tickets it holds, among those asked about.
-type fakeBackground map[string]bool
+type fakeBackground map[string]time.Time
 
-func (f fakeBackground) BackgroundTickets(ids []string) map[string]bool {
-	out := map[string]bool{}
+func (f fakeBackground) BackgroundTickets(ids []string) map[string]time.Time {
+	out := map[string]time.Time{}
 	for _, id := range ids {
-		if f[id] {
-			out[id] = true
+		if since, ok := f[id]; ok {
+			out[id] = since
 		}
 	}
 	return out
@@ -347,16 +347,19 @@ func (f fakeBackground) BackgroundTickets(ids []string) map[string]bool {
 
 func TestRunHandler_Active_BackgroundWork_OnlyOnTheProjectsReadableTickets(t *testing.T) {
 	f := newRunnerFixture()
-	f.runner.background = fakeBackground{"t-1": true, "t-3": true}
+	since := time.Date(2026, 11, 19, 9, 30, 0, 0, time.UTC)
+	f.runner.background = fakeBackground{"t-1": since, "t-3": since}
 	h := NewRunHandler(f.runner, fakeProjectTargets{projectID: projectID, ids: []string{"t-1", "t-2"}}).Routes()
 
 	rec := do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-3&project_id="+projectID, "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var body struct {
-		Background map[string]bool `json:"background"`
+		Background      map[string]bool      `json:"background"`
+		BackgroundSince map[string]time.Time `json:"background_since"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, map[string]bool{"t-1": true}, body.Background, "a ticket named by id alone was never checked readable")
+	assert.Equal(t, map[string]time.Time{"t-1": since}, body.BackgroundSince, "the card times the work from when it started")
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=doc&project_id="+projectID, "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())

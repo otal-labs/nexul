@@ -44,10 +44,13 @@ interface AgentStreamPayload {
 const markBackground = (client: QueryClient, ticketId: string, running: boolean) =>
   client.setQueriesData<ActiveTargets>({ queryKey: [getActiveTrailsKey, "ticket"] }, (known) => {
     if (!known) return known;
+    // A repeat frame keeps the start already known, so the card's timer never restarts.
+    if (running) return { ...known, background: { ...known.background, [ticketId]: true }, background_since: { [ticketId]: new Date().toISOString(), ...known.background_since } };
     const background = { ...known.background };
+    const since = { ...known.background_since };
     delete background[ticketId];
-    if (running) background[ticketId] = true;
-    return { ...known, background };
+    delete since[ticketId];
+    return { ...known, background, background_since: since };
   });
 
 // Message frames carry the whole message, so they patch the cached list instead of triggering a refetch.

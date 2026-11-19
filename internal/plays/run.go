@@ -274,9 +274,9 @@ type RunnerConfig struct {
 	SilenceTimeout time.Duration
 }
 
-// BackgroundReader says which tickets' threads have harness work running after their turn ended.
+// BackgroundReader says which tickets' threads have harness work running after their turn ended, and since when.
 type BackgroundReader interface {
-	BackgroundTickets(ticketIDs []string) map[string]bool
+	BackgroundTickets(ticketIDs []string) map[string]time.Time
 }
 
 // Runner starts play runs and keeps their trails (ADR 0055).

@@ -1,10 +1,11 @@
 // @vitest-environment node
 import type { Location } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Conversation } from "@nexul/client-core/chat";
 
 import { chatFollower } from "@/hooks/ChatFollower";
+import type { ActiveTargets } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import type { Message } from "@/models/Chat";
@@ -158,20 +159,30 @@ describe("the chat follower", () => {
 
     it("marks a ticket on every board's cached answer while its thread's work runs past the turn, leaving the bubble alone", async () => {
       const client = chat();
-      const known = { active: {}, waiting: {}, started: {}, queued: {}, background: { "t-7": true } };
+      const known = { active: {}, waiting: {}, started: {}, queued: {}, background: { "t-7": true }, background_since: { "t-7": "2026-11-19T09:00:00Z" } };
       client.setQueryData(["getActiveTrails", "ticket", "p-1"], known);
       client.setQueryData(["getActiveTrails", "doc", "p-1"], { ...known, background: {} });
       const frame = (background: boolean) =>
         followFrame(chatFollower, "chat.agent.stream", { conversation_id: "c-1", message_id: "", text: "", streaming: false, ticket_id: "t-1", background }, client);
+      const sinceOf = (ticketId: string) => client.getQueryData<ActiveTargets>(["getActiveTrails", "ticket", "p-1"])?.background_since[ticketId];
       await stream({ text: "starting the monitor" });
 
       await frame(true);
       expect(client.getQueryData(["getActiveTrails", "ticket", "p-1"])).toMatchObject({ background: { "t-1": true, "t-7": true } });
+      const since = sinceOf("t-1");
+      expect(since).toBeDefined();
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.now() + 60_000);
+      await frame(true);
+      vi.useRealTimers();
+      expect(sinceOf("t-1"), "a repeat frame keeps when the work started").toBe(since);
       expect(client.getQueryData(["getActiveTrails", "doc", "p-1"])).toMatchObject({ background: {} });
       expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("starting the monitor");
 
       await frame(false);
       expect(client.getQueryData(["getActiveTrails", "ticket", "p-1"])).toMatchObject({ background: { "t-7": true } });
+      expect(sinceOf("t-1")).toBeUndefined();
+      expect(sinceOf("t-7")).toBe("2026-11-19T09:00:00Z");
       expect(useAgentStreamStore.getState().streams["c-1"]?.text).toBe("starting the monitor");
     });
   });

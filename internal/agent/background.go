@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -14,20 +15,21 @@ type backgroundWork struct {
 	conversationID string
 	ticketID       string
 	computerID     string
+	since          time.Time
 }
 
-// BackgroundTickets are the given tickets whose thread has work running in the harness after its turn ended.
-func (s *Service) BackgroundTickets(ticketIDs []string) map[string]bool {
+// BackgroundTickets maps the given tickets whose thread has work running in the harness after its turn ended to when it started.
+func (s *Service) BackgroundTickets(ticketIDs []string) map[string]time.Time {
 	asked := make(map[string]bool, len(ticketIDs))
 	for _, id := range ticketIDs {
 		asked[id] = true
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := map[string]bool{}
+	out := map[string]time.Time{}
 	for _, w := range s.background {
 		if asked[w.ticketID] {
-			out[w.ticketID] = true
+			out[w.ticketID] = w.since
 		}
 	}
 	return out
@@ -39,8 +41,11 @@ func (s *Service) noteBackground(ctx context.Context, threadID, computerID strin
 		return
 	}
 	s.mu.Lock()
-	_, known := s.background[threadID]
-	s.background[threadID] = backgroundWork{conversationID: conv.ID, ticketID: conv.TicketID, computerID: computerID}
+	prior, known := s.background[threadID]
+	if !known {
+		prior.since = s.now().UTC()
+	}
+	s.background[threadID] = backgroundWork{conversationID: conv.ID, ticketID: conv.TicketID, computerID: computerID, since: prior.since}
 	s.mu.Unlock()
 	if !known {
 		s.publishBackground(ctx, conv.ID, conv.TicketID, true)

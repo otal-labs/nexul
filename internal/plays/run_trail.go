@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -93,9 +94,9 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 }
 
 // backgroundTargets takes only targets already checked readable, since the harness's report carries no access of its own.
-func (r *Runner) backgroundTargets(targetType TargetType, ids []string) map[string]bool {
+func (r *Runner) backgroundTargets(targetType TargetType, ids []string) map[string]time.Time {
 	if r.background == nil || targetType != TargetTicket {
-		return map[string]bool{}
+		return map[string]time.Time{}
 	}
 	return r.background.BackgroundTickets(ids)
 }
