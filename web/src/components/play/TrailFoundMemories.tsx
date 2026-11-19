@@ -14,12 +14,12 @@ interface TrailFoundMemoriesProps {
 export const TrailFoundMemories = ({ projectId, memories }: TrailFoundMemoriesProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <span className="text-xs">
+    <span>
       {memories.map((memory, i) => (
         <Fragment key={memory.id}>
           {i > 0 && ", "}
           {!memory.deleted && (
-            <Link to={wsPath(memoryPath(projectId, memory.id))} className="text-brand underline-offset-4 hover:underline">
+            <Link to={wsPath(memoryPath(projectId, memory.id))} className="inset-focus rounded-sm underline decoration-muted-foreground underline-offset-4 transition-colors duration-150 ease-standard hover:decoration-foreground">
               {memory.title}
             </Link>
           )}

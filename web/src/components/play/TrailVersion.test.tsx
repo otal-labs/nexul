@@ -75,7 +75,7 @@ describe("a trail's instructions version", () => {
     const user = userEvent.setup();
     renderFacts(trail({ instructions_version: 7 }));
 
-    await user.click(await screen.findByRole("button", { name: "Ran with version 7" }));
+    await user.click(await screen.findByRole("button", { name: "Version 7" }));
 
     expect(await screen.findByRole("heading", { name: "History" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { current: true })).not.toHaveAccessibleName(/current version/);
@@ -86,8 +86,8 @@ describe("a trail's instructions version", () => {
     vi.mocked(api.get).mockImplementation(answer(keptVersions(18, 17)));
     renderFacts(trail({ instructions_version: 7 }));
 
-    expect(await screen.findByText("Version 7 is no longer kept")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Ran with/ })).not.toBeInTheDocument();
+    expect(await screen.findByText("Version 7, no longer kept")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Version 7" })).not.toBeInTheDocument();
   });
 
   it("shows nothing for a run from before history", () => {
