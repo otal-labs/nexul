@@ -105,6 +105,8 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 			SELECT printf('mem-%05d', i), 'workspace-default', 'project-general', 'Note ' || i, 'when ' || i, 'body', 1700000000 + i, 1700000000 + i FROM n`,
 		`INSERT INTO meetings (id, workspace_id, organiser_id, title, starts_at, ends_at, created_at, updated_at)
 			SELECT printf('meet-%05d', i), 'workspace-default', 'u-owner', 'Sync ' || i, 1700000000 + i * 3600, 1700001800 + i * 3600, 1, 1 FROM n`,
+		fmt.Sprintf(`INSERT INTO scheduled_messages (id, conversation_id, author_id, body, starts_at, send_at, created_at, updated_at)
+			SELECT printf('sm-%%05d', i), %q, 'u-owner', 'Reminder ' || i, 1900000000 + i, 1900000000 + i, 1, 1 FROM n`, f.channel.ID),
 	} {
 		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000) ` + stmt)
 		require.NoError(t, err)
@@ -117,6 +119,7 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	tools = append(tools, workspace.NotificationMCPTools(s.notifSvc)...)
 	tools = append(tools, memories.MCPTools(s.memoriesSvc)...)
 	tools = append(tools, calendar.MCPTools(s.calendarSvc)...)
+	tools = append(tools, chat.MCPTools(s.chatSvc)...)
 	for _, tc := range []struct{ tool, args, viewer string }{
 		{"ticket_list", `{}`, uOwner},
 		{"ticket_list", `{"query":"login"}`, uOwner},
@@ -128,6 +131,7 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 		{"notification_list", `{"offset":1500}`, uOwner},
 		{"memory_list", `{"project_id":"project-general"}`, uOwner},
 		{"meeting_list", `{"workspace_id":"workspace-default"}`, uOwner},
+		{"message_list", fmt.Sprintf(`{"conversation_id":%q,"scheduled":true}`, f.channel.ID), uOwner},
 	} {
 		t.Run(tc.tool+" "+tc.args+" as "+tc.viewer, func(t *testing.T) {
 			st.Reset()

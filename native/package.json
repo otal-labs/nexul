@@ -15,6 +15,7 @@
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@legendapp/list": "^3.7.2",
+    "@react-native-community/datetimepicker": "9.1.0",
     "@rn-primitives/checkbox": "^1.5.2",
     "@rn-primitives/radio-group": "^1.5.2",
     "@rn-primitives/slot": "^1.5.2",

@@ -23,8 +23,8 @@ const toolBudget = 115
 
 // advertisedBudget caps the characters tools/list sends, which every session pays for; it sits just above today's
 // size, so new text has to earn its place (ADR 0171, raised by ADR 0174, ADR 0179, ADR 0185, ADR 0186, which branding raised
-// again, ADR 0191, and ADR 0201).
-const advertisedBudget = 195_000
+// again, ADR 0191, ADR 0201, and ADR 0207).
+const advertisedBudget = 196_100
 
 var (
 	toolName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,51}$`)

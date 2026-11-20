@@ -32,6 +32,7 @@ var ticketKey = regexp.MustCompile(`(?i)^[a-z][a-z0-9]{1,4}-\d+$`)
 
 type messageListIn struct {
 	messageTarget
+	Scheduled bool `json:"scheduled,omitempty" jsonschema:"true lists your own messages scheduled to post there instead, soonest first."`
 	mcptool.PageArgs
 }
 
@@ -42,6 +43,7 @@ type messagePostIn struct {
 	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec."`
 	Reaction    *reactionIn `json:"reaction,omitempty" jsonschema:"Reacts to an existing message with an emoji instead of posting, and leaves out the target, body, and file."`
 	Queue       bool        `json:"queue,omitempty" jsonschema:"True makes the @Agent turn the post starts wait behind the one under way instead of steering into it."`
+	Schedule    *scheduleIn `json:"schedule,omitempty" jsonschema:"Posts the body later instead, once or on a repeat; with id changes one of yours."`
 }
 
 type reactionIn struct {
@@ -240,6 +242,9 @@ func messageListTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
+			if in.Scheduled {
+				return listScheduled(ctx, s, in, id, caller)
+			}
 			ms, total, err := s.PageMessages(ctx, id, caller, in.Window())
 			if err != nil {
 				return nil, err
@@ -265,12 +270,16 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, and carries the file; message_list returns it. "+
 			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+
 			"With reaction it adds or removes your emoji reaction on a message instead of posting. "+
+			"With schedule it posts later as you, if you may still post there; only you see it until then. "+
 			"Returns the posted, replaced, or reacted-to message and its conversation_id.",
 		mcptool.Hints{},
 		func(ctx context.Context, in messagePostIn) (any, error) {
 			caller, err := callerID(ctx)
 			if err != nil {
 				return nil, err
+			}
+			if in.Schedule != nil {
+				return schedule(ctx, s, in, caller)
 			}
 			if in.File != nil && in.File.NoteID != "" {
 				return replaceNote(ctx, s, in, caller)

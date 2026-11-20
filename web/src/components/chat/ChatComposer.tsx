@@ -1,4 +1,3 @@
-import { Smile } from "lucide-react";
 import {
   useRef,
   useState,
@@ -9,12 +8,12 @@ import {
   type MouseEvent,
 } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ComposerAttachButton } from "@/components/chat/ComposerAttachButton";
 import { ComposerAttachmentStrip } from "@/components/chat/ComposerAttachmentStrip";
-import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
+import { ComposerEmojiButton } from "@/components/chat/ComposerEmojiButton";
 import { ComposerMentionSuggestions } from "@/components/chat/ComposerMentionSuggestions";
+import { ComposerScheduleButton } from "@/components/chat/ComposerScheduleButton";
 import { ComposerSteerHint } from "@/components/chat/ComposerSteerHint";
 import { useComposerAttachments } from "@/hooks/ComposerAttachmentHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
@@ -95,15 +94,19 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     });
   };
 
+  const clear = () => {
+    setValue("");
+    setTrigger(undefined);
+    reset();
+  };
+
   const send = async (queue: boolean) => {
     const body = value.trim();
     if ((body === "" && pending.length === 0) || sending || isUploading) return;
     // Clears on Enter like a chat app, not after the round-trip; a failed post hands the text back.
     const composed = composeMessageBody(body, pending.map((p) => p.attachment));
     setSending(true);
-    setValue("");
-    setTrigger(undefined);
-    reset();
+    clear();
     try {
       await onSend(composed, queue);
     } catch {
@@ -187,11 +190,8 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
               </span>
             )}
           </div>
-          <EmojiPickerPopover onPick={insertEmoji} align="end" restoreFocus={false}>
-            <Button type="button" size="icon" variant="ghost" aria-label="Add emoji" className="text-muted-foreground hover:text-foreground">
-              <Smile className="size-4" aria-hidden />
-            </Button>
-          </EmojiPickerPopover>
+          <ComposerEmojiButton onPick={insertEmoji} />
+          <ComposerScheduleButton conversationId={conversationId} body={composeMessageBody(value.trim(), pending.map((p) => p.attachment))} onScheduled={clear} />
         </div>
         <ComposerSteerHint conversationId={conversationId} />
       </div>

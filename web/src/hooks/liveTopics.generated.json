@@ -29,6 +29,7 @@
   "chat.message.deleted",
   "chat.message.reactions_changed",
   "chat.message.updated",
+  "chat.scheduled_message.changed",
   "computer.facts_changed",
   "computer.grant_changed",
   "computer.harness_switched",

@@ -11,6 +11,7 @@ import {
   markCachedMessageDeleted,
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
+import { getScheduledMessagesKey } from "@/hooks/ScheduledMessageHooks";
 import { getActiveTrailsKey, type ActiveTargets } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import type { ConversationDeleted, Message } from "@/models/Chat";
@@ -148,6 +149,8 @@ export const chatFollower: LiveFollower = {
     markCachedMessageDeleted(client, conversationId, messageId, deletedAt);
     return refetchUnread(client, [workspaceId, ...holdingWorkspaces(client, conversationId)]);
   },
+  // Only its author receives it, and the frame carries no text, so their list for that conversation rereads.
+  "chat.scheduled_message.changed": ({ conversation_id: id }: { conversation_id: string }, { client }) => refetch(client, [getScheduledMessagesKey, id]),
   "chat.agent.stream": (p: AgentStreamPayload, { client }) => {
     if (p.background !== undefined) {
       if (p.ticket_id) markBackground(client, p.ticket_id, p.background);

@@ -1,5 +1,7 @@
 import ArrowUp from "lucide-react-native/icons/arrow-up";
+import CalendarClock from "lucide-react-native/icons/calendar-clock";
 import Check from "lucide-react-native/icons/check";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useCSSVariable } from "uniwind";
@@ -21,6 +23,7 @@ interface ChatComposerProps {
 export const ChatComposer = ({ conversationId, editing = null }: ChatComposerProps) => {
   const [draft, setDraft] = useState(editing?.body ?? "");
   const [focused, setFocused] = useState(false);
+  const router = useRouter();
   const post = usePostMessage(conversationId);
   const edit = useEditMessage();
   const stopEditing = useMessageEditStore((s) => s.stop);
@@ -64,6 +67,16 @@ export const ChatComposer = ({ conversationId, editing = null }: ChatComposerPro
           placeholderTextColorClassName="accent-muted-foreground"
           className="max-h-32 min-h-10 flex-1 py-2.5 font-sans text-base leading-5 text-foreground"
         />
+        {!editing && (
+          <Pressable
+            role="button"
+            aria-label="Schedule message"
+            onPress={() => router.push({ pathname: "/chat/schedule", params: { conversationId, body: draft.trim() } })}
+            className="size-10 items-center justify-center rounded-md active:bg-accent"
+          >
+            <CalendarClock color={String(muted)} size={20} />
+          </Pressable>
+        )}
         <Pressable
           role="button"
           aria-label={editing ? "Save" : "Send"}

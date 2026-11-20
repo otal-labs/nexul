@@ -32,6 +32,7 @@ type fakeRepo struct {
 	participants  map[string]map[string]bool // conversationID -> userID -> true
 	messages      map[string]*Message
 	files         map[string]*NoteFile
+	scheduled     map[string]*ScheduledMessage
 	unreadState   map[string]map[string]int64 // conversationID -> userID -> last_read_at unix
 	events        []eventbus.OutboxEvent
 	audits        []string
@@ -53,6 +54,7 @@ func newFakeRepo() *fakeRepo {
 		messages:      map[string]*Message{},
 		unreadState:   map[string]map[string]int64{},
 		files:         map[string]*NoteFile{},
+		scheduled:     map[string]*ScheduledMessage{},
 	}
 }
 

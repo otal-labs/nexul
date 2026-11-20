@@ -2122,6 +2122,42 @@
       "message"
     ]
   },
+  "chat.scheduled_message.changed": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "The scheduled message."
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the conversation it posts in."
+      },
+      "user_id": {
+        "type": "string",
+        "description": "Its author, the only person who sees it before it posts."
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "Set when it is gone: cancelled, sent for the last time, or dropped because its author can no longer post there."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always set: a scheduled message is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "conversation_id",
+      "workspace_id",
+      "user_id",
+      "members_only"
+    ]
+  },
   "computer.facts_changed": {
     "type": "object",
     "properties": {

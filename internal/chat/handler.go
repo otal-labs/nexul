@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // Handler adapts the chat use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP directly.
@@ -72,6 +74,14 @@ type reactRequest struct {
 	Reacted bool   `json:"reacted"`
 }
 
+// scheduleRequest is a scheduled message to save, or on a patch the fields to change; an omitted field keeps its value.
+type scheduleRequest struct {
+	Body     *string    `json:"body,omitempty"`
+	SendAt   *time.Time `json:"send_at,omitempty"`
+	Repeats  *Repeat    `json:"repeats,omitempty"`
+	Timezone *string    `json:"timezone,omitempty"`
+}
+
 type replaceNoteRequest struct {
 	Markdown string `json:"markdown"`
 }
@@ -102,6 +112,11 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/chat/messages/{id}", h.deleteMessage)
 	mux.HandleFunc("PUT /api/chat/messages/{id}/note", h.replaceNote)
 	mux.HandleFunc("PUT /api/chat/messages/{id}/reactions", h.react)
+	mux.HandleFunc("GET /api/chat/conversations/{id}/scheduled-messages", h.listScheduled)
+	mux.HandleFunc("POST /api/chat/conversations/{id}/scheduled-messages", h.schedule)
+	mux.HandleFunc("PATCH /api/chat/scheduled-messages/{id}", h.updateScheduled)
+	mux.HandleFunc("DELETE /api/chat/scheduled-messages/{id}", h.cancelScheduled)
+	mux.HandleFunc("POST /api/chat/scheduled-messages/{id}/send", h.sendScheduledNow)
 	return mux
 }
 
@@ -390,4 +405,69 @@ func (h *Handler) unreadCounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, counts)
+}
+
+// listScheduled is the caller's own scheduled messages in the conversation, soonest first.
+func (h *Handler) listScheduled(w http.ResponseWriter, r *http.Request) {
+	ms, _, err := h.svc.PageScheduledMessages(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), paging.Window{Limit: paging.MaxLimit})
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ms)
+}
+
+func (h *Handler) schedule(w http.ResponseWriter, r *http.Request) {
+	var req scheduleRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	in := ScheduleInput{Body: valueOf(req.Body), SendAt: valueOf(req.SendAt), Repeats: valueOf(req.Repeats), Timezone: valueOf(req.Timezone)}
+	m, err := h.svc.ScheduleMessage(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), in)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, m)
+}
+
+func (h *Handler) updateScheduled(w http.ResponseWriter, r *http.Request) {
+	var req scheduleRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	m, err := h.svc.UpdateScheduledMessage(r.Context(), r.PathValue("id"), identity.UserID(r.Context()), ScheduleChange(req))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, m)
+}
+
+func (h *Handler) cancelScheduled(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.CancelScheduledMessage(r.Context(), r.PathValue("id"), identity.UserID(r.Context())); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) sendScheduledNow(w http.ResponseWriter, r *http.Request) {
+	m, err := h.svc.SendScheduledMessageNow(r.Context(), r.PathValue("id"), identity.UserID(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, m)
+}
+
+// valueOf is what p points at, or the zero value when it is nil.
+func valueOf[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }

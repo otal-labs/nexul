@@ -1,3 +1,4 @@
+import type { Repeat } from "@nexul/client-core/calendar";
 import type { Embed } from "@nexul/client-core/embed";
 import { personLabel, type Person } from "@nexul/client-core/person";
 
@@ -226,3 +227,35 @@ export const splitMessageBody = (body: string): MessageBodySegment[] => {
   flush();
   return segments;
 };
+
+// Mirrors internal/chat's ScheduledMessage: a message its author wrote to post later, seen only by them until it does.
+export interface ScheduledMessage {
+  id: string;
+  conversation_id: string;
+  author_id: string;
+  body: string;
+  // The first send, which a repeat steps from.
+  starts_at: string;
+  send_at: string;
+  repeats: Repeat;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// What a schedule or a change to one sends; a change leaves out what stays.
+export interface ScheduleInput {
+  body: string;
+  send_at: string;
+  repeats: Repeat;
+  timezone: string;
+}
+
+// The zone a repeat keeps its clock time in: the device's own.
+export const deviceTimezone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+const HOUR_MS = 3_600_000;
+
+// Where a new schedule starts: the next full hour, or the one after when that is under a quarter of an hour away.
+export const nextScheduleSlot = (now: Date = new Date()): Date =>
+  new Date(Math.ceil((now.getTime() + HOUR_MS / 4) / HOUR_MS) * HOUR_MS);

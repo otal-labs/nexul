@@ -108,6 +108,10 @@ func TestLoopWrites_CoverEveryTableTheLoopsPassReads(t *testing.T) {
 			_, _ = s.IssueSync.DueCommentPushes(ctx, now, 50)
 			_, _, _ = s.IssueSync.NextPushDue(ctx)
 		}},
+		{"scheduled messages", ScheduleWrites, nil, func(ctx context.Context, s *Store) {
+			_, _ = s.Chat.ScheduledMessagesDue(ctx, now, 50)
+			_, _, _ = s.Chat.NextScheduledMessage(ctx)
+		}},
 		{"calendar reminders", ReminderWrites, nil, func(ctx context.Context, s *Store) {
 			_, _ = s.Meetings.RemindersDue(ctx, now)
 			_, _ = s.Meetings.Replacements(ctx, []string{"meeting-standup"})
@@ -168,6 +172,7 @@ func TestStore_CommitsTo_AMachineTouchWakesNoLoopButTheMemo(t *testing.T) {
 		"automation dial-in": s.CommitsTo(DialinWrites...),
 		"doc settle":         s.CommitsTo(SettleWrites...),
 		"calendar reminders": s.CommitsTo(ReminderWrites...),
+		"scheduled messages": s.CommitsTo(ScheduleWrites...),
 	}
 	waits := map[string]<-chan struct{}{}
 	for name, b := range loops {

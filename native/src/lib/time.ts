@@ -40,12 +40,17 @@ export const formatMessageTime = (iso: string): string => formatClockTime(new Da
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 
-// A chat day divider, as the web writes it: "Today", "Yesterday", "Mon 21 Sept", the year only when it is not this one.
+// A chat day divider, as the web writes it: "Today", "Yesterday", "Mon 21 Sept", the year only when it is not this one;
+// a day ahead, for a scheduled message, reads "Tomorrow".
 export const formatDayLabel = (iso: string, now: number = Date.now()): string => {
   const date = new Date(iso);
   const days = Math.round((calendarDay(new Date(now)) - calendarDay(date)) / DAY_MS);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
+  if (days === -1) return "Tomorrow";
   const label = `${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
   return date.getFullYear() === new Date(now).getFullYear() ? label : `${label} ${date.getFullYear()}`;
 };
+
+// When a scheduled message posts: "Tomorrow at 09:00", "Fri 21 Nov at 09:00".
+export const formatSendTime = (iso: string, now: number = Date.now()): string => `${formatDayLabel(iso, now)} at ${formatMessageTime(iso)}`;
