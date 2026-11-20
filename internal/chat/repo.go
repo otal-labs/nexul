@@ -92,6 +92,22 @@ type Repo interface {
 	MarkRead(ctx context.Context, conversationID, userID string, at time.Time) error
 	// UnreadCounts includes a conversation with zero unread rather than omitting it.
 	UnreadCounts(ctx context.Context, workspaceID, userID string) ([]UnreadCount, error)
+
+	CreateScheduledMessage(ctx context.Context, m *ScheduledMessage, evts ...eventbus.OutboxEvent) error
+	GetScheduledMessage(ctx context.Context, id string) (*ScheduledMessage, error)
+	// UpdateScheduledMessage saves m's body, times, repeat and timezone; ErrNotFound once it is gone.
+	UpdateScheduledMessage(ctx context.Context, m *ScheduledMessage, evts ...eventbus.OutboxEvent) error
+	DeleteScheduledMessage(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	// PageScheduledMessages returns one window of authorID's scheduled messages in a conversation, soonest first, and
+	// how many there are.
+	PageScheduledMessages(ctx context.Context, conversationID, authorID string, w paging.Window) ([]*ScheduledMessage, int, error)
+	// ScheduledMessagesDue returns up to limit scheduled messages due by now, soonest first.
+	ScheduledMessagesDue(ctx context.Context, now time.Time, limit int) ([]*ScheduledMessage, error)
+	// NextScheduledMessage is the soonest send of any scheduled message; ok is false with none planned.
+	NextScheduledMessage(ctx context.Context) (at time.Time, ok bool, err error)
+	// SendScheduledMessage posts msg for m and moves m to next, or removes m when next is zero, in one transaction;
+	// ErrConflict when m was changed or removed since it was read, so nothing posts twice.
+	SendScheduledMessage(ctx context.Context, m *ScheduledMessage, msg *Message, next time.Time, evts ...eventbus.OutboxEvent) error
 }
 
 // UnreadCount is one conversation's unread state.

@@ -78,6 +78,17 @@ export const formatCalendarTime = (ts: string): string => {
   return `${date.toLocaleDateString()} ${clock}`;
 };
 
+// A time ahead: "Today at 09:00", "Tomorrow at 09:00", else the weekday and date, "Fri 21 Nov at 09:00".
+export const formatAheadTime = (ts: string): string => {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  const clock = formatClockTime(ts);
+  const days = Math.round((calendarDay(date) - calendarDay(new Date())) / DAY_MS);
+  if (days === 0) return `Today at ${clock}`;
+  if (days === 1) return `Tomorrow at ${clock}`;
+  return `${formatDateParts(date, { weekday: "short", day: "numeric", month: "short" })} at ${clock}`;
+};
+
 // A day for a list's meta line: "8 Oct", with the year only when it isn't this one.
 export const formatShortDate = (ts: string): string => {
   const date = new Date(ts);

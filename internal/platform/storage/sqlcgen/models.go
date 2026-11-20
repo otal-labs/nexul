@@ -1239,6 +1239,19 @@ type RunnerEnrollmentCode struct {
 	ID          string
 }
 
+type ScheduledMessage struct {
+	ID             string
+	ConversationID string
+	AuthorID       string
+	Body           string
+	StartsAt       int64
+	SendAt         int64
+	Repeats        string
+	Timezone       string
+	CreatedAt      int64
+	UpdatedAt      int64
+}
+
 type Service struct {
 	ID            string
 	StackID       string

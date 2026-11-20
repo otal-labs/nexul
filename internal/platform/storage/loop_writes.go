@@ -16,6 +16,7 @@ var (
 	ImportWrites = []TableWrite{Writes("imports")}
 	// IssuePushWrites wakes the write-back for a push queued, deferred or done; the next due wakes it by timer.
 	IssuePushWrites = []TableWrite{Writes("github_issue_pushes"), Writes("github_comment_pushes")}
+	ScheduleWrites  = []TableWrite{Writes("scheduled_messages")}
 	ReminderWrites  = []TableWrite{
 		Writes("meetings"), Writes("meeting_invitees"), Writes("tickets"), Writes("projects"), Writes("users"),
 		Writes("statuses"), Writes("ticket_due_reminders"),

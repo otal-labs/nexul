@@ -620,6 +620,14 @@ file. A ticket's notes also list on its own Notes tab, newest first. The body
 stays the ticket's spec and changes only when a person asks.
 _Avoid_: Comment, addendum, memory (a memory is written for agents)
 
+**Scheduled message**:
+A message its author wrote to post in a conversation later, once or daily,
+weekly or monthly, as them. Only its author sees, edits, posts early or
+cancels it until it posts; at its time it posts only if they may still post
+there, and is dropped otherwise.
+_Avoid_: Reminder (that is a Meeting's notification to its invitees), draft
+(that is the composer's unsent text)
+
 **Attachment**:
 A file uploaded onto exactly one doc, ticket, conversation, or memory, and
 embedded in a body or message by its `/api/attachments/<id>` link: a raster

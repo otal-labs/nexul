@@ -213,3 +213,83 @@ func ParseMentions(body string) []Mention {
 	}
 	return mentions
 }
+
+// Repeat is how often a scheduled message posts again.
+type Repeat string
+
+const (
+	RepeatNone    Repeat = "none"
+	RepeatDaily   Repeat = "daily"
+	RepeatWeekly  Repeat = "weekly"
+	RepeatMonthly Repeat = "monthly"
+)
+
+// valid says r is one of the repeats a scheduled message takes.
+func (r Repeat) valid() bool {
+	return r == RepeatNone || r == RepeatDaily || r == RepeatWeekly || r == RepeatMonthly
+}
+
+// ScheduledMessage is a message its author wrote to post in a conversation later, once or on a repeat; only the
+// author sees it until it posts.
+type ScheduledMessage struct {
+	ID             string `json:"id"`
+	ConversationID string `json:"conversation_id"`
+	AuthorID       string `json:"author_id"`
+	Body           string `json:"body"`
+	// StartsAt is the first send, which a repeat steps from so a monthly one on the 31st keeps its day.
+	StartsAt time.Time `json:"starts_at"`
+	SendAt   time.Time `json:"send_at"`
+	Repeats  Repeat    `json:"repeats"`
+	// Timezone is where a repeat keeps its clock time across daylight saving.
+	Timezone  string    `json:"timezone"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// maxRepeatSteps bounds the walk to the next send, so a schedule far in the past never loops for long.
+const maxRepeatSteps = 5000
+
+// NextAfter is the repeat's first send after t, in order from StartsAt, leaving out a month without its day; ok is
+// false when it does not repeat.
+func (m *ScheduledMessage) NextAfter(t time.Time) (time.Time, bool) {
+	if m.Repeats == RepeatNone || !m.Repeats.valid() {
+		return time.Time{}, false
+	}
+	loc, err := time.LoadLocation(m.Timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	start := m.StartsAt.In(loc)
+	k := m.firstStep(t)
+	for steps := 0; steps < maxRepeatSteps; k, steps = k+1, steps+1 {
+		s, ok := m.slot(start, k)
+		if ok && s.After(t) {
+			return s.UTC(), true
+		}
+	}
+	return time.Time{}, false
+}
+
+// slot is the kth send, stepped in the schedule's own timezone so it keeps its clock time; ok is false for a month
+// without the day it started on.
+func (m *ScheduledMessage) slot(start time.Time, k int) (time.Time, bool) {
+	switch m.Repeats {
+	case RepeatDaily:
+		return start.AddDate(0, 0, k), true
+	case RepeatWeekly:
+		return start.AddDate(0, 0, 7*k), true
+	}
+	s := start.AddDate(0, k, 0)
+	return s, s.Day() == start.Day()
+}
+
+// firstStep is a step at or before the first send after t, skipping a long past without walking it.
+func (m *ScheduledMessage) firstStep(t time.Time) int {
+	behind := t.Sub(m.StartsAt)
+	if behind <= 0 {
+		return 0
+	}
+	day := 24 * time.Hour
+	step := map[Repeat]time.Duration{RepeatDaily: day, RepeatWeekly: 7 * day, RepeatMonthly: 31 * day}[m.Repeats]
+	return max(int(behind/step)-1, 0)
+}

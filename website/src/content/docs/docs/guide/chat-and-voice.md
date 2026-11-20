@@ -35,6 +35,14 @@ Messages are markdown. **Enter** sends, **Shift+Enter** starts a new line. Paste
 
 Hover a message to react, or to edit or delete your own. A deleted message leaves its place in the conversation.
 
+### Schedule a message
+
+Write the message, then click the calendar clock beside the emoji button and pick a day and time. Choose **Daily**, **Weekly** or **Monthly** to post it again on that schedule, such as a standup prompt every Monday at 09:00; a repeat keeps its clock time across daylight saving, and a monthly one on the 31st skips months without that day. It posts as you, and only you see it until it does.
+
+While you have messages waiting in a conversation, a line above the composer counts them. Open it to edit one, post it now, or cancel it. A repeating one posted early still keeps its next time. If you can no longer post in that conversation when the time comes, the message is dropped, not posted. On the phone, the same clock sits beside **Send**.
+
+Agents schedule through `message_post` with `schedule`, and list yours with `message_list` and `scheduled`.
+
 ### Times in everyone's zone
 
 Paste a Discord time code such as `<t:1792867165:F>` and everyone reads it in their own time zone. Make one with any Discord timestamp generator. The letter after the second colon picks the format:

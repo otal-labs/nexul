@@ -121,6 +121,7 @@ const responses: Record<string, unknown> = {
   "/api/chat/unread?workspace_id=ws-1": { c1: 0 },
   "/api/chat/conversations/c1/messages?limit=100": Array.from({ length: 40 }, (_, i) => message(i + 1)),
   "/api/attachments?conversation_id=c1": [],
+  "/api/chat/conversations/c1/scheduled-messages": [],
   "/api/projects?workspace_id=ws-1": [{ id: "p-1", name: "Nexul", prefix: "NEX" }],
   "/api/projects/p-1": { id: "p-1", name: "Nexul", prefix: "NEX" },
   "/api/statuses?project_id=p-1": [{ id: "st-todo", name: "Todo", position: 0, kind: "backlog" }],
@@ -223,7 +224,7 @@ describe("requests a session sends", () => {
     });
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(20);
+    expect(gets).toHaveLength(21);
     expect(jest.mocked(fetchAbout).mock.calls.length - aboutBefore).toBe(1);
   });
 
@@ -290,7 +291,7 @@ describe("requests a session sends", () => {
     const gets = await requestsDuring(client, () => dispatch(client)(roleFrame("r-member")));
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(20);
+    expect(gets).toHaveLength(21);
   });
 
   const unreadPath = "/api/chat/unread?workspace_id=ws-1";

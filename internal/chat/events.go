@@ -21,6 +21,8 @@ const (
 	TopicMessageReactionsChanged = "chat.message.reactions_changed"
 	// TopicBotMessagePosted is a post through a bot's URL, beside its chat.message.created, so automations can follow bots alone.
 	TopicBotMessagePosted = "chat.bot_message.posted"
+	// TopicScheduledMessageChanged is a scheduled message saved, sent, or cancelled; it reaches only its author.
+	TopicScheduledMessageChanged = "chat.scheduled_message.changed"
 )
 
 // Topics returns every topic the chat domain publishes.
@@ -35,6 +37,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicMessageDeleted, Payload: MessageDeletedEvent{}},
 		{Name: TopicMessageReactionsChanged, Payload: MessageReactionsChangedEvent{}},
 		{Name: TopicBotMessagePosted, Payload: BotMessagePostedEvent{}},
+		{Name: TopicScheduledMessageChanged, Payload: ScheduledMessageChangedEvent{}},
 	}
 }
 
@@ -124,4 +127,14 @@ type BotMessagePostedEvent struct {
 	Embeds         json.RawMessage `json:"embeds,omitempty" type:"array" jsonschema:"The post's embeds as the sender posted them less their color; absent when it carried none."`
 	PostedAt       time.Time       `json:"posted_at"`
 	MembersOnly    bool            `json:"members_only,omitempty" jsonschema:"Set on a post to a DM or private channel, which is never delivered to integrations or automations."`
+}
+
+// ScheduledMessageChangedEvent names a scheduled message without its text, which is its author's alone until it posts.
+type ScheduledMessageChangedEvent struct {
+	ID             string `json:"id" jsonschema:"The scheduled message."`
+	ConversationID string `json:"conversation_id"`
+	WorkspaceID    string `json:"workspace_id" jsonschema:"The workspace of the conversation it posts in."`
+	UserID         string `json:"user_id" jsonschema:"Its author, the only person who sees it before it posts."`
+	Removed        bool   `json:"removed,omitempty" jsonschema:"Set when it is gone: cancelled, sent for the last time, or dropped because its author can no longer post there."`
+	MembersOnly    bool   `json:"members_only" jsonschema:"Always set: a scheduled message is never delivered to integrations or automations."`
 }

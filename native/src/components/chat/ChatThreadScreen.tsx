@@ -7,12 +7,14 @@ import { isNotFound } from "@/api/errors";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThreadTitle } from "@/components/chat/ChatThreadTitle";
 import { MessageList } from "@/components/chat/MessageList";
+import { ScheduledMessagesLine } from "@/components/chat/ScheduledMessagesLine";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { HandOff, useLoaderShown } from "@/components/HandOff";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchMessages, useMarkThreadRead } from "@/hooks/ChatHooks";
 import { useMessageEditStore } from "@/stores/messageEditStore";
+import { useScheduleStore } from "@/stores/scheduleStore";
 
 export const ChatThreadScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +28,8 @@ export const ChatThreadScreen = () => {
   // Edge-to-edge Android never resizes the window for the keyboard, and this view's frame starts below the header.
   const headerHeight = useHeaderHeight();
   const editing = useMessageEditStore((s) => (s.editing?.conversationId === id ? s.editing : null));
+  // Text handed to a schedule leaves the composer, which remounts empty.
+  const handedOff = useScheduleStore((s) => s.handedOff[id] ?? 0);
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} className="flex-1 bg-background">
       <ChatThreadTitle conversationId={id}>
@@ -46,7 +50,8 @@ export const ChatThreadScreen = () => {
           </HandOff>
         )}
       </ChatThreadTitle>
-      {!gone && <ChatComposer key={editing?.messageId ?? "new"} conversationId={id} editing={editing} />}
+      {!gone && <ScheduledMessagesLine conversationId={id} />}
+      {!gone && <ChatComposer key={`${editing?.messageId ?? "new"}-${handedOff}`} conversationId={id} editing={editing} />}
     </KeyboardAvoidingView>
   );
 };

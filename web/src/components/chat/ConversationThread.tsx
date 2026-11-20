@@ -11,6 +11,7 @@ import { ChatTranscriptSkeleton } from "@/components/chat/ChatTranscriptSkeleton
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
 import { ReadOnlyComposer } from "@/components/chat/ReadOnlyComposer";
+import { ScheduledMessagesBar } from "@/components/chat/ScheduledMessagesBar";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { VoiceLobbySlot } from "@/components/voice/VoiceLobbyRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -141,6 +142,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           />
           </QuestionDockContext>
         )}
+        <ScheduledMessagesBar conversationId={conversation.id} />
         {postRefusal && <ReadOnlyComposer label={channelMention(conversation)} source={postRefusal} />}
         {!postRefusal && <ChatComposer
           workspaceId={workspaceId}
