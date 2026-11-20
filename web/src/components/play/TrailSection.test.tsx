@@ -71,9 +71,11 @@ const mockApi = (trails: Trail[]) =>
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <TrailSection workspaceId="ws-1" targetType="ticket" targetId="t-1" />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <TrailSection workspaceId="ws-1" targetType="ticket" targetId="t-1" />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 };
 
@@ -150,7 +152,7 @@ describe("TrailSection", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Working in this project");
     expect(dialog).toHaveTextContent("Keep the sensors as they are.");
-    await waitFor(() => expect(dialog).toHaveTextContent("Started byonik97"));
+    await waitFor(() => expect(dialog).toHaveTextContent("Started by onik97 from the web"));
     expect(dialog).not.toHaveTextContent("Read by itself");
 
     expect(within(dialog).getByText("Started Fix with AI Keep the sensors as they are.", { normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();

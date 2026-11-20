@@ -9,32 +9,26 @@ import { microheaderClass } from "@/components/Microheader";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailContinueForm } from "@/components/play/TrailContinueForm";
 import { TrailFacts } from "@/components/play/TrailFacts";
-import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { TrailTranscript } from "@/components/play/TrailTranscript";
 import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
-import { useLiveTrailActivity, useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
+import { useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
-import { isTrailActive, trailSummary, type Trail } from "@/models/Trail";
+import { isTrailActive, type Trail } from "@/models/Trail";
 
 interface TrailDetailBodyProps {
   trail: Trail;
 }
 
-// Run facts above a hairline, then the transcript filling the rest of the dialog; the scroller follows the live
+// The run's facts above a hairline, then the transcript filling the rest of the dialog; the scroller follows the live
 // edge while the run grows and offers "Scroll to end" once the reader has scrolled away. An ended run can be continued.
 export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
   const state = useLiveTrailState(trail);
-  const liveStep = useLiveTrailActivity(trail);
   const question = useLiveTrailQuestion(trail);
   const steps = useLiveTrailSteps(trail);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-4 px-6 pb-4">
-        <p className="flex items-center gap-2 text-sm">
-          <TrailStateIcon state={state} />
-          <span className="truncate">{trailSummary(state, trail.last_error, liveStep)}</span>
-        </p>
+      <div className="space-y-5 px-6 pb-5">
         <TrailFacts trail={trail} />
         {trail.last_error !== "" && (
           <section className="space-y-1">
@@ -45,11 +39,10 @@ export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
         )}
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col border-t border-border">
-        <h3 className={`${microheaderClass} px-6 pt-4 pb-2`}>Transcript</h3>
+      <section aria-label="Transcript" className="flex min-h-0 flex-1 flex-col border-t border-border">
         <MessageScrollerProvider autoScroll>
           <MessageScroller className="min-h-0 flex-1">
-            <MessageScrollerViewport className="px-4 pb-4">
+            <MessageScrollerViewport className="px-4 pt-4 pb-4">
               <MessageScrollerContent className="gap-0">
                 <TrailTranscript trail={trail} steps={steps} state={state} question={question} />
               </MessageScrollerContent>

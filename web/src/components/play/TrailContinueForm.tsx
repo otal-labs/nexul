@@ -41,14 +41,14 @@ export const TrailContinueForm = ({ trail }: TrailContinueFormProps) => {
 
   return (
     <>
-      <form onSubmit={form.handleSubmit(send)} className="space-y-2 border-t border-border px-6 py-4">
+      <form onSubmit={form.handleSubmit(send)} className="dialog-tray sticky bottom-0 space-y-2 border-t border-border px-6 py-4">
         <FormTextarea
           control={form.control}
           name="message"
           label="Continue this run"
           placeholder="What should the agent do next? The play's instructions aren't sent again."
           rows={2}
-          className="resize-none bg-background"
+          className="resize-none"
         />
         <div className="flex justify-end">
           <Button type="submit" size="sm" disabled={isPending}>

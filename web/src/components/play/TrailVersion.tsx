@@ -19,11 +19,11 @@ export const TrailVersion = ({ trail, version }: TrailVersionProps) => {
 
   return (
     <>
-      {kept === false && <span className="text-muted-foreground">Version {version} is no longer kept</span>}
-      {kept === undefined && <span>Ran with version {version}</span>}
+      {kept === false && <span className="text-muted-foreground">Version {version}, no longer kept</span>}
+      {kept === undefined && <span>Version {version}</span>}
       {kept && (
         <button type="button" onClick={() => setOpen(true)} className="inset-focus rounded-sm underline decoration-muted-foreground underline-offset-4 transition-colors duration-150 ease-standard hover:decoration-foreground">
-          Ran with version {version}
+          Version {version}
         </button>
       )}
       {open && <PlayHistoryDialog playId={trail.play_id} name={trail.play_label} version={version} onClose={() => setOpen(false)} />}

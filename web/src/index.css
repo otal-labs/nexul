@@ -561,6 +561,11 @@ body {
   margin: 0.25rem -1.5rem -1.5rem;
   padding: 0.875rem 1.5rem;
   border-top: 1px solid var(--border);
+  @apply dialog-tray;
+}
+
+/* The tray's fill, for a footer that sits deeper in a dialog than the rule above reaches (a run's continue form). */
+@utility dialog-tray {
   background-color: color-mix(in oklab, var(--surface-2) 60%, var(--popover));
 }
 
