@@ -2,12 +2,12 @@ import { act, render } from "@testing-library/react-native";
 import { createRef, useImperativeHandle, type Ref } from "react";
 
 import { BoardDragContext, useBoardDragState, type BoardDrag } from "@/components/board/boardDrag";
-import { TicketCard } from "@/components/board/TicketCard";
+import { TicketRow } from "@/components/board/TicketRow";
 import { useTicketPersonLookup } from "@/hooks/PeopleHooks";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
-// Every card body resolves its person once per render, so the lookup's call count is the cards' render count.
+// Every row body resolves its person once per render, so the lookup's call count is the rows' render count.
 jest.mock("@/hooks/PeopleHooks", () => ({
   useTicketPersonLookup: jest.fn(() => ({ login }: { login: string }) => ({ user_id: login, login, display_name: login, avatar_url: "" })),
 }));
@@ -37,13 +37,13 @@ const Board = ({ ref }: { ref: Ref<BoardDrag> }) => {
   return (
     <BoardDragContext value={state}>
       {tickets.map((ticket) => (
-        <TicketCard key={ticket.id} ticket={ticket} stage="backlog" projectPrefix="NEX" typeName={undefined} typeColor={undefined} onOpen={move} />
+        <TicketRow key={ticket.id} ticket={ticket} stage="backlog" projectPrefix="NEX" typeName={undefined} typeColor={undefined} onOpen={move} />
       ))}
     </BoardDragContext>
   );
 };
 
-test("picking up, dropping and settling a card re-renders that card alone, not the board's other cards", async () => {
+test("picking up, dropping and settling a row re-renders that row alone, not the board's other rows", async () => {
   const drag = createRef<BoardDrag>();
   await render(<Board ref={drag} />);
   const renders = jest.mocked(useTicketPersonLookup);
@@ -55,6 +55,6 @@ test("picking up, dropping and settling a card re-renders that card alone, not t
   await act(async () => drag.current?.release(-1));
   await act(async () => drag.current?.clear());
 
-  // The held card dims on lift and comes back on clear; the other 19 never render again.
+  // The held row dims on lift and comes back on clear; the other 19 never render again.
   expect(renders.mock.calls.length - mounted).toBeLessThanOrEqual(2);
 });

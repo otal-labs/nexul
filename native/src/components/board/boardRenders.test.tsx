@@ -20,7 +20,7 @@ jest.mock("expo-sqlite/kv-store", () => ({
   default: { getItemSync: () => null, setItemSync: jest.fn(), removeItemSync: jest.fn() },
 }));
 
-// Every card body resolves its person once per render, so the lookup's call count is the cards' render count.
+// Every row body resolves its person once per render, so the lookup's call count is the rows' render count.
 jest.mock("@/hooks/PeopleHooks", () => ({
   ...jest.requireActual<typeof import("@/hooks/PeopleHooks")>("@/hooks/PeopleHooks"),
   useTicketPersonLookup: jest.fn(() => ({ login }: { login: string }) => ({ user_id: login, login, display_name: login, avatar_url: "" })),
@@ -93,13 +93,13 @@ const mockGet = (url: string) => {
 beforeEach(() => {
   titles = [];
   labelReads = 0;
-  useBoardStore.setState({ selectedProjectId: null });
+  useBoardStore.setState({ selectedProjectId: null, folds: {} });
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
   jest.mocked(api.post).mockReset().mockResolvedValue({});
 });
 
-test("one ticket.updated frame re-renders the changed card and scans the board's labels once, not once per card", async () => {
+test("one ticket.updated frame re-renders the changed row and scans the board's labels once, not once per row", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   await render(
     <QueryClientProvider client={client}>
@@ -109,15 +109,15 @@ test("one ticket.updated frame re-renders the changed card and scans the board's
   await screen.findByText("Ticket 0");
   await act(async () => {});
 
-  const cardRenders = jest.mocked(useTicketPersonLookup);
-  const rendersBefore = cardRenders.mock.calls.length;
+  const rowRenders = jest.mocked(useTicketPersonLookup);
+  const rendersBefore = rowRenders.mock.calls.length;
   labelReads = 0;
   titles[0] = "Ticket 0, renamed";
   // What the live dispatcher does for the frame: refetch the project's ticket list.
   await act(() => client.invalidateQueries({ queryKey: [getTicketsByProjectKey] }));
   await screen.findByText("Ticket 0, renamed");
 
-  const commits = cardRenders.mock.calls.length - rendersBefore;
+  const commits = rowRenders.mock.calls.length - rendersBefore;
   expect(commits).toBeLessThanOrEqual(2);
   expect(labelReads).toBeLessThanOrEqual(4 * TICKETS);
 });

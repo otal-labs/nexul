@@ -5,9 +5,10 @@ import { runOnUI, scheduleOnRN } from "react-native-worklets";
 
 import { BoardDragContext, useLifted } from "@/components/board/boardDrag";
 import { BoardDropBar } from "@/components/board/BoardDropBar";
-import { TicketCardBody, ticketCardClass } from "@/components/board/TicketCard";
+import { TicketRowBody, ticketRowClass } from "@/components/board/TicketRow";
 import type { TicketType } from "@/hooks/TicketTypeHooks";
 import { ease, useReducedMotion } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { StatusKind } from "@/models/Status";
 
 interface BoardDragLayerProps {
@@ -15,7 +16,7 @@ interface BoardDragLayerProps {
   ticketTypes: TicketType[] | undefined;
 }
 
-// The picked-up card and the column targets, drawn over the board while a card is held (the Settle motion, see
+// The picked-up row, lifted onto a card, and the status targets, drawn over the board while a row is held (the Settle motion, see
 // practices/design-language.md). Under reduced motion the lift has no scale, and the glide stays.
 export const BoardDragLayer = ({ projectPrefix, ticketTypes }: BoardDragLayerProps) => {
   const drag = useContext(BoardDragContext);
@@ -95,9 +96,9 @@ export const BoardDragLayer = ({ projectPrefix, ticketTypes }: BoardDragLayerPro
     <View ref={host} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       {drag && lifted && <BoardDropBar />}
       {drag && lifted && (
-        <Animated.View pointerEvents="none" style={[{ position: "absolute" }, cardStyle]} className={ticketCardClass}>
+        <Animated.View pointerEvents="none" style={[{ position: "absolute" }, cardStyle]} className={cn(ticketRowClass, "rounded-lg border border-border bg-card")}>
           <Animated.View style={[StyleSheet.absoluteFill, shadowStyle, { borderRadius: 8, boxShadow: "0 12px 28px rgba(0, 0, 0, 0.35)" }]} />
-          <TicketCardBody
+          <TicketRowBody
             ticket={lifted.ticket}
             stage={drag.statuses.find((s) => s.id === lifted.ticket.status)?.kind ?? StatusKind.Backlog}
             projectPrefix={projectPrefix}
