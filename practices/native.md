@@ -122,7 +122,7 @@ as written. In particular:
   server's route table and fails on a write that declares nothing or declares
   a permission its route doesn't take.
 - A gesture always has a second way to do the same thing: the board's
-  hold-and-drag is also each card's "Move to" accessibility actions and the
+  hold-and-drag is also each row's "Move to" accessibility actions and the
   ticket's status sheet, and the Inbox's swipe is the row's "Mark read" or "Mark unread"
   action and the tap that opens it. Gestures run in gesture-handler worklets;
   a worklet closes over shared values, never over a view ref or a context
@@ -232,12 +232,13 @@ as written. In particular:
 - `src/hooks/requestCounts.test.tsx` mounts a session that has visited every
   tab and counts the requests a foreground, a chat scroll and a ticket frame
   send. A change that moves a count updates the test on purpose.
-- Interaction state that many rows read (the board's lifted card in
+- Interaction state that many rows read (the board's lifted row in
   `boardDrag.tsx`) lives in a small store each row selects from, so a drag
-  re-renders the cards it touches, not the whole board.
-- The board is one `LegendList` of rows (a column head, then its cards), so cards off screen are not mounted. Its
-  label colors are read once at the board and reach each card through `BoardLabelColorsContext`, and a card is a
-  `memo` fed stable props, so a ticket frame renders the changed card alone. `boardRenders.test.tsx` counts both.
+  re-renders the rows it touches, not the whole board.
+- The board is one `LegendList` of rows (a status head, then its tickets unless the section is folded), so rows off
+  screen are not mounted and a folded Done mounts none. Which sections are folded is kept per project in `boardStore`.
+  Its label colors are read once at the board and reach each row through `BoardLabelColorsContext`, and a ticket row
+  is a `memo` fed stable props, so a ticket frame renders the changed row alone. `boardRenders.test.tsx` counts both.
 - The session token is read from the secure store once at launch into a
   module variable in `src/stores/sessionStore.tsx` and cleared on sign-out.
   Every secure-store read decrypts on the JS thread, so reading it per

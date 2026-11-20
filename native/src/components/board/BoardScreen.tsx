@@ -11,9 +11,10 @@ import { BoardDragContext, useBoardDragState, useLifted } from "@/components/boa
 import { BoardDragLayer } from "@/components/board/BoardDragLayer";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { BoardLabelColorsContext } from "@/components/board/boardLabelColors";
-import { BoardRowView, buildBoardRows } from "@/components/board/BoardRows";
+import { buildBoardRows, StatusHeadRow } from "@/components/board/BoardRows";
 import { BoardStageSummary } from "@/components/board/BoardStageSummary";
 import { MineToggle } from "@/components/board/MineToggle";
+import { TicketRow } from "@/components/board/TicketRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { HandOff, useLoaderShown } from "@/components/HandOff";
@@ -31,7 +32,7 @@ import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { effectiveProject } from "@/models/Project";
 import { useBoardStore } from "@/stores/boardStore";
 
-// The cards' long-press drag only coexists with the scroll through gesture-handler's own scroll view.
+// The rows' long-press drag only coexists with the scroll through gesture-handler's own scroll view.
 const GestureScrollView = (props: ScrollViewProps) => <ScrollView {...props} />;
 
 export const BoardScreen = () => {
@@ -59,14 +60,21 @@ export const BoardScreen = () => {
   );
   const board = project && boardId && statuses && filteredTickets;
   const { data: labelColors } = useBoardLabelColors(boardId);
-  const rows = useMemo(() => (board ? buildBoardRows(statuses, filteredTickets, ticketTypes) : []), [board, statuses, filteredTickets, ticketTypes]);
+  const folds = useBoardStore((s) => (project ? s.folds[project.id] : undefined));
+  const setFolded = useBoardStore((s) => s.setFolded);
+  const rows = useMemo(
+    () => (board ? buildBoardRows(statuses, filteredTickets, ticketTypes, folds) : []),
+    [board, statuses, filteredTickets, ticketTypes, folds],
+  );
+  const projectId = project?.id;
+  const toggleSection = useCallback((statusId: string, open: boolean) => projectId && setFolded(projectId, statusId, open), [projectId, setFolded]);
   const openTicket = useCallback((id: string) => router.push(`/board/ticket/${id}`), [router]);
   // mutate is stable, unlike the mutation's result object, so the drag context keeps its identity across renders.
   const { mutate: updateStatus, error: updateError } = useUpdateTicketStatus();
   const moveTicket = useCallback((id: string, status: string) => updateStatus({ id, status }), [updateStatus]);
   const drag = useBoardDragState(statuses ?? [], moveTicket);
   const holding = useLifted(drag, (held) => !!held);
-  // Without tickets:write a card can't be held or moved, so the drag context is simply absent.
+  // Without tickets:write a row can't be held or moved, so the drag context is simply absent.
   const canMove = useActionState({ permission: "tickets:write", projectId: project?.id }).state === "live";
 
   return (
@@ -77,9 +85,21 @@ export const BoardScreen = () => {
             className="flex-1"
             data={rows}
             keyExtractor={(row) => row.key}
-            renderItem={({ item }) => <BoardRowView row={item} projectPrefix={project?.prefix} onOpenTicket={openTicket} />}
+            renderItem={({ item }) => {
+              if (item.kind === "head") return <StatusHeadRow status={item.status} count={item.count} open={item.open} onToggle={toggleSection} />;
+              return (
+                <TicketRow
+                  ticket={item.ticket}
+                  stage={item.stage}
+                  projectPrefix={project?.prefix}
+                  typeName={item.typeName}
+                  typeColor={item.typeColor}
+                  onOpen={openTicket}
+                />
+              );
+            }}
             renderScrollComponent={GestureScrollView}
-            estimatedItemSize={96}
+            estimatedItemSize={64}
             recycleItems={false}
             contentContainerClassName="pb-6"
             scrollEnabled={!holding}

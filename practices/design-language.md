@@ -3073,8 +3073,15 @@ Rejected and not built: a theme picker (the phone has none) and blur anywhere.
 Lists. Rows on a tab root are separated by space, not hairlines: a 36pt tile
 or avatar with its state as a dot on the corner, the title, mono meta
 trailing; read titles turn muted. Rows grouped in a card keep hairlines.
-Board columns are `surface-2` wells of cards (the mono key as an eyebrow, the
-title, the type icon and name and label chips, whoever acts next), under a header with the
+The board is one grouped list on the field: each status is a section head (its stage
+dot, the name in semibold, the mono count, a chevron), and under it plain rows, no
+card per row: the title in `text-body` medium, two lines at most, over one meta line
+(the mono key, the type icon and name, each label as a dot and its name), whoever
+acts next trailing as a 24pt avatar. A tap on a head folds or opens its section; a
+done status starts folded, since finished work is counted, not read, and the folds
+are kept per project. Rejected: `surface-2` wells of cards (a 430-ticket board was
+mostly Done cards to scroll past) and a chip row showing one status at a time (it
+hid how the board stands). The list sits under a header with the
 project mark, the stage bar and an "Only mine" switch that takes the ember
 when on. The tab bar's active tab is the ember; its unread count is the ink
 pill.
@@ -3118,16 +3125,16 @@ The numbers are the web's [Motion baseline](#motion-baseline) unless named.
   doubled the list's own scroll to the end and read as two moves), a pop from
   0.9 (the bubble's text shifted as it scaled) and none (the bubble appeared
   with the list's jump and nothing said it was yours).
-- Moving a card: hold 280ms to pick it up; it lifts to 1.03 with the
+- Moving a ticket: hold its row 280ms to pick it up; it lifts onto a card at 1.03 with the
   elevated shadow in 150ms (a shadow layer drawn once and faded, never an
-  animated shadow), follows the finger 1:1, and the columns rise in as drop
+  animated shadow), follows the finger 1:1, and the statuses rise in as drop
   targets along the bottom; over one the card shrinks to 0.55 around the
   finger so the target stays in view and the target takes the ember edge.
   Dropped, it glides onto the target in 220ms and shrinks into it while the
   board moves the card at once; let go anywhere else, it springs back
   (300ms, no bounce). Under reduced motion nothing scales and the glide
   stays. Drag frames measured p50 16ms, p90 27ms on the emulator, whose input
-  injection paces the frames. Each card also offers "Move to" accessibility
+  injection paces the frames. Each row also offers "Move to" accessibility
   actions.
 - Inbox: a row swipes left to flip it between read and unread (its "Mark read"
   or "Mark unread" action is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.

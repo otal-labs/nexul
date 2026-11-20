@@ -79,7 +79,7 @@ beforeEach(() => {
   projects = [project];
   myRole = writer;
   boardTickets = tickets;
-  useBoardStore.setState({ selectedProjectId: null });
+  useBoardStore.setState({ selectedProjectId: null, folds: {} });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
 });
 
@@ -132,6 +132,7 @@ describe("BoardScreen", () => {
   test("Only mine hides tickets where the viewer holds neither role", async () => {
     await renderScreen();
     await screen.findByText("Fix login");
+    await userEvent.setup().press(screen.getByRole("button", { name: "Shipped, 1 ticket" }));
     expect(screen.getByText("Add board")).toBeTruthy();
     expect(screen.getByText("Ship it")).toBeTruthy();
 
@@ -140,6 +141,20 @@ describe("BoardScreen", () => {
     expect(screen.getByText("Fix login")).toBeTruthy();
     expect(screen.getByText("Add board")).toBeTruthy();
     expect(screen.queryByText("Ship it")).toBeNull();
+  });
+
+  test("a done status starts folded, and the fold a tap sets is remembered for that project", async () => {
+    await renderScreen();
+    await screen.findByText("Fix login");
+    expect(screen.queryByText("Ship it")).toBeNull();
+
+    const user = userEvent.setup();
+    await user.press(screen.getByRole("button", { name: "Shipped, 1 ticket" }));
+    expect(screen.getByText("Ship it")).toBeTruthy();
+    await user.press(screen.getByRole("button", { name: "Todo, 1 ticket" }));
+    expect(screen.queryByText("Fix login")).toBeNull();
+
+    expect(useBoardStore.getState().folds).toEqual({ "p-1": { "st-shipped": false, "st-todo": true } });
   });
 
   test("a picked project taken away while open turns revoked instead of showing another project's board", async () => {
