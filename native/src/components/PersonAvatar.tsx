@@ -5,7 +5,7 @@ import { personLabel, type Person } from "@nexul/client-core/person";
 
 import { SeededTile } from "@/components/SeededTile";
 import { Text } from "@/components/ui/text";
-import { useApiImageSource } from "@/hooks/BotMediaHooks";
+import { avatarPath, useApiImageSource } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 
 const initials = (name: string) =>
@@ -25,7 +25,7 @@ interface PersonAvatarProps {
 
 // A photo when the directory has one, else the person's seeded flat fill with white initials (one initial under 24pt).
 export const PersonAvatar = ({ person, size, className }: PersonAvatarProps) => {
-  const served = useApiImageSource(person.avatar_url.startsWith("/api/") ? person.avatar_url : undefined);
+  const served = useApiImageSource(person.avatar_url.startsWith("/api/") ? avatarPath(person.avatar_url, size) : undefined);
   const remote = person.avatar_url.startsWith("https://") ? { uri: person.avatar_url } : undefined;
   const source = served ?? remote;
   const [failed, setFailed] = useState(false);

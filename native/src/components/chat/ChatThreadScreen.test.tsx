@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
+import { PixelRatio } from "react-native";
 
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
@@ -191,12 +192,12 @@ describe("ChatThreadScreen", () => {
     expect(screen.queryByText(/bw_7f3a/)).toBeNull();
   });
 
-  test("a bot's served avatar loads with the bearer token", async () => {
+  test("a bot's served avatar loads as a still at its pixel size with the bearer token", async () => {
     thread = [botPost("b1", { body: "hi", author_avatar_url: "/api/botwebhooks/bw_7f3a/avatar?v=2" })];
     await renderThread();
 
     expect((await screen.findByLabelText("Avatar of GitHub")).props.source).toEqual([
-      { uri: `${host}/api/botwebhooks/bw_7f3a/avatar?v=2`, headers: { Authorization: "Bearer ses_abc" } },
+      { uri: `${host}/api/botwebhooks/bw_7f3a/avatar?v=2&size=${Math.ceil(32 * PixelRatio.get())}`, headers: { Authorization: "Bearer ses_abc" } },
     ]);
   });
 

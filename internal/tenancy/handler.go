@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/still"
 )
 
 // Handler adapts tenancy use-cases to HTTP/JSON, since the browser never talks to MCP.
@@ -134,6 +135,11 @@ func (h *Handler) listPeople(w http.ResponseWriter, r *http.Request) {
 // avatar sets nosniff so an uploaded picture can never be re-interpreted as HTML on this origin.
 func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
 	contentType, data, err := h.svc.Avatar(r.Context(), identity.UserID(r.Context()), r.PathValue("userID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	contentType, data, err = still.Fit(contentType, data, r.URL.Query().Get("size"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

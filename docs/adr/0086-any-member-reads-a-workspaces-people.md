@@ -28,3 +28,4 @@ members list keeps `members:write` for everything about managing people.
 
 Decided 2026-09-29.
 Amended 2026-09-30: the doc and ticket @ picker (`GET /api/mentions/search`, `mention_search`) finds people through this same list.
+Amended 2026-11-20: both avatar routes, this one and a bot's, take `?size=N` and answer with the upload's first frame as a PNG at most N pixels on its longer edge (N capped at 512); the phone asks at the pixels each avatar takes, because Android animated a 512px, 120-frame GIF on the UI thread once per card and froze the board.

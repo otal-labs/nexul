@@ -14,6 +14,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/still"
 )
 
 // Handler adapts the bot use-cases to the HTTP/JSON gateway (ADR 0019); the public execute route is not here.
@@ -92,6 +93,11 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 // avatar sets nosniff so an uploaded picture can never be re-interpreted as HTML on this origin.
 func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
 	contentType, data, err := h.svc.Avatar(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	contentType, data, err = still.Fit(contentType, data, r.URL.Query().Get("size"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
