@@ -3,7 +3,7 @@ import { Image, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
 import { NexulMark } from "@/components/NexulMark";
-import { useApiImageSource, useBotMediaSource } from "@/hooks/BotMediaHooks";
+import { avatarPath, useApiImageSource, useBotMediaSource } from "@/hooks/BotMediaHooks";
 
 // assets/mark.svg, the default every bot starts with.
 const NexulGlyph = ({ size }: { size: number }) => {
@@ -24,7 +24,7 @@ interface BotAvatarProps {
 
 // A picture that is missing or fails to load shows the Nexul glyph.
 export const BotAvatar = ({ src, name, size = 20 }: BotAvatarProps) => {
-  const served = useApiImageSource(src?.startsWith("/api/") ? src : undefined);
+  const served = useApiImageSource(src?.startsWith("/api/") ? avatarPath(src, size) : undefined);
   const proxied = useBotMediaSource(src);
   const inline = src?.startsWith("data:image/") ? { uri: src } : undefined;
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);

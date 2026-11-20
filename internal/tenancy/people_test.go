@@ -108,6 +108,17 @@ func TestHandler_Avatar(t *testing.T) {
 		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
 		assert.Equal(t, "<svg></svg>", rec.Body.String())
 	})
+	t.Run("a size the server can't read is refused", func(t *testing.T) {
+		h, _, _ := newPeopleFixture(t)
+		rec := do(t, h.PeopleRoutes(), http.MethodGet, "/api/people/lewis/avatar?size=big", "", "carol")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("a sized request for a picture it can't shrink still never serves it as an image", func(t *testing.T) {
+		h, _, _ := newPeopleFixture(t)
+		rec := do(t, h.PeopleRoutes(), http.MethodGet, "/api/people/lewis/avatar?size=48", "", "carol")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "application/octet-stream", rec.Header().Get("Content-Type"))
+	})
 	t.Run("refuses someone who shares no workspace", func(t *testing.T) {
 		h, _, _ := newPeopleFixture(t)
 		rec := do(t, h.PeopleRoutes(), http.MethodGet, "/api/people/lewis/avatar", "", "bob")
