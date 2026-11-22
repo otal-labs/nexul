@@ -10,16 +10,16 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/markdown-remark": "^7.3.8",
-    "@astrojs/react": "^7.1.8",
+    "@astrojs/markdown-remark": "^7.3.10",
+    "@astrojs/react": "^7.1.9",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
-    "astro": "^7.4.11",
-    "fumadocs-core": "^16.19.0",
-    "fumadocs-ui": "^16.19.0",
-    "lucide-react": "^1.72.0",
+    "astro": "^7.4.13",
+    "fumadocs-core": "^16.19.4",
+    "fumadocs-ui": "^16.19.4",
+    "lucide-react": "^1.76.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.5"
