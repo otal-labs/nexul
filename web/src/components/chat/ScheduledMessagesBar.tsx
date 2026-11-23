@@ -19,7 +19,15 @@ export const ScheduledMessagesBar = ({ conversationId }: { conversationId: strin
               {count === 1 ? "1 scheduled message" : `${count} scheduled messages`}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
+          <PopoverContent
+            align="start"
+            className="w-[min(26rem,calc(100vw-2rem))] p-0"
+            // Lands on the list itself, so the first row's Edit tooltip doesn't open with it.
+            onOpenAutoFocus={(e) => {
+              e.preventDefault();
+              (e.currentTarget as HTMLElement).focus();
+            }}
+          >
             <ul className="max-h-80 divide-y divide-border overflow-y-auto">
               {scheduled?.map((s) => <ScheduledMessageRow key={s.id} scheduled={s} />)}
             </ul>

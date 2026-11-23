@@ -1646,6 +1646,23 @@ is not this one) between two hairlines. The composer is one framed field
 attach, the text and emoji. `MessageList`, `ConversationHeader` and `ChatComposer` are the
 reference.
 
+Scheduled messages. The composer's last icon is a muted ghost clock (Schedule
+message) that opens the Schedule message dialog on what is typed: the message,
+Day and Time in the browser's zone, Repeats, then Schedule; once saved the
+field empties as a send does. Only its author sees one until it posts. While you have any
+in a conversation, one 28px muted ghost line sits above the composer at its
+left edge, a clock and "2 scheduled messages", opening a popover list up to
+26rem wide and 320px tall, soonest first, hairline-divided. A row is the send
+time in muted 12px (`Today at 09:00`, then `· Daily` for a repeat) over the
+text in 14px, three lines at most, and on the right three 28px ghost icon
+buttons, Edit, Send now and Cancel, each named by its tooltip. On a touch
+screen the three sit 16px apart so their 44px hit areas never overlap. Edit
+opens the same dialog with Save. Send now and Cancel both end the wait, so both
+ask first: "Post it now?" with Post now and Keep it scheduled (not red; a
+repeat keeps its next time), and "Cancel this scheduled message?" with Cancel
+message in red and Keep it. `ComposerScheduleButton`, `ScheduledMessagesBar`
+and `ScheduledMessageRow` are the reference.
+
 Voice call. A voice channel is a chat stream with the call at its head.
 Before joining, one lobby row sits above the messages in the stream's column:
 a `surface-2` well at `rounded-lg`, 64px, holding a stack of up to five 28px
