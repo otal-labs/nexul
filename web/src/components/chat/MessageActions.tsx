@@ -15,11 +15,11 @@ interface MessageActionsProps {
   corner?: "bubble" | "row";
 }
 
-// A pill pinned to the top-right corner of its bubble or row; the row's hover or focus reveals it, and an open picker holds it.
+// A pill pinned to the top-right corner of its bubble or row; the row's hover or focus reveals it (on touch, a tap on the row), and an open picker holds it.
 export const MessageActions = ({ message, onEdit, onDelete, corner = "bubble" }: MessageActionsProps) => {
   const toggle = useToggleReaction(message);
   return (
-    <div className={cn("pointer-events-none absolute z-10 flex rounded-md border border-input bg-popover text-popover-foreground opacity-0 shadow-card transition-opacity duration-150 ease-standard group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100", corner === "bubble" ? "-top-3.5 -right-2" : "top-0 right-3")}>
+    <div className={cn("pointer-events-none absolute z-10 flex rounded-md border border-input bg-popover text-popover-foreground opacity-0 shadow-card transition-opacity duration-150 ease-standard group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus]:pointer-events-auto group-has-[:focus]:opacity-100 [@media(hover:none)]:group-focus:pointer-events-auto [@media(hover:none)]:group-focus:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100", corner === "bubble" ? "-top-3.5 -right-2" : "top-0 right-3")}>
       <EmojiPickerPopover onPick={toggle} align="end">
         <Button size="icon" variant="ghost" className="size-6" aria-label="Add reaction">
           <SmilePlus className="size-3.5" aria-hidden />

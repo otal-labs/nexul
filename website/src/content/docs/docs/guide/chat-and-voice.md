@@ -33,7 +33,7 @@ Writing a channel's rules takes `channels:write`, and you can only allow, or lif
 
 Messages are markdown. **Enter** sends, **Shift+Enter** starts a new line. Paste, drop, or attach images. Type `@` to mention a member, or `@Agent` to bring in an agent.
 
-Hover a message to react, or to edit or delete your own. A deleted message leaves its place in the conversation.
+Hover a message to react, or to edit or delete your own; on a touch screen, tap the message to show those buttons and its time. A deleted message leaves its place in the conversation.
 
 ### Schedule a message
 
