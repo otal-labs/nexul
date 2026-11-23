@@ -56,7 +56,7 @@ const matrixRow = (area: string) =>
     .getAllByRole("cell")
     .filter((cell) => !cell.hasAttribute("aria-hidden"))
     // What a screen reader hears: a labelled mark (a check, a dash for None or No) by its label, anything else by its text.
-    .map((cell) => cell.querySelector("[aria-label]")?.getAttribute("aria-label") ?? cell.textContent ?? "");
+    .map((cell) => cell.querySelector("[aria-label]:not(button)")?.getAttribute("aria-label") ?? cell.textContent ?? "");
 
 const rowNames = () =>
   within(screen.getByRole("tabpanel"))
