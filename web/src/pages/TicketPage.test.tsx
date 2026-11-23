@@ -296,12 +296,11 @@ describe("TicketPage sections", () => {
 
     expect(await screen.findByRole("link", { name: "Blocked by BE-2" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Blocked by BE-3" })).not.toBeInTheDocument();
-    expect(screen.getByTitle("BE-3, BE-4")).toHaveTextContent("2 more blockers: BE-3, BE-4");
-    expect(await screen.findByTitle("#13")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2 more blockers: BE-3, BE-4" })).toHaveTextContent("+2");
+    expect(await screen.findByRole("button", { name: "1 more pull request: #13" })).toHaveTextContent("+1");
     // The rail lists every pull request; the strip adds a second chip for each of the first two only.
     expect(screen.getAllByRole("link", { name: "#12 Change 12, open" })).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: "#13 Change 13, open" })).toHaveLength(1);
-    expect(screen.getByTitle("#13")).toHaveTextContent("1 more pull request: #13");
   });
 
   it("never opens a thread for the preview when the ticket has none", async () => {

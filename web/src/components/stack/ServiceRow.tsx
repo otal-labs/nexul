@@ -5,6 +5,7 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MonoRef } from "@/components/MonoRef";
+import { OverflowCount } from "@/components/OverflowCount";
 import { ContainerStatusBadge } from "@/components/stack/ContainerStatusBadge";
 import { ServiceOutageLine } from "@/components/stack/ServiceOutageLine";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -25,13 +26,13 @@ const hostLabel = (host: string): string => (host.includes(":") ? host : `:${hos
 const portText = (name: string, port: ContainerPort): string =>
   `${name}:${port.container}${port.proto !== "tcp" ? `/${port.proto}` : ""}${port.host ? ` → host ${hostLabel(port.host)}` : ""}`;
 
-// How the service is reached: its first public hostname, else its first address on the stack's network; the rest in the tooltip.
+// How the service is reached: its first public hostname, else its first address on the stack's network; the rest behind a count.
 const Reach = ({ name, hostnames, ports }: { name: string; hostnames: string[]; ports: ContainerPort[] }) => {
   const all = [...hostnames, ...ports.map((port) => portText(name, port))];
   const [host] = hostnames;
   const [port] = ports;
   return (
-    <span className="flex min-w-0 items-center gap-1.5 font-mono text-xs" title={all.join("\n")}>
+    <span className="flex min-w-0 items-center gap-1.5 font-mono text-xs">
       {host && (
         <a
           href={`https://${host}`}
@@ -45,7 +46,9 @@ const Reach = ({ name, hostnames, ports }: { name: string; hostnames: string[]; 
         </a>
       )}
       {!host && port && <span className="truncate text-muted-foreground">{`${name}:${port.container}`}</span>}
-      {all.length > 1 && <span className="shrink-0 text-muted-foreground">{`+${all.length - 1}`}</span>}
+      {all.length > 1 && (
+        <OverflowCount label={`${all.length - 1} more ${all.length === 2 ? "address" : "addresses"}`} items={all.slice(1)} className="text-muted-foreground" />
+      )}
       {all.length === 0 && <span className="text-muted-foreground">no ports</span>}
     </span>
   );

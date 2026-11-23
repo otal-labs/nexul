@@ -56,7 +56,7 @@ const matrixRow = (area: string) =>
     .getAllByRole("cell")
     .filter((cell) => !cell.hasAttribute("aria-hidden"))
     // What a screen reader hears: a labelled mark (a check, a dash for None or No) by its label, anything else by its text.
-    .map((cell) => cell.querySelector("[aria-label]")?.getAttribute("aria-label") ?? cell.textContent ?? "");
+    .map((cell) => cell.querySelector("[aria-label]:not(button)")?.getAttribute("aria-label") ?? cell.textContent ?? "");
 
 const rowNames = () =>
   within(screen.getByRole("tabpanel"))
@@ -298,7 +298,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findByLabelText("1 person");
+    await screen.findByRole("button", { name: /^1 person:/ });
     await openMenu(user, "Editor", "Edit");
     expect(screen.getByText("Held by Bob. Saving changes what they can do.")).toBeInTheDocument();
     expect(screen.getByText("No changes yet")).toBeInTheDocument();
@@ -413,7 +413,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findByLabelText("2 people");
+    await screen.findByRole("button", { name: /^2 people:/ });
     await openMenu(user, "Editor", "Delete");
     expect(
       await screen.findByText("2 people lose this role. Anyone left with no role stays a member and sees no project. Deleting it can't be undone."),

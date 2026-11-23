@@ -20,12 +20,14 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
   const several = person.workspaces.length > 1;
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => onOpen(person.id)}
-        aria-label={`Open ${personName(person)}`}
-        className="-mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 rounded-md px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
-      >
+      {/* The button lies under the row's content rather than around it, so the roles' count can be a button of its own. */}
+      <div className="relative -mx-3 flex w-[calc(100%+1.5rem)] items-start gap-3 px-3 py-3 text-left [&>:not(button)]:pointer-events-none [&>:not(button)]:relative">
+        <button
+          type="button"
+          onClick={() => onOpen(person.id)}
+          aria-label={`Open ${personName(person)}`}
+          className="absolute inset-0 rounded-md transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
+        />
         {/* Top-aligned like the other multi-line rows: the avatar and chevron sit on the name's 24px line. */}
         <PersonAvatar login={person.login} name={personName(person)} src={person.avatar_url} className="-mt-1 size-8 shrink-0" />
         <span className="min-w-0 flex-1 space-y-1">
@@ -51,7 +53,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           <TeamGapLine person={person} />
         </span>
         <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
-      </button>
+      </div>
     </li>
   );
 };

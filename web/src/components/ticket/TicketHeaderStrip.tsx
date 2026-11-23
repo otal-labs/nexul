@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { personLabel } from "@nexul/client-core/person";
 
+import { OverflowCount } from "@/components/OverflowCount";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { PRChip } from "@/components/ticket/PRChip";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
@@ -29,13 +30,7 @@ interface FoldedCountProps {
 
 const FoldedCount = ({ keys, noun }: FoldedCountProps) =>
   keys.length > 0 && (
-    <span title={keys.join(", ")} className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-      <span aria-hidden>+{keys.length}</span>
-      <span className="sr-only">
-        {keys.length} more {noun}
-        {keys.length === 1 ? "" : "s"}: {keys.join(", ")}
-      </span>
-    </span>
+    <OverflowCount label={`${keys.length} more ${noun}${keys.length === 1 ? "" : "s"}`} items={keys} className="text-xs whitespace-nowrap text-muted-foreground" />
   );
 
 // The ticket's standing in the board card's marks, the same on every tab: key, status, who acts next, what still

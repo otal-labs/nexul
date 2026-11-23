@@ -42,22 +42,20 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
     .filter(Boolean)
     .join(", ");
 
+  // The button lies under the row's content rather than around it, so the author's count can be a button of its own.
   return (
-    <button
-      type="button"
-      data-version={summary.version}
-      aria-current={selected}
-      aria-label={label}
-      onClick={() => onSelect(summary.version)}
-      className={cn(
-        "inset-focus relative flex w-full gap-1.5 px-4 py-2 text-left transition-colors duration-150 ease-standard",
-        !selected && "hover:bg-accent",
-        selected && currentRowFillClass,
-      )}
-    >
+    <div className={cn("relative flex w-full gap-1.5 px-4 py-2 text-left [&>:not(button)]:pointer-events-none", selected && currentRowFillClass)}>
+      <button
+        type="button"
+        data-version={summary.version}
+        aria-current={selected}
+        aria-label={label}
+        onClick={() => onSelect(summary.version)}
+        className={cn("inset-focus absolute inset-0 transition-colors duration-150 ease-standard", !selected && "hover:bg-accent")}
+      />
       {selected && <CurrentRowEdge />}
       <HistorySpine node={headline ? "named" : "save"} selected={selected} first={first} last={last} />
-      <span className="min-w-0 flex-1">
+      <span className="relative min-w-0 flex-1">
         {headline && (
           <span className="mb-0.5 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
             {headline}
@@ -87,6 +85,6 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
           </span>
         )}
       </span>
-    </button>
+    </div>
   );
 };

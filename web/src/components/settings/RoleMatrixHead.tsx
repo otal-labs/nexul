@@ -1,6 +1,7 @@
 import { CrownIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { OverflowCount } from "@/components/OverflowCount";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useRoleActions } from "@/hooks/useRoleActions";
 import { headName, type Role } from "@/models/Role";
@@ -18,7 +19,7 @@ interface RoleMatrixHeadProps {
   holders: TeamPerson[] | undefined;
 }
 
-// A role's column head: its name, how many hold it (named in its tooltip), and its menu (the Owner's has none).
+// A role's column head: its name, how many hold it (a count that lists them when opened), and its menu (the Owner's has none).
 export const RoleMatrixHead = ({ role, workspaceId, holders }: RoleMatrixHeadProps) => {
   const { actions, dialogs } = useRoleActions(role, workspaceId, holders);
   return (
@@ -33,10 +34,15 @@ export const RoleMatrixHead = ({ role, workspaceId, holders }: RoleMatrixHeadPro
         <TooltipContent>{role.name}</TooltipContent>
       </Tooltip>
       <span className="mt-0.5 flex h-6 items-center gap-2 font-mono text-micro text-muted-foreground tabular-nums">
-        {holders && (
-          <span aria-label={holdersLabel(holders.length)} title={holders.map((p) => p.display_name || p.login).join(", ")}>
-            {holders.length === 0 ? <span className="font-sans text-xs">&mdash;</span> : holders.length}
+        {holders && holders.length === 0 && (
+          <span aria-label={holdersLabel(0)} className="font-sans text-xs">
+            &mdash;
           </span>
+        )}
+        {holders && holders.length > 0 && (
+          <OverflowCount label={holdersLabel(holders.length)} items={holders.map((p) => p.display_name || p.login)}>
+            {holders.length}
+          </OverflowCount>
         )}
         {!role.is_owner_role && (
           <span className="flex [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/head:opacity-100 [@media(hover:hover)]:group-hover/head:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100">

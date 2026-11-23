@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 
 import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { microheaderClass } from "@/components/Microheader";
+import { OverflowCount } from "@/components/OverflowCount";
 import { RoleFoldButton } from "@/components/role/RoleFoldButton";
 import { fadeEndCell, leadStrip, matrixAreaWidth, matrixFadeWidth, stickyCell } from "@/components/accessgrid/gridStyles";
 import { cn } from "@/lib/utils";
@@ -45,9 +46,11 @@ const AreaCell = ({ domain, permissions }: { domain: PermissionDomain; permissio
           <span>
             {rungName(domain.domain, level)}
             {extras.length > 0 && (
-              <span className="ml-1.5 font-mono text-micro text-muted-foreground" title={extras.join(", ")}>
-                +{extras.length}
-              </span>
+              <OverflowCount
+                label={`${extras.length} more ${extras.length === 1 ? "permission" : "permissions"}`}
+                items={extras}
+                className="ml-1.5 text-micro text-muted-foreground"
+              />
             )}
           </span>
         </span>

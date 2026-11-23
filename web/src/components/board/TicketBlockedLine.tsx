@@ -1,5 +1,6 @@
 import { Ban } from "lucide-react";
 
+import { OverflowCount } from "@/components/OverflowCount";
 import { useBoardCardData } from "@/hooks/useBoardCardData";
 import { linkedTicketKey } from "@/models/TicketLink";
 
@@ -15,17 +16,17 @@ export const TicketBlockedLine = ({ ticketId }: TicketBlockedLineProps) => {
 
   const [first, ...rest] = waitingOn.map(linkedTicketKey);
 
-  // The first key and the count stay whole and may wrap under "Blocked by", so the line is two rows at most; the tooltip names every key.
+  // The first key and the count stay whole and may wrap under "Blocked by", so the line is two rows at most; the count lists the rest.
   return (
-    <span title={`Blocked by ${[first, ...rest].join(", ")}`} className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+    <span className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
       <Ban className="mt-[1.5px] size-3 shrink-0 text-warning" aria-hidden />
       <span className="min-w-0">
         Blocked by{" "}
         <span className="whitespace-nowrap font-mono">
           {first}
-          {rest.length > 0 && <span aria-hidden> +{rest.length}</span>}
+          {rest.length > 0 && " "}
+          {rest.length > 0 && <OverflowCount label={`${rest.length} more ${rest.length === 1 ? "blocker" : "blockers"}`} items={rest} />}
         </span>
-        {rest.length > 0 && <span className="sr-only">, {rest.join(", ")}</span>}
       </span>
     </span>
   );

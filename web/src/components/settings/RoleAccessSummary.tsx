@@ -1,4 +1,5 @@
 import { LevelGlyph } from "@/components/access/LevelGlyph";
+import { OverflowCount } from "@/components/OverflowCount";
 import type { PermissionInfo } from "@/models/Permission";
 import { domainsOf, levelName, levelTally } from "@/models/PermissionLevel";
 
@@ -26,9 +27,11 @@ export const RoleAccessSummary = ({ catalog, permissions }: RoleAccessSummaryPro
         ))}
       </ul>
       {missing.length > 0 && (
-        <p className="truncate text-xs text-muted-foreground" title={missing.join(", ")}>
-          <span className="text-foreground/80">No access</span> · {missing.slice(0, MISSING_SHOWN).join(", ")}
-          {more > 0 && <span className="font-mono tabular-nums"> +{more}</span>}
+        <p className="flex min-w-0 items-baseline gap-1 text-xs text-muted-foreground">
+          <span className="truncate">
+            <span className="text-foreground/80">No access</span> · {missing.slice(0, MISSING_SHOWN).join(", ")}
+          </span>
+          {more > 0 && <OverflowCount label={`${more} more without access`} items={missing.slice(MISSING_SHOWN)} />}
         </p>
       )}
     </div>
