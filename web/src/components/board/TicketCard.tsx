@@ -14,6 +14,7 @@ import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { hasColor, hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { NoFillBadge } from "@/components/ui/badge";
+import { OverflowCount } from "@/components/OverflowCount";
 import { useBoardCardData, useCanMoveTickets } from "@/hooks/useBoardCardData";
 import { getProjectKey } from "@/hooks/ProjectHooks";
 import { ticketIdByKeyQuery, ticketQuery } from "@/hooks/TicketHooks";
@@ -56,7 +57,7 @@ export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBo
   const hiddenLabels = labels.slice(fitting);
   const labelRun = labels.length > 0 && (
     <>
-      {/* Labels after the first drop out whole and are counted in +N, named in its tooltip; the first truncates when it alone is too long. */}
+      {/* Labels after the first drop out whole and are counted in +N, which lists them when opened; the first truncates when it alone is too long. */}
       <span ref={labelsRef} className="relative flex h-[18px] min-w-0 flex-wrap items-center gap-x-2 overflow-hidden">
         {labels.slice(0, CARD_LABELS).map((label, index) => (
           // A pill in the label's own hue; the type stays an icon, so the label is the card's one tinted shape.
@@ -78,13 +79,8 @@ export const TicketCardBody = memo(({ ticket, assignable = false }: TicketCardBo
       </span>
       {hiddenLabels.length > 0 && (
         // Its slot stays at the line's end so the fit never shifts; it is drawn right after the last label it extends (8px is the line's gap).
-        <span
-          title={hiddenLabels.join(", ")}
-          aria-label={`${hiddenLabels.length} more labels: ${hiddenLabels.join(", ")}`}
-          className="shrink-0 font-mono"
-          style={{ transform: `translateX(-${labelSlack + (fitting === 0 ? 8 : 0)}px)` }}
-        >
-          +{hiddenLabels.length}
+        <span className="flex shrink-0" style={{ transform: `translateX(-${labelSlack + (fitting === 0 ? 8 : 0)}px)` }}>
+          <OverflowCount label={`${hiddenLabels.length} more ${hiddenLabels.length === 1 ? "label" : "labels"}`} items={hiddenLabels} />
         </span>
       )}
     </>

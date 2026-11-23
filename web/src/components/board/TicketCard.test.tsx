@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,12 +126,17 @@ describe("TicketCard", () => {
     expect(badge?.querySelector("svg")).not.toHaveClass(...ticketTypeColor("Bug").split(" "));
   });
 
-  it("shows two label chips and counts the rest in a +N chip that names them", () => {
+  it("shows two label chips and counts the rest in a +N that lists them on a press, leaving the card shut", async () => {
+    const user = userEvent.setup();
     const { container } = renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), labels: ["bug", "urgent", "i18n", "ux"] }} />);
     expect(container.querySelectorAll('[data-slot="label-chip"]')).toHaveLength(2);
     expect(screen.queryByText("i18n")).not.toBeInTheDocument();
-    expect(screen.getByText("+2")).toHaveAttribute("title", "i18n, ux");
     expect(container.querySelector('[data-slot="label-chip"]')).toHaveAttribute("title", "bug");
+
+    await user.click(screen.getByRole("button", { name: "2 more labels: i18n, ux" }));
+
+    expect(await screen.findByText("i18n")).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("renders the developer's GitHub avatar outside testing columns", () => {
@@ -150,10 +155,11 @@ describe("TicketCard", () => {
       return base(url, config);
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    expect(await screen.findByTitle("Blocked by REF-7")).toHaveTextContent("Blocked by REF-7");
+    expect(await screen.findByText("REF-7")).toHaveTextContent("REF-7");
+    expect(screen.queryByRole("button", { name: /more blocker/ })).not.toBeInTheDocument();
   });
 
-  it("counts every blocker after the first and names them all in the tooltip", async () => {
+  it("counts every blocker after the first in a +N that names them", async () => {
     const base = vi.mocked(api.get).getMockImplementation()!;
     const blocker = (n: number) => ({ id: `t-${n}`, project_id: "p-1", prefix: "REF", number: n, title: "API", status: "open", done: false });
     vi.mocked(api.get).mockImplementation(async (url, config) => {
@@ -161,15 +167,13 @@ describe("TicketCard", () => {
       return base(url, config);
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
-    const line = await screen.findByTitle("Blocked by REF-7, REF-10001, REF-9");
-    expect(line).toHaveTextContent("Blocked by REF-7 +2, REF-10001, REF-9");
-    expect(within(line).getByText("+2", { exact: false })).toHaveAttribute("aria-hidden");
+    expect(await screen.findByRole("button", { name: "2 more blockers: REF-10001, REF-9" })).toHaveTextContent("+2");
   });
 
   it("shows no blocked line for a ticket with no uncleared blockers", async () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByText("REF-142")).toBeInTheDocument();
-    expect(screen.queryByTitle(/Blocked by/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Blocked by/)).not.toBeInTheDocument();
   });
 
   it("switches to the tester's avatar in a testing-stage column", async () => {

@@ -31,7 +31,7 @@ const What = ({ deploy }: { deploy: Deploy }) => {
     <span className="flex min-w-0 items-center gap-2 font-mono text-row">
       {deploy.image && <MonoRef value={imageShortName(deploy.image)} kind="image" title={deploy.image} className="flex-1" />}
       {!deploy.image && (
-        <span className="flex min-w-0 items-center gap-1" title={[deploy.ref, commit].filter(Boolean).join(" ")}>
+        <span className="flex min-w-0 items-center gap-1" title={`${deploy.ref} ${commit}`.trim()}>
           <GitBranchIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <span className="truncate">{deploy.ref || "repository"}</span>
           {commit && <span className="shrink-0 text-muted-foreground">{commit.slice(0, 7)}</span>}

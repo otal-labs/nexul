@@ -3,6 +3,7 @@ import { deployOutcome } from "@nexul/client-core/deployOutcome";
 import { HealthDot } from "@/components/service/HealthDot";
 import { formatRelativeTime } from "@/components/service/DeployTime";
 import { MonoRef } from "@/components/MonoRef";
+import { OverflowCount } from "@/components/OverflowCount";
 import { HeroCell, HeroDetail, HeroLine, StackHostnamesCell, StackRequestsCell } from "@/components/stack/StackHeroCells";
 import { useFetchStackServices } from "@/hooks/StackHooks";
 import { useNow } from "@/hooks/useNow";
@@ -42,8 +43,13 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
       {services && names.length === 0 && !rate && <HeroLine dot="bg-success">No issues</HeroLine>}
       {services && names.length === 0 && !rate && <HeroDetail indent>{`${total} up`}</HeroDetail>}
       {names.length > 0 && (
-        <HeroLine dot="bg-destructive" title={names.join(", ")}>
-          {names.length === 1 ? `${names[0]} down` : `${names.length} of ${total} down`}
+        <HeroLine dot="bg-destructive">
+          {names.length === 1 && `${names[0]} down`}
+          {names.length > 1 && (
+            <OverflowCount label={`${names.length} of ${total} down`} items={names} className="font-sans">
+              {`${names.length} of ${total} down`}
+            </OverflowCount>
+          )}
         </HeroLine>
       )}
       {/* The rule's own window, which the Requests cell's hour would otherwise contradict. */}

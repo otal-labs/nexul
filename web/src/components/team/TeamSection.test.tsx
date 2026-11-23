@@ -8,6 +8,9 @@ import { TeamSection } from "@/components/team/TeamSection";
 import type { Team, TeamPerson } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
+// The row's button lies under its content, so a person's row is the list item around it.
+const personRow = async (name: string) => (await screen.findByRole("button", { name: `Open ${name}` })).closest("li")!;
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -79,23 +82,24 @@ describe("TeamSection", () => {
     });
 
     const dotOf = (row: HTMLElement) => row.querySelector(".bg-success");
-    const ann = await screen.findByRole("button", { name: "Open Ann" });
+    const ann = await personRow("Ann");
     expect(ann).toHaveTextContent("Online");
     expect(ann).not.toHaveTextContent(/active/i);
     expect(dotOf(ann)).not.toBeNull();
 
-    const cy = screen.getByRole("button", { name: "Open Cy" });
+    const cy = await personRow("Cy");
     expect(cy).toHaveTextContent("Last seen 2h ago");
     expect(dotOf(cy)).toBeNull();
-    expect(screen.getByRole("button", { name: "Open Dee" })).toHaveTextContent("Signed out");
+    expect(await personRow("Dee")).toHaveTextContent("Signed out");
 
-    const eve = screen.getByRole("button", { name: "Open Eve" });
+    const eve = await personRow("Eve");
     expect(eve).toHaveTextContent("Last seen 3d ago");
     expect(eve).toHaveTextContent("Disabled");
     expect(dotOf(eve)).toBeNull();
   });
 
-  it("shows a person's roles as chips, three then a count, and says when there are none", async () => {
+  it("shows a person's roles as chips, three then a count that lists the rest without opening the person, and says when there are none", async () => {
+    const user = userEvent.setup();
     const roles = ["Owner", "Lead", "Editor", "Client", "Tester"].map((name) => ({ id: `r-${name}`, name, is_owner: name === "Owner" }));
     const nexul = team.people[0]!.workspaces[0]!;
     renderSection("/settings/team", {
@@ -106,12 +110,16 @@ describe("TeamSection", () => {
       ],
     });
 
-    const lena = await screen.findByRole("button", { name: "Open Lena" });
+    const lena = await personRow("Lena");
     expect(within(lena).getByText("Owner")).toBeInTheDocument();
     expect(within(lena).getByText("Editor")).toBeInTheDocument();
     expect(within(lena).queryByText("Client")).not.toBeInTheDocument();
-    expect(within(lena).getByText("+2")).toHaveAttribute("title", "Client, Tester");
-    expect(within(screen.getByRole("button", { name: "Open Sam" })).getByText("No roles")).toBeInTheDocument();
+    expect(within(await personRow("Sam")).getByText("No roles")).toBeInTheDocument();
+
+    await user.click(within(lena).getByRole("button", { name: "2 more roles: Client, Tester" }));
+
+    expect(await screen.findByText("Client")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Lena" })).not.toBeInTheDocument();
   });
 
   it("shows each linked sign-in account on the row with its username, never the email Discord signs in with", async () => {
@@ -120,7 +128,7 @@ describe("TeamSection", () => {
       people: [{ ...team.people[0]!, providers: ["github", "discord"], usernames: { github: "bob", discord: "bob_d" } }],
     });
 
-    const bob = await screen.findByRole("button", { name: "Open Bob" });
+    const bob = await personRow("Bob");
     expect(within(bob).getByRole("img", { name: "GitHub" })).toBeInTheDocument();
     expect(within(bob).getByRole("img", { name: "Discord" })).toBeInTheDocument();
     expect(within(bob).getByText("@bob")).toBeInTheDocument();

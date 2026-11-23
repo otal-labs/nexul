@@ -310,7 +310,7 @@ describe("StackPage", () => {
     expect(mocks.get).not.toHaveBeenCalledWith("/api/dns/exposures");
   });
 
-  it("lists each service on one row: its image, its first hostname, the rest of its addresses and its container in the tooltips", async () => {
+  it("lists each service on one row: its image, its first hostname, the rest of its addresses behind a count, its container in the name's tooltip", async () => {
     const db = { ...container, id: "svc-2", name: "db", container_name: "api-db-1", image: "postgres:16", ports: ["5432/tcp"] };
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
@@ -324,8 +324,8 @@ describe("StackPage", () => {
 
     const services = await screen.findByRole("region", { name: "Services" });
     expect(await within(services).findByRole("link", { name: "app.example.com" })).toHaveAttribute("href", "https://app.example.com");
-    expect(within(services).getByTitle("app.example.com api:8080 → host :8080")).toHaveTextContent("+1");
-    expect(within(services).getByTitle("db:5432")).toHaveTextContent("db:5432");
+    expect(within(services).getByRole("button", { name: "1 more address: api:8080 → host :8080" })).toHaveTextContent("+1");
+    expect(within(services).getByText("db:5432")).toBeInTheDocument();
     expect(within(services).getByTitle("container api-db-1 db:5432")).toHaveTextContent("db");
     expect(within(services).getAllByTitle("ghcr.io/onik/api:v1")[0]).toHaveTextContent("api:v1");
     expect(within(services).getByText("2 services on api_default")).toBeInTheDocument();

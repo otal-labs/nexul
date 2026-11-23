@@ -479,7 +479,11 @@ is no grey tap flash and no double-tap zoom, the page never bounces, and the
 shell keeps clear of the notch (`safe-area`). The status bar takes the
 canvas colour of the mode and palette (`theme-color`, kept in step by
 `applyThemePalette`). A touch screen shows no `title`, so a fact never lives
-only in one: it is words on the screen, or a tap opens it in a popover.
+only in one: it is words on the screen, or a tap opens it in a popover. A
+count that stands for hidden items ("+2", "3 of 8 down") is `OverflowCount`
+(`web/src/components/OverflowCount.tsx`): a button named by the items that
+lists them in a popover on a tap or a click, and lint fails a DOM `title`
+that joins a list.
 
 Prose links. The web app's prose links are `brand` text: on the page
 panel they hold contrast. The site, whose text sits on the canvas, uses
@@ -819,7 +823,7 @@ the owner set on the type, else a bug in its fuchsia and every other type muted)
 and at most two labels, each an 18px pill in its
 own hue (the hue at 15% under its 800 ink, 300 in dark, 900 for lime and
 amber; 6:1 or better on the card; an owner's own hex at 15% under the hex mixed
-65% into `foreground`, ADR 0176), any more as "+N" naming them in its tooltip. Labels
+65% into `foreground`, ADR 0176), any more as a "+N" that lists them when pressed (`OverflowCount`). Labels
 after the first drop out whole; a first label too long for the line truncates,
 its full name in its tooltip. The card pads 8px
 top and bottom and 10px at the sides, `card` with the card shadow and its
@@ -1257,7 +1261,7 @@ well with a microheader over each value: Health, Last deploy, Requests and
 Hostnames, four columns from a 48rem strip and two by two below. Health is "No
 issues" behind a `success` dot over the mono "N up", or one line per problem
 behind a dot in its status hue: an open outage is `destructive` ("api down",
-or "3 of 8 down" with the names in its tooltip), an error rate over its rule is
+or "3 of 8 down", which lists the names when pressed), an error rate over its rule is
 `warning` ("5xx 7.2% · last 5 min" in the line's own weight, then the time it
 began in muted mono), and a recovery within the hour reads `success` ("5xx
 recovered"). When the runner's newest observation of the stack is over an hour
@@ -1285,8 +1289,8 @@ on the floor and a minute nobody counted a faint full-height track, and the erro
 in the footer). The Services card has no column headers and one line per
 service, rows sorted down first, then on their way, healthy, then stopped: the
 name, the image by its last segment cut in the middle, how it is reached (the
-first public hostname as a link, else `service:port`, then "+N" with every
-address in its tooltip; dropped below a 48rem card, where the strip carries the
+first public hostname as a link, else `service:port`, then a "+N" that lists the other
+addresses when pressed; dropped below a 48rem card, where the strip carries the
 hostnames), the status (an icon in its hue and the word) in a fixed column, and
 a ghost Logs icon at the end. The name's tooltip holds the container name and
 every address. The 14px name sits 1px higher than its box centre so the row's
@@ -1472,7 +1476,7 @@ when they were last seen in plain words (a grey dot would say nothing), Disabled
 or Removed with the name muted too and the avatar greyed, and their
 other roles as chips that overhang the line instead of growing it, their text
 on the line's baseline, as many chips as the line holds, measured (up to three, each at most 14rem, 18rem from 1280px, with the rest of its name in its tooltip), and the rest
-as a mono "+N" 4px after the last of them; Its
+as a mono "+N" 4px after the last of them that lists the rest when pressed; Its
 `…` (shown on hover or focus where the device can hover, always on touch, as the settings lists do) holds Take <role>, View as <first name> and, in destructive, Remove from
 <workspace>, which asks first. An Owner's row has no menu. Add people is a
 popover of the people the viewer's Team shows, split under "In <workspace>" and
@@ -1507,13 +1511,13 @@ width the area column leaves in equal shares, never under 96px (no filler) and e
 lie to the right (the heads fade under it like the cells; Compare roles leaves the Owner out, the Settings matrix keeps it), and a "+5" control, a 28px hairline button in `foreground` ink, at the top of that fade while columns are hidden that scrolls
 them into view, clear of the counts and menus; the Owner first where it is shown
 with a crown, each head the name (cut like the grids' heads, three 13-character
-lines) over the holder count in mono (a muted dash, named Nobody, at none) with the role's `…` menu right beside it, shown on hover or focus where the device can hover (Edit, Duplicate, Clone to workspace, Delete; the Owner's
+lines) over the holder count in mono (listing them when pressed; a muted dash, named Nobody, at none) with the role's `…` menu right beside it, shown on hover or focus where the device can hover (Edit, Duplicate, Clone to workspace, Delete; the Owner's
 has none); one row per area, its name wrapping to two lines before it cuts (three below 1024px, where the area column narrows to 176px), under a muted band for each of the editor's
 sections, Instance, Workspace and In projects, the rows no compared role holds folded under a "Show 7 held by no role" toggle on the band, so what tells the roles apart leads. A cell is the level as a
 `LevelGlyph`, three slots on every row, Read, Write and Delete from the left, so one level draws one way on every row: held slots filled, a level it could still hold an
 outline, a level the area lacks a tick on the baseline, and its word; a cell the role has no access in
 is a muted dash (named None), so the grants stand out, with a mono "+1" on the word's
-baseline for the extra verbs held (named in its tooltip); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
+baseline for the extra verbs held (listing them when pressed); a yes-or-no permission reads as a check or a muted dash (named No). Deleting a role
 someone holds asks first, naming how many people lose it. `RoleMatrix` and
 `RoleMatrixHead` in `web/src/components/settings/` are the reference.
 
@@ -1596,7 +1600,7 @@ reason. With nothing ticked a `warning` triangle and one muted line settle in
 (`settle-in`): a warning for a member, "Pick at least one role" on an
 invitation, whose Create link waits for one. A role is shown elsewhere as a
 chip: a neutral `rounded-full` hairline pill at 20px with no fill, so its muted text holds 4.5:1 in every palette, 11px
-medium in `muted-foreground` so it sits under the name, never tinted; three then a mono `+N` with the rest in its tooltip, and
+medium in `muted-foreground` so it sits under the name, never tinted; three then a mono `+N` that lists the rest when pressed, and
 a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
 `web/src/components/role/` are the reference.
 

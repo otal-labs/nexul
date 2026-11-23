@@ -17,10 +17,10 @@ export const HeroCell = ({ label, children }: { label: string; children: ReactNo
   </div>
 );
 
-export const HeroLine = ({ dot, title, children }: { dot?: string; title?: string; children: ReactNode }) => (
+export const HeroLine = ({ dot, children }: { dot?: string; children: ReactNode }) => (
   <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
     {dot && <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />}
-    <span className="min-w-0 truncate" title={title}>{children}</span>
+    <span className="min-w-0 truncate">{children}</span>
   </p>
 );
 

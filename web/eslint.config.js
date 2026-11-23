@@ -29,6 +29,12 @@ const buttonDisabledOpacity = [
   { selector: `${buttonClassName} TemplateElement[value.raw=${disabledOpacity}]`, message: disabledOpacityMessage },
 ];
 
+// A DOM element's title is a tooltip, which a touch screen never shows; a component's title prop (a visible heading) is not.
+const titleList = {
+  selector: String.raw`JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name="title"] CallExpression[callee.property.name="join"]`,
+  message: "A touch screen shows no title, so a list never lives only in one: show it, or put it behind OverflowCount (components/OverflowCount.tsx).",
+};
+
 export default tseslint.config(
   { ignores: ["dist", "coverage"] },
   js.configs.recommended,
@@ -60,11 +66,11 @@ export default tseslint.config(
     files: ["**/*.test.{ts,tsx}", "**/test/**", "**/testutil/**"],
     rules: { "no-console": "off" },
   },
-  // Sizes come from the type scale in index.css, and the global :focus-visible outline is the one indicator.
+  // Sizes come from the type scale in index.css, the global :focus-visible outline is the one indicator, and no list hides in a title.
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", noElse, ...buttonDisabledOpacity, ...classRules.flatMap(({ pattern, message }) => [
+      "no-restricted-syntax": ["error", noElse, titleList, ...buttonDisabledOpacity, ...classRules.flatMap(({ pattern, message }) => [
         { selector: `Literal[value=${pattern}]`, message },
         { selector: `TemplateElement[value.raw=${pattern}]`, message },
       ])],

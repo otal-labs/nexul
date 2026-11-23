@@ -1,3 +1,4 @@
+import { OverflowCount } from "@/components/OverflowCount";
 import { NoRolesChip, RoleChip } from "@/components/role/RoleChip";
 import { useFittingChildren } from "@/hooks/useFittingChildren";
 import { cn } from "@/lib/utils";
@@ -26,12 +27,12 @@ export const RoleChipRow = ({ roles }: { roles: TeamRole[] }) => {
         </span>
       )}
       {hidden.length > 0 && (
-        <span
-          className="absolute top-0 flex h-5 items-center pt-px font-mono text-micro text-muted-foreground tabular-nums"
-          style={{ left: `calc(${end}px + 0.25rem)` }}
-          title={hidden.map((role) => role.name).join(", ")}
-        >
-          +{hidden.length}
+        <span className="absolute top-0 flex h-5 items-center pt-px" style={{ left: `calc(${end}px + 0.25rem)` }}>
+          <OverflowCount
+            label={`${hidden.length} more ${hidden.length === 1 ? "role" : "roles"}`}
+            items={hidden.map((role) => role.name)}
+            className="text-micro text-muted-foreground"
+          />
         </span>
       )}
     </span>
