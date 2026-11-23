@@ -62,7 +62,7 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
     {timeOnHover && (
       <MessageContinuationTime
         createdAt={message.created_at}
-        className="absolute top-1/2 right-full mr-2 -translate-y-1/2 opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
+        className="absolute top-1/2 right-full mr-2 -translate-y-1/2"
       />
     )}
     {actions}
@@ -143,7 +143,7 @@ const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false
       {isSystem && <SystemMessageRow body={message.body} trailBlock={trailBlock} />}
       {isBot && <BotMessageRow message={message} continuation={continuation} />}
       {!isSystem && !isBot && (
-        <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent", message.pending && "opacity-60")}>
+        <Message align={align} tabIndex={-1} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
             <MessageAvatar className="size-8 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />
@@ -151,10 +151,7 @@ const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false
           )}
           {align === "start" && continuation && (
             <MessageAvatar className="w-8 self-center overflow-visible bg-transparent">
-              <MessageContinuationTime
-                createdAt={message.created_at}
-                className="opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
-              />
+              <MessageContinuationTime createdAt={message.created_at} />
             </MessageAvatar>
           )}
           <MessageContent className="gap-0.5">

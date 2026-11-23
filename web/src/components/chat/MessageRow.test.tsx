@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -291,5 +292,30 @@ describe("MessageRow hand-offs", () => {
     await user.click(within(dialog).getByRole("button", { name: /Worked for 5s/ }));
     expect(within(dialog).getByText("go test -race ./internal/auth/...")).toBeInTheDocument();
     expect(within(dialog).getByText("refresh.go")).toBeInTheDocument();
+  });
+});
+
+// A touch screen has no hover, so a tap must focus the row; jsdom applies no stylesheet, so the reveal is read from the classes.
+describe("MessageRow on a touch screen", () => {
+  it.each([
+    { name: "your own message", isOwn: true, continuation: false, overrides: {} },
+    { name: "your own grouped message", isOwn: true, continuation: true, overrides: {} },
+    { name: "someone else's grouped message", isOwn: false, continuation: true, overrides: { author_id: "u2" } },
+    { name: "a bot's grouped post", isOwn: false, continuation: true, overrides: { author_kind: "bot" as AuthorKind, author_name: "CI" } },
+  ])("a tap on $name focuses its row, which reveals its actions and time", async ({ isOwn, continuation, overrides }) => {
+    const { container } = renderRow(
+      <MemoryRouter>
+        <MessageRow message={message(overrides)} author={unknownPerson("lena")} isOwn={isOwn} continuation={continuation} onEdit={noop} onDelete={noop} />
+      </MemoryRouter>,
+    );
+    const row = container.querySelector<HTMLElement>('[data-slot="message"]');
+
+    await userEvent.click(screen.getByText("hello"));
+
+    expect(row).toHaveFocus();
+    const hidden = [...(row?.querySelectorAll(".opacity-0") ?? [])];
+    expect(hidden).toContain(screen.getByRole("button", { name: "Add reaction" }).parentElement);
+    if (continuation) expect(hidden).toContain(container.querySelector("time"));
+    for (const el of hidden) expect(el.className).toContain("[@media(hover:none)]:group-focus:opacity-100");
   });
 });

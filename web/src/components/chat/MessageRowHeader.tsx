@@ -60,9 +60,9 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
   </>
 );
 
-// What a grouped message shows in place of its header; the row's hover and focus reveal it.
+// What a grouped message shows in place of its header; the row's hover or focus reveals it (on touch, a tap on the row).
 export const MessageContinuationTime = ({ createdAt, className }: { createdAt: string; className?: string }) => (
-  <time dateTime={createdAt} title={formatFullTime(createdAt)} className={cn("font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums", className)}>
+  <time dateTime={createdAt} title={formatFullTime(createdAt)} className={cn("font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums opacity-0 transition-opacity duration-150 ease-standard group-hover:opacity-100 group-has-[:focus]:opacity-100 [@media(hover:none)]:group-focus:opacity-100", className)}>
     {formatClockTime(createdAt)}
   </time>
 );
