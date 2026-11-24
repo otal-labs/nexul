@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { TicketPage } from "@/pages/TicketPage";
 import { usePlayRunStore } from "@/stores/playRunStore";
@@ -111,7 +112,7 @@ describe("TicketPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Status: In progress" }));
     await user.click(await screen.findByRole("button", { name: "Shipped" }));
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" });
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" }, ticketMoveRequest);
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 

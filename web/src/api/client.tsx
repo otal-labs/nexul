@@ -80,6 +80,7 @@ const refusalSentence = (body: ApiErrorBody | undefined): string | undefined => 
 export const errorMessage = (error: unknown): string => {
   const e = error as AxiosError<ApiErrorBody>;
   if (e?.code === "ERR_NETWORK") return "Can't reach the server. Check your connection and try again.";
+  if (e?.code === "ECONNABORTED") return "The server didn't answer in time, so this wasn't saved. Try again.";
   const body = e?.response?.data;
   const sentence = refusalSentence(body);
   if (sentence) return sentence;

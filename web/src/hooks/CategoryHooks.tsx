@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import { ticketChanged } from "@/hooks/TicketCache";
 import type { Category } from "@/models/Category";
 import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
@@ -94,7 +95,7 @@ export const useMoveTicketToCategory = () => {
   return useMutation({
     // silent: part of a board drop, which refetches once at the end (useBoardActions) instead of per step.
     mutationFn: requires("tickets:write", async ({ ticketId, categoryId }: { ticketId: string; categoryId: string; silent?: boolean }) =>
-      api.post(`/api/categories/${categoryId}/tickets/${ticketId}`)),
+      api.post(`/api/categories/${categoryId}/tickets/${ticketId}`, undefined, ticketMoveRequest)),
     onSuccess: async (_, vars) => {
       if (vars.silent) return;
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });
@@ -108,7 +109,7 @@ export const useMoveTicketToCategory = () => {
 export const useClearTicketCategory = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("tickets:write", async ({ ticketId }: { ticketId: string; silent?: boolean }) => api.delete(`/api/categories/tickets/${ticketId}`)),
+    mutationFn: requires("tickets:write", async ({ ticketId }: { ticketId: string; silent?: boolean }) => api.delete(`/api/categories/tickets/${ticketId}`, ticketMoveRequest)),
     onSuccess: async (_, vars) => {
       if (vars.silent) return;
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });

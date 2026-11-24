@@ -1200,7 +1200,11 @@ Three levels, plus one shared parser, `errorMessage(error)` in
 `api/client.tsx`, which returns the first field error, else the envelope's
 `message`, else the transport message, except a request that got no answer
 (`ERR_NETWORK`), which reads "Can't reach the server. Check your connection and try
-again.":
+again.", and one that ran out of time (`ECONNABORTED`), which reads "The server didn't
+answer in time, so this wasn't saved. Try again." A ticket move (status, position,
+category) passes `ticketMoveRequest` from `api/ticketMoveRequest.ts`, a 15-second
+deadline, so a stalled connection fails the move and the board puts the ticket back
+instead of queueing every later drop behind it:
 
 1. **API**: the gateway returns `{ message, code, errors? }`; the parser
    reads it.

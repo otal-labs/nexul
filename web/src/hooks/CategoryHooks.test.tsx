@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import { useClearTicketCategory, useMoveTicketToCategory, categoryFollower } from "@/hooks/CategoryHooks";
 import type { Category } from "@/models/Category";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
@@ -44,7 +45,7 @@ describe("useMoveTicketToCategory", () => {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ ticketId: "t-1", categoryId: "c-2" });
-    expect(api.post).toHaveBeenCalledWith("/api/categories/c-2/tickets/t-1");
+    expect(api.post).toHaveBeenCalledWith("/api/categories/c-2/tickets/t-1", undefined, ticketMoveRequest);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject", "p-1"], exact: true });
   });
@@ -60,7 +61,7 @@ describe("useClearTicketCategory", () => {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ ticketId: "t-1" });
-    expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1");
+    expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1", ticketMoveRequest);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject", "p-1"], exact: true });
   });
