@@ -9,6 +9,7 @@ import { findTicketPerson } from "@nexul/client-core/ticketPeople";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { CardPerson } from "@/components/board/CardPerson";
 import { CardRunMarks } from "@/components/board/CardRunMarks";
+import { TicketCardMenu } from "@/components/board/TicketCardMenu";
 import { animateNearSlot } from "@/components/board/dragPreview";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { hasColor, hueStyle, labelPillColor, ticketTypeColor } from "@/components/board/ticketTypeColor";
@@ -158,36 +159,38 @@ const TicketCardImpl = ({ ticket, collapsed = false }: TicketCardProps) => {
     : undefined;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: dragCssTransform, transition: dragTransition }}
-      data-no-enter={mountedWhileDragging || undefined}
-      {...(draggable ? listeners : {})}
-      {...attributes}
-      {...prefetch}
-      onClick={open}
-      onKeyDown={(event) => {
-        // Enter opens the ticket, matching native <button>; every other key goes to dnd-kit, whose pickup is Space.
-        if (event.key === "Enter") {
-          open();
-          return;
-        }
-        if (draggable) listeners?.onKeyDown?.(event);
-      }}
-      className={cn(
-        "group relative flex select-none flex-col gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40",
-        draggable && "cursor-grab active:cursor-grabbing",
-        !draggable && "cursor-pointer",
-        // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
-        "before:absolute before:inset-x-0 before:-bottom-px before:h-px motion-safe:hover:-translate-y-px",
-        "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:shadow-elevated after:transition-opacity after:duration-150 after:ease-standard hover:after:opacity-50",
-        // TicketCardOverlay carries the "lifted" look; this is just a dimmed placeholder for the slot.
-        isDragging && "opacity-40",
-      )}
-    >
-      <span data-wash aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-success/15 opacity-0" />
-      <TicketCardBody ticket={ticket} assignable={draggable} />
-    </div>
+    <TicketCardMenu ticket={ticket} disabled={isDragging} onOpen={open}>
+      <div
+        ref={setNodeRef}
+        style={{ transform: dragCssTransform, transition: dragTransition }}
+        data-no-enter={mountedWhileDragging || undefined}
+        {...(draggable ? listeners : {})}
+        {...attributes}
+        {...prefetch}
+        onClick={open}
+        onKeyDown={(event) => {
+          // Enter opens the ticket, matching native <button>; every other key goes to dnd-kit, whose pickup is Space.
+          if (event.key === "Enter") {
+            open();
+            return;
+          }
+          if (draggable) listeners?.onKeyDown?.(event);
+        }}
+        className={cn(
+          "group relative flex select-none flex-col gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 shadow-card transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 data-[state=open]:border-muted-foreground/40",
+          draggable && "cursor-grab active:cursor-grabbing",
+          !draggable && "cursor-pointer",
+          // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
+          "before:absolute before:inset-x-0 before:-bottom-px before:h-px motion-safe:hover:-translate-y-px",
+          "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:shadow-elevated after:transition-opacity after:duration-150 after:ease-standard hover:after:opacity-50",
+          // TicketCardOverlay carries the "lifted" look; this is just a dimmed placeholder for the slot.
+          isDragging && "opacity-40",
+        )}
+      >
+        <span data-wash aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-success/15 opacity-0" />
+        <TicketCardBody ticket={ticket} assignable={draggable} />
+      </div>
+    </TicketCardMenu>
   );
 };
 

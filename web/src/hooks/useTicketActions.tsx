@@ -9,27 +9,32 @@ import type { Project } from "@/models/Project";
 import { boardPath } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
 
-// After Delete, a ticket shown inside another page (the Inbox) stays put; a ticket page returns to its board.
-export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined, onHistory: () => void): RowAction[] => {
-  const embedded = useIsEmbedded();
-  const navigate = useNavigate();
-  const wsPath = useWorkspacePath();
+// Asks first, then deletes; the ticket page and the board card's menu say the same thing.
+export const useConfirmDeleteTicket = () => {
   const { open: confirm } = useConfirmationDialog();
   const deleteTicket = useDeleteTicket();
-
-  const remove = async () => {
+  return async (ticket: Ticket, label: string, onDeleted?: () => void) => {
     const ok = await confirm({
       title: `Delete ${label}?`,
       message: `"${ticket.title}" is deleted for good, with its labels, links, attachments and thread. Tickets it blocks are no longer blocked. This can't be undone.`,
       confirmLabel: "Delete ticket",
     });
     if (!ok) return;
-    deleteTicket.mutate(ticket.id, {
-      onSuccess: () => {
-        if (!embedded && project) void navigate(wsPath(boardPath(project)));
-      },
-    });
+    deleteTicket.mutate(ticket.id, { onSuccess: () => onDeleted?.() });
   };
+};
+
+// After Delete, a ticket shown inside another page (the Inbox) stays put; a ticket page returns to its board.
+export const useTicketActions = (ticket: Ticket, label: string, project: Project | undefined, onHistory: () => void): RowAction[] => {
+  const embedded = useIsEmbedded();
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
+  const confirmDelete = useConfirmDeleteTicket();
+
+  const remove = () =>
+    confirmDelete(ticket, label, () => {
+      if (!embedded && project) void navigate(wsPath(boardPath(project)));
+    });
 
   return [
     { label: "History", permission: "tickets:read", verb: "read this ticket's history", onSelect: onHistory },

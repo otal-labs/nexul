@@ -133,28 +133,42 @@ function ContextMenuItem({
   )
 }
 
+// "end" puts a check after the label, the menu anatomy for a pick list whose rows lead with their own icon.
+type IndicatorPlace = { indicator?: "start" | "end" }
+
+const endIndicator = (
+  <ContextMenuPrimitive.ItemIndicator className="ml-auto flex">
+    <CheckIcon className="size-3.5 text-muted-foreground" />
+  </ContextMenuPrimitive.ItemIndicator>
+)
+
 function ContextMenuCheckboxItem({
   className,
   children,
   checked,
+  indicator = "start",
   ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.CheckboxItem>) {
+}: React.ComponentProps<typeof ContextMenuPrimitive.CheckboxItem> & IndicatorPlace) {
   return (
     <ContextMenuPrimitive.CheckboxItem
       data-slot="context-menu-checkbox-item"
       className={cn(
         "relative flex min-h-8 items-center gap-2.5 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        indicator === "end" && "pl-2",
         className
       )}
       {...(checked !== undefined ? { checked } : {})}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <ContextMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
-        </ContextMenuPrimitive.ItemIndicator>
-      </span>
+      {indicator === "start" && (
+        <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+          <ContextMenuPrimitive.ItemIndicator>
+            <CheckIcon className="size-4" />
+          </ContextMenuPrimitive.ItemIndicator>
+        </span>
+      )}
       {children}
+      {indicator === "end" && endIndicator}
     </ContextMenuPrimitive.CheckboxItem>
   )
 }
@@ -162,23 +176,28 @@ function ContextMenuCheckboxItem({
 function ContextMenuRadioItem({
   className,
   children,
+  indicator = "start",
   ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.RadioItem>) {
+}: React.ComponentProps<typeof ContextMenuPrimitive.RadioItem> & IndicatorPlace) {
   return (
     <ContextMenuPrimitive.RadioItem
       data-slot="context-menu-radio-item"
       className={cn(
         "relative flex min-h-8 items-center gap-2.5 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        indicator === "end" && "pl-2",
         className
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <ContextMenuPrimitive.ItemIndicator>
-          <CircleIcon className="size-2 fill-current" />
-        </ContextMenuPrimitive.ItemIndicator>
-      </span>
+      {indicator === "start" && (
+        <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+          <ContextMenuPrimitive.ItemIndicator>
+            <CircleIcon className="size-2 fill-current" />
+          </ContextMenuPrimitive.ItemIndicator>
+        </span>
+      )}
       {children}
+      {indicator === "end" && endIndicator}
     </ContextMenuPrimitive.RadioItem>
   )
 }
