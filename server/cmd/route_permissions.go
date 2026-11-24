@@ -191,6 +191,7 @@ var routePermissions = map[string][]string{
 	"POST /api/invitations/redeem":           none,
 	"DELETE /api/invitations/{invitationID}": {"members:write"},
 	"POST /api/logs":                         none,
+	"POST /api/browser-reports":              none,
 
 	"DELETE /api/machines/{id}":            {"machines:delete"},
 	"PATCH /api/machines/{id}":             {"machines:write"},

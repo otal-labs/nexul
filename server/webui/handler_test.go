@@ -110,6 +110,17 @@ func TestHandler_CacheHeaders(t *testing.T) {
 	}
 }
 
+func TestHandler_Page_AsksForCrashReportsWithCallStacks(t *testing.T) {
+	plain := Handler(newAssets())
+	transformed := Handler(newAssets(), func(_ context.Context, index []byte) []byte { return bytes.ToUpper(index) })
+	for name, h := range map[string]http.Handler{"plain": plain, "transformed": transformed} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/docs/guide", nil))
+		assert.Equal(t, "include-js-call-stacks-in-crash-reports", rec.Header().Get("Document-Policy"), name)
+		assert.Equal(t, `crash-reporting="/api/browser-reports"`, rec.Header().Get("Reporting-Endpoints"), name)
+	}
+}
+
 func TestHandler_Font_IsReadableFromAnOpaqueOrigin(t *testing.T) {
 	h := Handler(newAssets())
 	tests := []struct {

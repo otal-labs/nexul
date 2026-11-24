@@ -47,6 +47,9 @@ func Handler(assets fs.FS, transforms ...IndexTransform) http.Handler {
 			}
 		}
 		w.Header().Set("Cache-Control", "no-cache")
+		// A tab the browser kills as unresponsive reports its JavaScript call stack, the one trace a frozen page leaves.
+		w.Header().Set("Document-Policy", "include-js-call-stacks-in-crash-reports")
+		w.Header().Set("Reporting-Endpoints", `crash-reporting="/api/browser-reports"`)
 		if len(transforms) > 0 && serveTransformed(r.Context(), w, assets, transforms) {
 			return
 		}
