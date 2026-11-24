@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, errorMessage } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import {
   useAddLabel,
   useCreateTicket,
@@ -153,7 +154,7 @@ describe("useUpdateTicketStatus", () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, status: TicketStatus.Done } });
     const { result } = renderHook(() => useUpdateTicketStatus(), { wrapper });
     await result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done });
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "done" });
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "done" }, ticketMoveRequest);
   });
 });
 
@@ -206,7 +207,7 @@ describe("useUpdateTicketPosition", () => {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ id: "t-1", position: 3 });
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/position", { position: 3 });
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/position", { position: 3 }, ticketMoveRequest);
     expect(client.getQueryData<{ position: number }[]>(["getTicketsByProject", "p-1"])?.[0]?.position).toBe(3);
     expect(toast.success).not.toHaveBeenCalled();
   });

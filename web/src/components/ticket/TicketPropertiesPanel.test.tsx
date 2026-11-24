@@ -5,6 +5,7 @@ import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import { labelDotColor } from "@/components/board/ticketTypeColor";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketStatus, type Ticket } from "@/models/Ticket";
@@ -180,11 +181,11 @@ describe("TicketPropertiesPanel", () => {
 
     await user.click(await screen.findByRole("button", { name: "Category: No category" }));
     await user.click(await screen.findByRole("button", { name: "Web" }));
-    expect(api.post).toHaveBeenCalledWith("/api/categories/cat-web/tickets/t-1");
+    expect(api.post).toHaveBeenCalledWith("/api/categories/cat-web/tickets/t-1", undefined, ticketMoveRequest);
 
     rerenderWithTicket({ ...ticket, category_id: "cat-web" });
     await user.click(await screen.findByRole("button", { name: "Category: Web" }));
     await user.click(await screen.findByRole("button", { name: "No category" }));
-    expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1");
+    expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1", ticketMoveRequest);
   });
 });

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { ticketMoveRequest } from "@/api/ticketMoveRequest";
 import {
   getTicketKey,
   getTicketsByDocKey,
@@ -149,7 +150,7 @@ const useTicketEdit = <V extends { id: string; silent?: boolean }>(
 export const useUpdateTicketStatus = () =>
   useTicketEdit(
     requires("tickets:write", async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data),
+      (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status }, ticketMoveRequest)).data),
     ({ status }) => ({ status }),
   );
 
@@ -206,7 +207,7 @@ export const useUpdateTicketPosition = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires("tickets:write", async ({ id, position }: { id: string; position: number; silent?: boolean }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/position`, { position })).data),
+      (await api.patch<Ticket>(`/api/tickets/${id}/position`, { position }, ticketMoveRequest)).data),
     onSuccess: async (ticket, vars) => {
       if (vars.silent) return;
       await ticketChanged(client, ticket);

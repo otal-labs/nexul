@@ -33,6 +33,10 @@ describe("errorMessage", () => {
     expect(errorMessage(new AxiosError("Network Error", "ERR_NETWORK"))).toBe("Can't reach the server. Check your connection and try again.");
   });
 
+  it("says a request that timed out wasn't saved, not axios's timeout text", () => {
+    expect(errorMessage(new AxiosError("timeout of 15000ms exceeded", "ECONNABORTED"))).toBe("The server didn't answer in time, so this wasn't saved. Try again.");
+  });
+
   it("returns the first field error even when a message exists", () => {
     const error = { response: { data: { message: "validation failed", code: "invalid", errors: { name: ["a"], title: ["b"] } } } };
     expect(errorMessage(error)).toBe("a");
