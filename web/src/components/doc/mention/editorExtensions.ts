@@ -14,6 +14,7 @@ import type { MentionRef } from "@nexul/client-core/mention";
 import { CaretOffNodes } from "@/components/doc/caretOffNodes";
 import { CodeBlockView } from "@/components/doc/codeBlock/CodeBlockView";
 import { DiscordTimes } from "@/components/doc/discordTime/discordTimeExtension";
+import { EditorLoopGuard } from "@/components/doc/editorLoopGuard";
 import { AttachmentImageView } from "@/components/doc/image/AttachmentImageView";
 import { AttachmentUpload, type AttachmentUploadOptions } from "@/components/doc/image/attachmentUpload";
 import { lowlight } from "@/components/doc/codeBlock/lowlight";
@@ -129,6 +130,7 @@ export function buildEditorExtensions({
       },
     }),
     CaretOffNodes,
+    EditorLoopGuard,
     DiscordTimes,
     RecordLinkMentions,
     AttachmentUpload.configure({ owner: attachTo, stage, ...(onUploaded ? { onUploaded } : {}) }),
