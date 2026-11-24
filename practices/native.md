@@ -168,6 +168,10 @@ as written. In particular:
   reconnect. There is no offline cache.
 - One API client for the connected instance; components never call it
   directly, only typed hooks do.
+  A request has no deadline unless its hook chooses one: a ticket move passes
+  15 seconds to `api.patch`, so a stalled connection fails the move, the board
+  puts the ticket back and shows "The server didn't answer in time, so this
+  wasn't saved. Try again."
 - Push notifications live in `src/push/`. The root layout requests
   permission and registers the Expo push token (needs `extra.eas.projectId`,
   set from `NEXUL_EAS_PROJECT_ID`) once per sign-in; sign-out clears it on

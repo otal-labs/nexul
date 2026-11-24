@@ -56,11 +56,14 @@ const ticketQuery = defineQuery({
 export const useFetchTicket = (id: string | undefined, workspace = "") =>
   useQuery({ ...ticketQuery.options(id, workspace), enabled: !!id });
 
+// A move answers in milliseconds; one still open after this is stuck, so it fails and the board puts the ticket back.
+const ticketMoveTimeoutMs = 15_000;
+
 export const useUpdateTicketStatus = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires("tickets:write", ({ id, status }: { id: string; status: string }) =>
-      api.patch<Ticket>(`/api/tickets/${id}/status`, { status })),
+      api.patch<Ticket>(`/api/tickets/${id}/status`, { status }, ticketMoveTimeoutMs)),
     // The board moves the card at once, so a drop lands where it was let go; a refusal puts it back with the refetch.
     onMutate: async ({ id, status }) => {
       await client.cancelQueries({ queryKey: [getTicketsByProjectKey] });
