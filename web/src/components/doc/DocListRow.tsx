@@ -1,3 +1,7 @@
+import { useDraggable } from "@dnd-kit/core";
+import { useId } from "react";
+
+import type { DocDragItem } from "@/components/doc/docDrag";
 import { DocStateIcon } from "@/components/doc/DocStateIcon";
 import { formatShortAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
@@ -23,6 +27,10 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
   const wsPath = useWorkspacePath();
   const runState = useDocRunState(doc.project_id, doc.id);
   const sortBy = useDocSortStore((s) => s.sortBy);
+  // A pinned doc is listed twice, so each row has its own drag id.
+  const dragId = useId();
+  // Held only by a viewer who may move it, the same gate as the menu's Move to folder.
+  const drag = useDraggable({ id: dragId, data: { kind: "doc", doc } satisfies DocDragItem, disabled: !menu.moveTo });
   const prefetch = useHoverPrefetch((client) => client.prefetchQuery(docQuery(doc.id)));
   return (
     <ListPaneRow
@@ -38,6 +46,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       selected={selected}
       menu={menu}
       prefetch={prefetch}
+      {...(menu.moveTo && { drag })}
     />
   );
 };

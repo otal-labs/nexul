@@ -1,9 +1,13 @@
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { PlusIcon } from "lucide-react";
+import { useCallback } from "react";
 
 import { ActionButton } from "@/components/action/ActionButton";
+import { docDrop, type DocDragItem } from "@/components/doc/docDrag";
 import { FolderToggle } from "@/components/listpane/FolderToggle";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { hasOwnActions } from "@/components/listpane/rowMenu";
+import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCanManageAccess } from "@/hooks/useCanManageAccess";
 import { useDocFolderActions } from "@/hooks/useDocFolderActions";
 import type { DocFolder } from "@/models/DocFolder";
@@ -22,9 +26,27 @@ export const DocFolderHeader = ({ folder, total, open, onToggle }: DocFolderHead
   const hasActions = !!menu.onNewDoc;
   // Asked up front only where Permissions… could be the menu's one item, so whoever manages the folder can reach it.
   const manages = useCanManageAccess(hasOwnActions(menu) || menu.onDelete ? undefined : menu.permissions?.entity);
+  const { data: folders } = useFetchDocFolders(folder.project_id);
+  // The row is a drop target for docs and folders, and is itself held to move the folder, the default one excepted.
+  const drop = useDroppable({ id: `folder:${folder.id}`, data: folder });
+  const drag = useDraggable({ id: `folder-row:${folder.id}`, data: { kind: "folder", folder } satisfies DocDragItem, disabled: !menu.moveTo });
+  const accepts = drop.isOver && !!docDrop(drop.active?.data.current as DocDragItem | undefined, folder, folders ?? []);
+  const { setNodeRef: setDropNode } = drop;
+  const { setNodeRef: setDragNode } = drag;
+  const setRef = useCallback(
+    (el: HTMLElement | null) => {
+      setDropNode(el);
+      setDragNode(el);
+    },
+    [setDropNode, setDragNode],
+  );
   return (
     <RowContextMenu menu={menu} manages={manages}>
-      <div className="group/folder sticky-group-head flex items-center gap-1 pr-3 pl-3">
+      <div
+        ref={setRef}
+        {...(menu.moveTo && drag.listeners)}
+        className={cn("group/folder sticky-group-head flex items-center gap-1 pr-3 pl-3", accepts && "rounded-md ring-1 ring-ring ring-inset", drag.isDragging && "opacity-50")}
+      >
         <FolderToggle
           name={folder.name}
           open={open}

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ArchiveIcon, FileTextIcon, PlusIcon } from "lucide-react";
 
 import { ActionButton } from "@/components/action/ActionButton";
+import { DocDragContext } from "@/components/doc/DocDragContext";
 import { DocFolderSection } from "@/components/doc/DocFolderSection";
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
 import { groupDocs } from "@/components/doc/docGroups";
@@ -87,41 +88,43 @@ export const DocsListPane = ({ docs, project, selectedId, search, onSearch }: Do
           </>
         }
       />
-      <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable_both-edges]">
-        {isPending && <LoadingDisplay />}
-        {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
-        {groups && bare && !searching && !showArchived && (
-          // From 1024 the overview beside the list says this, with its action.
-          <div className="flex h-full items-center justify-center lg:hidden">
-            <EmptyState
-              icon={FileTextIcon}
-              title="No docs yet"
-              className="border-0"
-              message="Specs, runbooks and meeting notes live here."
-              action={
-                <ActionButton permission="docs:write" verb="create docs" projectId={project.id} size="sm" icon={PlusIcon} onClick={() => void newDoc()}>
-                  New doc
-                </ActionButton>
-              }
-            />
-          </div>
-        )}
-        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && !searching && showArchived && <ListPaneEmpty icon={ArchiveIcon} message="No archived docs" />}
-        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => onSearch("")} />}
-        {groups && attention.length > 0 && !searching && (
-          <div className="lg:hidden">
-            <DocGroupSection group={{ label: "Needs attention", docs: attention }} projectToken={token} selectedId={selectedId} />
-          </div>
-        )}
-        {groups && groups.pinned.length > 0 && (
-          <div className="pb-2">
-            <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
-          </div>
-        )}
-        {groups && (!bare || searching || showArchived) && groups.folders.map((group) => (
-          <DocFolderSection key={group.folder.id} group={group} projectToken={token} selectedId={selectedId} forceOpen={searching} />
-        ))}
-      </div>
+      <DocDragContext projectId={project.id}>
+        <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable_both-edges]">
+          {isPending && <LoadingDisplay />}
+          {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
+          {groups && bare && !searching && !showArchived && (
+            // From 1024 the overview beside the list says this, with its action.
+            <div className="flex h-full items-center justify-center lg:hidden">
+              <EmptyState
+                icon={FileTextIcon}
+                title="No docs yet"
+                className="border-0"
+                message="Specs, runbooks and meeting notes live here."
+                action={
+                  <ActionButton permission="docs:write" verb="create docs" projectId={project.id} size="sm" icon={PlusIcon} onClick={() => void newDoc()}>
+                    New doc
+                  </ActionButton>
+                }
+              />
+            </div>
+          )}
+          {groups && groups.folders.length === 0 && groups.pinned.length === 0 && !searching && showArchived && <ListPaneEmpty icon={ArchiveIcon} message="No archived docs" />}
+          {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => onSearch("")} />}
+          {groups && attention.length > 0 && !searching && (
+            <div className="lg:hidden">
+              <DocGroupSection group={{ label: "Needs attention", docs: attention }} projectToken={token} selectedId={selectedId} />
+            </div>
+          )}
+          {groups && groups.pinned.length > 0 && (
+            <div className="pb-2">
+              <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
+            </div>
+          )}
+          {groups && (!bare || searching || showArchived) && groups.folders.map((group) => (
+            <DocFolderSection key={group.folder.id} group={group} projectToken={token} selectedId={selectedId} forceOpen={searching} />
+          ))}
+        </div>
+      </DocDragContext>
     </div>
   );
 };

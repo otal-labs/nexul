@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import type { DraggableSyntheticListeners } from "@dnd-kit/core";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
@@ -35,14 +36,24 @@ interface ListPaneRowProps {
   metaOnTitleLine?: boolean;
   /** Loads what the row opens once the pointer rests on it or it takes focus. */
   prefetch?: ReturnType<typeof useHoverPrefetch>;
+  /** Lets the row be picked up, by a mouse or a held touch, from anywhere on it. */
+  drag?: { setNodeRef: (el: HTMLElement | null) => void; listeners: DraggableSyntheticListeners; isDragging: boolean };
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch, drag }: ListPaneRowProps) => {
   // Inline in the title's line box, a mono count sits on the title's baseline instead of centring in it.
   const onTitleLine = metaOnTitleLine && cn("block h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const titleLineBox = metaOnTitleLine && cn("h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const ref = useRef<HTMLLIElement>(null);
+  const setDragNode = drag?.setNodeRef;
+  const setRef = useCallback(
+    (el: HTMLLIElement | null) => {
+      ref.current = el;
+      setDragNode?.(el);
+    },
+    [setDragNode],
+  );
   const hasActions = !!actions;
   // A detail line under a title-line time takes the row's full width: the time sits in the title line's corner instead of a column.
   const cornerMeta = metaOnTitleLine && !!detail && !!meta && !hasActions && !trailing;
@@ -63,20 +74,23 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
   return (
     <RowContextMenu menu={menu}>
       <li
-        ref={ref}
+        ref={setRef}
         {...prefetch}
+        {...drag?.listeners}
         className={cn(
           "group relative my-0.5 flex scroll-my-10 gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",
           snippet === "" && !detail && (dense ? "min-h-8" : "min-h-10"),
           (snippet !== "" || !!detail) && "min-h-14",
           selected ? currentRowFillClass : "hover:bg-accent",
+          drag?.isDragging && "opacity-50",
         )}
       >
         {selected && <CurrentRowEdge className="z-10 group-has-[:focus-visible]:left-1" />}
         <Link
           to={to}
           aria-current={selected ? "page" : undefined}
+          draggable={drag ? false : undefined}
           className={cn("quiet-focus min-w-0 flex-1 after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus", dense ? "py-1.5" : "py-2")}
         >
           <span className={cn("flex min-w-0 items-start gap-1.5 text-row", cornerMeta && "pr-12")}>

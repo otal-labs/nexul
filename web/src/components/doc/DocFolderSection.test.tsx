@@ -9,6 +9,7 @@ import { useDocFolderStore } from "@/stores/docFolderStore";
 
 vi.mock("@/hooks/useDocFolderActions", () => ({ useDocFolderActions: () => ({}) }));
 vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: () => false }));
+vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: [] }) }));
 vi.mock("@/components/doc/DocListRow", () => ({ DocListRow: ({ doc }: { doc: DocListItem }) => <li>{doc.title}</li> }));
 
 const group = (projectId: string): DocFolderGroup => ({
