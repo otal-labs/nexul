@@ -1037,7 +1037,8 @@ index health, owning ticket, live deploy status).
 
 - **The canvas store.** Node and edge state lives in an external Zustand
   store, `stores/flowStore.tsx`, which holds `nodes`, `edges`, the React Flow
-  change handlers (`applyNodeChanges`, `applyEdgeChanges`, `addEdge`) and
+  change handlers (in `flowActions.ts`: each `NodeChangeset` or
+  `EdgeChangeset` applies itself with `applyTo`, and `addEdge`) and
   `applyServerPatch` for the patches [Live events](#live-events-websocket-client)
   push. React Flow performs best this way; components select slices
   (`useShallow` for several fields) so only changed nodes re-render. The
