@@ -139,6 +139,7 @@
   "POST /api/automations/{id}/versions/{versionID}/merge": ["automations:write"],
   "POST /api/automations/{id}/versions/{versionID}/rollback": ["automations:write"],
   "POST /api/botwebhooks/{id}/{token}": ["none"],
+  "POST /api/browser-reports": ["none"],
   "POST /api/categories": ["projects:write"],
   "POST /api/categories/reorder": ["projects:write"],
   "POST /api/categories/{id}/tickets/{ticketID}": ["tickets:write"],
