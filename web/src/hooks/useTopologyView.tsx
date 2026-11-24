@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { applyNodeChanges, MarkerType, useReactFlow, useStoreApi, type OnNodesChange } from "@xyflow/react";
+import { MarkerType, NodeChangeset, useReactFlow, useReactFlowStoreApi, type NodeChange, type OnNodesChange } from "@xyflow/react";
 
 import { onNodesChange } from "@/components/topology/flowActions";
 import { deriveWiring, summarize, tracePath } from "@/components/topology/wiring";
@@ -32,7 +32,7 @@ const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "var
 // The canvas as rendered, stored and derived nodes in lanes. Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const useTopologyView = () => {
   const { setViewport, fitView } = useReactFlow();
-  const flow = useStoreApi();
+  const { viewportStore } = useReactFlowStoreApi();
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
   const save = useSaveTopology();
@@ -111,7 +111,7 @@ export const useTopologyView = () => {
   // The pane is measured a frame or two after the canvas mounts; a camera set before that fits a 0px pane at 1:1.
   const whenSized = (then: (width: number) => void, frames = 30) =>
     requestAnimationFrame(() => {
-      const width = flow.getState().width;
+      const width = viewportStore.getState().width;
       if (width > 0 || frames === 0) return then(width);
       whenSized(then, frames - 1);
     });
@@ -157,13 +157,14 @@ export const useTopologyView = () => {
   }, [loading, viewNodes, viewEdges, wiring.nodes, wiring.networks]);
 
   // Store nodes take their changes in the store; derived nodes keep theirs (measurements, mostly) here.
-  const handleNodesChange: OnNodesChange<TopologyNode> = (changes) => {
+  const handleNodesChange: OnNodesChange<TopologyNode> = (changeset) => {
+    const changes = changeset.toArray();
     const hostIds = new Set(hosts.map((h) => h.id));
-    const isHost = (c: (typeof changes)[number]) => "id" in c && hostIds.has(c.id);
-    onNodesChange(changes.filter((c) => !isHost(c)));
+    const isHost = (c: NodeChange<TopologyNode>) => "id" in c && hostIds.has(c.id);
+    onNodesChange(new NodeChangeset(changes.filter((c) => !isHost(c))));
     const mine = changes.filter(isHost);
     if (mine.length === 0) return;
-    const next = applyNodeChanges(mine, hosts).filter((n): n is HostnameNode => n.type === "hostname");
+    const next = new NodeChangeset<TopologyNode>(mine).applyTo(hosts).filter((n): n is HostnameNode => n.type === "hostname");
     setMeasured(new Map(next.map((h) => [h.id, h.measured])));
   };
 
@@ -173,10 +174,10 @@ export const useTopologyView = () => {
     const ids = wiring.nodes.filter((n) => (n.type === "service" || n.type === "gateway") && n.data.status === status).map((n) => n.id);
     if (ids.length === 0) return;
     framed.current = (framed.current + 1) % ids.length;
-    void fitView({ nodes: [{ id: ids[framed.current]! }], minZoom: MIN_FIT_ZOOM, maxZoom: 1, padding: 0.4 });
+    void fitView({ nodes: [{ id: ids[framed.current]! }], minZoom: MIN_FIT_ZOOM, maxZoom: 1, padding: "14%" });
   };
 
-  const fit = () => void setViewport(cameraFor(new Map(viewNodes.map((n) => [n.id, n.position])), flow.getState().width));
+  const fit = () => void setViewport(cameraFor(new Map(viewNodes.map((n) => [n.id, n.position])), viewportStore.getState().width));
 
   return {
     viewNodes: shownNodes,

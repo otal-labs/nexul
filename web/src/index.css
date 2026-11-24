@@ -701,6 +701,7 @@ body {
 
 /* ============ React Flow canvas (midnight blueprint field) ============ */
 .react-flow {
+  color-scheme: inherit;
   --xy-background-color: var(--surface-2);
   --xy-background-pattern-color: color-mix(in oklab, var(--muted-foreground) 26%, transparent);
   --xy-edge-stroke: color-mix(in oklab, var(--muted-foreground) 55%, transparent);

@@ -4,8 +4,8 @@ import {
   Background,
   BackgroundVariant,
   ReactFlow,
+  useReactFlowStoreApi,
   ViewportPortal,
-  useStoreApi,
   type NodeMouseHandler,
   type OnMoveEnd,
   type OnNodeDrag,
@@ -46,7 +46,7 @@ const edgeTypes = { relation: RelationEdgeView, route: RouteEdgeView };
 // Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const TopologyFlow = () => {
   const navigate = useNavigate();
-  const flow = useStoreApi();
+  const { viewportStore } = useReactFlowStoreApi();
   const wsPath = useWorkspacePath();
   const can = useAreaAccess();
   const canOpenStack = can?.("stacks") ?? false;
@@ -72,7 +72,7 @@ export const TopologyFlow = () => {
     // Restoring the saved camera on load ends a move too; the same values are not worth a write.
     const saved = useFlowStore.getState().viewport;
     if (saved && saved.x === viewport.x && saved.y === viewport.y && saved.zoom === viewport.zoom) return;
-    storeViewport({ ...viewport, width: flow.getState().width });
+    storeViewport({ ...viewport, width: viewportStore.getState().width });
     window.clearTimeout(viewportSave.current);
     viewportSave.current = window.setTimeout(() => void save.mutateAsync(), 600);
   };

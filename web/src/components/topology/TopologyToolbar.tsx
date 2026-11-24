@@ -1,4 +1,4 @@
-import { useReactFlow, useStore, useStoreApi, useViewport } from "@xyflow/react";
+import { useOptionsStore, useReactFlow, useReactFlowStoreApi, useViewport, useViewportStore } from "@xyflow/react";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -101,9 +101,9 @@ const MoreTools = ({ tools }: { tools: Tool[] }) => (
 export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFit, onFrame }: TopologyToolbarProps) => {
   const { zoomIn, zoomOut, zoomTo, setViewport } = useReactFlow();
   const viewport = useViewport();
-  const width = useStore((s) => s.width);
-  const store = useStoreApi();
-  const locked = useStore((s) => !s.nodesDraggable && !s.elementsSelectable);
+  const width = useViewportStore((s) => s.width);
+  const { optionsStore } = useReactFlowStoreApi();
+  const locked = useOptionsStore((s) => !s.nodesDraggable && !s.elementsSelectable);
   const canWrite = useActionState({ permission: "topology:write" }).state === "live";
   const beyond = laneBeyond(lanes, viewport, width);
   const before = laneBefore(lanes, viewport);
@@ -129,7 +129,7 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
     {
       label: locked ? "Unlock the map" : "Lock the map",
       icon: locked ? LockIcon : LockOpenIcon,
-      onClick: () => store.setState({ nodesDraggable: locked, nodesConnectable: locked, elementsSelectable: locked }),
+      onClick: () => optionsStore.setState({ nodesDraggable: locked, nodesConnectable: locked, elementsSelectable: locked }),
     },
     ...(canWrite ? [{ label: "Arrange in lanes", word: "Arrange", icon: LayoutGridIcon, onClick: onArrange }] : []),
   ];
