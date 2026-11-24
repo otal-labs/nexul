@@ -47,7 +47,8 @@ const schedule = () => {
   timer ??= window.setTimeout(flush, FLUSH_DELAY_MS);
 };
 
-const enqueue = (level: Level, message: string, attrs?: Record<string, unknown>) => {
+// Queues one line for the instance logs, sent with the next batch.
+export const enqueue = (level: Level, message: string, attrs?: Record<string, unknown>) => {
   if (queue.length >= MAX_QUEUE) queue.shift();
   queue.push({ level, message, url: window.location.pathname, ...(attrs && { attrs }) });
   schedule();
