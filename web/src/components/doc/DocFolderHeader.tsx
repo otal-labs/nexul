@@ -33,7 +33,8 @@ export const DocFolderHeader = ({ folder, total, open, onToggle }: DocFolderHead
           metaClassName={cn(hasActions && "group-focus-within/folder:hidden group-hover/folder:hidden group-has-[[data-state=open]]/folder:hidden")}
         />
         {hasActions && (
-          <div className="hidden shrink-0 items-center group-focus-within/folder:flex group-hover/folder:flex group-has-[[data-state=open]]/folder:flex">
+          // -mr-2 sets the + glyph, centred in its 24px button, over the count's digits it replaces.
+          <div className="-mr-2 hidden shrink-0 items-center group-focus-within/folder:flex group-hover/folder:flex group-has-[[data-state=open]]/folder:flex">
             <ActionButton
               permission="docs:write"
               projectId={folder.project_id}
