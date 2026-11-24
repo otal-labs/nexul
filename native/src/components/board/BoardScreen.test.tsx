@@ -110,7 +110,23 @@ describe("BoardScreen", () => {
     expect(card.props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual(["Move to Doing", "Move to Shipped"]);
     await act(() => fireEvent(card, "accessibilityAction", { nativeEvent: { actionName: "st-shipped" } }));
 
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-shipped" });
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-shipped" }, 15_000);
+  });
+
+  test("a move the server never answered puts the card back and says it wasn't saved", async () => {
+    jest.mocked(api.patch).mockRejectedValue(new Error("The server didn't answer in time, so this wasn't saved. Try again."));
+    await renderScreen();
+    const card = await screen.findByRole("button", { name: "NEX-12 Fix login" });
+
+    await act(() => fireEvent(card, "accessibilityAction", { nativeEvent: { actionName: "st-shipped" } }));
+
+    expect(await screen.findByText("The server didn't answer in time, so this wasn't saved. Try again.")).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "NEX-12 Fix login" }).props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual([
+        "Move to Doing",
+        "Move to Shipped",
+      ]),
+    );
   });
 
   test.each([

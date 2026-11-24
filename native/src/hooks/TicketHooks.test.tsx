@@ -25,6 +25,7 @@ describe("ticket mutations", () => {
     [
       "moving a ticket",
       "/api/tickets/t-1/status",
+      [15_000],
       () => {
         const { mutateAsync } = useUpdateTicketStatus();
         return () => mutateAsync({ id: "t-1", status: "st-2" });
@@ -33,12 +34,13 @@ describe("ticket mutations", () => {
     [
       "assigning a ticket",
       "/api/tickets/t-1/developer",
+      [],
       () => {
         const { mutateAsync } = useSetTicketPerson();
         return () => mutateAsync({ id: "t-1", role: TicketRole.Developer, login: "lena" });
       },
     ],
-  ])("%s refreshes the board and that ticket however it was opened, and no other ticket", async (_, path, useRun) => {
+  ] as const)("%s refreshes the board and that ticket however it was opened, and no other ticket", async (_, path, deadline, useRun) => {
     const client = new QueryClient();
     client.setQueryData([getTicketsByProjectKey, "p-1"], []);
     client.setQueryData([getTicketKey, "t-1", ""], { id: "t-1" });
@@ -51,7 +53,7 @@ describe("ticket mutations", () => {
     });
 
     const invalidated = (key: string[]) => client.getQueryState(key)?.isInvalidated;
-    expect(patch).toHaveBeenCalledWith(path, expect.any(Object));
+    expect(patch).toHaveBeenCalledWith(path, expect.any(Object), ...deadline);
     expect(invalidated([getTicketsByProjectKey, "p-1"])).toBe(true);
     expect(invalidated([getTicketKey, "t-1", ""])).toBe(true);
     expect(invalidated([getTicketKey, "WEB-12", "acme"])).toBe(true);

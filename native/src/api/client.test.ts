@@ -1,5 +1,5 @@
 import { api } from "@/api/client";
-import { ApiError } from "@/api/errors";
+import { ApiError, errorMessage } from "@/api/errors";
 import { useSessionStore } from "@/stores/sessionStore";
 
 jest.mock("expo-secure-store", () => {
@@ -42,6 +42,34 @@ describe("api", () => {
 
     await expect(api.get("/api/auth/me")).rejects.toMatchObject({ status: 401 });
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  describe("a call given a deadline", () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    test("fails once the deadline passes, cuts the connection and says the change wasn't saved", async () => {
+      mockFetch.mockReturnValue(new Promise(() => {}));
+
+      const move = api.patch("/api/tickets/t-1/status", { status: "st-2" }, 15_000);
+      const settled = jest.fn();
+      move.catch(settled);
+      await jest.advanceTimersByTimeAsync(14_999);
+      expect(settled).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1);
+
+      const error = await move.catch((e: unknown) => e);
+      expect(errorMessage(error)).toBe("The server didn't answer in time, so this wasn't saved. Try again.");
+      expect((mockFetch.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(true);
+      expect(useSessionStore.getState().signedIn).toBe(true);
+    });
+
+    test("answers as usual when the server replies in time", async () => {
+      respond(200, { id: "t-1" });
+
+      await expect(api.patch("/api/tickets/t-1/status", { status: "st-2" }, 15_000)).resolves.toEqual({ id: "t-1" });
+      expect(jest.getTimerCount()).toBe(0);
+    });
   });
 
   test("calls go to the stored host with the bearer token", async () => {
