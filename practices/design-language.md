@@ -656,7 +656,10 @@ click, collapsed folders kept per browser and project. On hover and focus a
 `+` already fills) takes the count's place, and a right-click opens New doc,
 New folder (one inside it), Move to folder (Top level, then every folder outside its own subtree; never on the default
 folder), Rename, then Delete (never on the default folder), whose confirm says the folders inside go with it and where
-its docs move. Doc rows start their state slot under the folder icon, and an empty folder is
+its docs move. A doc row or a folder row (never the default folder) also drags, by mouse or a held touch, onto another
+folder's row to move there: the held row dims to half, a small card with its icon and name hangs below and right of the
+pointer so the row under it stays readable, and a folder row that can take it shows a 1px inset `ring`; a folder never
+drops into itself or a folder inside it, and the keyboard's way is Move to folder. Doc rows start their state slot under the folder icon, and an empty folder is
 its header alone, its count reading 0. A search shows matching docs inside their folders, hides the
 folders with no match in or inside them, and opens collapsed ones while it runs. The header
 puts a ghost menu button before them that names the sort and the view ("Created",

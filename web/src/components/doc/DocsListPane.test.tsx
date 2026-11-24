@@ -23,7 +23,7 @@ vi.mock("@/components/doc/NewDocFolderButton", () => ({ NewDocFolderButton: () =
 const guides: DocFolder = { ...main, id: "f-guides", name: "Guides", is_default: false };
 let folders = [main];
 
-vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: folders, error: null, isPending: false }) }));
+vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: folders, error: null, isPending: false }), useMoveDoc: () => ({ mutate: vi.fn() }), useMoveDocFolder: () => ({ mutate: vi.fn() }) }));
 vi.mock("@/components/doc/DocFolderSection", () => ({
   DocFolderSection: ({ group, forceOpen }: { group: DocFolderGroup; forceOpen: boolean }) => (
     <ul aria-label={`${group.folder.name}${forceOpen ? " (open)" : ""}`}>
