@@ -84,6 +84,10 @@ func TestPush_WritesNothing(t *testing.T) {
 			f.desk.tickets["t-2"] = &fakeTicket{Fields: TicketFields{Title: "Local"}}
 			require.NoError(t, f.svc.TicketChanged(t.Context(), "t-2", "p-1", []string{"bug"}))
 		}},
+		{"for an unlinked ticket that changed status", func(t *testing.T, f *fixture) {
+			f.desk.tickets["t-2"] = &fakeTicket{Fields: TicketFields{Title: "Local"}}
+			require.NoError(t, f.svc.TicketChanged(t.Context(), "t-2", "p-1", nil))
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -111,8 +111,11 @@ func (s *Service) TicketChanged(ctx context.Context, ticketID, projectID string,
 		}
 		return s.d.Repo.QueueTicketPush(ctx, TicketPush{TicketID: ticketID, Owner: link.Owner, Repo: link.Repo, Due: due})
 	}
-	if !errors.Is(err, apperrs.ErrNotFound) || len(added) == 0 {
+	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
+	}
+	if len(added) == 0 {
+		return nil
 	}
 	syncs, err := s.d.Repo.ListSyncsByProject(ctx, projectID)
 	if err != nil {
