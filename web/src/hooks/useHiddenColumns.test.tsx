@@ -6,7 +6,7 @@ import { useHiddenColumns } from "@/hooks/useHiddenColumns";
 const box = (left: number, right: number) => () => ({ left, right, top: 0, bottom: 0, width: right - left, height: 0, x: left, y: 0, toJSON: () => ({}) });
 
 const Probe = ({ rights }: { rights: number[] }) => {
-  const { ref, hidden } = useHiddenColumns(48);
+  const { ref, hidden } = useHiddenColumns(48, rights.length);
   return (
     <div
       ref={(node) => {
@@ -30,11 +30,10 @@ const Probe = ({ rights }: { rights: number[] }) => {
 };
 
 describe("useHiddenColumns", () => {
-  it("counts the columns starting past the scroller's edge less its fade, never one partly in view, and none when every column shows", () => {
-    const { unmount } = render(<Probe rights={[200, 300, 452, 560, 600]} />);
+  it("counts the columns starting past the scroller's edge less its fade, never one partly in view, and none once columns are taken away until every one shows", () => {
+    const { rerender } = render(<Probe rights={[200, 300, 452, 560, 600]} />);
     expect(screen.getByRole("status").textContent).toBe("2");
-    unmount();
-    render(<Probe rights={[200, 300, 400]} />);
+    rerender(<Probe rights={[200, 300, 400]} />);
     expect(screen.getByRole("status").textContent).toBe("0");
   });
 });

@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RolesAndPeopleSection } from "@/components/role/RolesAndPeopleSection";
 import type { Role } from "@/models/Role";
 import { AccountStatus, EveryProject, type Team, type TeamPerson } from "@/models/Team";
+import { useComparedRolesStore } from "@/stores/comparedRolesStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(), success: vi.fn(), error: vi.fn() }));
@@ -280,6 +281,74 @@ describe("RolesAndPeopleSection, the rest of a role's page", () => {
     expect(matrix.queryByRole("rowheader", { name: "Tickets" })).not.toBeInTheDocument();
     await user.click(matrix.getByRole("button", { name: "Show 1 held by no role" }));
     expect(matrix.getByRole("rowheader", { name: "Tickets" })).toBeInTheDocument();
+  });
+});
+
+describe("RolesAndPeopleSection, the roles Compare roles shows", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useComparedRolesStore.setState({ hidden: [] });
+  });
+
+  // Each role head reads its name then its holder count, between the Area head and the fade's empty one.
+  const columns = (matrix: ReturnType<typeof within>) =>
+    within(matrix.getAllByRole("row", { hidden: true })[0]!)
+      .getAllByRole("columnheader", { hidden: true })
+      .slice(1, -1)
+      .map((head) => head.textContent!.replace(/[\d—]+$/, ""));
+
+  it("drops an unticked role's column, puts it back in the editor's order, and never lets the last one go", async () => {
+    serve();
+    const user = userEvent.setup();
+    renderAt("/acme/access/roles/compare");
+
+    const matrix = within(await screen.findByRole("table"));
+    expect(columns(matrix)).toEqual(["Lead", "Developer", "Admin"]);
+    await user.click(matrix.getByRole("button", { name: "Roles shown: All roles" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Developer" }));
+    expect(columns(matrix)).toEqual(["Lead", "Admin"]);
+    expect(matrix.getByRole("button", { name: "Roles shown: 2 of 3 roles", hidden: true })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Developer" }));
+    expect(columns(matrix)).toEqual(["Lead", "Developer", "Admin"]);
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Lead" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Developer" }));
+    const last = screen.getByRole("menuitemcheckbox", { name: /^Admin/ });
+    expect(last).toHaveAttribute("aria-disabled", "true");
+    expect(last).toHaveTextContent("Last one shown");
+    await user.click(last);
+    expect(columns(matrix)).toEqual(["Admin"]);
+  });
+
+  it("keeps the choice in this browser across a reload, without a request to the server", async () => {
+    serve();
+    const user = userEvent.setup();
+    const { unmount } = renderAt("/acme/access/roles/compare");
+
+    await user.click(await screen.findByRole("button", { name: "Roles shown: All roles" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Lead" }));
+    unmount();
+    const saved = localStorage.getItem("compared-roles-hidden")!;
+    expect(JSON.parse(saved).state.hidden).toEqual(["r-lead"]);
+    // A reload: the page's memory is gone and only the browser's copy comes back.
+    useComparedRolesStore.setState({ hidden: [] });
+    localStorage.setItem("compared-roles-hidden", saved);
+    await useComparedRolesStore.persist.rehydrate();
+    renderAt("/acme/access/roles/compare");
+
+    expect(columns(within(await screen.findByRole("table")))).toEqual(["Developer", "Admin"]);
+    for (const write of [mocks.put, mocks.patch, mocks.delete]) expect(write).not.toHaveBeenCalled();
+  });
+
+  it("shows every role when every role it remembers hiding is ticked off, so the matrix is never empty", async () => {
+    useComparedRolesStore.setState({ hidden: ["r-lead", "r-dev", "r-admin"] });
+    serve();
+    renderAt("/acme/access/roles/compare");
+
+    const matrix = within(await screen.findByRole("table"));
+    expect(columns(matrix)).toEqual(["Lead", "Developer", "Admin"]);
+    expect(matrix.getByRole("button", { name: "Roles shown: All roles" })).toBeInTheDocument();
   });
 });
 

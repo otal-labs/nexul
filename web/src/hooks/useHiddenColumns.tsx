@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-// Columns starting past the scroller's edge less its fade, kept current as it scrolls and resizes.
-export const useHiddenColumns = (fade: number) => {
+// Columns starting past the scroller's edge less its fade, kept current as it scrolls, resizes and gains or loses columns.
+export const useHiddenColumns = (fade: number, columns: number) => {
   const ref = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(0);
   useEffect(() => {
@@ -19,7 +19,7 @@ export const useHiddenColumns = (fade: number) => {
       observer?.disconnect();
       scroller.removeEventListener("scroll", count);
     };
-  }, [fade]);
+  }, [fade, columns]);
   const more = () => {
     const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     ref.current?.scrollBy({ left: ref.current.clientWidth * 0.75, behavior: still ? "auto" : "smooth" });
