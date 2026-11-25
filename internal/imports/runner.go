@@ -66,6 +66,12 @@ func (s *Service) step(ctx context.Context, imp *Import) (time.Duration, bool) {
 		s.fail(ctx, imp, fmt.Sprintf("source %s is no longer available", imp.Source))
 		return 0, false
 	}
+	if until, ok := s.paused[imp.ID]; ok {
+		if left := until.Sub(s.now()); left > 0 {
+			return left, true
+		}
+		delete(s.paused, imp.ID)
+	}
 	switch imp.State {
 	case StateReady:
 		left := ReadyFor - s.now().Sub(imp.UpdatedAt)
@@ -86,7 +92,8 @@ func (s *Service) step(ctx context.Context, imp *Import) (time.Duration, bool) {
 	return 0, false
 }
 
-// settle files a run's outcome: a passing failure retries later, any other fails the import.
+// settle files a run's outcome: a passing failure retries later, after the source's own wait when it names one, and
+// any other fails the import.
 func (s *Service) settle(ctx context.Context, log interface {
 	WarnContext(ctx context.Context, msg string, args ...any)
 }, imp *Import, err error) (time.Duration, bool) {
@@ -97,8 +104,13 @@ func (s *Service) settle(ctx context.Context, log interface {
 		return 0, false
 	}
 	if errors.Is(err, apperrs.ErrRetryable) {
-		log.WarnContext(ctx, "import paused; reading again shortly", "error", err)
-		return retryAfter, true
+		wait := retryAfter
+		if limited, ok := errors.AsType[*apperrs.RetryAfterError](err); ok {
+			wait = max(limited.Wait, retryAfter)
+		}
+		log.WarnContext(ctx, "import paused", "wait", wait, "error", err)
+		s.paused[imp.ID] = s.now().Add(wait)
+		return wait, true
 	}
 	log.WarnContext(ctx, "import failed", "error", err)
 	s.fail(ctx, imp, failureReason(err))
@@ -165,7 +177,14 @@ func (s *Service) job(imp *Import) Job {
 
 // scan counts what the source holds and plans its people and statuses, then leaves the import ready.
 func (s *Service) scan(ctx context.Context, src Source, imp *Import) error {
-	found, err := src.Scan(ctx, s.job(imp))
+	job := s.job(imp)
+	if job.Cursor != "" {
+		job.Scanned = scannedSoFar(imp)
+	}
+	found, err := src.Scan(ctx, job)
+	if err != nil && found.Cursor != "" {
+		return s.saveScan(ctx, imp, found, err)
+	}
 	if err != nil {
 		return err
 	}
@@ -183,12 +202,7 @@ func (s *Service) scan(ctx context.Context, src Source, imp *Import) error {
 	if err != nil {
 		return fmt.Errorf("list columns: %w", err)
 	}
-	next := *imp
-	next.From = cmp.Or(found.From, imp.From)
-	next.Total = found.Tickets + found.Docs
-	next.Report.Tickets, next.Report.Comments, next.Report.Docs = found.Tickets, found.Comments, found.Docs
-	next.Report.RelationsSkipped = found.RelationsSkipped
-	next.Report.Archived = found.Archived
+	next := withScan(imp, found)
 	next.Report.People = matchPeople(members, found.People)
 	next.Report.Statuses = planStatuses(cols, found.Statuses)
 	next.State, next.UpdatedAt = StateReady, s.now().UTC()
@@ -196,6 +210,54 @@ func (s *Service) scan(ctx context.Context, src Source, imp *Import) error {
 		return fmt.Errorf("save scan: %w", err)
 	}
 	return nil
+}
+
+// saveScan keeps what a paused scan found and where it stopped, so the next scan resumes there, and returns why it
+// paused.
+func (s *Service) saveScan(ctx context.Context, imp *Import, found Scan, cause error) error {
+	next := withScan(imp, found)
+	next.Report.People = matchPeople(nil, found.People)
+	next.Report.Statuses = nil
+	for _, ref := range found.Statuses {
+		next.Report.Statuses = append(next.Report.Statuses, StatusMatch{StatusRef: ref})
+	}
+	ok, err := s.repo.Update(ctx, &next, StateScanning)
+	if err != nil {
+		return fmt.Errorf("save paused scan: %w", err)
+	}
+	if !ok {
+		return errStopped
+	}
+	return cause
+}
+
+// withScan is imp with the counts of found and its cursor, which a finished scan clears so the import starts at the
+// beginning.
+func withScan(imp *Import, found Scan) Import {
+	next := *imp
+	next.From = cmp.Or(found.From, imp.From)
+	next.Total = found.Tickets + found.Docs
+	next.Report.Tickets, next.Report.Comments, next.Report.Docs = found.Tickets, found.Comments, found.Docs
+	next.Report.RelationsSkipped = found.RelationsSkipped
+	next.Report.Archived = found.Archived
+	next.Report.Cursor = found.Cursor
+	return next
+}
+
+// scannedSoFar is what a paused scan of imp saved before its cursor.
+func scannedSoFar(imp *Import) Scan {
+	r := imp.Report
+	found := Scan{
+		From: imp.From, Tickets: r.Tickets, Comments: r.Comments, Docs: r.Docs, RelationsSkipped: r.RelationsSkipped,
+		Archived: r.Archived,
+	}
+	for _, p := range r.People {
+		found.People = append(found.People, p.Person)
+	}
+	for _, st := range r.Statuses {
+		found.Statuses = append(found.Statuses, st.StatusRef)
+	}
+	return found
 }
 
 // write hands the source a sink and completes the import once the source is exhausted.

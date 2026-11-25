@@ -12,6 +12,8 @@ import (
 // writes the records, skips what came in before, and resumes after a restart (ADR 0201).
 type Source interface {
 	// Scan counts what Import would bring and names the people and statuses it would map, without writing anything.
+	// A scan that pauses on an error may return what it found so far with Cursor set; it resumes from job.Cursor,
+	// adding to job.Scanned.
 	Scan(ctx context.Context, job Job) (Scan, error)
 	// Import reads from job.Cursor onward, handing each record to sink in a stable order, and returns once the source
 	// is exhausted. A record handed again after a restart is skipped by the sink, so Import never tracks what it sent.
@@ -38,8 +40,10 @@ type Job struct {
 	// From is what in the source to read, such as owner/name; a source may fill it in during Scan.
 	From       string
 	Credential string
-	// Cursor is the last Checkpoint, empty on a first run.
+	// Cursor is the last Checkpoint, or where a paused scan stopped; empty on a first run.
 	Cursor string
+	// Scanned is what a paused scan found before Cursor.
+	Scanned Scan
 }
 
 // Scan is what a source found.
@@ -55,6 +59,8 @@ type Scan struct {
 	Archived int
 	People   []Person
 	Statuses []StatusRef
+	// Cursor is where a scan that paused resumes reading; everything before it is counted above.
+	Cursor string
 }
 
 // Sink takes the records a source reads.

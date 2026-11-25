@@ -2,6 +2,7 @@ package imports
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -157,7 +158,9 @@ func TestLinear_RateLimits(t *testing.T) {
 		stub.RateLimited, stub.RetryAfter = 1, "3600"
 		src, waits := serveLinear(t, stub)
 		_, err := src.Scan(context.Background(), linearJob())
-		require.ErrorIs(t, err, apperrs.ErrRetryable)
+		limited, ok := errors.AsType[*apperrs.RetryAfterError](err)
+		require.True(t, ok, "the pause carries Linear's reset: %v", err)
+		assert.Equal(t, time.Hour, limited.Wait)
 		assert.Empty(t, *waits)
 	})
 	t.Run("refused on every attempt, it pauses", func(t *testing.T) {
@@ -182,6 +185,75 @@ func TestLinear_RateLimits(t *testing.T) {
 		require.NotEmpty(t, *waits)
 		assert.Equal(t, 5*time.Second, (*waits)[0])
 	})
+}
+
+func TestLinear_AnHourLongRateLimitHoldsTheImportUntilItResets(t *testing.T) {
+	stub := newLinearStub(1)
+	stub.RateLimited, stub.RetryAfter = 1000, "3600"
+	src, _ := serveLinear(t, stub)
+	svc, repo := newTestService(src)
+	imp, err := svc.Start(as(testOwner), Start{Source: "fake", ProjectID: testProject, Credential: linearKey})
+	require.NoError(t, err)
+	start := time.Now()
+	svc.now = func() time.Time { return start }
+
+	assert.Equal(t, time.Hour, svc.Pass(t.Context()))
+	for _, at := range []time.Duration{0, time.Minute, 30 * time.Minute, 59 * time.Minute} {
+		svc.now = func() time.Time { return start.Add(at) }
+		assert.Equal(t, time.Hour-at, svc.Pass(t.Context()), "a commit wakes the loop at %s; the paused import still waits", at)
+	}
+	assert.Len(t, stub.Requests(), 1, "one refused request in the hour, not one a minute")
+	assert.Equal(t, StateScanning, repo.stored(imp.ID).State)
+
+	svc.now = func() time.Time { return start.Add(time.Hour) }
+	svc.Pass(t.Context())
+	assert.Len(t, stub.Requests(), 2, "read again once the window resets")
+}
+
+func TestLinear_AScanPausedOnAPageResumesOnThatPage(t *testing.T) {
+	stub := newLinearStub(250)
+	stub.Issues[0].StateName, stub.Issues[0].StateType = "In Progress", "started"
+	stub.Issues[0].AssigneeName, stub.Issues[0].AssigneeEmail = "Alice", "alice@example.com"
+	stub.Issues[0].Related = []string{"issue-2"}
+	// teams, then page 1's issues and comments, then page 2's issues are refused for an hour.
+	stub.LimitAfter, stub.RateLimited, stub.RetryAfter = 3, 1, "3600"
+	src, _ := serveLinear(t, stub)
+	svc, repo := newTestService(src)
+	imp, err := svc.Start(as(testOwner), Start{Source: "fake", ProjectID: testProject, Credential: linearKey})
+	require.NoError(t, err)
+	start := time.Now()
+	svc.now = func() time.Time { return start }
+
+	svc.Pass(t.Context())
+	paused := repo.stored(imp.ID)
+	require.Equal(t, StateScanning, paused.State)
+	assert.Equal(t, "cursor-99", paused.Report.Cursor, "the page the scan stopped on")
+	assert.Equal(t, 100, paused.Report.Tickets, "the first page is counted once")
+
+	before := len(stub.Requests())
+	svc.now = func() time.Time { return start.Add(time.Hour) }
+	svc.Pass(t.Context())
+	var after []string
+	for _, r := range stub.Requests()[before:] {
+		if r.Kind == "issues" {
+			after = append(after, r.After)
+		}
+	}
+	assert.Equal(t, []string{"cursor-99", "cursor-199"}, after, "resumed on page 2, not page 1")
+
+	got := repo.stored(imp.ID)
+	require.Equal(t, StateReady, got.State)
+	assert.Equal(t, 250, got.Report.Tickets)
+	assert.Equal(t, 250, got.Total)
+	assert.Equal(t, 1, got.Report.RelationsSkipped, "a count from before the pause survives it")
+	assert.Empty(t, got.Report.Cursor, "the import itself starts at the first page")
+	require.Len(t, got.Report.People, 1)
+	assert.Equal(t, "alice@example.com", got.Report.People[0].Email)
+	var statuses []string
+	for _, st := range got.Report.Statuses {
+		statuses = append(statuses, st.Name)
+	}
+	assert.ElementsMatch(t, []string{"In Progress", "Todo"}, statuses)
 }
 
 func TestLinear_ARefusedKeyFailsWithWhatToFix(t *testing.T) {

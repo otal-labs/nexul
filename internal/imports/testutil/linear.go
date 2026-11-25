@@ -45,6 +45,8 @@ type LinearStub struct {
 	// RateLimited answers that many requests with a 429 carrying RetryAfter, before answering normally.
 	RateLimited int
 	RetryAfter  string
+	// LimitAfter is how many requests are answered before the RateLimited ones start.
+	LimitAfter int
 	// Header is set on every normal answer, such as X-RateLimit-Requests-Remaining.
 	Header http.Header
 
@@ -79,7 +81,7 @@ func (s *LinearStub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rec := LinearRequest{Authorization: r.Header.Get("Authorization"), SignFor: r.Header.Get("public-file-urls-expire-in"), Kind: kindOf(req.Query), After: after}
 	s.mu.Lock()
 	s.requests = append(s.requests, rec)
-	limited := s.RateLimited > 0
+	limited := s.RateLimited > 0 && len(s.requests) > s.LimitAfter
 	if limited {
 		s.RateLimited--
 	}

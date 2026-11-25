@@ -172,9 +172,14 @@ func (l *LinearSource) Scan(ctx context.Context, job Job) (Scan, error) {
 	if err != nil {
 		return Scan{}, err
 	}
-	found := Scan{From: team.Key}
+	found := job.Scanned
+	found.From, found.Cursor = team.Key, ""
 	states := map[StatusRef]bool{}
-	err = l.pages(ctx, job.Credential, team.ID, "", func(issues []linearIssue, comments map[string][]linearComment, _ string) error {
+	for _, ref := range found.Statuses {
+		states[ref] = true
+	}
+	at := job.Cursor
+	err = l.pages(ctx, job.Credential, team.ID, job.Cursor, func(issues []linearIssue, comments map[string][]linearComment, next string) error {
 		for _, i := range issues {
 			found.Tickets++
 			found.Comments += len(comments[i.ID])
@@ -192,10 +197,12 @@ func (l *LinearSource) Scan(ctx context.Context, job Job) (Scan, error) {
 				}
 			}
 		}
+		at = next
 		return nil
 	})
 	if err != nil {
-		return Scan{}, err
+		found.Cursor = at
+		return found, err
 	}
 	return found, nil
 }
@@ -350,7 +357,7 @@ func (l *LinearSource) query(ctx context.Context, key, query string, vars map[st
 			return err
 		}
 		if wait > linearMaxWait || attempt == linearAttempts {
-			return apperrs.Retryable(fmt.Errorf("linear rate limit, resets in %s", wait.Round(time.Second)))
+			return &apperrs.RetryAfterError{Wait: wait, Err: fmt.Errorf("linear rate limit, resets in %s", wait.Round(time.Second))}
 		}
 		if err := l.wait(ctx, wait); err != nil {
 			return err
