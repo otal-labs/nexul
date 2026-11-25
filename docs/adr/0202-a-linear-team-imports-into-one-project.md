@@ -18,9 +18,11 @@ pastes in, sent as `Authorization: <key>` with no `Bearer`, which Linear reserve
   Related, duplicate and similar relations have no counterpart; the scan counts them and the import skips them.
   Sub-issues come in flat, each with a "Sub-issue of KEY" line.
 - Issues are read a hundred at a time with their nested labels and relations kept small enough to stay under Linear's
-  10,000-point query complexity, and their comments in one query per page. The cursor after each page is the import's
-  checkpoint. A rate limit is waited out in place for up to 30 seconds; a longer one pauses the import, which resumes
-  from that cursor.
+  10,000-point query complexity, and their comments in one query per page. The page asks for one label and one relation
+  past the 20 and 10 it keeps the cost down to, so an issue that fills it has that list read again on its own, whole;
+  nested `pageInfo` instead could pass the cap if Linear multiplies it by the page size. The cursor after each page is
+  the import's checkpoint. A rate limit is waited out in place for up to 30 seconds; a longer one pauses the import,
+  which resumes from that cursor.
 
 Rejected: OAuth (an app registration per instance for a one-time move); one project per Linear project (a team is the
 unit people plan in, and its projects read naturally as swimlanes); copying related and duplicate relations as text
