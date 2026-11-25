@@ -228,7 +228,7 @@ describe("LoginPage passkey sign-in", () => {
   });
 
   describe("single sign-on", () => {
-    const withSso = (sso: { active: boolean; name: string; only: boolean }) =>
+    const withSso = (sso: { active: boolean; name: string; only: boolean; protocol?: string }) =>
       mocks.get.mockImplementation((url: string) =>
         Promise.resolve({ data: url === "/api/auth/sso" ? sso : { configured: true, google_configured: true, passkeys: true } }),
       );
@@ -245,6 +245,18 @@ describe("LoginPage passkey sign-in", () => {
       expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/oidc");
       expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+    });
+
+    it("starts a SAML provider's sign-in at its own route", async () => {
+      withSso({ active: true, name: "Acme SSO", only: false, protocol: "saml" });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", { configurable: true, value: { assign: assignMock } });
+      const user = (await import("@testing-library/user-event")).default.setup();
+      renderPage();
+
+      await user.click(await screen.findByRole("button", { name: "Sign in with Acme SSO" }));
+
+      expect(assignMock).toHaveBeenCalledWith("http://localhost:8080/auth/saml");
     });
 
     it("hides every other method while it is the only sign-in, behind a link to the Owner's passkey", async () => {

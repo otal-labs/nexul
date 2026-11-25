@@ -72,6 +72,7 @@
   "import.progress",
   "instance.branding_changed",
   "instance.license_changed",
+  "instance.saml_changed",
   "instance.sso_changed",
   "instance.upgrade_changed",
   "instance_template.updated",

@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SsoSection } from "@/ee/components/SsoSection";
-import { getSsoKey, getSsoPublicKey, ssoFollower } from "@/ee/hooks/SsoHooks";
+import { getSamlKey, getSsoKey, getSsoPublicKey, ssoFollower } from "@/ee/hooks/SsoHooks";
 import type { SsoSettings } from "@/ee/models/Sso";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 import { pickOption } from "@/test/pickOption";
@@ -204,6 +204,16 @@ describe("ssoFollower", () => {
     ]);
     await followFrame(ssoFollower, "instance.sso_changed", {}, client);
     expect(isStale(client, [getSsoKey])).toBe(true);
+    expect(isStale(client, [getSsoPublicKey])).toBe(true);
+  });
+
+  it("refetches the SAML settings and the sign-in page's view of them when they change anywhere", async () => {
+    const client = seeded([
+      [[getSamlKey], {}],
+      [[getSsoPublicKey], { active: true, name: "Acme SSO", only: false, protocol: "saml" }],
+    ]);
+    await followFrame(ssoFollower, "instance.saml_changed", {}, client);
+    expect(isStale(client, [getSamlKey])).toBe(true);
     expect(isStale(client, [getSsoPublicKey])).toBe(true);
   });
 });

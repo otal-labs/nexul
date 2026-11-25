@@ -200,6 +200,7 @@ type harness struct {
 	repo     *fakeRepo
 	accounts *fakeAccounts
 	idp      *fakeIdP
+	saml     *fakeSAMLRepo
 	// secrets seen by Connect, in order.
 	connected []ConnectConfig
 }
@@ -214,9 +215,10 @@ func newHarness(t *testing.T, licensed bool) *harness {
 		}},
 		accounts: newAccounts(),
 		idp:      &fakeIdP{claims: Claims{Subject: "sub-1", Email: "alice@example.com", EmailVerified: true, Name: "Alice"}},
+		saml:     &fakeSAMLRepo{},
 	}
 	h.svc = NewService(Config{
-		Repo: h.repo, Accounts: h.accounts, Licenses: fakeLicenses{on: licensed}, Gate: fakeGate{},
+		Repo: h.repo, SAML: h.saml, Accounts: h.accounts, Licenses: fakeLicenses{on: licensed}, Gate: fakeGate{},
 		InstanceURL:     func(context.Context) (string, error) { return "https://nexul.example.com/", nil },
 		OwnerHasPasskey: func(context.Context) (bool, error) { return true, nil },
 		InstanceOwners:  func(context.Context) ([]string, error) { return []string{"owner-1"}, nil },
@@ -542,9 +544,9 @@ func TestPublic_ShowsTheButtonWhileConfigured_AndTheSwitchOnlyWhileLicensed(t *t
 		st       func(*Settings)
 		want     Public
 	}{
-		{"licensed and configured", true, func(*Settings) {}, Public{Active: true, Name: "Acme SSO"}},
-		{"the only sign-in", true, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO", Only: true}},
-		{"a lapsed license keeps the button for the people it signs in, and drops the switch", false, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO"}},
+		{"licensed and configured", true, func(*Settings) {}, Public{Active: true, Name: "Acme SSO", Protocol: ProtocolOIDC}},
+		{"the only sign-in", true, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO", Only: true, Protocol: ProtocolOIDC}},
+		{"a lapsed license keeps the button for the people it signs in, and drops the switch", false, func(s *Settings) { s.Only = true }, Public{Active: true, Name: "Acme SSO", Protocol: ProtocolOIDC}},
 		{"a half-set provider", true, func(s *Settings) { s.ClientID = "" }, Public{}},
 	}
 	for _, tt := range tests {

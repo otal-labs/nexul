@@ -38,7 +38,7 @@ func TestSSORoutes_WithoutAUnlockingKey_ThroughTheRouter(t *testing.T) {
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/sso", nil))
 	require.Equal(t, http.StatusOK, rec.Code, "the sign-in page asks signed out")
-	assert.JSONEq(t, `{"active":true,"name":"Acme SSO","only":false}`, rec.Body.String(), "the button stays for the people it signs in, the switch goes (ADR 0192)")
+	assert.JSONEq(t, `{"active":true,"name":"Acme SSO","only":false,"protocol":"oidc"}`, rec.Body.String(), "the button stays for the people it signs in, the switch goes (ADR 0192)")
 
 	rec = callAPI(t, h, http.MethodPut, "/api/instance/sso", token, `{"display_name":"Acme"}`)
 	assert.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
@@ -74,6 +74,44 @@ func TestSSORoutes_NeedInstancePermissions(t *testing.T) {
 		audited = append(audited, row.Action)
 	}
 	assert.Contains(t, audited, "DELETE /api/instance/sso")
+}
+
+// The SAML routes answer through the real router: instance permissions gate them, a save without a key is refused, the
+// service provider metadata is public and absent until a provider is saved, and removing is audited.
+func TestSAMLRoutes_ThroughTheRouter(t *testing.T) {
+	t.Parallel()
+	h, store, svc := newRouter(t)
+	_, owner := signedInOwner(t, store, svc)
+	member := signedInReader(t, store, svc)
+
+	for _, c := range []struct{ method, path, body string }{
+		{http.MethodGet, "/api/instance/saml", ""},
+		{http.MethodPut, "/api/instance/saml", `{}`},
+		{http.MethodDelete, "/api/instance/saml", ""},
+		{http.MethodPost, "/api/instance/saml/verify?check=email", `{}`},
+	} {
+		rec := callAPI(t, h, c.method, c.path, member, c.body)
+		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s: %s", c.method, c.path, rec.Body.String())
+	}
+
+	rec := callAPI(t, h, http.MethodGet, "/api/instance/saml", owner, "")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"acs_url":"`)
+	rec = callAPI(t, h, http.MethodPut, "/api/instance/saml", owner, `{"display_name":"Acme"}`)
+	assert.Equal(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "needs a license key")
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/auth/saml/metadata", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code, "no metadata before a provider is saved")
+
+	rec = callAPI(t, h, http.MethodDelete, "/api/instance/saml", owner, "")
+	require.Equal(t, http.StatusOK, rec.Code, "removing works without a key: %s", rec.Body.String())
+	var audited []string
+	for _, row := range auditRows(t, store) {
+		audited = append(audited, row.Action)
+	}
+	assert.Contains(t, audited, "DELETE /api/instance/saml")
 }
 
 // signedInReader is bob, a member of the default workspace whose role holds no instance permission.

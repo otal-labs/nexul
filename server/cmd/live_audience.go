@@ -216,6 +216,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
 	license.TopicChanged:               anywhere(permissions.InstanceRead),
 	sso.TopicChanged:                   anywhere(permissions.InstanceRead),
+	sso.TopicSAMLChanged:               anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
 	dns.TopicTunnelChanged:             anywhere(permissions.DNSRead),

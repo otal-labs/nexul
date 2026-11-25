@@ -17,7 +17,7 @@ export const SsoSettingsSchema = z.object({
 export type SsoSettings = z.infer<typeof SsoSettingsSchema>;
 
 // What the sign-in page reads before anyone is signed in.
-export const SsoPublicSchema = z.object({ active: z.boolean(), name: z.string(), only: z.boolean() });
+export const SsoPublicSchema = z.object({ active: z.boolean(), name: z.string(), only: z.boolean(), protocol: z.enum(["oidc", "saml", ""]) });
 
 export type SsoPublic = z.infer<typeof SsoPublicSchema>;
 

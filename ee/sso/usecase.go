@@ -43,6 +43,7 @@ type Secrets interface {
 // Config wires the single sign-on use-cases.
 type Config struct {
 	Repo     Repo
+	SAML     SAMLRepo
 	Accounts Accounts
 	Licenses Licenses
 	Gate     Gate
@@ -57,7 +58,9 @@ type Config struct {
 	Secret []byte
 	// Connect reaches the provider; nil dials it over HTTP.
 	Connect Connect
-	Now     func() time.Time
+	// FetchMetadata reads a SAML provider's metadata URL; nil fetches it over HTTP.
+	FetchMetadata FetchMetadata
+	Now           func() time.Time
 }
 
 // Service is the single sign-on use-case layer the HTTP gateway, the MCP tool and the sign-in callback call.
@@ -72,6 +75,9 @@ func NewService(cfg Config) *Service {
 	}
 	if cfg.Connect == nil {
 		cfg.Connect = dial(&http.Client{Timeout: 15 * time.Second}, cfg.Secret, cfg.Now)
+	}
+	if cfg.FetchMetadata == nil {
+		cfg.FetchMetadata = fetchOver(&http.Client{Timeout: 15 * time.Second})
 	}
 	return &Service{cfg: cfg}
 }
@@ -95,15 +101,19 @@ func (s *Service) redirectURI(ctx context.Context) (string, error) {
 	return strings.TrimSuffix(base, "/") + "/auth/oidc/callback", nil
 }
 
-// Public is what the sign-in page shows: the button while a provider is set, so the people it signs in keep a way in
-// when the key lapses (ADR 0184), and every other method hidden only while the switch is on and the key unlocks sso.
+// Public is what the sign-in page shows: the button of whichever provider is set, so the people it signs in keep a way
+// in when the key lapses (ADR 0184), and every other method hidden only while the switch is on and the key unlocks sso.
 // A failed read counts as off.
 func (s *Service) Public(ctx context.Context) Public {
 	st, err := s.cfg.Repo.Get(ctx)
-	if err != nil || !st.Configured() {
+	if err == nil && st.Configured() {
+		return Public{Active: true, Name: st.DisplayName, Only: st.Only && s.unlocked(ctx), Protocol: ProtocolOIDC}
+	}
+	sm, err := s.cfg.SAML.GetSAML(ctx)
+	if err != nil || !sm.Configured() {
 		return Public{}
 	}
-	return Public{Active: true, Name: st.DisplayName, Only: st.Only && s.unlocked(ctx)}
+	return Public{Active: true, Name: sm.DisplayName, Only: sm.Only && s.unlocked(ctx), Protocol: ProtocolSAML}
 }
 
 // OnlySSO reports whether every other sign-in method is off right now.
@@ -143,6 +153,13 @@ func (s *Service) Update(ctx context.Context, p Patch) (View, error) {
 	}
 	if !s.unlocked(ctx) {
 		return View{}, errNeedsLicense
+	}
+	sm, err := s.cfg.SAML.GetSAML(ctx)
+	if err != nil {
+		return View{}, err
+	}
+	if sm.Saved() {
+		return View{}, errSAMLSaved
 	}
 	cur, err := s.cfg.Repo.Get(ctx)
 	if err != nil {
@@ -196,12 +213,8 @@ func (s *Service) validate(ctx context.Context, cur, next Settings) error {
 		return err
 	}
 	if next.JoinRoleID != cur.JoinRoleID {
-		ok, err := s.cfg.Accounts.CanJoinAs(ctx, next.JoinRoleID)
-		if err != nil {
+		if err := s.checkJoinRole(ctx, next.JoinRoleID); err != nil {
 			return err
-		}
-		if !ok {
-			return fmt.Errorf("%w: join_role_id must be a role of the default workspace other than Owner; workspace_list with the default workspace id lists its roles", apperrs.ErrInvalid)
 		}
 	}
 	if next.IssuerURL != cur.IssuerURL || next.ClientSecret != cur.ClientSecret {

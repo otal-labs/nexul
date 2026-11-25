@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/ee/sso"
@@ -73,34 +74,42 @@ func (r *SSORepo) TurnOnOnly(ctx context.Context, s sso.Settings, keepUsers []st
 	if err != nil {
 		return err
 	}
-	keep := make(map[string]bool, len(keepUsers))
-	for _, id := range keepUsers {
-		keep[id] = true
-	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if err := q.SetSSOSettings(ctx, params); err != nil {
 			return fmt.Errorf("set sso settings: %w", err)
 		}
-		rows, err := q.ListSessionsOutsideSSO(ctx)
+		revoked, err := endSessionsOutsideSSO(ctx, q, keepUsers)
 		if err != nil {
-			return fmt.Errorf("list sessions outside sso: %w", err)
+			return err
 		}
-		ended := []string{}
-		for _, row := range rows {
-			if keep[row.UserID] {
-				continue
-			}
-			ended = append(ended, row.ID)
-			evts = append(evts, sessionRevokedEvent(row))
-		}
-		if len(ended) > 0 {
-			if err := q.DeleteSessionsByID(ctx, ended); err != nil {
-				return fmt.Errorf("end sessions outside sso: %w", err)
-			}
-		}
-		return enqueueWorkspaceOutbox(ctx, tx, evts)
+		return enqueueWorkspaceOutbox(ctx, tx, append(evts, revoked...))
 	})
+}
+
+// endSessionsOutsideSSO deletes every session not started through single sign-on outside keepUsers' and returns a
+// session.revoked event for each.
+func endSessionsOutsideSSO(ctx context.Context, q *sqlcgen.Queries, keepUsers []string) ([]eventbus.OutboxEvent, error) {
+	rows, err := q.ListSessionsOutsideSSO(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions outside sso: %w", err)
+	}
+	ended := []string{}
+	evts := []eventbus.OutboxEvent{}
+	for _, row := range rows {
+		if slices.Contains(keepUsers, row.UserID) {
+			continue
+		}
+		ended = append(ended, row.ID)
+		evts = append(evts, sessionRevokedEvent(row))
+	}
+	if len(ended) == 0 {
+		return nil, nil
+	}
+	if err := q.DeleteSessionsByID(ctx, ended); err != nil {
+		return nil, fmt.Errorf("end sessions outside sso: %w", err)
+	}
+	return evts, nil
 }
 
 func sessionRevokedEvent(row sqlcgen.Session) eventbus.OutboxEvent {

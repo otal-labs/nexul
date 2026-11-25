@@ -55,10 +55,11 @@ func (h *Handler) PublicRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/sso", h.public)
 	mux.HandleFunc("GET /auth/oidc", h.start)
 	mux.HandleFunc("GET /auth/oidc/callback", h.callback)
+	mux.HandleFunc("GET /auth/saml/metadata", h.spMetadata)
 	return mux
 }
 
-// Routes are the Owner's settings: read them, save them, remove them.
+// Routes are the Owner's settings for either protocol: read them, check them, save them, remove them.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/instance/sso", h.get)
@@ -66,6 +67,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/instance/sso", h.remove)
 	mux.HandleFunc("POST /api/instance/sso/verify", h.verify)
 	mux.HandleFunc("POST /api/instance/sso/move", h.move)
+	mux.HandleFunc("GET /api/instance/saml", h.getSAML)
+	mux.HandleFunc("PUT /api/instance/saml", h.updateSAML)
+	mux.HandleFunc("DELETE /api/instance/saml", h.removeSAML)
+	mux.HandleFunc("POST /api/instance/saml/verify", h.verifySAML)
 	return mux
 }
 

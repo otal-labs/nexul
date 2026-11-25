@@ -445,7 +445,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	authSvc.SetWelcome(welcomeProgress{svc: welcomeSvc})
 	tenancySvc.SetTeamProgress(teamProgress{welcome: welcomeSvc, invitations: store.Invitations})
 	ssoSvc := sso.NewService(sso.Config{
-		Repo: store.SSO, Accounts: store.SSO, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
+		Repo: store.SSO, SAML: store.SSO, Accounts: store.SSO, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
 		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL, OwnerHasPasskey: authSvc.InstanceOwnerHasPasskey,
 		InstanceOwners: accessSvc.InstanceOwners, Secret: []byte(cfg.AuthSecret),
 	})
