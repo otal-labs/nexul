@@ -23,6 +23,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="(sheets)/board/project-picker" options={sheetOptions} />
+          <Stack.Screen name="(sheets)/board/run-play" options={sheetOptions} />
           <Stack.Screen name="(sheets)/board/status-picker" options={sheetOptions} />
           <Stack.Screen name="(sheets)/chat/message-actions" options={sheetOptions} />
           <Stack.Screen name="(sheets)/chat/schedule" options={sheetOptions} />
@@ -30,6 +31,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="(sheets)/deploys/cancel" options={sheetOptions} />
           <Stack.Screen name="(sheets)/deploys/redeploy" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/docs/pick-project" options={sheetOptions} />
+          <Stack.Screen name="(sheets)/more/docs/run-play" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/settings/appearance" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/settings/workspace" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/settings/sign-out" options={sheetOptions} />

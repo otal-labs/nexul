@@ -3,11 +3,12 @@ import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import type { PlayStage } from "@nexul/client-core/plays";
 
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
-import type { ListedPlay, Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData, WorkspacePlay } from "@/models/Play";
+import type { ListedPlay, Play, PlayRenameImpact, PlayType, SavePlayFormData, WorkspacePlay } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";

@@ -1,9 +1,11 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import type { AutoPlayLevel } from "@nexul/client-core/autoPlayText";
+
 import { InlineSelect, RemoveIcon } from "@/components/autoplay/ComposerControls";
 import { ConditionFields } from "@/components/autoplay/ConditionFields";
 import { ConditionRow } from "@/components/autoplay/ConditionRow";
-import { LEVEL_OPTIONS, type AutoPlayDraft, type AutoPlayLevel } from "@/models/AutoPlay";
+import { LEVEL_OPTIONS, type AutoPlayDraft } from "@/models/AutoPlay";
 
 interface PriorityRuleRowProps {
   index: number;

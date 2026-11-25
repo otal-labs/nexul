@@ -1,7 +1,9 @@
 import { create } from "zustand";
 
+import { isTrailActive, mergeLiveStep } from "@nexul/client-core/trail";
+
 import type { PlayType } from "@/models/Play";
-import { isTrailActive, mergeLiveStep, type ActivityEntry, type RunFrame } from "@/models/Trail";
+import { type ActivityEntry, type RunFrame } from "@/models/Trail";
 
 export const targetKey = (targetType: PlayType, targetId: string): string => `${targetType}:${targetId}`;
 

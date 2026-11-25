@@ -1,8 +1,9 @@
 import { CircleCheckIcon, CircleHelpIcon, CircleMinusIcon, CircleXIcon, LoaderIcon, type LucideIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { PLAY_STAGE_LABELS } from "@nexul/client-core/plays";
+
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { PLAY_STAGE_LABELS } from "@/models/Play";
 import type { SweepLine } from "@/models/Schedule";
 import { cn } from "@/lib/utils";
 

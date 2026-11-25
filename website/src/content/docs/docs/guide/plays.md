@@ -161,6 +161,14 @@ Its auto play starts off. To switch it on for a workspace, open **Plays**, open 
 
 If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 
+## On the phone
+
+The [phone app](/docs/guide/phone-app/) runs and follows plays too.
+
+- **On a ticket or doc**: under **Plays**, each play you may run there, with **Run**. Run asks for instructions for this one run, which are optional, and starts it on your first ready computer with your defaults, as a press on the web does. If none of your computers has the project yet, it says so: pick the computer once on the web, and later runs from the phone go there too. Under it are the auto runs waiting in the queue, each with **Cancel**, **Auto plays paused** with **Resume** when the daily cap stopped them, and the ticket's or doc's runs, newest first.
+- **A run**: its steps as they happen, folded per stretch of work, its question when it waits on one, and the reply once it ends. Whoever started it, or someone with `plays:write`, answers the question in place, stops it with **Stop run**, or sends it one more message under **Continue this run** once it ended.
+- **More → Plays**: what runs now across the workspace, auto plays' runs included, and what waits in the queue, then every play with how its runs went this week and its on and off switch. A play's page has its runs, what it has queued, and its auto plays in words, each with its own switch. New plays, and adding or changing an auto play, stay on the web.
+
 ## History
 
 A play keeps the last ten versions of its instructions, and **History** in the play page's ⋯ menu shows them. Each version is compared word by word with the one before it, with a list of versions on the right. An unedited built-in play reads **Built-in default**. Changes to its label, description, enabled switch, stage, excluded projects and **Works in** sit in the same list as single lines ("Enabled On → Off"); they show what happened and can't be picked.

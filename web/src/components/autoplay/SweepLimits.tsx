@@ -1,8 +1,10 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import { zoneName } from "@nexul/client-core/autoPlayText";
+
 import { Input } from "@/components/ui/input";
 import type { AutoPlayDraft } from "@/models/AutoPlay";
-import { MAX_SWEEP_RUNS, validZone, zoneName } from "@/models/Schedule";
+import { MAX_SWEEP_RUNS, validZone } from "@/models/Schedule";
 
 // How much one sweep may take, and when it stops starting runs; an empty stop time runs until the tickets are done.
 export const SweepLimits = () => {

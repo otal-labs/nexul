@@ -1,8 +1,10 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import type { AutoPlayMatch } from "@nexul/client-core/autoPlayText";
+
 import { InlineSelect, QuietIcon, RemoveIcon } from "@/components/autoplay/ComposerControls";
 import { ConditionRow } from "@/components/autoplay/ConditionRow";
-import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type AutoPlayMatch } from "@/models/AutoPlay";
+import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft } from "@/models/AutoPlay";
 
 interface NestedGroupEditorProps {
   index: number;

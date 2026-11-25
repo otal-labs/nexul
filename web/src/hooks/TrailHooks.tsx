@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import type { Conversation } from "@nexul/client-core/chat";
 import { requires } from "@nexul/client-core/requires";
+import { isTrailActive, mergeLiveSteps, type TrailState } from "@nexul/client-core/trail";
 
 import { api, errorMessage } from "@/api/client";
 import { getWorkspacePlaysKey, useApplicableTicketPlays } from "@/hooks/PlayHooks";
@@ -14,7 +15,7 @@ import { conversationPlayTarget } from "@/models/Chat";
 import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { isMemoryRead, isTrailActive, latestRunOf, mergeLiveSteps, type ActivityEntry, type LatestChoices, type PlayRunsPage, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { isMemoryRead, latestRunOf, type ActivityEntry, type LatestChoices, type PlayRunsPage, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 import type { LiveFollower } from "@/lib/live";

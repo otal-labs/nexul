@@ -1,6 +1,7 @@
 import { CircleCheckIcon, CircleHelpIcon, LoaderCircleIcon, LockIcon } from "lucide-react";
 
-import type { TrailState } from "@/models/Trail";
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { cn } from "@/lib/utils";
 
 interface DocStateIconProps {

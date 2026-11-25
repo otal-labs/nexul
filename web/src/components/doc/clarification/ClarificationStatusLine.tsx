@@ -1,7 +1,7 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { answersChangedSinceWritten, clarificationStatus, type Clarification } from "@nexul/client-core/clarification";
-import { isTrailActive } from "@/models/Trail";
+import { isTrailActive } from "@nexul/client-core/trail";
 import { cn } from "@/lib/utils";
 
 interface ClarificationStatusLineProps {

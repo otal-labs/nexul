@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
@@ -7,7 +9,6 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { auditDocOf } from "@/models/Doc";
 import { docPath, projectToken, type Project } from "@/models/Project";
-import type { TrailState } from "@/models/Trail";
 
 interface InterviewAuditLineProps {
   project: Project;

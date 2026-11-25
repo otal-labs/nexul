@@ -2,6 +2,7 @@ import { Clock } from "lucide-react";
 import { useState } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
+import { waitingLines } from "@nexul/client-core/playQueue";
 
 import { Button } from "@/components/ui/button";
 import { FixLink } from "@/components/FixLink";
@@ -14,7 +15,7 @@ import { useActionState } from "@/hooks/useActionState";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
-import { waitingLines, waitingLink } from "@/utils/PlayQueueUtility";
+import { waitingLink } from "@/utils/PlayQueueUtility";
 
 interface QueuedRunRowProps {
   item: PlayQueueItem;

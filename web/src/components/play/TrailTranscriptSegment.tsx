@@ -1,12 +1,14 @@
+import type { TranscriptSegment } from "@nexul/client-core/trail";
+
 import { TrailQuestionCard } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
 import { TrailTurnGroup } from "@/components/play/TrailTurnGroup";
 import { TrailUserBubble } from "@/components/play/TrailUserBubble";
-import type { TranscriptSegment } from "@/utils/TrailTranscriptUtility";
+import type { ActivityEntry } from "@/models/Trail";
 
 interface TrailTranscriptSegmentProps {
   trailId: string;
-  segment: TranscriptSegment;
+  segment: TranscriptSegment<ActivityEntry>;
 }
 
 // One block of the conversation; the question card reads its own trail from the cache, so only the id travels.

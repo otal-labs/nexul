@@ -5,11 +5,13 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { playAttention } from "@nexul/client-core/plays";
+
 import { api } from "@/api/client";
 import { PlayListRow } from "@/components/play/PlayListRow";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { settle } from "@/test/viewer";
-import { playAttention, type WorkspacePlay } from "@/models/Play";
+import { type WorkspacePlay } from "@/models/Play";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },

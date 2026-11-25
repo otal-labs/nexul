@@ -5,6 +5,8 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 
+import { isTrailActive } from "@nexul/client-core/trail";
+
 import { microheaderClass } from "@/components/Microheader";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailContinueForm } from "@/components/play/TrailContinueForm";
@@ -13,7 +15,7 @@ import { TrailTranscript } from "@/components/play/TrailTranscript";
 import { TranscriptScrollButton } from "@/components/TranscriptScrollButton";
 import { useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
-import { isTrailActive, type Trail } from "@/models/Trail";
+import { type Trail } from "@/models/Trail";
 
 interface TrailDetailBodyProps {
   trail: Trail;

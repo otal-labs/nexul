@@ -7,15 +7,14 @@ import Wrench from "lucide-react-native/icons/wrench";
 import type { LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 
-import { groupHeadline, isFailedStep, isMcpTool, listedAct, stepAct, stepPhrase, type ListedAct, type StepAct, type StepGroup } from "@nexul/client-core/agentSteps";
+import { groupHeadline, isFailedStep, isMcpTool, listedAct, stepAct, stepPhrase, type ListedAct, type StepAct, type StepGroup, type AgentStep } from "@nexul/client-core/agentSteps";
 
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import type { HandoffStep } from "@/models/Chat";
 
 interface HandoffStepGroupProps {
-  group: StepGroup<HandoffStep>;
+  group: StepGroup<AgentStep>;
   // root is the run's directory, cut from the front of its commands.
   root: string | null;
   // running reads an unanswered call in the present.
@@ -43,13 +42,13 @@ const Failed = () => (
 );
 
 // A search reads as its quoted pattern, a file as its name alone, a command as commandText reads it.
-const nameOf = (step: HandoffStep, root: string | null): string => {
+const nameOf = (step: AgentStep, root: string | null): string => {
   const { verb, object } = stepPhrase(step, false, root);
   if (stepAct(step) === "explore" && verb.startsWith("Searched")) return `“${object}”`;
   return object;
 };
 
-const NameLine = ({ step, root }: { step: HandoffStep; root: string | null }) => {
+const NameLine = ({ step, root }: { step: AgentStep; root: string | null }) => {
   const failed = isFailedStep(step);
   const name = nameOf(step, root);
   return (
@@ -62,7 +61,7 @@ const NameLine = ({ step, root }: { step: HandoffStep; root: string | null }) =>
   );
 };
 
-const StepList = ({ act, entries, root, bare }: { act: ListedAct; entries: HandoffStep[]; root: string | null; bare: boolean }) => (
+const StepList = ({ act, entries, root, bare }: { act: ListedAct; entries: AgentStep[]; root: string | null; bare: boolean }) => (
   <View className="gap-0.5 py-1">
     {!bare && (
       <View className="flex-row items-center gap-2">
@@ -76,7 +75,7 @@ const StepList = ({ act, entries, root, bare }: { act: ListedAct; entries: Hando
   </View>
 );
 
-const StepLine = ({ step, root, running }: { step: HandoffStep; root: string | null; running: boolean }) => {
+const StepLine = ({ step, root, running }: { step: AgentStep; root: string | null; running: boolean }) => {
   const { verb, object } = stepPhrase(step, running && step.kind === "tool_call", root);
   const failed = isFailedStep(step);
   return (

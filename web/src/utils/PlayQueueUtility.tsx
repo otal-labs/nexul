@@ -1,3 +1,5 @@
+import { onlyComputersFull, waitingWhy } from "@nexul/client-core/playQueue";
+
 import type { PlayType } from "@/models/Play";
 import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, checkoutFixLink, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
@@ -15,54 +17,27 @@ export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!q
 
 const YOUR_COMPUTERS_LINK: ReadinessLink = { to: COMPUTERS_SETTINGS_PATH, label: "Your computers" };
 
-// Why none of the person's computers can take the run: a few words for the editor's line, a sentence for the rail, and
-// where the person fixes it (internal/pairing NotConfiguredError).
-const setupGaps: Record<string, { why: string; sentence: string; link?: ReadinessLink }> = {
-  unpaired: { why: "no computer paired", sentence: "no computer is paired to run it on", link: ADD_COMPUTER_LINK },
-  expired_token: {
-    why: "computer session expired",
-    sentence: "the paired computer's session expired",
-    link: { to: COMPUTERS_SETTINGS_PATH, label: "Pair it again" },
-  },
-  no_computer_ready: { why: "no computer can take it", sentence: "none of their computers can take it", link: YOUR_COMPUTERS_LINK },
-  offline: { why: "computer offline", sentence: "their computer is offline", link: YOUR_COMPUTERS_LINK },
-  setup_required: {
-    why: "computer setup not done",
-    sentence: "the computer's setup isn't done",
-    link: { to: COMPUTERS_SETTINGS_PATH, label: "Run setup" },
-  },
+// Where the person fixes each setup gap that holds a run.
+const setupLinks: Record<string, ReadinessLink> = {
+  unpaired: ADD_COMPUTER_LINK,
+  expired_token: { to: COMPUTERS_SETTINGS_PATH, label: "Pair it again" },
+  no_computer_ready: YOUR_COMPUTERS_LINK,
+  offline: YOUR_COMPUTERS_LINK,
+  setup_required: { to: COMPUTERS_SETTINGS_PATH, label: "Run setup" },
 };
 
-// Why a queued run waits, from the server's hold reasons (internal/plays/queue.go).
-export const waitingWhy = (item: PlayQueueItem): string => {
-  if (item.status === "dispatching") return "starting";
-  if (item.reason === "ticket busy") return `${item.target_type} busy`;
-  if (item.reason === "paused") return "paused";
-  if (onlyFull(item)) return "computers busy";
-  return setupGaps[item.reason]?.why ?? "next in line";
-};
-
-// Every computer that couldn't take the run was only busy, so it starts once one of them frees up.
 const waitingOn = (item: PlayQueueItem) => item.waiting_on ?? [];
-const onlyFull = (item: PlayQueueItem) => waitingOn(item).length > 0 && waitingOn(item).every((p) => p.why === "full");
-
-// waitingWhy as sentences: one per computer and why it can't take the run when the server named them, else the gap.
-export const waitingLines = (item: PlayQueueItem): string[] => {
-  if (item.status !== "queued") return [waitingWhy(item)];
-  if (waitingOn(item).length > 0) return waitingOn(item).map((p) => p.text);
-  return [setupGaps[item.reason]?.sentence || waitingWhy(item)];
-};
 
 // An auto play's own computers outrank the person's and the project's, so a run held on them is fixed in the auto play.
 const autoPlayComputersLink = (item: PlayQueueItem, wsPath: (path: string) => string): ReadinessLink | undefined => {
-  if (item.auto_play_id === "" || item.computer_ids.length === 0 || setupGaps[item.reason]?.link !== YOUR_COMPUTERS_LINK) return undefined;
+  if (item.auto_play_id === "" || item.computer_ids.length === 0 || setupLinks[item.reason] !== YOUR_COMPUTERS_LINK) return undefined;
   return { to: wsPath(`/plays/${item.play_id}`), label: "Auto play's computers" };
 };
 
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
 export const waitingLink = (item: PlayQueueItem, wsPath: (path: string) => string): ReadinessLink | undefined => {
-  if (item.status !== "queued" || onlyFull(item)) return undefined;
-  return checkoutFixLink(waitingOn(item)) ?? autoPlayComputersLink(item, wsPath) ?? setupGaps[item.reason]?.link;
+  if (item.status !== "queued" || onlyComputersFull(item)) return undefined;
+  return checkoutFixLink(waitingOn(item)) ?? autoPlayComputersLink(item, wsPath) ?? setupLinks[item.reason];
 };
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [

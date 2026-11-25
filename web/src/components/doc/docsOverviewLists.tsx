@@ -1,5 +1,6 @@
+import type { TrailState } from "@nexul/client-core/trail";
+
 import type { DocListItem } from "@/models/Doc";
-import type { TrailState } from "@/models/Trail";
 import { daysAgo } from "@/utils/TimeUtility";
 
 export interface AttentionDoc {

@@ -1,8 +1,10 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import { describeSchedule } from "@nexul/client-core/autoPlayText";
+
 import { Input } from "@/components/ui/input";
 import type { AutoPlayDraft } from "@/models/AutoPlay";
-import { describeSchedule, looksLikeCron, validZone } from "@/models/Schedule";
+import { looksLikeCron, validZone } from "@/models/Schedule";
 
 const ZONES = Intl.supportedValuesOf("timeZone");
 

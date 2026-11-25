@@ -2,6 +2,8 @@ import { LockIcon } from "lucide-react";
 import { useEffect } from "react";
 import { Controller } from "react-hook-form";
 
+import { PLAY_STAGE_LABELS, PLAY_STAGES } from "@nexul/client-core/plays";
+
 import { PermissionCheckRow } from "@/components/access/PermissionCheckRow";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
@@ -13,16 +15,7 @@ import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useConfirmPlayRename } from "@/hooks/useConfirmPlayRename";
 import { useEntityActions } from "@/hooks/useEntityActions";
-import {
-  PLAY_REPOSITORIES,
-  PLAY_REPOSITORY_LABELS,
-  PLAY_STAGE_LABELS,
-  PLAY_STAGES,
-  PLAY_TYPE_LABELS,
-  PLAY_TYPES,
-  type Play,
-  type SavePlayFormData,
-} from "@/models/Play";
+import { PLAY_REPOSITORIES, PLAY_REPOSITORY_LABELS, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
 
 const TYPE_OPTIONS = PLAY_TYPES.map((type) => ({ value: type, label: PLAY_TYPE_LABELS[type] }));
 

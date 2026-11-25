@@ -30,3 +30,10 @@ export const toggleOption = (item: QuestionItem, draft: AnswerValue | undefined,
 
 export const hasAnswer = (draft: AnswerValue | undefined): boolean =>
   (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
+
+// One answer as a line: the free text, else the chosen values.
+export const answerText = (answer: AnswerValue | undefined): string => {
+  if (!answer) return "";
+  if (answer.text) return answer.text;
+  return (answer.selected ?? []).join(", ");
+};

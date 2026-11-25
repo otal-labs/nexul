@@ -1,6 +1,7 @@
+import { type TrailState, segmentTranscript } from "@nexul/client-core/trail";
+
 import { TrailTranscriptSegment } from "@/components/play/TrailTranscriptSegment";
-import type { ActivityEntry, Trail, TrailQuestion, TrailState } from "@/models/Trail";
-import { segmentTranscript } from "@/utils/TrailTranscriptUtility";
+import type { ActivityEntry, Trail, TrailQuestion } from "@/models/Trail";
 
 interface TrailTranscriptProps {
   trail: Trail;

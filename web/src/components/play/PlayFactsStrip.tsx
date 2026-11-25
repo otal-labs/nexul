@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
+import { PLAY_STAGE_LABELS } from "@nexul/client-core/plays";
+
 import { Microheader } from "@/components/Microheader";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { PLAY_STAGE_LABELS, type Play } from "@/models/Play";
+import { type Play } from "@/models/Play";
 
 interface PlayFactsStripProps {
   play: Play;

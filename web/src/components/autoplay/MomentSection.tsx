@@ -1,9 +1,11 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import type { AutoPlayMoment } from "@nexul/client-core/autoPlayText";
+import { PLAY_STAGE_LABELS, PLAY_STAGES, type PlayStage } from "@nexul/client-core/plays";
+
 import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { ScheduleFields } from "@/components/autoplay/ScheduleFields";
-import { MOMENT_LABELS, SUBJECT_MOMENTS, type AutoPlayDraft, type AutoPlayMoment } from "@/models/AutoPlay";
-import { PLAY_STAGE_LABELS, PLAY_STAGES, type PlayStage } from "@/models/Play";
+import { MOMENT_LABELS, SUBJECT_MOMENTS, type AutoPlayDraft } from "@/models/AutoPlay";
 
 const STAGE_OPTIONS = PLAY_STAGES.map((stage) => ({ value: stage, label: PLAY_STAGE_LABELS[stage] }));
 

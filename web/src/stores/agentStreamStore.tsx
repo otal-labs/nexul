@@ -1,7 +1,9 @@
 import { create } from "zustand";
 
+import { mergeLiveStep } from "@nexul/client-core/trail";
+
 import { mergeHandoff, type Handoff } from "@/models/Handoff";
-import { mergeLiveStep, type ActivityEntry, type ActivityKind } from "@/models/Trail";
+import { type ActivityEntry, type ActivityKind } from "@/models/Trail";
 
 // Ephemeral, never persisted — the real message lands via chat.message.created and clears this.
 export interface AgentStreamFrame {

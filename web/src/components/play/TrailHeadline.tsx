@@ -1,12 +1,13 @@
 import { formatElapsed } from "@nexul/client-core/agentSteps";
 import { personLabel } from "@nexul/client-core/person";
+import { isTrailActive, type TrailState } from "@nexul/client-core/trail";
 
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { DialogDescription } from "@/components/ui/dialog";
 import { useLiveTrailState } from "@/hooks/TrailHooks";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
-import { isTrailActive, type Trail, type TrailState } from "@/models/Trail";
+import { type Trail } from "@/models/Trail";
 import { formatClockTime, formatShortDate } from "@/utils/TimeUtility";
 
 interface TrailHeadlineProps {

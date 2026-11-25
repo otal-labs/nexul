@@ -15,6 +15,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FactRow } from "@/components/FactRow";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Microheader } from "@/components/Microheader";
+import { TargetPlaysSection } from "@/components/plays/TargetPlaysSection";
 import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,8 @@ export const TicketScreen = () => {
                 <Text>Open thread</Text>
               </Button>
             </View>
+
+            <TargetPlaysSection targetType="ticket" targetId={ticket.id} projectId={ticket.project_id} stage={status?.kind} tab="board" />
 
             <View className="gap-2">
               <Microheader>Description</Microheader>

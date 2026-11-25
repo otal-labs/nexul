@@ -30,3 +30,7 @@ export const errorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message) return error.message;
   return "Something went wrong";
 };
+
+// A pressed run whose person has no computer with the project asks where to run it, which the phone can't pick (ADR 0165).
+export const isNeedsLocation = (error: unknown): boolean =>
+  error instanceof ApiError && (error.body as { details?: { reason?: unknown } } | null)?.details?.reason === "needs_location";

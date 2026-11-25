@@ -1,5 +1,7 @@
 import { Link } from "react-router";
 
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchApplicablePlays } from "@/hooks/PlayHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
@@ -8,7 +10,7 @@ import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { boardPath } from "@/models/Project";
 import { usePlayRunStore } from "@/stores/playRunStore";
-import { latestRunOf, type TrailState } from "@/models/Trail";
+import { latestRunOf } from "@/models/Trail";
 
 interface DocTicketsRunLineProps {
   workspaceId: string;

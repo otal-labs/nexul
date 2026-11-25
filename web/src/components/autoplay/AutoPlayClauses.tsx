@@ -1,36 +1,20 @@
 import type { ReactNode } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
+import { autoPlayTitle, LEVEL_LABELS, RUN_ON_PHRASES, ruleText, type AutoPlayGroup, type AutoPlayMatch, type AutoPlayRule, type AutoPlaySubject } from "@nexul/client-core/autoPlayText";
 
 import { useAutoPlayValues } from "@/hooks/AutoPlayValueHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useComputerNames } from "@/hooks/ComputerHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
-import {
-  FIELD_LABELS,
-  LEVEL_LABELS,
-  MOMENT_PHRASES,
-  opLabel,
-  PRESENCE_PHRASES,
-  RUN_ON_PHRASES,
-  storedComputerIds,
-  type AutoPlay,
-  type AutoPlayGroup,
-  type AutoPlayMatch,
-  type AutoPlayRule,
-  type AutoPlaySubject,
-} from "@/models/AutoPlay";
-import { PLAY_STAGE_LABELS } from "@/models/Play";
-import { describeSchedule, DEFAULT_SWEEP_RUNS } from "@/models/Schedule";
+import { storedComputerIds, type AutoPlay } from "@/models/AutoPlay";
+import { DEFAULT_SWEEP_RUNS } from "@/models/Schedule";
 import { cn } from "@/lib/utils";
 
 // A value: foreground on a live rule, dimmed on one switched off (the row's data-off) but still above the muted labels and glue.
 const Part = ({ children, className }: { children: ReactNode; className?: string }) => (
   <span className={cn("text-foreground group-data-off/row:text-foreground/80", className)}>{children}</span>
 );
-
-// A value list reads "frontend, backend or infrastructure", so its own "or" is never confused with the one between rules.
-const listed = (values: string[]) => (values.length < 2 ? values.join("") : `${values.slice(0, -1).join(", ")} or ${values.at(-1)}`);
 
 // The computers a chosen-computer auto play tries, in order, named as the viewer reads them; its person's own order when it names none.
 const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
@@ -49,8 +33,7 @@ const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
 // One rule in words, "Type is Bug or Incident"; each reads its own field's values. A short rule never breaks across lines.
 const RuleText = ({ rule }: { rule: AutoPlayRule }) => {
   const values = useAutoPlayValues(rule.field);
-  const presence = (rule.op === "set" || rule.op === "unset") && PRESENCE_PHRASES[rule.field]?.[rule.op];
-  const text = presence || [FIELD_LABELS[rule.field], opLabel(rule.field, rule.op), listed((rule.values ?? []).map(values.label))].filter(Boolean).join(" ");
+  const text = ruleText(rule, values.label);
   return <Part className={cn(text.length <= 32 && "whitespace-nowrap")}>{text}</Part>;
 };
 
@@ -81,16 +64,6 @@ interface AutoPlayClausesProps {
   subject: AutoPlaySubject;
 }
 
-// The moment that starts it: "enters In progress".
-const momentPhrase = (autoPlay: AutoPlay) =>
-  `${MOMENT_PHRASES[autoPlay.moment]}${autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : ""}`;
-
-// A schedule's title is the schedule in words; every other moment's is "When a ticket becomes unblocked".
-const titleOf = (autoPlay: AutoPlay, subject: AutoPlaySubject) =>
-  autoPlay.moment === "schedule" && autoPlay.schedule
-    ? describeSchedule(autoPlay.schedule.cron, autoPlay.schedule.timezone ?? "UTC")
-    : `When a ${subject} ${momentPhrase(autoPlay)}`;
-
 // How much one sweep takes: "Up to 10 tickets, nothing starts after 07:00".
 const sweepPhrase = (autoPlay: AutoPlay) => {
   const runs = autoPlay.schedule?.max_runs ?? DEFAULT_SWEEP_RUNS;
@@ -106,7 +79,7 @@ export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => 
   return (
     <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
       <span className="text-sm font-medium text-foreground group-data-off/row:text-muted-foreground">
-        {titleOf(autoPlay, subject)}
+        {autoPlayTitle(autoPlay, subject)}
       </span>{" "}
       <span className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {groups.length > 0 && (

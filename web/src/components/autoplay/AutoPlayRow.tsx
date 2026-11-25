@@ -1,5 +1,7 @@
 import { memo, useState } from "react";
 
+import type { AutoPlaySubject } from "@nexul/client-core/autoPlayText";
+
 import { AutoPlayClauses } from "@/components/autoplay/AutoPlayClauses";
 import { LastSweepLine } from "@/components/autoplay/LastSweepLine";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
@@ -7,7 +9,7 @@ import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useCreateAutoPlay, useDeleteAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
-import { toRequest, type AutoPlay, type AutoPlaySubject } from "@/models/AutoPlay";
+import { toRequest, type AutoPlay } from "@/models/AutoPlay";
 import { cn } from "@/lib/utils";
 
 interface AutoPlayRowProps {

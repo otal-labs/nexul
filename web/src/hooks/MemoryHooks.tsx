@@ -2,6 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } f
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import { isTrailActive } from "@nexul/client-core/trail";
 
 import { api, errorMessage } from "@/api/client";
 import { getHistoryKey } from "@/hooks/HistoryHooks";
@@ -10,7 +11,7 @@ import type { InterviewAnswer, SaveInterviewAnswerInput } from "@/models/Intervi
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
 import type { Project } from "@/models/Project";
-import { isTrailActive, type RunFrame, type RunPlace } from "@/models/Trail";
+import { type RunFrame, type RunPlace } from "@/models/Trail";
 import type { Workspace } from "@/models/Workspace";
 import { followEach, type LiveFollower } from "@/lib/live";
 
