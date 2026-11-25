@@ -260,8 +260,10 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
   flag.
 - A loop that delivers what a commit wrote (the outbox relay, the webhook
   relay, each automations dial-in connection) waits on the storage
-  serializer's commit broadcast (`internal/platform/wake`), with a ticker of
-  a few seconds as the fallback for a failed attempt. A fast ticker per loop
+  serializer's commit broadcast (`internal/platform/wake`), with a ticker as
+  the fallback for a failed attempt: a few seconds for the relays, whose
+  retries wait on time, and minutes for a dial-in connection, which an idle
+  automation holds open indefinitely. A fast ticker per loop
   costs a read on every tick while nothing happens, and still adds its
   interval to every delivery. Take `Next()` before reading, so a commit that
   lands during the read wakes the next wait instead of being lost.

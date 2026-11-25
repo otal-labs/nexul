@@ -35,8 +35,8 @@ type DialinConfig struct {
 	Scope EventScope
 	// Logger for lifecycle and failure logs; defaults to slog.Default().
 	Logger *slog.Logger
-	// PollInterval is the fallback check for new matching events on an idle connection; a commit wakes it sooner.
-	// Defaults to 5s.
+	// PollInterval is the safety-net read of an idle connection, which retries a failed read; a commit to a table the
+	// pass reads wakes it at once, so an idle connection costs a pass every few minutes. Defaults to 5m.
 	PollInterval time.Duration
 	// Wake returns a channel that closes at the next commit, which is when an event lands in the log. Optional; nil
 	// leaves only the fallback poll.
@@ -65,7 +65,7 @@ func NewDialinHandler(svc *Service, cfg DialinConfig) *DialinHandler {
 		cfg.Logger = slog.Default()
 	}
 	if cfg.PollInterval <= 0 {
-		cfg.PollInterval = 5 * time.Second
+		cfg.PollInterval = 5 * time.Minute
 	}
 	if cfg.Wake == nil {
 		cfg.Wake = func() <-chan struct{} { return nil }
