@@ -20,6 +20,8 @@ type Doc struct {
 	CreatedBy string    `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Snippet is the list preview storage keeps beside the body; a project list reads it without the body.
+	Snippet string `json:"-"`
 	// Settler is the person a create or save opens the doc's settle window for; empty leaves the window as it is.
 	Settler string `json:"-"`
 	// Via is how a create came, recorded on its first version; see viaOf.

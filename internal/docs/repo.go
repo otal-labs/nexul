@@ -66,7 +66,7 @@ type Repo interface {
 	Create(ctx context.Context, d *Doc, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Doc, error)
 	List(ctx context.Context) ([]*Doc, error)
-	// ListByProject returns the docs belonging to one project (ticket 10), mirroring tickets.Repo.ListByProject.
+	// ListByProject returns the docs belonging to one project with their snippets but without their bodies.
 	ListByProject(ctx context.Context, projectID string) ([]*Doc, error)
 	// Update writes the new title and body and, unless they equal the newest version's, a version crediting editorID and
 	// via, then prunes the unnamed versions past KeptUnnamedVersions.

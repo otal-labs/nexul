@@ -51,8 +51,8 @@ type LiveSessions interface {
 	Reset(ctx context.Context, docID string, write func(context.Context) error) error
 }
 
-// snippetRunes bounds a list item's preview; the row truncates it to one line anyway.
-const snippetRunes = 140
+// SnippetRunes bounds the list preview storage writes with each body; changing it needs a migration rewriting the stored ones.
+const SnippetRunes = 140
 
 // Service is the docs use-case layer (ADR 0019); permission checks run here so every adapter inherits them.
 type Service struct {
@@ -399,7 +399,7 @@ func (s *Service) listItems(ctx context.Context, ds []*Doc) ([]*DocListItem, err
 			CreatedAt:           d.CreatedAt,
 			UpdatedAt:           d.UpdatedAt,
 			CreatedBy:           d.CreatedBy,
-			Snippet:             richtext.Snippet(d.Body, snippetRunes),
+			Snippet:             d.Snippet,
 			ClarificationClosed: closed[d.ID],
 		}
 		out = append(out, item)
