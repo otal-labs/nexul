@@ -49,7 +49,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotNil(t, tool.InputSchema, tool.Name)
 	}
 	assert.Equal(t, []string{
-		"command_run", "computer_list", "computer_create", "computer_pair", "computer_delete", "computer_project_create",
+		"computer_list", "computer_create", "computer_pair", "computer_delete", "computer_project_create",
 		"computer_setup_run", "computer_setup_update", "computer_mcp_token_create", "computer_mcp_token_delete", "skill_get",
 	}, names)
 }

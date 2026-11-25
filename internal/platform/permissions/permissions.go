@@ -17,34 +17,36 @@ const Member Action = ""
 
 // Actions referenced by name from Go code; every other grid value is only ever built from the catalog.
 const (
-	DocsRead           Action = "docs:read"
-	DocsWrite          Action = "docs:write"
-	DocsDelete         Action = "docs:delete"
-	DocsThread         Action = "docs:thread"
-	DocsClone          Action = "docs:clone"
-	DocsLock           Action = "docs:lock"
-	PermissionsWrite   Action = "permissions:write"
-	ProjectsRead       Action = "projects:read"
-	ProjectsWrite      Action = "projects:write"
-	ProjectsDelete     Action = "projects:delete"
-	ProjectsCreate     Action = "projects:create"
-	ProjectsAccess     Action = "projects:access"
-	TicketsRead        Action = "tickets:read"
-	TicketsWrite       Action = "tickets:write"
-	TicketsDelete      Action = "tickets:delete"
-	StacksRead         Action = "stacks:read"
-	StacksWrite        Action = "stacks:write"
-	StacksDelete       Action = "stacks:delete"
-	StacksLogs         Action = "stacks:logs"
-	DeploysRead        Action = "deploys:read"
-	DeploysWrite       Action = "deploys:write"
-	TopologyRead       Action = "topology:read"
-	TopologyWrite      Action = "topology:write"
-	TopologyDelete     Action = "topology:delete"
-	MachinesWrite      Action = "machines:write"
-	MachinesDeploy     Action = "machines:deploy"
-	MachinesDelete     Action = "machines:delete"
-	MachinesCreate     Action = "machines:create"
+	DocsRead         Action = "docs:read"
+	DocsWrite        Action = "docs:write"
+	DocsDelete       Action = "docs:delete"
+	DocsThread       Action = "docs:thread"
+	DocsClone        Action = "docs:clone"
+	DocsLock         Action = "docs:lock"
+	PermissionsWrite Action = "permissions:write"
+	ProjectsRead     Action = "projects:read"
+	ProjectsWrite    Action = "projects:write"
+	ProjectsDelete   Action = "projects:delete"
+	ProjectsCreate   Action = "projects:create"
+	ProjectsAccess   Action = "projects:access"
+	TicketsRead      Action = "tickets:read"
+	TicketsWrite     Action = "tickets:write"
+	TicketsDelete    Action = "tickets:delete"
+	StacksRead       Action = "stacks:read"
+	StacksWrite      Action = "stacks:write"
+	StacksDelete     Action = "stacks:delete"
+	StacksLogs       Action = "stacks:logs"
+	DeploysRead      Action = "deploys:read"
+	DeploysWrite     Action = "deploys:write"
+	TopologyRead     Action = "topology:read"
+	TopologyWrite    Action = "topology:write"
+	TopologyDelete   Action = "topology:delete"
+	MachinesWrite    Action = "machines:write"
+	MachinesDeploy   Action = "machines:deploy"
+	MachinesDelete   Action = "machines:delete"
+	MachinesCreate   Action = "machines:create"
+	// MachinesShell runs commands on a machine's runners, as the user each runs as: root on Linux (ADR 0209).
+	MachinesShell      Action = "machines:shell"
 	DNSRead            Action = "dns:read"
 	DNSWrite           Action = "dns:write"
 	DNSDelete          Action = "dns:delete"
@@ -110,7 +112,7 @@ const ProjectsOpen Action = "projects:open"
 const MachinesSee Action = "machines:see"
 
 // MachineActions are what a machine's rules may set, See first; Manage is machines:write.
-var MachineActions = []Action{MachinesSee, MachinesDeploy, MachinesWrite, MachinesDelete}
+var MachineActions = []Action{MachinesSee, MachinesDeploy, MachinesWrite, MachinesDelete, MachinesShell}
 
 // The computer permissions, off the grid like ProjectsOpen: held only through a rule a computer's owner writes for a
 // named person, never by a role, an invitation or a token (ADR 0148).
@@ -138,6 +140,7 @@ const (
 	template = "template"
 	post     = "post"
 	deploy   = "deploy"
+	shell    = "shell"
 	viewAs   = "view_as"
 )
 
@@ -161,6 +164,7 @@ var verbLabel = map[Action]string{
 	MachinesDeploy:   "Deploy to machines",
 	MachinesWrite:    "Manage machines",
 	MachinesCreate:   "Add machines",
+	MachinesShell:    "Run commands on machines",
 	MembersViewAs:    "View Nexul as another member",
 	CalendarWrite:    "Create meetings",
 	CalendarDelete:   "Change or cancel anyone's meetings",
@@ -204,7 +208,7 @@ var domainTable = []domainInfo{
 	{"workspaces", "workspaces", []string{read, write, delete, create}, AreaWorkspace},
 	{"members", "members and invites", []string{read, write, delete, viewAs}, AreaWorkspace},
 	{"roles", "roles", []string{read, write, delete, clone}, AreaWorkspace},
-	{"machines", "machines", []string{write, deploy, delete, create}, AreaInstance},
+	{"machines", "machines", []string{write, deploy, delete, create, shell}, AreaInstance},
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},

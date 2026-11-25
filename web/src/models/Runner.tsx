@@ -48,8 +48,11 @@ export const MachineSchema = z.object({
   reported_hostname: z.string().optional(),
   first_seen: z.string(),
   last_seen: z.string(),
-  // What the viewer holds on it: machines:see, machines:deploy, machines:write (Manage) and machines:delete.
+  // What the viewer holds on it: machines:see, machines:deploy, machines:write (Manage), machines:delete and
+  // machines:shell (Run commands).
   actions: z.array(z.string()),
+  // Whether Nexul may run commands on its runners; each runner also needs its own --allow-shell.
+  shell_enabled: z.boolean().optional(),
 });
 
 export type Machine = z.infer<typeof MachineSchema>;

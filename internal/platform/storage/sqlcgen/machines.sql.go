@@ -66,7 +66,7 @@ func (q *Queries) DeleteMachineRunners(ctx context.Context, machineID string) er
 }
 
 const getMachine = `-- name: GetMachine :one
-SELECT id, name, stack_root, reported_hostname, first_seen, last_seen FROM machines WHERE id = ?
+SELECT id, name, stack_root, reported_hostname, first_seen, last_seen, shell_enabled FROM machines WHERE id = ?
 `
 
 func (q *Queries) GetMachine(ctx context.Context, id string) (Machine, error) {
@@ -79,12 +79,13 @@ func (q *Queries) GetMachine(ctx context.Context, id string) (Machine, error) {
 		&i.ReportedHostname,
 		&i.FirstSeen,
 		&i.LastSeen,
+		&i.ShellEnabled,
 	)
 	return i, err
 }
 
 const getMachineByName = `-- name: GetMachineByName :one
-SELECT id, name, stack_root, reported_hostname, first_seen, last_seen FROM machines WHERE name = ?
+SELECT id, name, stack_root, reported_hostname, first_seen, last_seen, shell_enabled FROM machines WHERE name = ?
 `
 
 func (q *Queries) GetMachineByName(ctx context.Context, name string) (Machine, error) {
@@ -97,6 +98,7 @@ func (q *Queries) GetMachineByName(ctx context.Context, name string) (Machine, e
 		&i.ReportedHostname,
 		&i.FirstSeen,
 		&i.LastSeen,
+		&i.ShellEnabled,
 	)
 	return i, err
 }
@@ -156,7 +158,7 @@ func (q *Queries) ListMachineStackNames(ctx context.Context, machine string) ([]
 }
 
 const listMachines = `-- name: ListMachines :many
-SELECT id, name, stack_root, reported_hostname, first_seen, last_seen FROM machines ORDER BY name
+SELECT id, name, stack_root, reported_hostname, first_seen, last_seen, shell_enabled FROM machines ORDER BY name
 `
 
 func (q *Queries) ListMachines(ctx context.Context) ([]Machine, error) {
@@ -175,6 +177,7 @@ func (q *Queries) ListMachines(ctx context.Context) ([]Machine, error) {
 			&i.ReportedHostname,
 			&i.FirstSeen,
 			&i.LastSeen,
+			&i.ShellEnabled,
 		); err != nil {
 			return nil, err
 		}
@@ -190,7 +193,7 @@ func (q *Queries) ListMachines(ctx context.Context) ([]Machine, error) {
 }
 
 const listMachinesIn = `-- name: ListMachinesIn :many
-SELECT id, name, stack_root, reported_hostname, first_seen, last_seen FROM machines WHERE id IN (SELECT value FROM json_each(?1)) ORDER BY name
+SELECT id, name, stack_root, reported_hostname, first_seen, last_seen, shell_enabled FROM machines WHERE id IN (SELECT value FROM json_each(?1)) ORDER BY name
 `
 
 func (q *Queries) ListMachinesIn(ctx context.Context, ids interface{}) ([]Machine, error) {
@@ -209,6 +212,7 @@ func (q *Queries) ListMachinesIn(ctx context.Context, ids interface{}) ([]Machin
 			&i.ReportedHostname,
 			&i.FirstSeen,
 			&i.LastSeen,
+			&i.ShellEnabled,
 		); err != nil {
 			return nil, err
 		}

@@ -185,8 +185,8 @@ func (s *Service) rolesAcross(ctx context.Context, userID string) ([]string, fun
 	}, nil
 }
 
-// MachinePermissions is which of a machine's actions (See, Deploy to, Manage, Delete) userID holds; a machine they can't
-// see is not found. The instance Owner holds all four on every machine.
+// MachinePermissions is which of a machine's actions (See, Deploy to, Manage, Delete, Run commands) userID holds; a
+// machine they can't see is not found. The instance Owner holds every one on every machine.
 func (s *Service) MachinePermissions(ctx context.Context, userID, machineID string) (permissions.Set, error) {
 	view, err := s.machineView(s.memoized(ctx), userID, machineID)
 	if err != nil {

@@ -41,3 +41,30 @@ func TestShellSwitch_RefusesWhatItCannotDo(t *testing.T) {
 	th.sudoFromAlice(t)
 	require.ErrorContains(t, th.runShellSwitch(t.Context(), []string{"off"}), "no Nexul runner installed")
 }
+
+func TestShellSwitch_ARunnersOptInIsOnlyItsOperators(t *testing.T) {
+	th := newTestHost(t)
+	withVersion(t, "v0.2.1")
+	require.NoError(t, th.runInstall(t.Context(), []string{"runner", "--server", th.web.URL, "--name", "edge", "--code", "nxe_code", "--allow-shell"}))
+	envFile := filepath.Join(th.Paths.UnitRoot, "runner-edge", "env")
+	env, err := readEnvFile(envFile)
+	require.NoError(t, err)
+	assert.Equal(t, "on", env["NEXUL_SHELL"], "--allow-shell installs it with commands on")
+
+	require.NoError(t, th.runShellSwitch(t.Context(), []string{"off", "edge"}))
+	env, err = readEnvFile(envFile)
+	require.NoError(t, err)
+	assert.NotContains(t, env, "NEXUL_SHELL")
+	assert.Equal(t, "edge", env["NEXUL_RUNNER_NAME"], "the rest of the unit is kept")
+	calls := th.exec.callsTo("systemctl")
+	assert.Equal(t, "systemctl restart nexul-runner-edge.service", calls[len(calls)-1])
+	assert.Contains(t, th.out.String(), "Commands from Nexul are off on the runner edge; it restarted.")
+
+	require.NoError(t, th.runShellSwitch(t.Context(), []string{"on", "edge"}))
+	env, err = readEnvFile(envFile)
+	require.NoError(t, err)
+	assert.Equal(t, "on", env["NEXUL_SHELL"])
+
+	require.ErrorContains(t, th.runShellSwitch(t.Context(), []string{"on", "other"}), `no runner named "other"`)
+	require.ErrorContains(t, th.runShellSwitch(t.Context(), []string{"on", "edge", "extra"}), "usage")
+}

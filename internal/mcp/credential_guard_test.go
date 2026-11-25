@@ -50,6 +50,10 @@ var notCredentials = map[string]string{
 	"computer_list items.commands":         "the commands run on the computer and how each ended",
 	"computer_list items.commands.command": "a command line its owner or their agent ran, echoed back",
 	"computer_pair commands":               "never set by this tool; computer_list fills it",
+	"machine_list commands":                "the commands run on the machine's runners and how each ended",
+	"machine_list commands.command":        "a command line someone holding Run commands on the machine ran, echoed back",
+	"machine_list items.commands":          "never set on the list; the machine read alone with id carries them",
+	"machine_list items.commands.command":  "never set on the list; the machine read alone with id carries them",
 	"computer_pair commands.command":       "never set by this tool; computer_list fills it",
 }
 

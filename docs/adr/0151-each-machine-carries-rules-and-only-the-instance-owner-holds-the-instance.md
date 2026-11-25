@@ -42,3 +42,6 @@ per runner, which the shared Docker makes meaningless; keeping role bits as "eve
 which fails open on a machine nobody wrote a rule for; checking Deploy to only when a stack is created, which lets
 someone taken off a machine keep redeploying there; and keeping every workspace Owner undeniable on instance areas,
 which makes creating a workspace an instance takeover.
+
+Amended 2026-11-25 by ADR 0209: Run commands (`machines:shell`) joins See, Deploy to, Manage and Delete as a machine's
+fifth action, for the shell jobs a machine's runners run; no role gains it on upgrade.

@@ -53,7 +53,7 @@ type ClientConfig struct {
 	T3InstallingFile string
 	// T3Supervised means a supervisor on the computer restarts T3 Code, so the runner never does.
 	T3Supervised bool
-	// ShellEnabled lets a personal runner run shell jobs: the computer's own opt-in, which `nexul shell off` withdraws.
+	// ShellEnabled lets the runner run shell jobs: its computer's or machine's own opt-in (RunnerConfig.ShellAllowed).
 	ShellEnabled bool
 	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
 	RunnerLog *RunnerLog

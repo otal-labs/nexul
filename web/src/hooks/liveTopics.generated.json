@@ -110,6 +110,7 @@
   "runner.connected",
   "runner.disconnected",
   "runner.personal_changed",
+  "runner.shell_job_changed",
   "service.container_recovered",
   "service.container_stopped",
   "service.created",

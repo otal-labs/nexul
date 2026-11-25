@@ -473,6 +473,17 @@ func (f *fakeMachineRepo) SetStackRoot(_ context.Context, id, stackRoot string) 
 	return nil
 }
 
+func (f *fakeMachineRepo) SetShell(_ context.Context, id string, enabled bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	m, ok := f.machines[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	m.ShellEnabled = enabled
+	return nil
+}
+
 func (f *fakeMachineRepo) Touch(_ context.Context, id, reportedHostname string, at time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -152,6 +152,7 @@ export interface EventPayloads {
   "runner.facts_reported": { "runner_id": string; "computer_id": string; "user_id": string; "facts": { "hostname"?: string; "os"?: string; "arch"?: string; "runner_version"?: string; "t3": { "state": "answering" | "not_running" | "missing" | "not_loopback" | "installing"; "install"?: "service" | "command_line" | "desktop_app"; "port"?: number; "version"?: string; "restarted_at"?: string; "restart_error"?: string; }; "cloudflared"?: string; "git_name"?: string; "git_email"?: string; "github_sign_in"?: "gh" | "helper" | "none"; "free_disk_bytes"?: number; "docker"?: { "available": boolean; "version"?: string; }; "tools"?: ({ "name": "git" | "gh"; "path"?: string; "version"?: string; "install"?: string[]; })[]; "shell"?: { "enabled": boolean; }; }; "members_only": boolean; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
   "runner.personal_changed": { "runner_id": string; "computer_id": string; "user_id": string; "state": "enrolled" | "connected" | "reconnecting" | "disconnected" | "removed"; "hostname"?: string; "members_only": boolean; };
+  "runner.shell_job_changed": { "job_id": string; "runner_id": string; "machine_id": string; "user_id": string; "status": "queued" | "running" | "succeeded" | "failed" | "timed_out" | "cancelled" | "refused"; };
   "secret_manager.token_rejected": { "source": "runner" | "automations_host" | "server"; "name"?: string; "machine"?: string; "manager": string; "workspace"?: string; "workspace_id"?: string; };
   "service.container_recovered": { "workspace_id"?: string; "project_id"?: string; "stack_id": string; "stack_name": string; "service": string; "container": string; "machine": string; "outage_id": string; "exit_code": number; "oom": boolean; "restart_count": number; "started_at": string; "ended_at"?: string; };
   "service.container_stopped": { "workspace_id"?: string; "project_id"?: string; "stack_id": string; "stack_name": string; "service": string; "container": string; "machine": string; "outage_id": string; "exit_code": number; "oom": boolean; "restart_count": number; "started_at": string; "ended_at"?: string; };
@@ -349,6 +350,7 @@ export const TOPICS: Topic[] = [
   "runner.facts_reported",
   "runner.heartbeat",
   "runner.personal_changed",
+  "runner.shell_job_changed",
   "secret_manager.token_rejected",
   "service.container_recovered",
   "service.container_stopped",
@@ -544,6 +546,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "runner.facts_reported": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","facts":{"hostname":"fixture-hostname","os":"fixture-os","arch":"fixture-arch","runner_version":"fixture-runner_version","t3":{"state":"answering","install":"service","port":1,"version":"fixture-version","restarted_at":"2026-01-01T00:00:00Z","restart_error":"fixture-restart_error"},"cloudflared":"fixture-cloudflared","git_name":"fixture-git_name","git_email":"fixture-git_email","github_sign_in":"gh","free_disk_bytes":1,"docker":{"available":false,"version":"fixture-version"},"tools":[{"name":"git","path":"fixture-path","version":"fixture-version","install":["fixture-install"]}],"shell":{"enabled":false}},"members_only":false},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},
   "runner.personal_changed": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","state":"enrolled","hostname":"fixture-hostname","members_only":false},
+  "runner.shell_job_changed": {"job_id":"fixture-job_id","runner_id":"fixture-runner_id","machine_id":"fixture-machine_id","user_id":"fixture-user_id","status":"queued"},
   "secret_manager.token_rejected": {"source":"runner","name":"fixture-name","machine":"fixture-machine","manager":"fixture-manager","workspace":"fixture-workspace","workspace_id":"fixture-workspace_id"},
   "service.container_recovered": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","stack_id":"fixture-stack_id","stack_name":"fixture-stack_name","service":"fixture-service","container":"fixture-container","machine":"fixture-machine","outage_id":"fixture-outage_id","exit_code":1,"oom":false,"restart_count":1,"started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:00Z"},
   "service.container_stopped": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","stack_id":"fixture-stack_id","stack_name":"fixture-stack_name","service":"fixture-service","container":"fixture-container","machine":"fixture-machine","outage_id":"fixture-outage_id","exit_code":1,"oom":false,"restart_count":1,"started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:00Z"},

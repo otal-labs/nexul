@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countMachineShellJobs = `-- name: CountMachineShellJobs :one
+SELECT COUNT(*) FROM runner_shell_jobs WHERE machine_id = ?
+`
+
+func (q *Queries) CountMachineShellJobs(ctx context.Context, machineID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMachineShellJobs, machineID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countShellJobs = `-- name: CountShellJobs :one
 SELECT COUNT(*) FROM runner_shell_jobs
 WHERE computer_id = ?1 AND (?2 = '' OR requester_id = ?2)
@@ -73,7 +84,7 @@ func (q *Queries) FinishShellJob(ctx context.Context, arg FinishShellJobParams) 
 }
 
 const getShellJob = `-- name: GetShellJob :one
-SELECT id, computer_id, owner_id, requester_id, adapter, shell, command, cwd, timeout_seconds, status, exit_code, error, output, output_truncated, output_purged, created_at, started_at, ended_at FROM runner_shell_jobs WHERE id = ?
+SELECT id, computer_id, owner_id, requester_id, adapter, shell, command, cwd, timeout_seconds, status, exit_code, error, output, output_truncated, output_purged, created_at, started_at, ended_at, runner_id, machine_id FROM runner_shell_jobs WHERE id = ?
 `
 
 func (q *Queries) GetShellJob(ctx context.Context, id string) (RunnerShellJob, error) {
@@ -98,19 +109,23 @@ func (q *Queries) GetShellJob(ctx context.Context, id string) (RunnerShellJob, e
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.RunnerID,
+		&i.MachineID,
 	)
 	return i, err
 }
 
 const insertShellJob = `-- name: InsertShellJob :exec
-INSERT INTO runner_shell_jobs (id, computer_id, owner_id, requester_id, adapter, shell, command, cwd, timeout_seconds, status, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO runner_shell_jobs (id, computer_id, owner_id, runner_id, machine_id, requester_id, adapter, shell, command, cwd, timeout_seconds, status, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertShellJobParams struct {
 	ID             string
 	ComputerID     string
 	OwnerID        string
+	RunnerID       string
+	MachineID      string
 	RequesterID    string
 	Adapter        string
 	Shell          string
@@ -126,6 +141,8 @@ func (q *Queries) InsertShellJob(ctx context.Context, arg InsertShellJobParams) 
 		arg.ID,
 		arg.ComputerID,
 		arg.OwnerID,
+		arg.RunnerID,
+		arg.MachineID,
 		arg.RequesterID,
 		arg.Adapter,
 		arg.Shell,
@@ -138,8 +155,74 @@ func (q *Queries) InsertShellJob(ctx context.Context, arg InsertShellJobParams) 
 	return err
 }
 
+const listMachineShellJobs = `-- name: ListMachineShellJobs :many
+SELECT j.id, j.computer_id, j.owner_id, j.requester_id, j.adapter, j.shell, j.command, j.cwd, j.timeout_seconds, j.status, j.exit_code, j.error, j.output, j.output_truncated, j.output_purged, j.created_at, j.started_at, j.ended_at, j.runner_id, j.machine_id, COALESCE(NULLIF(u.name, ''), u.login, '') AS requester_name, COALESCE(r.name, '') AS runner_name
+FROM runner_shell_jobs j LEFT JOIN users u ON u.id = j.requester_id LEFT JOIN runners r ON r.id = j.runner_id
+WHERE j.machine_id = ?1
+ORDER BY j.created_at DESC, j.id DESC LIMIT ?3 OFFSET ?2
+`
+
+type ListMachineShellJobsParams struct {
+	MachineID string
+	Off       int64
+	Lim       int64
+}
+
+type ListMachineShellJobsRow struct {
+	RunnerShellJob RunnerShellJob
+	RequesterName  string
+	RunnerName     string
+}
+
+// A machine's jobs newest first, each with the names of who ran it and of the runner it ran on.
+func (q *Queries) ListMachineShellJobs(ctx context.Context, arg ListMachineShellJobsParams) ([]ListMachineShellJobsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMachineShellJobs, arg.MachineID, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMachineShellJobsRow
+	for rows.Next() {
+		var i ListMachineShellJobsRow
+		if err := rows.Scan(
+			&i.RunnerShellJob.ID,
+			&i.RunnerShellJob.ComputerID,
+			&i.RunnerShellJob.OwnerID,
+			&i.RunnerShellJob.RequesterID,
+			&i.RunnerShellJob.Adapter,
+			&i.RunnerShellJob.Shell,
+			&i.RunnerShellJob.Command,
+			&i.RunnerShellJob.Cwd,
+			&i.RunnerShellJob.TimeoutSeconds,
+			&i.RunnerShellJob.Status,
+			&i.RunnerShellJob.ExitCode,
+			&i.RunnerShellJob.Error,
+			&i.RunnerShellJob.Output,
+			&i.RunnerShellJob.OutputTruncated,
+			&i.RunnerShellJob.OutputPurged,
+			&i.RunnerShellJob.CreatedAt,
+			&i.RunnerShellJob.StartedAt,
+			&i.RunnerShellJob.EndedAt,
+			&i.RunnerShellJob.RunnerID,
+			&i.RunnerShellJob.MachineID,
+			&i.RequesterName,
+			&i.RunnerName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listShellJobs = `-- name: ListShellJobs :many
-SELECT j.id, j.computer_id, j.owner_id, j.requester_id, j.adapter, j.shell, j.command, j.cwd, j.timeout_seconds, j.status, j.exit_code, j.error, j.output, j.output_truncated, j.output_purged, j.created_at, j.started_at, j.ended_at, COALESCE(NULLIF(u.name, ''), u.login, '') AS requester_name
+SELECT j.id, j.computer_id, j.owner_id, j.requester_id, j.adapter, j.shell, j.command, j.cwd, j.timeout_seconds, j.status, j.exit_code, j.error, j.output, j.output_truncated, j.output_purged, j.created_at, j.started_at, j.ended_at, j.runner_id, j.machine_id, COALESCE(NULLIF(u.name, ''), u.login, '') AS requester_name
 FROM runner_shell_jobs j LEFT JOIN users u ON u.id = j.requester_id
 WHERE j.computer_id = ?1 AND (?2 = '' OR j.requester_id = ?2)
 ORDER BY j.created_at DESC, j.id DESC LIMIT ?4 OFFSET ?3
@@ -191,6 +274,8 @@ func (q *Queries) ListShellJobs(ctx context.Context, arg ListShellJobsParams) ([
 			&i.RunnerShellJob.CreatedAt,
 			&i.RunnerShellJob.StartedAt,
 			&i.RunnerShellJob.EndedAt,
+			&i.RunnerShellJob.RunnerID,
+			&i.RunnerShellJob.MachineID,
 			&i.RequesterName,
 		); err != nil {
 			return nil, err
@@ -219,6 +304,23 @@ type PurgeShellJobOutputParams struct {
 // Empties the output of up to lim jobs that ended before the cutoff, keeping the rest of each record.
 func (q *Queries) PurgeShellJobOutput(ctx context.Context, arg PurgeShellJobOutputParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, purgeShellJobOutput, arg.Before, arg.Lim)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setMachineShell = `-- name: SetMachineShell :execrows
+UPDATE machines SET shell_enabled = ? WHERE id = ?
+`
+
+type SetMachineShellParams struct {
+	ShellEnabled int64
+	ID           string
+}
+
+func (q *Queries) SetMachineShell(ctx context.Context, arg SetMachineShellParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setMachineShell, arg.ShellEnabled, arg.ID)
 	if err != nil {
 		return 0, err
 	}

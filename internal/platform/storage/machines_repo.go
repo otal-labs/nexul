@@ -100,6 +100,19 @@ func (r *MachinesRepo) SetStackRoot(ctx context.Context, id, stackRoot string) e
 	})
 }
 
+func (r *MachinesRepo) SetShell(ctx context.Context, id string, enabled bool) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetMachineShell(ctx, sqlcgen.SetMachineShellParams{ShellEnabled: boolToInt(enabled), ID: id})
+		if err != nil {
+			return fmt.Errorf("set commands of machine %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set commands of machine %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *MachinesRepo) Touch(ctx context.Context, id, reportedHostname string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).TouchMachine(ctx, sqlcgen.TouchMachineParams{
@@ -160,5 +173,6 @@ func toMachine(row sqlcgen.Machine) *runner.Machine {
 		ReportedHostname: row.ReportedHostname,
 		FirstSeen:        time.Unix(row.FirstSeen, 0).UTC(),
 		LastSeen:         time.Unix(row.LastSeen, 0).UTC(),
+		ShellEnabled:     row.ShellEnabled != 0,
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
 // TestComputerEvents_AreMembersOnly drives every flow that publishes a computer event and holds each one to the mark
@@ -89,10 +90,10 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 	}
 
 	commands, commandsRepo, shells := newShellService(t)
-	job, err := commands.RunCommand(ctx, "alice", "c-laptop", RunCommandInput{Command: "ls"})
+	job, err := commands.RunCommand(ctx, "alice", "c-laptop", shelljob.Input{Command: "ls"})
 	require.NoError(t, err)
 	waitStarted(t, shells)
-	shells.sink(job.ID).Done(ShellEnd{Status: ShellSucceeded})
+	shells.sink(job.ID).Done(shelljob.End{Status: shelljob.Succeeded})
 	for _, e := range commandsRepo.outbox {
 		check(e.Topic, e.Payload)
 	}

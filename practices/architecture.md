@@ -329,7 +329,7 @@ with a `type` discriminator, declared in `internal/runner/protocol.go`:
 
 - Server to runner: `assign_build`, `assign_deploy`, `cancel`,
   `logs_request`, `logs_cancel`, `harness_dial`, to a personal runner
-  `git_clone`, a clone with a token for the one repository (ADR 0167), and `restart`, which it answers before it re-execs itself (ADR 0052), `install_tool`, which installs git or gh with the command its facts reported, `git_identity`, and `shell_run` and `shell_cancel`, a command run in its shell (ADR 0209), and to a machine runner
+  `git_clone`, a clone with a token for the one repository (ADR 0167), and `restart`, which it answers before it re-execs itself (ADR 0052), `install_tool`, which installs git or gh with the command its facts reported, and `git_identity`; to either `shell_run` and `shell_cancel`, a command run in its shell, which a machine runner takes only once its operator installed it with `--allow-shell` (ADR 0209); and to a machine runner
   `join_networks`, `gateway_routes`, which rewrites a running proxy
   gateway's exposure routes (ADR 0157), and `stack_teardown`, which removes a
   deleted managed stack's containers (ADR 0158).

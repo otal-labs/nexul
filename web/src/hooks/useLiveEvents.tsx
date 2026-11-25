@@ -24,6 +24,7 @@ import { brandingFollower } from "@/ee/hooks/BrandingHooks";
 import { licenseFollower } from "@/ee/hooks/LicenseHooks";
 import { ssoFollower } from "@/ee/hooks/SsoHooks";
 import { interviewSourceFollower } from "@/hooks/InterviewSourceHooks";
+import { machineCommandFollower } from "@/hooks/MachineCommandHooks";
 import { machineFollower } from "@/hooks/MachineHooks";
 import { memoryFollower } from "@/hooks/MemoryHooks";
 import { noteFollower } from "@/hooks/NoteHooks";
@@ -102,6 +103,7 @@ const followers: LiveFollower[] = [
   brandingFollower,
   auditLogFollower,
   interviewSourceFollower,
+  machineCommandFollower,
   machineFollower,
   memoryFollower,
   noteFollower,

@@ -59,7 +59,7 @@ func TestEnrollment_ANewMachineGivesItsAdderEveryAction(t *testing.T) {
 	require.NoError(t, err)
 	held, err := c.svc.accessSvc.MachinePermissions(t.Context(), "u-carol", m.ID)
 	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.MachineActions...), held, "all four actions, from the rule written with the machine")
+	assert.Equal(t, permissions.SetOf(permissions.MachineActions...), held, "every action, from the rule written with the machine")
 	var rules int
 	require.NoError(t, c.db.QueryRow(`SELECT COUNT(*) FROM permission_overwrites WHERE resource_type = 'machine' AND resource_id = ?`, m.ID).Scan(&rules))
 	assert.Equal(t, 1, rules, "one rule, naming the person who made the code")

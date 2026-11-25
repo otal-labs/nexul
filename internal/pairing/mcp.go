@@ -14,12 +14,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
 // MCPTools returns the computer tools: pairing, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		commandRunTool(s), computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerProjectCreateTool(s),
+		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerProjectCreateTool(s),
 		computerSetupRunTool(s), computerSetupUpdateTool(s), computerMCPTokenCreateTool(s), computerMCPTokenDeleteTool(s),
 		skillGetTool(),
 	}
@@ -134,7 +135,7 @@ type computerResult struct {
 	ContainersError  string                 `json:"containers_error,omitempty"`
 	ContainerLogs    *computerContainerLogs `json:"container_logs,omitempty"`
 	RunnerLogs       *computerRunnerLogs    `json:"runner_logs,omitempty"`
-	Commands         []ShellJob             `json:"commands,omitempty"`
+	Commands         []shelljob.Job         `json:"commands,omitempty"`
 	SharedRuns       []SharedRun            `json:"shared_runs,omitempty"`
 	ShellEnabled     bool                   `json:"shell_enabled"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`

@@ -7911,6 +7911,48 @@
       "members_only"
     ]
   },
+  "runner.shell_job_changed": {
+    "type": "object",
+    "properties": {
+      "job_id": {
+        "type": "string",
+        "description": "The command's id."
+      },
+      "runner_id": {
+        "type": "string",
+        "description": "The runner it runs on."
+      },
+      "machine_id": {
+        "type": "string",
+        "description": "The machine that runner is on."
+      },
+      "user_id": {
+        "type": "string",
+        "description": "Who ran it."
+      },
+      "status": {
+        "type": "string",
+        "description": "queued, running, or how it ended.",
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "timed_out",
+          "cancelled",
+          "refused"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "job_id",
+      "runner_id",
+      "machine_id",
+      "user_id",
+      "status"
+    ]
+  },
   "secret_manager.token_rejected": {
     "type": "object",
     "properties": {

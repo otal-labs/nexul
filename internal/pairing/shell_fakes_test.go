@@ -9,9 +9,10 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
-func (f *fakeRepo) InsertShellJob(_ context.Context, job ShellJob, evt eventbus.OutboxEvent) error {
+func (f *fakeRepo) InsertShellJob(_ context.Context, job shelljob.Job, evt eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.jobs[job.ID] = job
@@ -23,20 +24,20 @@ func (f *fakeRepo) StartShellJob(_ context.Context, id string, at time.Time, evt
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	job, ok := f.jobs[id]
-	if !ok || job.Status != ShellQueued {
+	if !ok || job.Status != shelljob.Queued {
 		return false, nil
 	}
-	job.Status, job.StartedAt = ShellRunning, &at
+	job.Status, job.StartedAt = shelljob.Running, &at
 	f.jobs[id] = job
 	f.outbox = append(f.outbox, evt)
 	return true, nil
 }
 
-func (f *fakeRepo) FinishShellJob(_ context.Context, job ShellJob, evt eventbus.OutboxEvent) error {
+func (f *fakeRepo) FinishShellJob(_ context.Context, job shelljob.Job, evt eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	stored, ok := f.jobs[job.ID]
-	if !ok || (stored.Status != ShellQueued && stored.Status != ShellRunning) {
+	if !ok || (stored.Status != shelljob.Queued && stored.Status != shelljob.Running) {
 		return nil
 	}
 	job.StartedAt = stored.StartedAt
@@ -45,7 +46,7 @@ func (f *fakeRepo) FinishShellJob(_ context.Context, job ShellJob, evt eventbus.
 	return nil
 }
 
-func (f *fakeRepo) GetShellJob(_ context.Context, id string) (*ShellJob, error) {
+func (f *fakeRepo) GetShellJob(_ context.Context, id string) (*shelljob.Job, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	job, ok := f.jobs[id]
@@ -55,17 +56,17 @@ func (f *fakeRepo) GetShellJob(_ context.Context, id string) (*ShellJob, error) 
 	return &job, nil
 }
 
-func (f *fakeRepo) ListShellJobs(_ context.Context, computerID, requesterID string, w paging.Window) ([]ShellJob, int, error) {
+func (f *fakeRepo) ListShellJobs(_ context.Context, computerID, requesterID string, w paging.Window) ([]shelljob.Job, int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []ShellJob
+	var out []shelljob.Job
 	for _, j := range f.jobs {
 		if j.ComputerID == computerID && (requesterID == "" || j.RequesterID == requesterID) {
 			j.Output = ""
 			out = append(out, j)
 		}
 	}
-	slices.SortFunc(out, func(a, b ShellJob) int { return strings.Compare(b.ID, a.ID) })
+	slices.SortFunc(out, func(a, b shelljob.Job) int { return strings.Compare(b.ID, a.ID) })
 	total := len(out)
 	out = out[min(w.Offset, total):min(w.Offset+w.Limit, total)]
 	return out, total, nil
@@ -90,8 +91,8 @@ func (f *fakeRepo) FailUnfinishedShellJobs(_ context.Context, at time.Time) (int
 	defer f.mu.Unlock()
 	var n int64
 	for id, j := range f.jobs {
-		if j.Status == ShellQueued || j.Status == ShellRunning {
-			j.Status, j.EndedAt = ShellFailed, &at
+		if j.Status == shelljob.Queued || j.Status == shelljob.Running {
+			j.Status, j.EndedAt = shelljob.Failed, &at
 			f.jobs[id] = j
 			n++
 		}
@@ -111,7 +112,7 @@ func (f *fakeRepo) SetComputerShell(_ context.Context, userID, computerID string
 	return nil
 }
 
-func (f *fakeRepo) shellJob(id string) ShellJob {
+func (f *fakeRepo) shellJob(id string) shelljob.Job {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.jobs[id]

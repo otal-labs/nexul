@@ -26,6 +26,7 @@ type PairingRepo struct {
 	db *sql.DB
 	w  *Serializer
 	q  *sqlcgen.Queries
+	*ShellJobsRepo
 }
 
 func (r *PairingRepo) SaveComputer(ctx context.Context, c pairing.Computer, evts ...eventbus.OutboxEvent) error {

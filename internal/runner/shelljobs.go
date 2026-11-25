@@ -26,10 +26,10 @@ const (
 	lastWithoutShell = "v0.3.100-beta"
 )
 
-// ErrCannotRunShell means the computer's runner is too old to run shell jobs.
+// ErrCannotRunShell means the runner is too old to run shell jobs.
 var ErrCannotRunShell = errors.New("the runner cannot run shell jobs")
 
-// ShellRun is one command for a computer's runner to run.
+// ShellRun is one command for a runner to run.
 type ShellRun struct {
 	ID      string
 	Shell   string
@@ -58,21 +58,25 @@ type ShellFacts struct {
 
 // ---- runner side ----
 
-// startShell runs one shell_run in its own goroutine, refusing it when the computer turned shell jobs off or runs its
-// limit already; a dropped connection kills it.
+// startShell runs one shell_run in its own goroutine, refusing it when this computer or machine did not opt in to shell
+// jobs or runs its limit already; a dropped connection kills it.
 func (c *Client) startShell(ctx context.Context, conn *websocket.Conn, f Frame) {
 	send := func(fr Frame) { c.sendFrame(ctx, conn, fr) }
 	refuse := func(msg string) {
 		send(Frame{Type: FrameShellResult, ID: f.ID, Status: ShellStatusRefused, Error: msg})
 	}
-	if !c.cfg.ShellEnabled {
+	if !c.cfg.ShellEnabled && c.cfg.Personal {
 		refuse("commands are turned off on this computer; `nexul shell on`, run there, turns them on")
+		return
+	}
+	if !c.cfg.ShellEnabled {
+		refuse(fmt.Sprintf("commands are off on this runner: it was installed without --allow-shell; `sudo nexul shell on %s`, run on the machine, turns them on", c.cfg.Name))
 		return
 	}
 	c.shellMu.Lock()
 	if len(c.shells) >= MaxShellJobs {
 		c.shellMu.Unlock()
-		refuse(fmt.Sprintf("this computer already runs %d commands", MaxShellJobs))
+		refuse(fmt.Sprintf("this runner already runs %d commands", MaxShellJobs))
 		return
 	}
 	jobCtx, cancel := context.WithCancel(ctx)
@@ -215,6 +219,10 @@ func (h *Handler) RunShell(ctx context.Context, computerID string, run ShellRun,
 	if err != nil {
 		return err
 	}
+	return h.sendShell(ctx, c, run, sink)
+}
+
+func (h *Handler) sendShell(ctx context.Context, c *runnerConn, run ShellRun, sink ShellSink) error {
 	if c.version == "" || !version.Newer(c.version, lastWithoutShell) {
 		return ErrCannotRunShell
 	}
@@ -227,6 +235,18 @@ func (h *Handler) RunShell(ctx context.Context, computerID string, run ShellRun,
 		return apperrs.Retryable(fmt.Errorf("send shell_run: %w", err))
 	}
 	return nil
+}
+
+// RunMachineShell sends run to runnerID, a machine's runner; sink gets its output and its end, which a dropped connection
+// also ends.
+func (h *Handler) RunMachineShell(ctx context.Context, runnerID string, run ShellRun, sink ShellSink) error {
+	h.mu.Lock()
+	c := h.conns[runnerID]
+	h.mu.Unlock()
+	if c == nil || c.personal {
+		return apperrs.Retryable(fmt.Errorf("runner %s is not connected", runnerID))
+	}
+	return h.sendShell(ctx, c, run, sink)
 }
 
 // CancelShell asks the runner running jobID to stop it; its shell_result then ends it.
@@ -284,8 +304,12 @@ func (h *Handler) endShellSubs(c *runnerConn) {
 		}
 	}
 	h.shellMu.Unlock()
+	why := "the runner disconnected"
+	if c.personal {
+		why = "the computer's Nexul app disconnected"
+	}
 	for _, sink := range ended {
-		sink.Done(ShellResult{Status: ShellStatusFailed, Error: "the computer's Nexul app disconnected"})
+		sink.Done(ShellResult{Status: ShellStatusFailed, Error: why})
 	}
 }
 

@@ -29,3 +29,15 @@ Rejected: running commands through T3 Code's own terminal, which needs a paired 
 sign-in, and leaves no record Nexul owns.
 
 Decided: 2026-11-25.
+
+Amended 2026-11-25: a machine's runners run commands too, on the same job, frames, queue, limits, record and retention, a
+job naming its runner and machine where a computer's names the computer and owner. Who may is the machine's business, so
+it is a fifth machine action beside Deploy to, Manage and Delete (ADR 0151): Run commands, `machines:shell`, held through
+roles and the machine's rules, never an instance area, since `runners:*` went with ADR 0151 and a role bit meaning every
+machine would fail open. No role gains it on upgrade, the instance Owner holds it on every machine, and a scoped token
+needs it among its own scopes. Both switches start off: the runner's own is its install's `--allow-shell` (or `nexul shell
+on <runner>` there), which the server can never turn on, and Nexul's is one per machine (`machines.shell_enabled`),
+flipped with `machines:shell`, whose off cancels the machine's running commands. A command there runs as the runner's
+user, root on Linux. Its audit row is an ordinary one, since it is nobody's computer. `command_run` takes `runner_id` in
+place of `computer_id`, `machine_list` with an id and `commands` reads the record back, and the advertised size budget
+rises to 201,000 characters for them.

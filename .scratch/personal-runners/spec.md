@@ -597,10 +597,10 @@ depends on whose machine it is:
   shell jobs only through a "Run commands" grant, and only while both switches are on. The server can never
   turn on what the computer's own setting turned off.
 - Any other runner or machine: both off until its operator agrees. At the machine: the install flag
-  `--allow-shell` (or `nexul shell on|off` later, run there), stored in the unit's own env; the server can
+  `--allow-shell`, or `nexul shell on|off <runner>` run there, stored in the unit's own env; the server can
   never turn this one on, so a compromised instance, or an admin of the instance who does not run the
-  machine, cannot gain a shell where the machine's operator never opted in. In Nexul: `runners.shell_enabled`,
-  off by default, flipped with `runners:shell`.
+  machine, cannot gain a shell where the machine's operator never opted in. In Nexul: one switch per machine,
+  `machines.shell_enabled`, off by default, flipped with `machines:shell`; off cancels the machine's running jobs.
 
 **Who may start one:**
 
@@ -608,9 +608,9 @@ depends on whose machine it is:
   owner's own `@Agent` turns and play runs reach it; and a person the owner granted "Run commands" (Later:
   sharing a computer). Nobody else, the workspace Owner included, can start one (Access and privacy, rule 1).
   Holders of Read computer activity can read the record of what ran, not start anything (rule 5).
-- Any other runner: a new verb `runners:shell` in the permission table (`internal/platform/permissions`),
-  an instance area checked in any workspace like `runners:write` (ADRs 0087, 0088). No role gets it on
-  upgrade; a workspace Owner holds it by bypass; a scoped token needs it among its own scopes.
+- Any other runner: Run commands, `machines:shell`, a fifth machine action beside Deploy to, Manage and Delete
+  (ADR 0151, which removed `runners:*`; ADR 0209), held through roles and the machine's rules. No role gets it on
+  upgrade; the instance Owner holds it on every machine; a scoped token needs it among its own scopes.
 
 **Every job is recorded and visible.** A `runner_shell_jobs` row holds the runner, who asked, through
 which adapter and from which turn or play run if any, the shell, command, folder, start and end, exit code
@@ -623,11 +623,12 @@ exempt from the audit log's 45-day purge. The output is deleted after 30 days: a
 log's loop pattern) empties the output column and keeps the row. This holds for every shell job, personal or
 not.
 
-**Who sees it.** The computer row (and the runner row, for other runners) lists jobs with their output; a
+**Who sees it.** The computer row (and the machine's Commands… sheet on Settings → Runners, for other runners)
+lists jobs with their output; a
 running one streams live through a per-viewer socket, the container-log pattern (ADR 0091). On a computer its
 owner sees every job, a grantee's included, and a grantee sees only their own. While it is kept, the output
 is also readable by holders of Read computer activity (Access and privacy, rule 5), through the audit log's
-computer activity view. On another runner `runners:shell` holders see the jobs. Output may hold secrets, so
+computer activity view. On a machine's runners the holders of `machines:shell` there see the jobs. Output may hold secrets, so
 nobody else does.
 
 **Limits:** no stdin (non-interactive), timeout 60 seconds by default and 1 hour at most, 4 jobs at once per
@@ -769,7 +770,7 @@ What sharing really hands over, which the grant dialog must say plainly:
 - Permissions: none for using computers through a role (ownership checks and the owner's computer rules, rule
   3); personal runners filtered out of `runners:read` lists; `computer_activity:read` (Read computer activity,
   instance area, Owner role by default) for reading the record of commands, with shell jobs; later
-  `runners:shell` for shell jobs on runners that are not personal. Run commands and Run agents are computer
+  `machines:shell` (a machine action, ADR 0209) for shell jobs on runners that are not personal. Run commands and Run agents are computer
   rules (ADR 0148), not role permissions; the instance areas above use the shipped instance-area rules.
 - Reverse states: remove a computer revokes its runner; account removal revokes; adoption is the way back
   for a computer that lost its runner.

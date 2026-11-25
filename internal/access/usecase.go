@@ -827,7 +827,7 @@ var onlyActions = map[string]struct {
 	resourceTypeFolder:  {docActions, "the docs actions and permissions:write"},
 	resourceTypeStack:   {stackActions, "the stacks and deploys actions"},
 	resourceTypeChannel: {channelActions, "channels:read and channels:post"},
-	resourceTypeMachine: {permissions.MachineActions, "machines:see, machines:deploy, machines:write and machines:delete"},
+	resourceTypeMachine: {permissions.MachineActions, "machines:see, machines:deploy, machines:write, machines:delete and machines:shell"},
 }
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set See, Run, Edit and Delete, a project's In this

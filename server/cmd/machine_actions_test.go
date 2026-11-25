@@ -18,13 +18,13 @@ func TestMachines_ListNamesWhatTheViewerHolds(t *testing.T) {
 	seedEdgeAndCore(t, db)
 	_, err := db.Exec(`UPDATE permission_overwrites SET deny = '["machines:write"]' WHERE resource_id = 'm-edge' AND user_id = 'u-carol'`)
 	require.NoError(t, err)
-	every := []string{"machines:delete", "machines:deploy", "machines:see", "machines:write"}
+	every := []string{"machines:delete", "machines:deploy", "machines:see", "machines:shell", "machines:write"}
 	people := []struct {
 		name, token string
 		held        map[string][]string
 	}{
 		{"the instance Owner", c.owner, map[string][]string{"edge-box": every, "core-box": every}},
-		{"a person on edge denied Manage", c.everyBits, map[string][]string{"edge-box": {"machines:delete", "machines:deploy", "machines:see"}}},
+		{"a person on edge denied Manage", c.everyBits, map[string][]string{"edge-box": {"machines:delete", "machines:deploy", "machines:see", "machines:shell"}}},
 	}
 	for _, p := range people {
 		t.Run(p.name, func(t *testing.T) {

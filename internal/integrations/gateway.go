@@ -75,7 +75,7 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
-// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, a conversation's bots, or a machine's reads, which have no read scope since seeing one is a rule (ADR 0057, 0094, 0101, 0107, 0150, 0151).
+// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, a conversation's bots, a machine's reads, which have no read scope since seeing one is a rule, or its commands (ADR 0057, 0094, 0101, 0107, 0150, 0151, 0209).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
 	"GET /api/instance/logs":                                     Scope(permissions.LogsRead),
@@ -102,6 +102,11 @@ var verbRouteScope = map[string]Scope{
 	"GET /api/runners/queue":                                     Scope(permissions.MachinesDeploy),
 	"GET /api/runners/latest-version":                            Scope(permissions.MachinesDeploy),
 	"DELETE /api/runners/{id}":                                   Scope(permissions.MachinesWrite),
+	"POST /api/runners/{id}/commands":                            Scope(permissions.MachinesShell),
+	"GET /api/runners/commands/{jobID}":                          Scope(permissions.MachinesShell),
+	"POST /api/runners/commands/{jobID}/cancel":                  Scope(permissions.MachinesShell),
+	"GET /api/machines/{id}/commands":                            Scope(permissions.MachinesShell),
+	"PUT /api/machines/{id}/shell":                               Scope(permissions.MachinesShell),
 }
 
 // verbRoutes matches a request to its verbRouteScope pattern the way the serving mux would.
