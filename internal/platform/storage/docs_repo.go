@@ -35,6 +35,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 			Title:     d.Title,
 			Body:      d.Body,
 			BodyMd:    richtext.SearchText(d.Body),
+			Snippet:   docSnippet(d.Body),
 			Version:   int64(d.Version),
 			Archived:  int64(boolInt(d.Archived)),
 			CreatedBy: d.CreatedBy,
@@ -114,7 +115,15 @@ func (r *DocsRepo) ListByProject(ctx context.Context, projectID string) ([]*docs
 	if err != nil {
 		return nil, fmt.Errorf("list docs for project %s: %w", projectID, err)
 	}
-	return toDocs(rows), nil
+	out := make([]*docs.Doc, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &docs.Doc{
+			ID: row.ID, ProjectID: row.ProjectID.String, FolderID: row.FolderID, Title: row.Title, Snippet: row.Snippet,
+			Version: int(row.Version), Archived: row.Archived != 0, Locked: row.Locked != 0, CreatedBy: row.CreatedBy,
+			CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		})
+	}
+	return out, nil
 }
 
 func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID, via string, evts ...eventbus.OutboxEvent) error {
@@ -127,7 +136,7 @@ func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID, via string
 		}
 		d.Version = int(cur.Version) + 1
 		n, err := q.UpdateDoc(ctx, sqlcgen.UpdateDocParams{
-			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body),
+			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body), Snippet: docSnippet(d.Body),
 			Version: int64(d.Version), UpdatedAt: d.UpdatedAt.Unix(), ID: d.ID,
 		})
 		if err != nil {
@@ -184,7 +193,7 @@ func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, editorID string,
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.CommitDocBody(ctx, sqlcgen.CommitDocBodyParams{
-			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body),
+			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body), Snippet: docSnippet(d.Body),
 			Version: int64(d.Version), UpdatedAt: d.UpdatedAt.Unix(), ID: d.ID,
 		})
 		if err != nil {
@@ -362,6 +371,7 @@ func toDoc(row sqlcgen.Doc) *docs.Doc {
 		FolderID:  row.FolderID,
 		Title:     row.Title,
 		Body:      row.Body,
+		Snippet:   row.Snippet,
 		Version:   int(row.Version),
 		Archived:  row.Archived != 0,
 		Locked:    row.Locked != 0,
@@ -369,6 +379,11 @@ func toDoc(row sqlcgen.Doc) *docs.Doc {
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
+}
+
+// docSnippet is the list preview stored beside a body.
+func docSnippet(body string) string {
+	return richtext.Snippet(body, docs.SnippetRunes)
 }
 
 func toDocs(rows []sqlcgen.Doc) []*docs.Doc {

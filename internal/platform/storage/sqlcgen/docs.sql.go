@@ -29,13 +29,14 @@ func (q *Queries) BumpDocVersion(ctx context.Context, arg BumpDocVersionParams) 
 }
 
 const commitDocBody = `-- name: CommitDocBody :execrows
-UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WHERE id = ?
+UPDATE docs SET title = ?, body = ?, body_md = ?, snippet = ?, version = ?, updated_at = ? WHERE id = ?
 `
 
 type CommitDocBodyParams struct {
 	Title     string
 	Body      string
 	BodyMd    string
+	Snippet   string
 	Version   int64
 	UpdatedAt int64
 	ID        string
@@ -46,6 +47,7 @@ func (q *Queries) CommitDocBody(ctx context.Context, arg CommitDocBodyParams) (i
 		arg.Title,
 		arg.Body,
 		arg.BodyMd,
+		arg.Snippet,
 		arg.Version,
 		arg.UpdatedAt,
 		arg.ID,
@@ -57,7 +59,7 @@ func (q *Queries) CommitDocBody(ctx context.Context, arg CommitDocBodyParams) (i
 }
 
 const createDoc = `-- name: CreateDoc :exec
-INSERT INTO docs (id, project_id, folder_id, title, body, body_md, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO docs (id, project_id, folder_id, title, body, body_md, snippet, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDocParams struct {
@@ -67,6 +69,7 @@ type CreateDocParams struct {
 	Title     string
 	Body      string
 	BodyMd    string
+	Snippet   string
 	Version   int64
 	Archived  int64
 	CreatedBy string
@@ -82,6 +85,7 @@ func (q *Queries) CreateDoc(ctx context.Context, arg CreateDocParams) error {
 		arg.Title,
 		arg.Body,
 		arg.BodyMd,
+		arg.Snippet,
 		arg.Version,
 		arg.Archived,
 		arg.CreatedBy,
@@ -125,7 +129,7 @@ func (q *Queries) DocMatchesLatestVersion(ctx context.Context, arg DocMatchesLat
 }
 
 const getDoc = `-- name: GetDoc :one
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE id = ?
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id, snippet FROM docs WHERE id = ?
 `
 
 func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
@@ -144,6 +148,7 @@ func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
 		&i.CreatedBy,
 		&i.Locked,
 		&i.FolderID,
+		&i.Snippet,
 	)
 	return i, err
 }
@@ -421,7 +426,7 @@ func (q *Queries) ListDocVersions(ctx context.Context, docID string) ([]ListDocV
 }
 
 const listDocs = `-- name: ListDocs :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs ORDER BY created_at
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id, snippet FROM docs ORDER BY created_at
 `
 
 func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
@@ -446,6 +451,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 			&i.CreatedBy,
 			&i.Locked,
 			&i.FolderID,
+			&i.Snippet,
 		); err != nil {
 			return nil, err
 		}
@@ -461,7 +467,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 }
 
 const listDocsByIDs = `-- name: ListDocsByIDs :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE id IN (/*SLICE:ids*/?)
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id, snippet FROM docs WHERE id IN (/*SLICE:ids*/?)
 `
 
 func (q *Queries) ListDocsByIDs(ctx context.Context, ids []string) ([]Doc, error) {
@@ -496,6 +502,7 @@ func (q *Queries) ListDocsByIDs(ctx context.Context, ids []string) ([]Doc, error
 			&i.CreatedBy,
 			&i.Locked,
 			&i.FolderID,
+			&i.Snippet,
 		); err != nil {
 			return nil, err
 		}
@@ -511,31 +518,46 @@ func (q *Queries) ListDocsByIDs(ctx context.Context, ids []string) ([]Doc, error
 }
 
 const listDocsByProject = `-- name: ListDocsByProject :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE project_id = ? ORDER BY created_at
+SELECT id, project_id, folder_id, title, snippet, version, archived, locked, created_by, created_at, updated_at
+FROM docs WHERE project_id = ? ORDER BY created_at
 `
 
-func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullString) ([]Doc, error) {
+type ListDocsByProjectRow struct {
+	ID        string
+	ProjectID sql.NullString
+	FolderID  string
+	Title     string
+	Snippet   string
+	Version   int64
+	Archived  int64
+	Locked    int64
+	CreatedBy string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
+// The stored snippet stands in for the body, which on a large project would be megabytes per list.
+func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullString) ([]ListDocsByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, listDocsByProject, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Doc
+	var items []ListDocsByProjectRow
 	for rows.Next() {
-		var i Doc
+		var i ListDocsByProjectRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.ProjectID,
+			&i.FolderID,
 			&i.Title,
-			&i.Body,
+			&i.Snippet,
 			&i.Version,
+			&i.Archived,
+			&i.Locked,
+			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Archived,
-			&i.BodyMd,
-			&i.ProjectID,
-			&i.CreatedBy,
-			&i.Locked,
-			&i.FolderID,
 		); err != nil {
 			return nil, err
 		}
@@ -626,13 +648,14 @@ func (q *Queries) SetDocVersionSize(ctx context.Context, arg SetDocVersionSizePa
 }
 
 const updateDoc = `-- name: UpdateDoc :execrows
-UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WHERE id = ?
+UPDATE docs SET title = ?, body = ?, body_md = ?, snippet = ?, version = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateDocParams struct {
 	Title     string
 	Body      string
 	BodyMd    string
+	Snippet   string
 	Version   int64
 	UpdatedAt int64
 	ID        string
@@ -643,6 +666,7 @@ func (q *Queries) UpdateDoc(ctx context.Context, arg UpdateDocParams) (int64, er
 		arg.Title,
 		arg.Body,
 		arg.BodyMd,
+		arg.Snippet,
 		arg.Version,
 		arg.UpdatedAt,
 		arg.ID,

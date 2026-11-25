@@ -1,5 +1,5 @@
 -- name: CreateDoc :exec
-INSERT INTO docs (id, project_id, folder_id, title, body, body_md, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO docs (id, project_id, folder_id, title, body, body_md, snippet, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetDoc :one
 SELECT * FROM docs WHERE id = ?;
@@ -11,7 +11,9 @@ SELECT * FROM docs ORDER BY created_at;
 SELECT * FROM docs WHERE id IN (sqlc.slice('ids'));
 
 -- name: ListDocsByProject :many
-SELECT * FROM docs WHERE project_id = ? ORDER BY created_at;
+-- The stored snippet stands in for the body, which on a large project would be megabytes per list.
+SELECT id, project_id, folder_id, title, snippet, version, archived, locked, created_by, created_at, updated_at
+FROM docs WHERE project_id = ? ORDER BY created_at;
 
 -- name: ListDocScopes :many
 SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id, d.folder_id
@@ -19,10 +21,10 @@ FROM docs d LEFT JOIN projects p ON p.id = d.project_id
 WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
 
 -- name: UpdateDoc :execrows
-UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WHERE id = ?;
+UPDATE docs SET title = ?, body = ?, body_md = ?, snippet = ?, version = ?, updated_at = ? WHERE id = ?;
 
 -- name: CommitDocBody :execrows
-UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WHERE id = ?;
+UPDATE docs SET title = ?, body = ?, body_md = ?, snippet = ?, version = ?, updated_at = ? WHERE id = ?;
 
 -- name: SetDocArchived :execrows
 UPDATE docs SET archived = ?, updated_at = ? WHERE id = ?;

@@ -389,6 +389,7 @@ type Doc struct {
 	CreatedBy string
 	Locked    int64
 	FolderID  string
+	Snippet   string
 }
 
 type DocClarificationQuestion struct {
