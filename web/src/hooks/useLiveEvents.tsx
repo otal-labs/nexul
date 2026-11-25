@@ -11,6 +11,7 @@ import { botwebhookFollower } from "@/hooks/BotwebhookHooks";
 import { calendarFollower } from "@/hooks/CalendarHooks";
 import { categoryFollower } from "@/hooks/CategoryHooks";
 import { chatFollower } from "@/hooks/ChatFollower";
+import { computerCommandFollower } from "@/hooks/ComputerCommandHooks";
 import { computerSetupFollower } from "@/hooks/ComputerSetupHooks";
 import { deployFollower } from "@/hooks/DeployHooks";
 import { dnsFollower } from "@/hooks/DnsHooks";
@@ -88,6 +89,7 @@ const followers: LiveFollower[] = [
   calendarFollower,
   categoryFollower,
   chatFollower,
+  computerCommandFollower,
   computerSetupFollower,
   deployFollower,
   dnsFollower,

@@ -947,6 +947,7 @@ type PairingComputer struct {
 	Position              int64
 	RunsAtOnce            int64
 	ChatProjectID         string
+	ShellEnabled          int64
 }
 
 type PairingMoveNotice struct {
@@ -1239,6 +1240,27 @@ type RunnerEnrollmentCode struct {
 	ComputerID  string
 	EnrolledBy  string
 	ID          string
+}
+
+type RunnerShellJob struct {
+	ID              string
+	ComputerID      string
+	OwnerID         string
+	RequesterID     string
+	Adapter         string
+	Shell           string
+	Command         string
+	Cwd             string
+	TimeoutSeconds  int64
+	Status          string
+	ExitCode        sql.NullInt64
+	Error           string
+	Output          string
+	OutputTruncated int64
+	OutputPurged    int64
+	CreatedAt       int64
+	StartedAt       sql.NullInt64
+	EndedAt         sql.NullInt64
 }
 
 type ScheduledMessage struct {

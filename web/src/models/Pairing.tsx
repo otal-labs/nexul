@@ -35,6 +35,8 @@ export interface Computer {
   chat_project_id: string;
   // Whether a confirmed provider here holds older Nexul skills than the server ships; false on a shared computer.
   skills_outdated: boolean;
+  // Its owner's switch for commands from Nexul; the computer's own opt-in is facts.shell.
+  shell_enabled: boolean;
 }
 
 // Mirrors pairing.PassOver: one computer a run could not land on, with the line every surface shows as is.

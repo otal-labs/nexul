@@ -41,6 +41,8 @@ type ComputerOptions struct {
 	// Foreground runs the runner and T3 Code under `nexul run computer` instead of as services; a Linux host that is
 	// not running systemd does so on its own (ADR 0163).
 	Foreground bool
+	// NoShell installs the runner with commands from Nexul turned off; `nexul shell on` turns them on later.
+	NoShell bool
 }
 
 // computerClaims is the part of a computer's token the installer reads: where to enroll. The token's signature is
@@ -67,6 +69,7 @@ func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
 	fs.BoolVar(&o.NoT3, "no-t3", false, "leave T3 Code alone: neither look for it nor install it")
 	fs.IntVar(&o.T3Port, "t3-port", 0, "port T3 Code's service listens on when this installs it (default 3773)")
 	fs.BoolVar(&o.Foreground, "foreground", false, "run the runner and T3 Code under `nexul run computer` in this terminal, not as services (the default with no systemd)")
+	fs.BoolVar(&o.NoShell, "no-shell", false, "install with commands from Nexul turned off (nexul shell on turns them on)")
 	fs.Bool("yes", false, "accepted for scripts; this install never asks")
 	fs.Bool("y", false, "shorthand for --yes")
 	if err := fs.Parse(args); err != nil {
@@ -94,7 +97,7 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err := hostcred.PeekToken(strings.TrimSpace(o.Token), &claims); err != nil {
 		return errors.New("--token is not a computer token: copy the whole command from Add a computer")
 	}
-	ho := HostOptions{Kind: kindComputer, Server: strings.TrimSuffix(claims.Server, "/"), Token: strings.TrimSpace(o.Token)}
+	ho := HostOptions{Kind: kindComputer, Server: strings.TrimSuffix(claims.Server, "/"), Token: strings.TrimSpace(o.Token), NoShell: o.NoShell}
 	if !strings.HasPrefix(ho.Server, "http://") && !strings.HasPrefix(ho.Server, "https://") {
 		return errors.New("--token names no instance address: copy the whole command from Add a computer")
 	}
@@ -358,6 +361,9 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 		"NEXUL_CTL":             h.ctlPath(),
 		"NEXUL_RUNNER_NAME":     enrolled.Name,
 		"NEXUL_RUNNER_MODE":     "personal",
+	}
+	if o.NoShell {
+		u.Env[shellEnvKey] = shellOff
 	}
 	if h.GOOS == "darwin" {
 		u.Env["HOME"] = p.home // launchd gives a daemon no HOME, and the runner finds T3 Code under it

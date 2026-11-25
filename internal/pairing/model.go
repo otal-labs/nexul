@@ -53,6 +53,8 @@ type Computer struct {
 	Running int `json:"running"`
 	// SkillsOutdated is whether a confirmed provider on it holds older skills than this server ships; set on a list only.
 	SkillsOutdated bool `json:"skills_outdated"`
+	// ShellEnabled is its owner's switch for commands from Nexul; the computer's own opt-in is in its facts.
+	ShellEnabled bool `json:"shell_enabled"`
 }
 
 // SharedComputer is whose a shared computer is and what the caller holds on it.
@@ -94,6 +96,7 @@ type Facts struct {
 	FreeDiskBytes    int64                  `json:"free_disk_bytes,omitempty"`
 	Docker           *DockerFacts           `json:"docker,omitempty"`
 	Tools            []ToolFacts            `json:"tools,omitempty"`
+	Shell            *ShellFacts            `json:"shell,omitempty"`
 	Providers        []ProviderFacts        `json:"providers"`
 	MissingProviders []MissingProviderFacts `json:"missing_providers,omitempty"`
 	Projects         []harness.Project      `json:"projects"`
@@ -116,6 +119,11 @@ type T3Facts struct {
 type DockerFacts struct {
 	Available bool   `json:"available"`
 	Version   string `json:"version,omitempty"`
+}
+
+// ShellFacts is whether the computer itself lets its runner run commands from Nexul; nil from a runner older than them.
+type ShellFacts struct {
+	Enabled bool `json:"enabled"`
 }
 
 // ToolFacts is one command Nexul runs on the computer: git or gh, with where it is and its version, both empty when missing.

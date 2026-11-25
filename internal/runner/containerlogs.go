@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -110,6 +111,10 @@ type containerLogStream struct {
 	capped bool
 	// mask hides env values in every line; nil leaves lines as they are.
 	mask *strings.Replacer
+	// frame is the type its batches go out as, logs_chunk when empty; stamped marks each line with the time it arrived,
+	// for output that carries no timestamps of its own.
+	frame   FrameType
+	stamped bool
 
 	mu          sync.Mutex
 	batch       []ContainerLogLine
@@ -126,7 +131,14 @@ func (l *containerLogStream) writer(stream string) *lineSplitter {
 }
 
 func (l *containerLogStream) add(stream, raw string) {
-	l.addLine(parseLogLine(stream, raw))
+	if !l.stamped {
+		l.addLine(parseLogLine(stream, raw))
+		return
+	}
+	if len(raw) > logLineMaxBytes {
+		raw = raw[:logLineMaxBytes] + "…"
+	}
+	l.addLine(ContainerLogLine{TS: time.Now().UTC().Format(time.RFC3339Nano), Stream: stream, Line: raw})
 }
 
 // capFrom holds the lines added from now on to the rate cap; what came before it was a snapshot.
@@ -208,7 +220,7 @@ func (l *containerLogStream) flushLocked() {
 	if len(l.batch) == 0 {
 		return
 	}
-	l.send(Frame{Type: FrameLogsChunk, ID: l.id, Lines: l.batch})
+	l.send(Frame{Type: cmp.Or(l.frame, FrameLogsChunk), ID: l.id, Lines: l.batch})
 	l.batch, l.batchBytes = nil, 0
 }
 

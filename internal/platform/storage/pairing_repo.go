@@ -598,6 +598,7 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		Tunnel: toComputerTunnel(row), Facts: toFacts(row), FactsAt: unixPtrFromNull(row.FactsAt),
 		Position: int(row.Position), RunsAtOnce: int(row.RunsAtOnce), ChatProjectID: row.ChatProjectID,
+		ShellEnabled: row.ShellEnabled != 0,
 	}
 }
 

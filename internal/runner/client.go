@@ -53,6 +53,8 @@ type ClientConfig struct {
 	T3InstallingFile string
 	// T3Supervised means a supervisor on the computer restarts T3 Code, so the runner never does.
 	T3Supervised bool
+	// ShellEnabled lets a personal runner run shell jobs: the computer's own opt-in, which `nexul shell off` withdraws.
+	ShellEnabled bool
 	// RunnerLog is a personal runner's own log file, which a logs_request for the runner reads; nil serves none.
 	RunnerLog *RunnerLog
 	// Containers is how a machine runner reads its host's containers; nil, and any personal runner, watches none.
@@ -83,6 +85,9 @@ type Client struct {
 	// logsMu/logs hold the cancel of every open container log stream, keyed by stream id.
 	logsMu sync.Mutex
 	logs   map[string]context.CancelFunc
+	// shellMu/shells hold the cancel of every running shell job, keyed by job id.
+	shellMu sync.Mutex
+	shells  map[string]context.CancelFunc
 	// streams joins every stream, openStreams counts them against maxStreams, and dial reaches T3 Code.
 	streams     sync.WaitGroup
 	openStreams atomic.Int32
@@ -122,7 +127,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, findT3Desktop: findT3Desktop, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, shells: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, findT3Desktop: findT3Desktop, dockerFacts: dockerFacts, logEvery: logFlushEvery, requestEvery: requestCountsEvery}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
 	c.t3.supervised = cfg.T3Supervised
 	return c
@@ -288,7 +293,7 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 		c.stopLogs(frame.ID)
 	case FrameHarnessDial:
 		c.startStream(streamCtx, ctx, conn, frame.ID)
-	case FrameT3PairTokenRequest, FrameGitClone, FrameRestart, FrameInstallTool, FrameGitIdentity:
+	case FrameT3PairTokenRequest, FrameGitClone, FrameRestart, FrameInstallTool, FrameGitIdentity, FrameShellRun, FrameShellCancel:
 		c.answerForComputer(ctx, conn, frame)
 	default:
 		c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)

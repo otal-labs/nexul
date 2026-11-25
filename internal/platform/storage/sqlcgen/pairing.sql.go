@@ -139,7 +139,7 @@ func (q *Queries) DeletePairingSetupTurnsForProvider(ctx context.Context, arg De
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -177,6 +177,7 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.Position,
 		&i.RunsAtOnce,
 		&i.ChatProjectID,
+		&i.ShellEnabled,
 	)
 	return i, err
 }
@@ -243,7 +244,7 @@ func (q *Queries) InsertPairingMoveNotice(ctx context.Context, arg InsertPairing
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -282,6 +283,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.Position,
 			&i.RunsAtOnce,
 			&i.ChatProjectID,
+			&i.ShellEnabled,
 		); err != nil {
 			return nil, err
 		}
@@ -297,7 +299,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 }
 
 const listPairingComputersFor = `-- name: ListPairingComputersFor :many
-SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, c.position, c.runs_at_once, c.chat_project_id, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
+SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, c.position, c.runs_at_once, c.chat_project_id, c.shell_enabled, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
     CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name
 FROM pairing_computers c
 JOIN users o ON o.id = c.user_id
@@ -355,6 +357,7 @@ func (q *Queries) ListPairingComputersFor(ctx context.Context, userID sql.NullSt
 			&i.PairingComputer.Position,
 			&i.PairingComputer.RunsAtOnce,
 			&i.PairingComputer.ChatProjectID,
+			&i.PairingComputer.ShellEnabled,
 			&i.RuleAllow,
 			&i.OwnerName,
 		); err != nil {
@@ -709,7 +712,7 @@ func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID st
 }
 
 const listPairingTunnelComputers = `-- name: ListPairingTunnelComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
 `
 
 func (q *Queries) ListPairingTunnelComputers(ctx context.Context) ([]PairingComputer, error) {
@@ -748,6 +751,7 @@ func (q *Queries) ListPairingTunnelComputers(ctx context.Context) ([]PairingComp
 			&i.Position,
 			&i.RunsAtOnce,
 			&i.ChatProjectID,
+			&i.ShellEnabled,
 		); err != nil {
 			return nil, err
 		}

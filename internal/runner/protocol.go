@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
+	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/logging"
@@ -93,6 +95,12 @@ const (
 	// secrets manager since a stack's last deploy: the stacks by slug and the variable names, never a value, a
 	// reference or a fingerprint.
 	FrameSecretsChanged FrameType = "secrets_changed"
+	// Shell jobs on a personal runner: shell_run (server -> runner) runs a command in the computer's shell, shell_cancel
+	// stops it, shell_output (runner -> server) carries its lines in the logs_chunk shape, and shell_result says how it ended.
+	FrameShellRun    FrameType = "shell_run"
+	FrameShellCancel FrameType = "shell_cancel"
+	FrameShellOutput FrameType = "shell_output"
+	FrameShellResult FrameType = "shell_result"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -129,6 +137,13 @@ const (
 
 	// LogTargetRunner on a logs_request asks for the runner's own log, not a container's.
 	LogTargetRunner = "runner"
+
+	// How a shell job ended; failed is a non-zero exit, or a command that could not start when the result has an error.
+	ShellStatusSucceeded = "succeeded"
+	ShellStatusFailed    = "failed"
+	ShellStatusTimedOut  = "timed_out"
+	ShellStatusCancelled = "cancelled"
+	ShellStatusRefused   = "refused"
 )
 
 // Frame is the flat JSON wire message of the runner protocol; per-type field requirements are enforced by Validate.
@@ -222,6 +237,12 @@ type Frame struct {
 	Counts []RouterCount `json:"counts,omitempty"`
 	// SecretChanges carries a secrets_changed frame's stacks.
 	SecretChanges []SecretChange `json:"secret_changes,omitempty"`
+	// Shell, Script, Cwd and TimeoutSeconds carry a shell_run: the shell (empty for the computer's default), the command
+	// line, the folder it starts in (empty for the home folder) and how long it may run.
+	Shell          string `json:"shell,omitempty"`
+	Script         string `json:"script,omitempty"`
+	Cwd            string `json:"cwd,omitempty"`
+	TimeoutSeconds int    `json:"timeout,omitempty"`
 }
 
 // The bounds a secrets_changed frame is held to, so a runner cannot make the server hold an unbounded notice.
@@ -328,6 +349,10 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameLog:                 (*Frame).validateLog,
 	FrameRequestCounts:       (*Frame).validateRequestCounts,
 	FrameSecretsChanged:      (*Frame).validateSecretsChanged,
+	FrameShellRun:            (*Frame).validateShellRun,
+	FrameShellCancel:         (*Frame).validateID,
+	FrameShellOutput:         (*Frame).validateLogsChunk,
+	FrameShellResult:         (*Frame).validateShellResult,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -511,11 +536,11 @@ func (f *Frame) validateLogsRequest() error {
 
 func (f *Frame) validateLogsChunk() error {
 	if f.ID == "" || len(f.Lines) == 0 {
-		return fmt.Errorf("%w: logs_chunk requires id and lines", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: %s requires id and lines", apperrs.ErrInvalid, f.Type)
 	}
 	for _, l := range f.Lines {
 		if !oneOf(l.Stream, LogStreamStdout, LogStreamStderr) {
-			return fmt.Errorf("%w: logs_chunk line stream %q", apperrs.ErrInvalid, l.Stream)
+			return fmt.Errorf("%w: %s line stream %q", apperrs.ErrInvalid, f.Type, l.Stream)
 		}
 	}
 	return nil
@@ -658,6 +683,29 @@ func (f *Frame) validateInstallTool() error {
 func (f *Frame) validateGitIdentity() error {
 	if f.ID == "" || (f.GitName == "" && f.GitEmail == "") {
 		return fmt.Errorf("%w: git_identity requires id and git_name or git_email", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+// Shells a shell_run may name; empty is the computer's default (bash, else sh, or pwsh, else powershell on Windows).
+var shellNames = []string{"", "bash", "sh", "pwsh", "powershell"}
+
+func (f *Frame) validateShellRun() error {
+	if f.ID == "" || strings.TrimSpace(f.Script) == "" {
+		return fmt.Errorf("%w: shell_run requires id and script", apperrs.ErrInvalid)
+	}
+	if !slices.Contains(shellNames, f.Shell) {
+		return fmt.Errorf("%w: shell_run shell %q", apperrs.ErrInvalid, f.Shell)
+	}
+	if f.TimeoutSeconds < 1 || f.TimeoutSeconds > MaxShellTimeoutSeconds {
+		return fmt.Errorf("%w: shell_run timeout must be 1 to %d seconds", apperrs.ErrInvalid, MaxShellTimeoutSeconds)
+	}
+	return nil
+}
+
+func (f *Frame) validateShellResult() error {
+	if f.ID == "" || !oneOf(f.Status, ShellStatusSucceeded, ShellStatusFailed, ShellStatusTimedOut, ShellStatusCancelled, ShellStatusRefused) {
+		return fmt.Errorf("%w: shell_result requires id and a status", apperrs.ErrInvalid)
 	}
 	return nil
 }

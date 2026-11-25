@@ -33,6 +33,7 @@ const waiting: Computer = {
   running: 0,
   chat_project_id: "",
   skills_outdated: false,
+  shell_enabled: true,
   updated_at: "2026-10-10T00:00:00Z",
 };
 

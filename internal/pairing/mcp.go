@@ -19,7 +19,7 @@ import (
 // MCPTools returns the computer tools: pairing, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerProjectCreateTool(s),
+		commandRunTool(s), computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerProjectCreateTool(s),
 		computerSetupRunTool(s), computerSetupUpdateTool(s), computerMCPTokenCreateTool(s), computerMCPTokenDeleteTool(s),
 		skillGetTool(),
 	}
@@ -29,6 +29,7 @@ type computerListIn struct {
 	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its T3 projects and containers. Omit to list all."`
 	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also returns one Docker container's last log lines."`
 	RunnerLogs    *computerRunnerLogsIn    `json:"runner_logs,omitzero" jsonschema:"With id only: also returns the Nexul app's (the runner's) last log lines."`
+	Commands      *computerCommandsIn      `json:"commands,omitzero" jsonschema:"With id only: also returns the commands run on it."`
 	mcptool.PageArgs
 }
 
@@ -63,6 +64,7 @@ type computerPairIn struct {
 	Position      *int              `json:"position,omitempty" jsonschema:"Place in your order, 0 for first: runs go to the first computer that can take them."`
 	RunsAtOnce    *int              `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
 	ChatProjectID *string           `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
+	ShellEnabled  *bool             `json:"shell_enabled,omitempty" jsonschema:"Whether command_run may run commands on it; false also stops the ones running."`
 	Restart       bool              `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer, so it starts with the PATH saved since, such as after installing git; its connection drops for a few seconds."`
 	InstallTool   string            `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools; ask the person first, since it runs their package manager there. Where sudo wants a password it refuses, since only the Install button in Settings → Computers takes one."`
 	GitIdentity   bool              `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none; it never replaces a name or email already set."`
@@ -132,6 +134,8 @@ type computerResult struct {
 	ContainersError  string                 `json:"containers_error,omitempty"`
 	ContainerLogs    *computerContainerLogs `json:"container_logs,omitempty"`
 	RunnerLogs       *computerRunnerLogs    `json:"runner_logs,omitempty"`
+	Commands         []ShellJob             `json:"commands,omitempty"`
+	ShellEnabled     bool                   `json:"shell_enabled"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`
 	Position         int                    `json:"position"`
 	RunsAtOnce       int                    `json:"runs_at_once"`
@@ -145,7 +149,7 @@ func toComputerResult(c Computer) computerResult {
 	r := computerResult{
 		ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner,
 		PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt, Position: c.Position, RunsAtOnce: c.RunsAtOnce, Running: c.Running,
-		ChatProjectID: c.ChatProjectID,
+		ChatProjectID: c.ChatProjectID, ShellEnabled: c.ShellEnabled,
 	}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
@@ -181,8 +185,8 @@ func computerListTool(s *Service) mcptool.Tool {
 			if in.ID != "" && len(computers) == 0 {
 				return nil, fmt.Errorf("%w: computer %s is not one of yours; computer_list without id lists them", apperrs.ErrNotFound, in.ID)
 			}
-			if in.ID == "" && (in.ContainerLogs != nil || in.RunnerLogs != nil) {
-				return nil, fmt.Errorf("%w: container_logs and runner_logs need the computer's id", apperrs.ErrInvalid)
+			if in.ID == "" && (in.ContainerLogs != nil || in.RunnerLogs != nil || in.Commands != nil) {
+				return nil, fmt.Errorf("%w: container_logs, runner_logs and commands need the computer's id", apperrs.ErrInvalid)
 			}
 			out := make([]computerResult, 0, len(computers))
 			for _, c := range computers {
@@ -192,18 +196,32 @@ func computerListTool(s *Service) mcptool.Tool {
 				}
 				out = append(out, r)
 			}
-			if in.ContainerLogs != nil {
-				if out[0].ContainerLogs, err = containerLogsFor(ctx, s, userID, computers[0], *in.ContainerLogs); err != nil {
-					return nil, err
-				}
-			}
-			if in.RunnerLogs != nil {
-				if out[0].RunnerLogs, err = runnerLogsFor(ctx, s, userID, computers[0], *in.RunnerLogs); err != nil {
+			if in.ID != "" {
+				if err := addComputerReads(ctx, s, userID, computers[0], in, &out[0]); err != nil {
 					return nil, err
 				}
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
+}
+
+// addComputerReads adds the logs and commands asked for alongside one computer.
+func addComputerReads(ctx context.Context, s *Service, userID string, c Computer, in computerListIn, r *computerResult) error {
+	var err error
+	if in.ContainerLogs != nil {
+		if r.ContainerLogs, err = containerLogsFor(ctx, s, userID, c, *in.ContainerLogs); err != nil {
+			return err
+		}
+	}
+	if in.RunnerLogs != nil {
+		if r.RunnerLogs, err = runnerLogsFor(ctx, s, userID, c, *in.RunnerLogs); err != nil {
+			return err
+		}
+	}
+	if in.Commands != nil {
+		r.Commands, err = commandsFor(ctx, s, userID, c, *in.Commands)
+	}
+	return err
 }
 
 // listedComputer adds the setup and MCP token reads, and the T3 projects and containers only when one computer was asked for.
@@ -372,7 +390,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 		}
 		return s.ownComputer(ctx, userID, in.ID)
 	}
-	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil {
+	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil && in.ShellEnabled == nil {
 		return s.PairComputer(ctx, userID, in.ID)
 	}
 	if in.Position != nil {
@@ -380,7 +398,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 			return nil, err
 		}
 	}
-	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID}
+	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID, ShellEnabled: in.ShellEnabled}
 	if in.Name != "" {
 		patch.Name = &in.Name
 	}

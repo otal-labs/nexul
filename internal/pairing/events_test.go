@@ -88,6 +88,15 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(TopicPresenceChanged, p)
 	}
 
+	commands, commandsRepo, shells := newShellService(t)
+	job, err := commands.RunCommand(ctx, "alice", "c-laptop", RunCommandInput{Command: "ls"})
+	require.NoError(t, err)
+	waitStarted(t, shells)
+	shells.sink(job.ID).Done(ShellEnd{Status: ShellSucceeded})
+	for _, e := range commandsRepo.outbox {
+		check(e.Topic, e.Payload)
+	}
+
 	// Retired with pairing through a tunnel, still declared because the published contract only grows (ADR 0044).
 	retired := map[string]bool{TopicTunnelCreated: true, TopicTunnelStatusChanged: true}
 	for _, topic := range Topics() {

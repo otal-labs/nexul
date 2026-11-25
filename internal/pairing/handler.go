@@ -47,6 +47,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers", h.listContainers)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/runner/logs", h.runnerLogs)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/commands", h.runCommand)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/commands", h.listCommands)
+	mux.HandleFunc("GET /api/pairing/commands/{jobID}", h.getCommand)
+	mux.HandleFunc("POST /api/pairing/commands/{jobID}/cancel", h.cancelCommand)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
 	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
 	mux.HandleFunc("PUT /api/pairing/computers/{id}/setup/choices", h.saveSetupChoices)
@@ -314,6 +318,7 @@ type updateComputerRequest struct {
 	Name          *string `json:"name"`
 	RunsAtOnce    *int    `json:"runs_at_once"`
 	ChatProjectID *string `json:"chat_project_id"`
+	ShellEnabled  *bool   `json:"shell_enabled"`
 }
 
 type reorderRequest struct {

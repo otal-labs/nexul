@@ -39,10 +39,12 @@ type fakeRepo struct {
 	listSetupErr    error
 	listTurnsErr    error
 	listOutdatedErr error
+	// jobs are the shell jobs, by id.
+	jobs map[string]ShellJob
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}, turns: map[string]SetupTurn{}}
+	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}, turns: map[string]SetupTurn{}, jobs: map[string]ShellJob{}}
 }
 
 func (f *fakeRepo) SaveComputer(_ context.Context, c Computer, evts ...eventbus.OutboxEvent) error {

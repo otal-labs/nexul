@@ -2655,6 +2655,42 @@
       "members_only"
     ]
   },
+  "computer.shell_job_changed": {
+    "type": "object",
+    "properties": {
+      "job_id": {
+        "type": "string"
+      },
+      "computer_id": {
+        "type": "string"
+      },
+      "owner_id": {
+        "type": "string",
+        "description": "The computer's owner."
+      },
+      "user_id": {
+        "type": "string",
+        "description": "The person who ran the command."
+      },
+      "status": {
+        "type": "string",
+        "description": "queued, running, succeeded, failed, timed_out, cancelled or refused."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "job_id",
+      "computer_id",
+      "owner_id",
+      "user_id",
+      "status",
+      "members_only"
+    ]
+  },
   "computer.tunnel_created": {
     "type": "object",
     "properties": {
@@ -7708,6 +7744,19 @@
               ]
             },
             "description": "Each tool Nexul runs on the computer, found or not; absent from runners older than this report."
+          },
+          "shell": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether the computer lets its Nexul app run commands; nexul shell on or off, run there, sets it."
+              }
+            },
+            "description": "Whether the computer lets its Nexul app run commands; absent from runners older than shell jobs.",
+            "required": [
+              "enabled"
+            ]
           }
         },
         "required": [
