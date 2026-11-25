@@ -290,3 +290,54 @@ func TestLinear_TeamIsTheOneNamed_OrTheOnlyOne(t *testing.T) {
 		assert.Equal(t, tt.want, found.From)
 	}
 }
+
+func TestLinear_AnIssuePastTheFirstPageOfLabelsAndRelations_ImportsEveryOne(t *testing.T) {
+	stub := newLinearStub(26)
+	hub := &stub.Issues[0]
+	var labels, blocks, blockedBy []string
+	for n := 1; n <= 25; n++ {
+		labels = append(labels, fmt.Sprintf("label-%d", n))
+	}
+	for n := 2; n <= 13; n++ {
+		blocks = append(blocks, fmt.Sprintf("issue-%d", n))
+	}
+	for n := 14; n <= 25; n++ {
+		blockedBy = append(blockedBy, fmt.Sprintf("issue-%d", n))
+		stub.Issues[n-1].Blocks = []string{hub.ID}
+	}
+	hub.Labels, hub.Blocks, hub.Related = labels, blocks, []string{"issue-26"}
+	var many []string
+	for n := 1; n <= 130; n++ {
+		many = append(many, fmt.Sprintf("tag-%d", n))
+	}
+	stub.Issues[25].Labels = many
+	src, _ := serveLinear(t, stub)
+
+	found, err := src.Scan(context.Background(), linearJob())
+	require.NoError(t, err)
+	assert.Equal(t, 1, found.RelationsSkipped, "the related link past the first ten relations is counted")
+
+	before := len(stub.Requests())
+	sink := &recordingSink{}
+	require.NoError(t, src.Import(context.Background(), linearJob(), sink))
+	require.Len(t, sink.tickets, 26)
+	got := sink.tickets[0]
+	assert.Equal(t, labels, got.Labels)
+	assert.Equal(t, blocks, got.Blocks)
+	assert.Equal(t, blockedBy, got.BlockedBy)
+	assert.Equal(t, many, sink.tickets[25].Labels, "a list longer than a page of 100 is read to its end")
+
+	var later []testutil.LinearRequest
+	for _, r := range stub.Requests()[before:] {
+		if r.Kind != "teams" && r.Kind != "issues" && r.Kind != "comments" {
+			later = append(later, testutil.LinearRequest{Kind: r.Kind, Issue: r.Issue, After: r.After})
+		}
+	}
+	assert.Equal(t, []testutil.LinearRequest{
+		{Kind: "labels", Issue: hub.ID},
+		{Kind: "relations", Issue: hub.ID},
+		{Kind: "inverseRelations", Issue: hub.ID},
+		{Kind: "labels", Issue: "issue-26"},
+		{Kind: "labels", Issue: "issue-26", After: "cursor-99"},
+	}, later, "only the lists past a first page are read again; the other 24 issues cost no request")
+}

@@ -99,27 +99,33 @@ type linearIssue struct {
 	Parent *struct {
 		Identifier string `json:"identifier"`
 	} `json:"parent"`
-	Labels struct {
-		Nodes []struct {
-			Name string `json:"name"`
-		} `json:"nodes"`
-	} `json:"labels"`
-	Relations struct {
-		Nodes []struct {
-			Type         string `json:"type"`
-			RelatedIssue struct {
-				ID string `json:"id"`
-			} `json:"relatedIssue"`
-		} `json:"nodes"`
-	} `json:"relations"`
-	InverseRelations struct {
-		Nodes []struct {
-			Type  string `json:"type"`
-			Issue struct {
-				ID string `json:"id"`
-			} `json:"issue"`
-		} `json:"nodes"`
-	} `json:"inverseRelations"`
+	Labels           linearConn[linearLabel]    `json:"labels"`
+	Relations        linearConn[linearRelation] `json:"relations"`
+	InverseRelations linearConn[linearInverse]  `json:"inverseRelations"`
+}
+
+// linearConn is one of an issue's nested lists, a page of it.
+type linearConn[T any] struct {
+	Nodes    []T            `json:"nodes"`
+	PageInfo linearPageInfo `json:"pageInfo"`
+}
+
+type linearLabel struct {
+	Name string `json:"name"`
+}
+
+type linearRelation struct {
+	Type         string `json:"type"`
+	RelatedIssue struct {
+		ID string `json:"id"`
+	} `json:"relatedIssue"`
+}
+
+type linearInverse struct {
+	Type  string `json:"type"`
+	Issue struct {
+		ID string `json:"id"`
+	} `json:"issue"`
 }
 
 type linearComment struct {
@@ -139,9 +145,17 @@ type linearPageInfo struct {
 
 const linearTeamsQuery = `query { teams(first: 100) { nodes { id key name } } }`
 
-// Nested connections stay small so a page of 100 issues keeps under Linear's 10,000-point query complexity.
-// shortcut: past 20 labels or 10 relations on one issue the rest are left out; page them per issue if a team needs it.
-const linearIssuesQuery = `query($team: String!, $after: String) {
+const (
+	linearLabelNodes    = `name`
+	linearRelationNodes = `type relatedIssue { id }`
+	linearInverseNodes  = `type issue { id }`
+	// One past 20 labels and 10 relations shows an issue has more; pageInfo here could pass the complexity cap.
+	linearFirstLabels    = 21
+	linearFirstRelations = 11
+)
+
+// Nested connections stay small so 100 issues keep under Linear's 10,000-point query complexity.
+var linearIssuesQuery = fmt.Sprintf(`query($team: String!, $after: String) {
   team(id: $team) {
     issues(first: 100, after: $after, orderBy: createdAt, includeArchived: true) {
       nodes {
@@ -150,14 +164,27 @@ const linearIssuesQuery = `query($team: String!, $after: String) {
         assignee { name email avatarUrl }
         project { name }
         parent { identifier }
-        labels(first: 20) { nodes { name } }
-        relations(first: 10) { nodes { type relatedIssue { id } } }
-        inverseRelations(first: 10) { nodes { type issue { id } } }
+        labels(first: %[1]d) { nodes { %[3]s } }
+        relations(first: %[2]d) { nodes { %[4]s } }
+        inverseRelations(first: %[2]d) { nodes { %[5]s } }
       }
       pageInfo { hasNextPage endCursor }
     }
   }
+}`, linearFirstLabels, linearFirstRelations, linearLabelNodes, linearRelationNodes, linearInverseNodes)
+
+var (
+	linearAllLabels    = linearAllQuery("labels", linearLabelNodes)
+	linearAllRelations = linearAllQuery("relations", linearRelationNodes)
+	linearAllInverse   = linearAllQuery("inverseRelations", linearInverseNodes)
+)
+
+// linearAllQuery pages one issue's nested list, aliased to all so one decoder reads any of them.
+func linearAllQuery(field, nodes string) string {
+	return `query($id: String!, $after: String) {
+  issue(id: $id) { all: ` + field + `(first: 100, after: $after) { nodes { ` + nodes + ` } pageInfo { hasNextPage endCursor } } }
 }`
+}
 
 const linearCommentsQuery = `query($issues: [ID!], $after: String) {
   comments(first: 100, after: $after, includeArchived: true, filter: { issue: { id: { in: $issues } } }) {
@@ -249,6 +276,11 @@ func (l *LinearSource) pages(ctx context.Context, key, teamID, cursor string, fn
 			return fmt.Errorf("%w: the Linear team is gone, or the key no longer reaches it", apperrs.ErrNotFound)
 		}
 		page := out.Team.Issues
+		for n := range page.Nodes {
+			if err := l.rest(ctx, key, &page.Nodes[n]); err != nil {
+				return err
+			}
+		}
 		comments, err := l.comments(ctx, key, page.Nodes)
 		if err != nil {
 			return err
@@ -264,6 +296,46 @@ func (l *LinearSource) pages(ctx context.Context, key, teamID, cursor string, fn
 			return nil
 		}
 		cursor = next
+	}
+}
+
+// rest reads again, whole, any of an issue's labels and relations that filled the page; others cost no request.
+func (l *LinearSource) rest(ctx context.Context, key string, i *linearIssue) error {
+	if err := linearAll(ctx, l, key, i.ID, linearAllLabels, linearFirstLabels, &i.Labels); err != nil {
+		return err
+	}
+	if err := linearAll(ctx, l, key, i.ID, linearAllRelations, linearFirstRelations, &i.Relations); err != nil {
+		return err
+	}
+	return linearAll(ctx, l, key, i.ID, linearAllInverse, linearFirstRelations, &i.InverseRelations)
+}
+
+// linearAll replaces conn with every page of the list when its first page came back full.
+func linearAll[T any](ctx context.Context, l *LinearSource, key, issueID, query string, first int, conn *linearConn[T]) error {
+	if len(conn.Nodes) < first {
+		return nil
+	}
+	var all []T
+	var after any
+	for {
+		var out struct {
+			Issue *struct {
+				All linearConn[T] `json:"all"`
+			} `json:"issue"`
+		}
+		if err := l.query(ctx, key, query, map[string]any{"id": issueID, "after": after}, &out); err != nil {
+			return err
+		}
+		// Deleted since its page was read: keep that page rather than fail the rest of the import.
+		if out.Issue == nil {
+			return nil
+		}
+		all = append(all, out.Issue.All.Nodes...)
+		if !out.Issue.All.PageInfo.HasNextPage {
+			conn.Nodes = all
+			return nil
+		}
+		after = out.Issue.All.PageInfo.EndCursor
 	}
 }
 
