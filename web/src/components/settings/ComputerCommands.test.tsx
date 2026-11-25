@@ -112,3 +112,21 @@ describe("ComputerCommands", () => {
     expect(client.getQueryData([getComputerCommandsKey, "c-laptop"])).toBeDefined();
   });
 });
+
+describe("ComputerCommands on a computer shared with the viewer", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.get.mockResolvedValue({ data: { items: [command({ requester_id: "u-dave", requester_name: "dave", adapter: "web" })], total: 1 } });
+  });
+
+  it("offers the box but never the owner's switch", async () => {
+    renderCommands(laptop({ shell_enabled: false, shared: { owner_id: "u-alice", owner_name: "alice", permissions: ["computers:see", "computers:run_commands"] } }));
+    expect(await screen.findByRole("textbox", { name: "Command" })).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  it("names who ran a command in its owner's list", async () => {
+    renderCommands(laptop());
+    expect(await screen.findByText("dave")).toBeInTheDocument();
+  });
+});

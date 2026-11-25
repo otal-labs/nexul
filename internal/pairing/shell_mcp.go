@@ -39,7 +39,8 @@ type commandResult struct {
 
 func commandRunTool(s *Service) mcptool.Tool {
 	return mcptool.New("command_run", "Run command on computer",
-		"Runs one command on one of your computers through its Nexul app, as the person it runs as there, and waits "+
+		"Runs one command on one of your computers, or one shared with you by computers:run_commands, through its "+
+			"Nexul app, as the person it runs as there, and waits "+
 			"for it to end. Use it to reach another computer than the one you run on, for example to test on a "+
 			"Windows machine. Returns status (succeeded, failed, timed_out, cancelled, or refused when the computer "+
 			"turned commands off with nexul shell off), exit_code, and the last 64 KB of output with stdout and "+
