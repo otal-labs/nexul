@@ -263,10 +263,16 @@ func (f *fakeRepo) updatedEvents() []DeployUpdatedEvent {
 	return out
 }
 
-func (f *fakeRepo) ListLogLines(_ context.Context, id string) ([]LogLine, error) {
+func (f *fakeRepo) ListLogLines(_ context.Context, id string, after int64) ([]LogLine, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]LogLine{}, f.logs[id]...), nil
+	out := []LogLine{}
+	for _, l := range f.logs[id] {
+		if l.Seq > after {
+			out = append(out, l)
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) ListLogTail(_ context.Context, id string, limit int) ([]LogLine, int, error) {

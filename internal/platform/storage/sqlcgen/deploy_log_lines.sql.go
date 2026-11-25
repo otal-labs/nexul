@@ -42,8 +42,13 @@ func (q *Queries) InsertDeployLogLine(ctx context.Context, arg InsertDeployLogLi
 }
 
 const listDeployLogLines = `-- name: ListDeployLogLines :many
-SELECT seq, ts, phase, line FROM deploy_log_lines WHERE deploy_id = ? ORDER BY ts, seq
+SELECT seq, ts, phase, line FROM deploy_log_lines WHERE deploy_id = ? AND seq > ? ORDER BY ts, seq
 `
+
+type ListDeployLogLinesParams struct {
+	DeployID string
+	Seq      int64
+}
 
 type ListDeployLogLinesRow struct {
 	Seq   int64
@@ -52,8 +57,8 @@ type ListDeployLogLinesRow struct {
 	Line  string
 }
 
-func (q *Queries) ListDeployLogLines(ctx context.Context, deployID string) ([]ListDeployLogLinesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listDeployLogLines, deployID)
+func (q *Queries) ListDeployLogLines(ctx context.Context, arg ListDeployLogLinesParams) ([]ListDeployLogLinesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDeployLogLines, arg.DeployID, arg.Seq)
 	if err != nil {
 		return nil, err
 	}

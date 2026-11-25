@@ -43,6 +43,7 @@ const server: Record<string, unknown> = {
   "/api/categories": [{ id: "cat-1", project_id: "p-1", name: "Payments", position: 0, color: "", created_at: "", updated_at: "" }],
   "/api/chat/unread": {},
   "/api/deploys/d-1": { id: "d-1", stack_id: "s-1", status: "healthy" },
+  "/api/deploys/d-1/log": [{ seq: 1, ts: 1, phase: "build", text: "Step 1/2" }, { seq: 2, ts: 1, phase: "build", text: "Step 2/2" }],
   "/api/stacks/s-1/deploys": [{ id: "d-1", stack_id: "s-1", status: "healthy" }],
   "/api/runners": [{ id: "r-1", name: "box", connected: true, last_seen: "", running_job: { id: "d-1", kind: "build" }, version: "" }],
   "/api/docs/d-1": { id: "d-1", project_id: "p-1", folder_id: "f-1", title: "Spec", version: 1 },
@@ -174,7 +175,7 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("deploy.updated", { id: "d-9", status: "pending", stack_id: "s-2" })).toEqual(["/api/stacks/s-2/deploys"]);
   });
 
-  it("refetches an open deploy and its log, not its stack's history, for a log batch", async () => {
+  it("refetches an open deploy and only the log lines after the newest it holds, not its stack's history, for a log batch", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {
         useFetchDeploy("d-1");
@@ -183,7 +184,7 @@ describe("requests a live frame sends", () => {
       }),
       respond,
     );
-    expect((await requestsAfter("deploy.updated", { id: "d-1", status: "healthy", stack_id: "s-1" })).sort()).toEqual(["/api/deploys/d-1", "/api/deploys/d-1/log"]);
+    expect((await requestsAfter("deploy.updated", { id: "d-1", status: "healthy", stack_id: "s-1" })).sort()).toEqual(["/api/deploys/d-1", "/api/deploys/d-1/log?after=2"]);
   });
 
   it.each(["deploy.build_progress", "deploy.deploy_progress"])("sends nothing on %s for a job the runners list already shows", async (topic) => {

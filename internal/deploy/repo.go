@@ -30,8 +30,8 @@ type Repo interface {
 	// AppendLogLines stores the lines in order under one deploy and writes evts in the same transaction;
 	// Seq is assigned by the store.
 	AppendLogLines(ctx context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error
-	// ListLogLines returns a deploy's log ordered by ts then seq; a deploy with no output yields an empty slice.
-	ListLogLines(ctx context.Context, id string) ([]LogLine, error)
+	// ListLogLines returns a deploy's lines after seq after (0 for all of them), ordered by ts then seq; none yields an empty slice.
+	ListLogLines(ctx context.Context, id string, after int64) ([]LogLine, error)
 	// ListLogTail returns a deploy's newest limit lines, oldest first, and how many lines the log holds in all.
 	ListLogTail(ctx context.Context, id string, limit int) ([]LogLine, int, error)
 	// CancelRequested enqueues a cancel_requested row; no local row, so this just makes the enqueue transactional.

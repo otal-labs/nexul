@@ -958,12 +958,12 @@ func (s *Service) HandleLog(ctx context.Context, ev eventbus.Event) error {
 	return nil
 }
 
-// Log returns a deploy's output ordered by time, never nil, so the gateway serialises an empty log as [].
-func (s *Service) Log(ctx context.Context, id string) ([]LogLine, error) {
+// Log returns a deploy's output after line seq after (0 for all of it), never nil, so an empty log serialises as [].
+func (s *Service) Log(ctx context.Context, id string, after int64) ([]LogLine, error) {
 	if _, err := s.Get(ctx, id); err != nil {
 		return nil, err
 	}
-	lines, err := s.repo.ListLogLines(ctx, id)
+	lines, err := s.repo.ListLogLines(ctx, id, after)
 	if err != nil {
 		return nil, fmt.Errorf("list deploy %s log: %w", id, err)
 	}

@@ -51,7 +51,7 @@ func TestEventRetention_DeleteDeployLogBefore_DropsOnlyLinesBeforeTheCutoffInMil
 	_, err := s.EventRetention.DeleteDeployLogBefore(ctx, retentionCutoff, 10)
 	require.NoError(t, err)
 
-	kept, err := s.Deploys.ListLogLines(ctx, "dep-1")
+	kept, err := s.Deploys.ListLogLines(ctx, "dep-1", 0)
 	require.NoError(t, err)
 	require.Len(t, kept, 1)
 	assert.Equal(t, "new", kept[0].Text)
