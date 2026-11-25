@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -306,12 +307,12 @@ func (g pairingGitIdentities) GitHubIdentity(ctx context.Context, userID string)
 }
 
 // RunShell is pairing's seam for running a command on a computer through its runner.
-func (r *runnerComputers) RunShell(ctx context.Context, computerID string, run pairing.ShellRun, sink pairing.ShellSink) error {
+func (r *runnerComputers) RunShell(ctx context.Context, computerID string, run shelljob.Run, sink shelljob.Sink) error {
 	h := r.handler.Load()
 	if h == nil {
 		return apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
-	err := h.RunShell(ctx, computerID, runner.ShellRun{ID: run.ID, Shell: run.Shell, Script: run.Command, Cwd: run.Cwd, Timeout: run.Timeout}, runnerShellSink{sink})
+	err := h.RunShell(ctx, computerID, runner.ShellRun{ID: run.ID, Shell: run.Shell, Script: run.Command, Cwd: run.Cwd, Timeout: run.Timeout}, runner.JobSink(sink))
 	if errors.Is(err, runner.ErrCannotRunShell) {
 		return fmt.Errorf("%w: the Nexul app on it is too old to run commands; it updates itself, then try again", apperrs.ErrConflict)
 	}
@@ -325,19 +326,4 @@ func (r *runnerComputers) CancelShell(ctx context.Context, jobID string) error {
 		return apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
 	return h.CancelShell(ctx, jobID)
-}
-
-// runnerShellSink hands a runner's shell frames to pairing in its own types.
-type runnerShellSink struct{ sink pairing.ShellSink }
-
-func (s runnerShellSink) Output(lines []runner.ContainerLogLine) {
-	out := make([]containerlog.Line, len(lines))
-	for i, l := range lines {
-		out[i] = containerlog.Line(l)
-	}
-	s.sink.Output(out)
-}
-
-func (s runnerShellSink) Done(r runner.ShellResult) {
-	s.sink.Done(pairing.ShellEnd{Status: r.Status, ExitCode: r.ExitCode, Error: r.Error})
 }

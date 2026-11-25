@@ -42,7 +42,8 @@ type RunnerConfig struct {
 	T3Home string
 	// T3Supervised is set by `nexul run computer` (NEXUL_T3_SUPERVISED), which restarts T3 Code itself.
 	T3Supervised bool
-	// Shell is "off" when the computer turned shell jobs off (NEXUL_SHELL, `nexul shell off` or `--no-shell`).
+	// Shell is NEXUL_SHELL: "off" when a computer turned shell jobs off (`nexul shell off` or `--no-shell`), "on" when a
+	// machine's runner was installed with `--allow-shell` or `nexul shell on <runner>` ran there.
 	Shell string
 	// SecretCheckInterval is how often the runner re-reads the secrets of its stacks (NEXUL_SECRET_CHECK_INTERVAL); 0 is off.
 	SecretCheckInterval time.Duration
@@ -50,6 +51,15 @@ type RunnerConfig struct {
 
 // ModePersonal is NEXUL_RUNNER_MODE for a runner on a person's own computer.
 const ModePersonal = "personal"
+
+// ShellAllowed is whether the runner's own opt-in lets it run shell jobs: on a computer unless turned off, on a machine
+// only once its operator turned them on, which the server can never do (ADR 0209).
+func (c *RunnerConfig) ShellAllowed() bool {
+	if c.Mode == ModePersonal {
+		return c.Shell != "off"
+	}
+	return c.Shell == "on"
+}
 
 // LoadRunnerConfig reads the runner env vars and its credential file; a deliberate break from config.Load since
 // it's a separate binary.

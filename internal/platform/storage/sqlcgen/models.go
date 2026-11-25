@@ -816,6 +816,7 @@ type Machine struct {
 	ReportedHostname string
 	FirstSeen        int64
 	LastSeen         int64
+	ShellEnabled     int64
 }
 
 type Meeting struct {
@@ -1284,6 +1285,8 @@ type RunnerShellJob struct {
 	CreatedAt       int64
 	StartedAt       sql.NullInt64
 	EndedAt         sql.NullInt64
+	RunnerID        string
+	MachineID       string
 }
 
 type SamlRequest struct {

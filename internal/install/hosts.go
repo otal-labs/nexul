@@ -31,6 +31,8 @@ type HostOptions struct {
 	Yes              bool
 	// NoShell installs a computer's runner with shell jobs off (`--no-shell`).
 	NoShell bool
+	// AllowShell installs a machine's runner with shell jobs on (`--allow-shell`); without it the runner refuses them.
+	AllowShell bool
 }
 
 func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) error {
@@ -45,6 +47,7 @@ func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) e
 		fs.StringVar(&o.StackRoot, "stack-root", "", "the stack root; checkouts go in its stacks folder (default: the runner's directory)")
 		fs.StringVar(&o.GitToken, "git-token", "", "a token for cloning private repositories")
 		fs.StringVar(&tokenFile, "1password-token-file", "", "a file holding a 1Password service account token for this runner")
+		fs.BoolVar(&o.AllowShell, "allow-shell", false, "let Nexul run commands on this runner, as the user it runs as (root on Linux)")
 	}
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
 	fs.BoolVar(&o.Yes, "yes", false, "accepted for scripts; this install never asks")
@@ -188,6 +191,9 @@ func hostEnv(o HostOptions, server, credFile, ctl string) map[string]string {
 	}
 	if o.OnePasswordToken != "" {
 		env[opTokenEnv] = o.OnePasswordToken
+	}
+	if o.AllowShell {
+		env[shellEnvKey] = shellOn
 	}
 	return env
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
@@ -97,10 +98,8 @@ type Service struct {
 	identities     GitIdentities
 	shells         Shells
 	runTokens      RunTokens
-	shellQueue     *shellQueue
-	// shellRuns joins the goroutines that hand queued commands to their computers' runners.
-	shellRuns sync.WaitGroup
-	setupMu   sync.Mutex
+	shellQueue     *shelljob.Queue
+	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn claimed, keyed by setupKey, each with the stop for its running
 	// turn, nil until that turn starts.
 	settingUp map[string]context.CancelCauseFunc
@@ -119,11 +118,13 @@ func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Service{
+	s := &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, shells: cfg.Shells, runTokens: cfg.RunTokens, shellQueue: newShellQueue(), settingUp: map[string]context.CancelCauseFunc{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, shells: cfg.Shells, runTokens: cfg.RunTokens, settingUp: map[string]context.CancelCauseFunc{},
 		pairFailures: map[string]string{},
 	}
+	s.shellQueue = newShellQueue(s)
+	return s
 }
 
 // client returns the registered client for kind; an unregistered kind on a stored computer is a wiring bug.

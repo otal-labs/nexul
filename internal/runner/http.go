@@ -31,10 +31,15 @@ func (h *HTTPHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/runners/enrollments", h.listEnrollments)
 	mux.HandleFunc("DELETE /api/runners/enrollments/{id}", h.revokeEnrollment)
 	mux.HandleFunc("DELETE /api/runners/{id}", h.remove)
+	mux.HandleFunc("POST /api/runners/{id}/commands", h.runCommand)
+	mux.HandleFunc("GET /api/runners/commands/{jobID}", h.getCommand)
+	mux.HandleFunc("POST /api/runners/commands/{jobID}/cancel", h.cancelCommand)
 	mux.HandleFunc("GET /api/machines", h.listMachines)
 	mux.HandleFunc("PATCH /api/machines/{id}", h.updateMachine)
 	mux.HandleFunc("DELETE /api/machines/{id}", h.deleteMachine)
 	mux.HandleFunc("POST /api/machines/{id}/discover", h.discoverMachine)
+	mux.HandleFunc("GET /api/machines/{id}/commands", h.listCommands)
+	mux.HandleFunc("PUT /api/machines/{id}/shell", h.setShell)
 	return mux
 }
 

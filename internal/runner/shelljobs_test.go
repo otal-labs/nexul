@@ -141,6 +141,49 @@ func TestPersonalRunner_ReportsCommandsOffAndRefusesThem(t *testing.T) {
 	assert.Contains(t, f.Error, "nexul shell on")
 }
 
+func TestMachineRunner_RefusesCommandsWithoutItsOperatorsOptIn(t *testing.T) {
+	answer := make(chan Frame, 1)
+	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+		_ = wsjson.Write(ctx, conn, Frame{Type: FrameShellRun, ID: "j1", Script: "echo hi", TimeoutSeconds: 5})
+		for {
+			var f Frame
+			if err := wsjson.Read(ctx, conn, &f); err != nil {
+				return
+			}
+			if f.Type == FrameShellResult {
+				answer <- f
+				return
+			}
+		}
+	})
+	c := newTestClient(wsURL(srv), &fakeExecutor{})
+	cancel, done := runClient(t, c)
+	defer func() { cancel(); <-done }()
+
+	f := <-answer
+	assert.Equal(t, ShellStatusRefused, f.Status)
+	assert.Contains(t, f.Error, "installed without --allow-shell")
+	assert.Contains(t, f.Error, "sudo nexul shell on alpha")
+}
+
+func TestRunnerConfig_ShellAllowed(t *testing.T) {
+	tests := []struct {
+		name, mode, shell string
+		want              bool
+	}{
+		{"a computer by default", ModePersonal, "", true},
+		{"a computer turned off", ModePersonal, "off", false},
+		{"a machine's runner by default", "", "", false},
+		{"a machine's runner with --allow-shell", "", "on", true},
+		{"a machine's runner given anything else", "", "yes", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, (&RunnerConfig{Mode: tt.mode, Shell: tt.shell}).ShellAllowed())
+		})
+	}
+}
+
 func TestValidateShellRun(t *testing.T) {
 	tests := []struct {
 		name string

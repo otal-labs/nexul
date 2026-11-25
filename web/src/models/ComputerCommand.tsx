@@ -3,11 +3,16 @@ import type { ContainerLogSource } from "@/models/ContainerLog";
 
 export type CommandStatus = "queued" | "running" | "succeeded" | "failed" | "timed_out" | "cancelled" | "refused";
 
-// Mirrors pairing.ShellJob: one command run on a computer through its runner, kept with who ran it.
+// Mirrors shelljob.Job: one command run through a runner, on a computer (computer_id, owner_id) or on a machine
+// (runner_id, machine_id), kept with who ran it.
 export interface ComputerCommand {
   id: string;
-  computer_id: string;
-  owner_id: string;
+  computer_id?: string;
+  owner_id?: string;
+  runner_id?: string;
+  machine_id?: string;
+  // The runner a machine's command ran on, on a list.
+  runner_name?: string;
   requester_id: string;
   // Who ran it, on a list; the owner's list names each person a share let run one.
   requester_name?: string;
@@ -53,7 +58,7 @@ export const commandLabel = (c: ComputerCommand): string => {
 export const commandLive = (c: ComputerCommand) => c.status === "queued" || c.status === "running";
 
 export const commandOutputSource = (c: ComputerCommand): ContainerLogSource => ({
-  path: `/pairing/commands/${c.id}/output`,
+  path: c.machine_id ? `/runners/commands/${c.id}/output` : `/pairing/commands/${c.id}/output`,
   name: "command",
-  forbidden: "This command ran on a computer that isn't yours.",
+  forbidden: c.machine_id ? "You don't hold Run commands on this machine." : "This command ran on a computer that isn't yours.",
 });

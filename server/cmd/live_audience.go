@@ -213,6 +213,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicDeployStatusChanged:    deployFrame,
 	runner.TopicRunnerConnected:        runnerFrame,
 	runner.TopicRunnerDisconnected:     runnerFrame,
+	runner.TopicShellJobChanged:        machineShellFrame,
 	runner.TopicMachineDeleted:         recipientFrame,
 	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
 	license.TopicChanged:               anywhere(permissions.InstanceRead),
@@ -408,6 +409,13 @@ var runnerFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
 	MachineID string `json:"machine_id"`
 }) bool {
 	return p.MachineID != "" && a.access.RequireMachine(ctx, p.MachineID, permissions.MachinesSee) == nil
+})
+
+// machineShellFrame reaches whoever holds Run commands on the machine a command ran on.
+var machineShellFrame = perPerson(func(ctx context.Context, a liveAudience, p struct {
+	MachineID string `json:"machine_id"`
+}) bool {
+	return p.MachineID != "" && a.access.RequireMachine(ctx, p.MachineID, permissions.MachinesShell) == nil
 })
 
 var topologyCanvasFrame = perPerson(func(ctx context.Context, a liveAudience, p workspacePayload) bool {

@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logstore"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
 // MCPTools returns the machine and instance tools: machines with their runners and queue, discovery, and upgrades.
@@ -24,8 +27,17 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type machineListIn struct {
+	ID       string             `json:"id,omitempty" jsonschema:"One machine's id, to read it alone."`
+	Commands *machineCommandsIn `json:"commands,omitzero" jsonschema:"With id only: also returns the commands run on its runners."`
 	mcptool.PageArgs
 }
+
+type machineCommandsIn struct {
+	JobID string `json:"job_id,omitempty" jsonschema:"One command's job_id, to read it with its output; omit for the newest 10 without output."`
+}
+
+// mcpCommandsListed is how many recent commands machine_list returns with commands.
+const mcpCommandsListed = 10
 
 type machineResult struct {
 	ID               string    `json:"id"`
@@ -33,9 +45,13 @@ type machineResult struct {
 	StackRoot        string    `json:"stack_root"`
 	ReportedHostname string    `json:"reported_hostname,omitempty"`
 	LastSeen         time.Time `json:"last_seen"`
-	// Actions are what you hold on this machine: machines:see, machines:deploy, machines:write (Manage), machines:delete.
+	// Actions are what you hold on this machine: machines:see, machines:deploy, machines:write (Manage), machines:delete,
+	// machines:shell (Run commands).
 	Actions permissions.Set `json:"actions"`
 	Runners []runnerResult  `json:"runners"`
+	// ShellEnabled is whether command_run may run commands on its runners.
+	ShellEnabled bool           `json:"shell_enabled"`
+	Commands     []shelljob.Job `json:"commands,omitempty"`
 	// AutomationsHosts are the automations hosts filed under this machine; their ids are host_delete's, as is the machine's own.
 	AutomationsHosts []automationsHostResult `json:"automations_hosts"`
 }
@@ -86,8 +102,9 @@ type machineList struct {
 func machineListTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_list", "List machines",
 		"Lists the machines you can see with their stack root, runners, automations hosts, and queued deploys, whose "+
-			"job ids are deploy ids for deploy_list. Use a machine's name as stack_create's machine and its id for "+
-			"machine_discover, machine_import and, with kind machine, host_delete. open_enrollments lists unused "+
+			"job ids are deploy ids for deploy_list. Use a machine's name as stack_create's machine, its id for "+
+			"machine_discover, machine_import and, with kind machine, host_delete, and a runner's id as command_run's "+
+			"runner_id. open_enrollments lists unused "+
 			"enrollment codes you may revoke, never the codes themselves; host_delete revokes one by its id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in machineListIn) (any, error) {
@@ -117,6 +134,9 @@ func machineListTool(s *Service) mcptool.Tool {
 			}
 			results, unassigned := groupRunners(machines, runners)
 			results, unassignedHosts := groupAutomationsHosts(results, hosts)
+			if in.ID != "" {
+				return oneMachine(ctx, s, results, in)
+			}
 			jobs := make([]jobResult, 0, len(queue))
 			for _, q := range queue {
 				jobs = append(jobs, jobResult{ID: q.ID, Kind: q.Kind, Stack: q.Service, Machine: q.Target, TriggeredBy: q.TriggeredBy, RequestedAt: timePtr(q.RequestedAt)})
@@ -126,6 +146,33 @@ func machineListTool(s *Service) mcptool.Tool {
 				UnassignedAutomationsHosts: unassignedHosts, OpenEnrollments: codes, Queue: jobs,
 			}, nil
 		})
+}
+
+// oneMachine is the machine in.ID names, with its commands when asked for; one the caller can't see is not found.
+func oneMachine(ctx context.Context, s *Service, results []machineResult, in machineListIn) (machineResult, error) {
+	i := slices.IndexFunc(results, func(m machineResult) bool { return m.ID == in.ID })
+	if i < 0 {
+		return machineResult{}, fmt.Errorf("%w: machine %s; machine_list lists them", apperrs.ErrNotFound, in.ID)
+	}
+	m := results[i]
+	if in.Commands == nil {
+		return m, nil
+	}
+	if in.Commands.JobID == "" {
+		jobs, _, err := s.ListShellJobs(ctx, m.ID, paging.Window{Limit: mcpCommandsListed})
+		m.Commands = jobs
+		return m, err
+	}
+	job, err := s.GetShellJob(ctx, in.Commands.JobID)
+	if err != nil {
+		return machineResult{}, err
+	}
+	if job.MachineID != m.ID {
+		return machineResult{}, fmt.Errorf("%w: command %s did not run on %s", apperrs.ErrNotFound, in.Commands.JobID, m.Name)
+	}
+	job.TailForAgent()
+	m.Commands = []shelljob.Job{*job}
+	return m, nil
 }
 
 // groupRunners files each runner under its machine by name; a runner whose machine is unresolved is returned apart.
@@ -148,7 +195,7 @@ func groupRunners(machines []MachineView, runners []RunnerView) ([]machineResult
 		rs := byName[m.Name]
 		out = append(out, machineResult{
 			ID: m.ID, Name: m.Name, StackRoot: m.StackRoot, ReportedHostname: m.ReportedHostname,
-			LastSeen: m.LastSeen, Actions: m.Actions, Runners: rs,
+			LastSeen: m.LastSeen, Actions: m.Actions, Runners: rs, ShellEnabled: m.ShellEnabled,
 		})
 	}
 	return out, unassigned

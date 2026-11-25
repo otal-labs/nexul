@@ -230,6 +230,14 @@ One command line a paired computer's personal runner runs as its person, asked f
 Each is recorded with who ran it and how it ended, kept forever, its output for 30 days.
 _Avoid_: remote shell, terminal, exec
 
+**Command on a machine**:
+One command line a machine's runner runs as the user it runs as, root on Linux, asked from Nexul or by `command_run`
+with a runner, under two switches that both start off: the runner's own (`--allow-shell` at its install, or `nexul shell
+on <runner>` on the machine), which Nexul can never turn on, and the machine's in Nexul. Starting, reading and stopping
+one, and the machine's switch, take Run commands on the machine (`machines:shell`, Machine rules). Recorded and kept like
+a command on a computer, its record read by whoever holds Run commands there (ADR 0209).
+_Avoid_: remote shell, terminal, exec, SSH
+
 **Computer activity**:
 The record of what was done on people's computers: adding, renaming, pairing or removing one, and each command run
 there with who ran it, the command, the exit code and, for 30 days, the output. Read only with Read computer activity
@@ -1039,13 +1047,13 @@ _Avoid_: Host, node, server (in the UI)
 
 **Machine rules**:
 The rules a machine carries, each naming a role of any workspace or a person and
-holding four permissions in Allow, Fallback or Deny: **See**, **Deploy to**,
-**Manage** and **Delete**. Machines are opt-in, as projects are: See is held only
+holding five permissions in Allow, Fallback or Deny: **See**, **Deploy to**,
+**Manage**, **Delete** and **Run commands** (`machines:shell`, Command on a machine). Machines are opt-in, as projects are: See is held only
 through a machine's rules, and a machine someone can't See is not found, and so is
-every other action on it. On a machine they See, the other three come from the
+every other action on it. On a machine they See, the other four come from the
 union of their roles' bits across their workspaces, then the machine's rules for
 those roles, of which Allow wins, then a rule naming them. The instance Owner
-holds all four on every machine and is never denied; an Owner of another
+holds all five on every machine and is never denied; an Owner of another
 workspace holds nothing here by right. The instance Owner and anyone holding
 Manage on the machine write its rules, and nobody allows, or lifts a Deny on,
 what they don't hold there. **Add machines** is not one of them: it is an
@@ -1054,7 +1062,7 @@ runners follow it: the machine list, the runner list, the queue and the live
 frames of its runners leave out a machine someone can't See, and adding a runner
 to a machine that exists, discovering what runs on it or removing a runner takes
 Manage on it. A runner enrolled under a machine name nobody has makes the
-machine, and its adder gets a rule with all four permissions in the same write;
+machine, and its adder gets a rule with all five permissions in the same write;
 the maker of an enrollment code is checked again when the code is used. An
 automations host follows its machine the same way.
 _Avoid_: Machine access

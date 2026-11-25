@@ -33,3 +33,6 @@ backfilled with it.
 
 Amended 2026-10-02: `docs:lock` joins them (ADR 0107). Locking and unlocking a doc need it, and every role,
 overwrite, invitation, install, and automation holding `docs:write` was given it, so no writer lost the lock.
+
+Amended 2026-11-25: `machines:shell` joins them (ADR 0209). Running a command on a machine's runner is root on that
+server, more than deploying to it or managing it. Nobody held it before, so no role is backfilled.

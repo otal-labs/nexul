@@ -6,17 +6,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
-func (r *PairingRepo) InsertShellJob(ctx context.Context, job pairing.ShellJob, evt eventbus.OutboxEvent) error {
+// ShellJobsRepo records shell jobs, a computer's and a machine's alike (ADR 0209).
+type ShellJobsRepo struct {
+	db *sql.DB
+	w  *Serializer
+	q  *sqlcgen.Queries
+}
+
+func (r *ShellJobsRepo) InsertShellJob(ctx context.Context, job shelljob.Job, evt eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).InsertShellJob(ctx, sqlcgen.InsertShellJobParams{
-			ID: job.ID, ComputerID: job.ComputerID, OwnerID: job.OwnerID, RequesterID: job.RequesterID, Adapter: job.Adapter,
+			ID: job.ID, ComputerID: job.ComputerID, OwnerID: job.OwnerID, RunnerID: job.RunnerID, MachineID: job.MachineID,
+			RequesterID: job.RequesterID, Adapter: job.Adapter,
 			Shell: job.Shell, Command: job.Command, Cwd: job.Cwd, TimeoutSeconds: int64(job.TimeoutSeconds), Status: job.Status,
 			CreatedAt: job.CreatedAt.Unix(),
 		})
@@ -27,7 +35,7 @@ func (r *PairingRepo) InsertShellJob(ctx context.Context, job pairing.ShellJob, 
 	})
 }
 
-func (r *PairingRepo) StartShellJob(ctx context.Context, id string, at time.Time, evt eventbus.OutboxEvent) (bool, error) {
+func (r *ShellJobsRepo) StartShellJob(ctx context.Context, id string, at time.Time, evt eventbus.OutboxEvent) (bool, error) {
 	started := false
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).StartShellJob(ctx, sqlcgen.StartShellJobParams{StartedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, ID: id})
@@ -43,7 +51,7 @@ func (r *PairingRepo) StartShellJob(ctx context.Context, id string, at time.Time
 	return started, err
 }
 
-func (r *PairingRepo) FinishShellJob(ctx context.Context, job pairing.ShellJob, evt eventbus.OutboxEvent) error {
+func (r *ShellJobsRepo) FinishShellJob(ctx context.Context, job shelljob.Job, evt eventbus.OutboxEvent) error {
 	exit := sql.NullInt64{}
 	if job.ExitCode != nil {
 		exit = sql.NullInt64{Int64: int64(*job.ExitCode), Valid: true}
@@ -67,7 +75,7 @@ func (r *PairingRepo) FinishShellJob(ctx context.Context, job pairing.ShellJob, 
 	})
 }
 
-func (r *PairingRepo) GetShellJob(ctx context.Context, id string) (*pairing.ShellJob, error) {
+func (r *ShellJobsRepo) GetShellJob(ctx context.Context, id string) (*shelljob.Job, error) {
 	row, err := r.q.GetShellJob(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get command %s: %w", id, notFoundIfNoRows(err))
@@ -76,7 +84,7 @@ func (r *PairingRepo) GetShellJob(ctx context.Context, id string) (*pairing.Shel
 	return &job, nil
 }
 
-func (r *PairingRepo) ListShellJobs(ctx context.Context, computerID, requesterID string, w paging.Window) ([]pairing.ShellJob, int, error) {
+func (r *ShellJobsRepo) ListShellJobs(ctx context.Context, computerID, requesterID string, w paging.Window) ([]shelljob.Job, int, error) {
 	total, err := r.q.CountShellJobs(ctx, sqlcgen.CountShellJobsParams{ComputerID: computerID, RequesterID: requesterID})
 	if err != nil {
 		return nil, 0, fmt.Errorf("count commands on computer %s: %w", computerID, err)
@@ -85,7 +93,7 @@ func (r *PairingRepo) ListShellJobs(ctx context.Context, computerID, requesterID
 	if err != nil {
 		return nil, 0, fmt.Errorf("list commands on computer %s: %w", computerID, err)
 	}
-	jobs := make([]pairing.ShellJob, 0, len(rows))
+	jobs := make([]shelljob.Job, 0, len(rows))
 	for _, row := range rows {
 		job := toShellJob(row.RunnerShellJob)
 		job.Output, job.RequesterName = "", row.RequesterName
@@ -94,7 +102,25 @@ func (r *PairingRepo) ListShellJobs(ctx context.Context, computerID, requesterID
 	return jobs, int(total), nil
 }
 
-func (r *PairingRepo) PurgeShellOutput(ctx context.Context, before time.Time, limit int) (int64, error) {
+func (r *ShellJobsRepo) ListMachineShellJobs(ctx context.Context, machineID string, w paging.Window) ([]shelljob.Job, int, error) {
+	total, err := r.q.CountMachineShellJobs(ctx, machineID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count commands on machine %s: %w", machineID, err)
+	}
+	rows, err := r.q.ListMachineShellJobs(ctx, sqlcgen.ListMachineShellJobsParams{MachineID: machineID, Lim: int64(w.Limit), Off: int64(w.Offset)})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list commands on machine %s: %w", machineID, err)
+	}
+	jobs := make([]shelljob.Job, 0, len(rows))
+	for _, row := range rows {
+		job := toShellJob(row.RunnerShellJob)
+		job.Output, job.RequesterName, job.RunnerName = "", row.RequesterName, row.RunnerName
+		jobs = append(jobs, job)
+	}
+	return jobs, int(total), nil
+}
+
+func (r *ShellJobsRepo) PurgeShellOutput(ctx context.Context, before time.Time, limit int) (int64, error) {
 	var n int64
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		var err error
@@ -104,7 +130,7 @@ func (r *PairingRepo) PurgeShellOutput(ctx context.Context, before time.Time, li
 	return n, err
 }
 
-func (r *PairingRepo) FailUnfinishedShellJobs(ctx context.Context, at time.Time) (int64, error) {
+func (r *ShellJobsRepo) FailUnfinishedShellJobs(ctx context.Context, at time.Time) (int64, error) {
 	var n int64
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		var err error
@@ -131,9 +157,10 @@ func (r *PairingRepo) SetComputerShell(ctx context.Context, userID, computerID s
 	})
 }
 
-func toShellJob(row sqlcgen.RunnerShellJob) pairing.ShellJob {
-	job := pairing.ShellJob{
-		ID: row.ID, ComputerID: row.ComputerID, OwnerID: row.OwnerID, RequesterID: row.RequesterID, Adapter: row.Adapter,
+func toShellJob(row sqlcgen.RunnerShellJob) shelljob.Job {
+	job := shelljob.Job{
+		ID: row.ID, ComputerID: row.ComputerID, OwnerID: row.OwnerID, RunnerID: row.RunnerID, MachineID: row.MachineID,
+		RequesterID: row.RequesterID, Adapter: row.Adapter,
 		Shell: row.Shell, Command: row.Command, Cwd: row.Cwd, TimeoutSeconds: int(row.TimeoutSeconds), Status: row.Status,
 		Error: row.Error, Output: row.Output, OutputTruncated: row.OutputTruncated != 0, OutputPurged: row.OutputPurged != 0,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), StartedAt: unixPtrFromNull(row.StartedAt), EndedAt: unixPtrFromNull(row.EndedAt),

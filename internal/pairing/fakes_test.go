@@ -16,6 +16,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
 // fakeRepo is an in-memory pairing.Repo for use-case tests.
@@ -40,11 +41,11 @@ type fakeRepo struct {
 	listTurnsErr    error
 	listOutdatedErr error
 	// jobs are the shell jobs, by id.
-	jobs map[string]ShellJob
+	jobs map[string]shelljob.Job
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}, turns: map[string]SetupTurn{}, jobs: map[string]ShellJob{}}
+	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}, turns: map[string]SetupTurn{}, jobs: map[string]shelljob.Job{}}
 }
 
 func (f *fakeRepo) SaveComputer(_ context.Context, c Computer, evts ...eventbus.OutboxEvent) error {

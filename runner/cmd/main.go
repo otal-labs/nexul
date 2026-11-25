@@ -68,7 +68,7 @@ func main() {
 		BackoffBase:       cfg.BackoffBase,
 		BackoffMax:        cfg.BackoffMax,
 		Personal:          cfg.Mode == runner.ModePersonal,
-		ShellEnabled:      cfg.Mode == runner.ModePersonal && cfg.Shell != "off",
+		ShellEnabled:      cfg.ShellAllowed(),
 		StreamURL:         cfg.StreamURL(),
 		T3Home:            cfg.T3Home,
 		T3InstallingFile:  cfg.T3InstallingFile(),

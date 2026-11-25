@@ -92,6 +92,7 @@ type Store struct {
 	Botwebhooks           *BotwebhooksRepo
 	Meetings              *MeetingsRepo
 	Pairing               *PairingRepo
+	ShellJobs             *ShellJobsRepo
 	InstanceTemplates     *InstanceTemplatesRepo
 	Welcome               *WelcomeRepo
 	AuditStream           *AuditStreamRepo
@@ -105,6 +106,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 	q := sqlcgen.New(db)
 	hot := sqlcgen.New(newPreparedReads(db))
 	stream := &auditStream{}
+	shellJobs := &ShellJobsRepo{db: db, w: w, q: q}
 	return &Store{
 		auditStream:           stream,
 		AuditStream:           &AuditStreamRepo{db: db, w: w, q: q},
@@ -186,7 +188,8 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Chat:                  &ChatRepo{db: db, w: w, q: q, stream: stream},
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
 		Meetings:              &MeetingsRepo{db: db, w: w, q: q},
-		Pairing:               &PairingRepo{db: db, w: w, q: q},
+		Pairing:               &PairingRepo{db: db, w: w, q: q, ShellJobsRepo: shellJobs},
+		ShellJobs:             shellJobs,
 		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
 		Welcome:               &WelcomeRepo{db: db, w: w, q: q},
 	}

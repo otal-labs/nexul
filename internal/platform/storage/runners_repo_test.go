@@ -245,7 +245,7 @@ func TestRunnersRepo_Enroll_NewMachineAndItsRuleLandWithTheRunnerOrNotAtAll(t *t
 	assert.Equal(t, "box-m-ok", got.Name)
 	var allow string
 	require.NoError(t, s.db.QueryRow(`SELECT allow FROM permission_overwrites WHERE resource_type = 'machine' AND resource_id = 'm-ok' AND user_id = 'u-adder'`).Scan(&allow))
-	assert.JSONEq(t, `["machines:delete","machines:deploy","machines:see","machines:write"]`, allow)
+	assert.JSONEq(t, `["machines:delete","machines:deploy","machines:see","machines:shell","machines:write"]`, allow)
 }
 
 func TestRunnersRepo_Remove_RevokesCredentialAndDeletesRunner(t *testing.T) {

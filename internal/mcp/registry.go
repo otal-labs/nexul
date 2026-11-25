@@ -148,6 +148,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		botwebhook.MCPTools(opts.Botwebhooks),
 		imports.MCPTools(opts.Imports),
 		calendar.MCPTools(opts.Calendar),
+		composite.CommandTools(opts.Pairing, opts.Runner),
 		pairing.MCPTools(opts.Pairing),
 		plays.MCPTools(opts.Plays),
 		plays.RunMCPTools(opts.PlayRuns),

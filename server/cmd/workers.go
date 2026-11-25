@@ -71,7 +71,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		WithSAML(func(ctx context.Context) (any, error) { return svc.ssoSvc.SAMLView(ctx) }).
 		WithBranding(func(ctx context.Context) (any, error) { return svc.brandingSvc.Get(ctx) }).
 		WithAudit(func(ctx context.Context) (any, error) { return svc.auditlogSvc.View(ctx) }).
-		WithStylingGuide(branding.StylingGuide())
+		WithStylingGuide(branding.StylingGuide()).
+		WithShells(store.ShellJobs, wsHandler)
 	if cfg.LogsURL != nil {
 		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
 	}

@@ -44,6 +44,8 @@ const (
 	TopicRequestCounts = "runner.request_counts"
 	// TopicSecretsChanged carries a machine runner's secret check to the deploy domain, which knows whose stacks they are.
 	TopicSecretsChanged = "runner.secrets_changed"
+	// TopicShellJobChanged names a command on a machine's runner that was queued, started or ended; its output is never in it.
+	TopicShellJobChanged = "runner.shell_job_changed"
 )
 
 // Topics returns every topic the runner domain publishes.
@@ -63,7 +65,18 @@ func Topics() []eventbus.Topic {
 		{Name: TopicDeployStatusChanged, Payload: DeployStatusChangedEvent{}},
 		{Name: TopicInstanceUpgradeRequested, Payload: InstanceUpgradeRequestedEvent{}},
 		{Name: TopicInstanceUpgradeChanged, Payload: Upgrade{}},
+		{Name: TopicShellJobChanged, Payload: ShellJobChangedEvent{}},
 	}
+}
+
+// ShellJobChangedEvent names a command on a machine's runner and its new status, for whoever holds Run commands on the
+// machine; the command line and output are read from the record.
+type ShellJobChangedEvent struct {
+	JobID     string `json:"job_id" jsonschema:"The command's id."`
+	RunnerID  string `json:"runner_id" jsonschema:"The runner it runs on."`
+	MachineID string `json:"machine_id" jsonschema:"The machine that runner is on."`
+	UserID    string `json:"user_id" jsonschema:"Who ran it."`
+	Status    string `json:"status" enum:"queued,running,succeeded,failed,timed_out,cancelled,refused" jsonschema:"queued, running, or how it ended."`
 }
 
 // ContainerEvent is one die, oom or start a machine runner saw on its host, before anything knows whose container it is.

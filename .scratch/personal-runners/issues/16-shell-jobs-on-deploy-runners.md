@@ -1,26 +1,27 @@
 # 16 — Shell jobs on runners that are not personal
 
-**Status:** ready-for-agent
+**Status:** done
 
-**Blocked by:** 15. The permission evaluator prerequisite has merged.
+**Blocked by:** nothing; ticket 15 shipped the shell job (ADR 0209).
 
-Read first: `practices/go.md`, `practices/mcp.md`, ADRs 0057, 0087, 0088, the spec (Later: shell jobs).
+Read first: `practices/go.md`, `practices/mcp.md`, ADRs 0057, 0151, 0209, the spec (Later: shell jobs).
 
-This ticket adds an instance-area permission to the shipped evaluator that names sources (ADR 0148).
-`runners:shell` belongs to the Runners and machines entity the instance Owner can hand to a role or a person.
-Jobs here follow ticket 15's retention: the record kept forever, the output deleted after 30 days. Unlike a personal runner, a machine's
-shell jobs stay off until its operator opts in.
+A runner on a machine runs the same shell job a personal runner does. Who may is the machine's business (ADR 0151, which
+removed `runners:*`): Run commands, `machines:shell`, is a fifth machine action beside Deploy to, Manage and Delete, held
+through roles and the machine's rules. Jobs here follow ticket 15's retention: the record kept forever, the output deleted
+after 30 days. Unlike a personal runner, a machine's shell jobs stay off until its operator opts in.
 
 ## What to build
 
-- `runners:shell` in the permission table, instance area; no role gets it on upgrade; scoped tokens need it
+- `machines:shell` in the permission table, a machine action; no role gets it on upgrade; scoped tokens need it
   explicitly.
-- `nexul install runner --allow-shell` and the same refusal without it; `runners.shell_enabled` flipped
-  with `runners:shell`.
-- The runner row on Settings → Runners gets the switch and the history; `command_run` takes `runner_id`.
+- `nexul install runner --allow-shell`, and `nexul shell on|off <runner>` on the machine; without either the runner refuses
+  every job. One Nexul switch per machine, `machines.shell_enabled`, off by default, flipped with `machines:shell`.
+- The machine's band on Settings → Runners gets **Commands…** in its menu: the switch, a command for one of its runners,
+  and the history; `command_run` takes `runner_id`, and `machine_list` with an id and `commands` reads the record.
 - The runners guide says plainly that a shell job on Linux runs as root.
 
 ## Acceptance criteria
 
-- [ ] A role without `runners:shell` cannot start, list or read jobs; a scoped token needs the bit itself.
-- [ ] A machine installed without `--allow-shell` refuses every job, whatever Nexul's switch says.
+- [x] A role without `machines:shell` cannot start, list or read jobs; a scoped token needs the bit itself.
+- [x] A machine installed without `--allow-shell` refuses every job, whatever Nexul's switch says.

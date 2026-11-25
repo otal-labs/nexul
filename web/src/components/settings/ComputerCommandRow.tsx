@@ -3,19 +3,23 @@ import { SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useCancelComputerCommand } from "@/hooks/ComputerCommandHooks";
+import { useCancelMachineCommand } from "@/hooks/MachineCommandHooks";
 import { commandLabel, commandLive, commandTone, type ComputerCommand } from "@/models/ComputerCommand";
 import { formatAge } from "@/utils/TimeUtility";
 
 interface ComputerCommandRowProps {
   command: ComputerCommand;
-  // Whether the row names who ran it: on the owner's list, for a command a share let someone else run.
+  // Whether the row names who ran it: on a machine's list, and on a computer owner's for a command a share let someone
+  // else run.
   named: boolean;
   onOutput: (command: ComputerCommand) => void;
 }
 
-// One command: the row opens its output, and a live one keeps its Stop beside it.
+// One command, a computer's or a machine's: the row opens its output, and a live one keeps its Stop beside it.
 export const ComputerCommandRow = ({ command, named, onOutput }: ComputerCommandRowProps) => {
-  const cancel = useCancelComputerCommand();
+  const cancelOnComputer = useCancelComputerCommand();
+  const cancelOnMachine = useCancelMachineCommand();
+  const cancel = command.machine_id ? cancelOnMachine : cancelOnComputer;
   return (
     <li className="flex min-w-0 items-center gap-1 py-0.5">
       <button
@@ -29,6 +33,9 @@ export const ComputerCommandRow = ({ command, named, onOutput }: ComputerCommand
           {commandLabel(command)}
         </SettingsStatus>
         <span className="min-w-0 flex-1 truncate font-mono text-foreground">{command.command}</span>
+        {command.runner_name && (
+          <span className="max-w-24 shrink-0 truncate font-mono text-xs text-muted-foreground">{command.runner_name}</span>
+        )}
         {named && command.requester_id !== command.owner_id && (
           <span className="max-w-32 shrink-0 truncate text-xs text-muted-foreground">{command.requester_name}</span>
         )}

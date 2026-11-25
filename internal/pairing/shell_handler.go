@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 )
 
 type runCommandRequest struct {
@@ -25,8 +26,8 @@ func (h *Handler) runCommand(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	job, err := h.svc.RunCommand(r.Context(), actorID(r), r.PathValue("id"), RunCommandInput{
-		Command: req.Command, Shell: req.Shell, Cwd: req.Cwd, Timeout: time.Duration(req.TimeoutSeconds) * time.Second, Adapter: AdapterWeb,
+	job, err := h.svc.RunCommand(r.Context(), actorID(r), r.PathValue("id"), shelljob.Input{
+		Command: req.Command, Shell: req.Shell, Cwd: req.Cwd, Timeout: time.Duration(req.TimeoutSeconds) * time.Second, Adapter: shelljob.AdapterWeb,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

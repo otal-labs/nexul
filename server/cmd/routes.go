@@ -142,6 +142,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("PATCH /api/machines/{id}", runnerRoutes)
 	apiMux.Handle("DELETE /api/machines/{id}", runnerRoutes)
 	apiMux.Handle("POST /api/machines/{id}/discover", runnerRoutes)
+	apiMux.Handle("GET /api/machines/{id}/commands", runnerRoutes)
+	apiMux.Handle("PUT /api/machines/{id}/shell", runnerRoutes)
 	apiMux.Handle("POST /api/machines/{id}/import", deployHandler)
 	apiMux.Handle("GET /api/machines/deployable", deployHandler)
 	mountGateway(apiMux, "/api/dns", svc.dnsHandler.Routes())
@@ -306,6 +308,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /ws/pairing/computers/{id}/containers/{name}/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.ContainerLogsSocket))))
 	httpMux.Handle("GET /ws/pairing/computers/{id}/runner/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.RunnerLogsSocket))))
 	httpMux.Handle("GET /ws/pairing/commands/{jobID}/output", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.CommandOutputSocket))))
+	httpMux.Handle("GET /ws/runners/commands/{jobID}/output", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(runnerHTTP.CommandOutputSocket))))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)
 	// A computer's stream authenticates with the runner's own credential, like /ws/runner.

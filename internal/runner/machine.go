@@ -19,6 +19,9 @@ type Machine struct {
 	ReportedHostname string    `json:"reported_hostname,omitempty"`
 	FirstSeen        time.Time `json:"first_seen"`
 	LastSeen         time.Time `json:"last_seen"`
+	// ShellEnabled is the machine's switch for commands from Nexul on its runners, off until someone with Run commands
+	// on it turns it on.
+	ShellEnabled bool `json:"shell_enabled"`
 }
 
 // MachineView is a machine with the actions its caller holds on it, so a client shows the controls they may use.
@@ -50,6 +53,8 @@ type MachineRepo interface {
 	ListIn(ctx context.Context, ids []string) ([]*Machine, error)
 	Rename(ctx context.Context, id, name string) error
 	SetStackRoot(ctx context.Context, id, stackRoot string) error
+	// SetShell sets the machine's switch for commands from Nexul, or ErrNotFound.
+	SetShell(ctx context.Context, id string, enabled bool) error
 	// Touch refreshes last_seen and records the reported hostname hint; called at connect and on every heartbeat.
 	Touch(ctx context.Context, id, reportedHostname string, at time.Time) error
 	// Dependents names the stacks and gateways that target the machine called name.

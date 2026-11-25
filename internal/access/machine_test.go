@@ -330,7 +330,7 @@ func TestMachineRules_ListAndSeeSomeoneElsesAnswers(t *testing.T) {
 
 	out, err := s.Explain(ctx, "carl", resourceTypeMachine, "m1", "olga")
 	require.NoError(t, err)
-	require.Len(t, out.Effective, 4)
+	require.Len(t, out.Effective, 5)
 	assert.Equal(t, permissions.MachinesSee, out.Effective[0].Action)
 	assert.True(t, out.Effective[0].Allowed)
 	assert.Equal(t, "Allowed on machine Atlas for olga", out.Effective[0].Source.Sentence)

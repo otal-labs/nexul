@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
+	"github.com/otal-labs/nexul/internal/platform/shelljob"
 	"github.com/otal-labs/nexul/internal/platform/version"
 )
 
@@ -86,6 +87,10 @@ type Service struct {
 	audit func(context.Context) (any, error)
 	// stylingGuide is how to write branding css, which instance_get returns when asked; empty on a build that wires none.
 	stylingGuide string
+	// shellJobs, shells and shellQueue run commands on machines' runners (ADR 0209); nil runs none.
+	shellJobs  MachineShellJobs
+	shells     MachineShells
+	shellQueue *shelljob.Queue
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time
@@ -369,7 +374,7 @@ func (s *Service) ListMachines(ctx context.Context) ([]*Machine, error) {
 }
 
 // ListMachineViews is ListMachines with what the caller holds on each, from the memo the request carries so the rules
-// are read once however many machines there are. The server and a caller with no gate hold all four.
+// are read once however many machines there are. The server and a caller with no gate hold every machine action.
 func (s *Service) ListMachineViews(ctx context.Context) ([]MachineView, error) {
 	ms, err := s.ListMachines(ctx)
 	if err != nil {

@@ -23,7 +23,7 @@ A machine's band stays at the top of the page while you scroll through its runne
 
 The **Runners** link shows in the sidebar, the command palette and the phone's More tab only for someone who sees a machine or can add one; the page itself opens for every member by its address and shows the machines you are on, with their runners and the jobs queued for them. A machine you aren't on isn't there at all: not in the list, not in a picker, not over the API or MCP, and its runners' live updates never reach you. The instance Owner (the Owner of the default workspace) sees every machine. Everyone else is put on a machine by a rule on it, for a role or for a person, and an Owner of another workspace is no exception.
 
-What you can do on a machine you are on comes from three permissions: **Deploy to**, **Manage** and **Delete**. Your roles' `machines:deploy`, `machines:write` and `machines:delete` set them, and the machine's rules can allow or deny each on top. Adding a runner to a machine that exists, changing its stack root, discovering what runs on it and removing one of its runners all take **Manage**.
+What you can do on a machine you are on comes from four permissions: **Deploy to**, **Manage**, **Delete** and **Run commands**. Your roles' `machines:deploy`, `machines:write`, `machines:delete` and `machines:shell` set them, and the machine's rules can allow or deny each on top. Adding a runner to a machine that exists, changing its stack root, discovering what runs on it and removing one of its runners all take **Manage**.
 
 After an upgrade from a release that listed every machine to everyone who could read machines, only the instance Owner is on each machine, and the old `runners` and `machines:read` permissions are gone. Add people back with a rule on each machine.
 
@@ -31,15 +31,34 @@ After an upgrade from a release that listed every machine to everyone who could 
 
 Each machine's band on the **Runners** page shows who its rules reach, for the instance Owner and anyone holding **Manage** on it: **Only you** on a machine nobody has a rule on, otherwise the roles and people they name. Click it, or open the band's **⋯** or right-click the band and pick **Permissions…**, to open the permissions panel.
 
-The panel sets four permissions: **See**, **Deploy to**, **Manage** and **Delete**, each Allow, Fallback or Deny, for a role of any workspace (named with its workspace, such as "Member in Northwind") or for a person. Allowing See is what puts someone on the machine: the list, the pickers and the live updates start showing it to them. **Check access** shows a person's answer for each permission and the rule or role it came from. You can't allow what you don't hold on the machine, nor lift a Deny on it, but you can always add a Deny. A change shows at once to the person it names and to everyone who manages the machine.
+The panel sets five permissions: **See**, **Deploy to**, **Manage**, **Delete** and **Run commands**, each Allow, Fallback or Deny, for a role of any workspace (named with its workspace, such as "Member in Northwind") or for a person. Allowing See is what puts someone on the machine: the list, the pickers and the live updates start showing it to them. **Check access** shows a person's answer for each permission and the rule or role it came from. You can't allow what you don't hold on the machine, nor lift a Deny on it, but you can always add a Deny. A change shows at once to the person it names and to everyone who manages the machine.
 
-With the API or MCP, a machine's rules are `resource_type: "machine"` on `PUT /api/permissions` and `permission_overwrite_update`, with the actions `machines:see`, `machines:deploy`, `machines:write` and `machines:delete`. `GET /api/machines` and `machine_list` list the actions you hold on each machine.
+With the API or MCP, a machine's rules are `resource_type: "machine"` on `PUT /api/permissions` and `permission_overwrite_update`, with the actions `machines:see`, `machines:deploy`, `machines:write`, `machines:delete` and `machines:shell`. `GET /api/machines` and `machine_list` list the actions you hold on each machine.
 
 ## Machines
 
 Every runner belongs to a machine, and a stack deploys to a machine rather than to a runner. Any connected, idle runner on that machine picks up the job, so you scale a machine by adding runners to it. Jobs wait in the queue while no runner on the machine is connected.
 
 Each machine has a stack root, the directory its stack checkouts live under (`stacks/<slug>/repo`). Click it on the machine's band on the **Runners** page to change it. A stack keeps its location once it has deployed.
+
+## Commands on a machine
+
+Nexul can run a command on one of a machine's runners and keep the record of it, for checking a server from the browser or for an agent. **A command runs as the user the runner runs as, and on Linux that is root**: whoever runs a command there can do anything on that server.
+
+So it takes three things, and all three start off:
+
+- **The runner's own opt-in, at the machine.** A runner installed with `--allow-shell` takes commands; without it the runner refuses every one, whatever Nexul's switch says, and Nexul can never turn this on. On the machine, `sudo nexul shell on build-box-1` turns it on for an installed runner (the instance's own is called `instance`) and `sudo nexul shell off build-box-1` turns it off again; each restarts the runner.
+
+  ```sh
+  sudo nexul install runner --server https://nexul.example.com --name build-box-1 --code nxe_… --allow-shell
+  ```
+
+- **The machine's switch in Nexul.** Open the machine band's **⋯**, pick **Commands…**, and turn on **Run commands from Nexul**. Turning it off stops every command running on the machine.
+- **Run commands** (`machines:shell`) on the machine, for whoever runs one. No role holds it after an upgrade; the instance Owner holds it on every machine, and a role gets it like the other machine permissions, with a role bit or a rule on the machine. A scoped API token needs `machines:shell` among its own scopes.
+
+The same **Commands…** sheet runs a command: pick the runner when the machine has several, type the command and click **Run**. It runs in `bash` (else `sh`), or PowerShell on Windows, from the runner user's home folder, with no input, for 60 seconds unless told otherwise and at most an hour; four run at a time per runner and the rest wait. The list under it shows the newest commands with how each ended, which runner ran it and who ran it; a row opens its output, live while it runs, and **Stop** ends a running one and everything it started. A runner that is offline, or that disconnects, fails the command.
+
+Every command is recorded: the command line, who ran it, from where, when and how it ended are kept for good, and the output (its last MiB) for 30 days. Everyone with **Run commands** on the machine sees the record, and nobody else does. Agents run one with `command_run` and `runner_id` (a runner's `id` from `machine_list`), and read the record back with `machine_list`, the machine's `id` and `commands: {}`.
 
 ## Deleting a machine
 
