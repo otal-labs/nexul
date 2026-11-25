@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
+import { createFrameBatch } from "@nexul/client-core/frameBatch";
+
 import { ContainerLogStream } from "@/api/logStream";
-import type { ContainerLogs } from "@/models/ContainerLog";
+import { MAX_LOG_LINES, type ContainerLogs, type ContainerLogWireLine } from "@/models/ContainerLog";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useIsViewingAs } from "@/stores/viewAsStore";
 import { appendLogLines } from "@/utils/ContainerLogUtility";
@@ -17,12 +19,24 @@ export const useContainerLogs = (path: string): ContainerLogs => {
 
   useEffect(() => {
     if (!token || viewing) return;
+    const batch = createFrameBatch<ContainerLogWireLine>({
+      deliver: (incoming) => setLogs((prev) => ({ ...prev, lines: appendLogLines(prev.lines, incoming) })),
+      limit: MAX_LOG_LINES,
+      requestFrame: requestAnimationFrame,
+      cancelFrame: cancelAnimationFrame,
+    });
     const stream = new ContainerLogStream(path, token, {
-      onLines: (incoming) => setLogs((prev) => ({ ...prev, lines: appendLogLines(prev.lines, incoming) })),
-      onStatus: (status, reason) => setLogs((prev) => ({ ...prev, status, reason })),
+      onLines: batch.push,
+      onStatus: (status, reason) => {
+        batch.flush();
+        setLogs((prev) => ({ ...prev, status, reason }));
+      },
     });
     stream.open();
-    return () => stream.close();
+    return () => {
+      stream.close();
+      batch.cancel();
+    };
   }, [path, token, viewing]);
 
   return viewing ? viewingLogs : logs;

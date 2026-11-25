@@ -2,6 +2,8 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
+import { createFrameBatch } from "@nexul/client-core/frameBatch";
+
 import { api } from "@/api/client";
 import { errorMessage, isNotFound } from "@/api/errors";
 import { buildLogsURL, parseLogFrame } from "@/api/logs";
@@ -41,14 +43,17 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
       let run = 0;
       let newest = "";
 
-      const append = (incoming: ContainerLogLine[], after: string) =>
-        setLogs((prev) => {
-          const fresh = after ? incoming.filter((l) => l.ts > after) : incoming;
-          if (fresh.length === 0) return prev;
-          let id = (prev.lines.at(-1)?.id ?? -1) + 1;
-          const added = fresh.map((l) => ({ ...l, id: id++ }));
-          return { ...prev, lines: [...prev.lines, ...added].slice(-MAX_LOG_LINES) };
-        });
+      const batch = createFrameBatch<ContainerLogLine>({
+        deliver: (incoming) =>
+          setLogs((prev) => {
+            let id = (prev.lines.at(-1)?.id ?? -1) + 1;
+            const added = incoming.map((l) => ({ ...l, id: id++ }));
+            return { ...prev, lines: [...prev.lines, ...added].slice(-MAX_LOG_LINES) };
+          }),
+        limit: MAX_LOG_LINES,
+        requestFrame: requestAnimationFrame,
+        cancelFrame: cancelAnimationFrame,
+      });
 
       const retry = (reason: string | undefined, mine: number) => {
         if (mine !== run) return;
@@ -91,13 +96,14 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
             lines.forEach((l) => {
               if (l.ts > newest) newest = l.ts;
             });
-            append(lines, after);
+            batch.push(after ? lines.filter((l) => l.ts > after) : lines);
           } catch {
             console.warn("logs dropped malformed frame");
           }
         };
         ws.onclose = (ev) => {
           socket = null;
+          batch.flush();
           if (mine !== run) return;
           if (!opened) {
             void explainFailure(mine);
@@ -114,6 +120,7 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
       // Bumping run orphans every callback of the socket it closes, so a late probe cannot reopen it.
       const close = () => {
         run += 1;
+        batch.flush();
         if (timer) clearTimeout(timer);
         if (socket) {
           socket.onopen = null;
