@@ -27,6 +27,13 @@ type SSOSettings interface {
 	Remove(ctx context.Context) (sso.View, error)
 }
 
+// SAMLSettings is the slice of the SAML use-cases instance_update calls.
+type SAMLSettings interface {
+	SAMLView(ctx context.Context) (sso.SAMLView, error)
+	UpdateSAML(ctx context.Context, p sso.SAMLPatch) (sso.SAMLView, error)
+	RemoveSAML(ctx context.Context) (sso.SAMLView, error)
+}
+
 // BrandingSettings is the slice of the branding use-cases instance_update calls.
 type BrandingSettings interface {
 	Get(ctx context.Context) (branding.Settings, error)
@@ -37,14 +44,23 @@ type BrandingSettings interface {
 }
 
 // InstanceTools is instance_update, the one tool that changes the instance's own settings (ADR 0185): the enterprise
-// license key, and the single sign-on provider and branding that key unlocks.
-func InstanceTools(l LicenseKeeper, s SSOSettings, b BrandingSettings) []mcptool.Tool {
-	return []mcptool.Tool{instanceUpdateTool(l, s, b)}
+// license key, and the single sign-on provider, OIDC or SAML, and branding that key unlocks.
+func InstanceTools(l LicenseKeeper, s SSOSettings, m SAMLSettings, b BrandingSettings) []mcptool.Tool {
+	return []mcptool.Tool{instanceUpdateTool(instanceSettingsOf{l: l, s: s, m: m, b: b})}
+}
+
+// instanceSettingsOf is every settings use-case instance_update reaches.
+type instanceSettingsOf struct {
+	l LicenseKeeper
+	s SSOSettings
+	m SAMLSettings
+	b BrandingSettings
 }
 
 type instanceUpdateIn struct {
 	LicenseKey *string     `json:"license_key,omitempty" jsonschema:"A license key's text; an empty string removes the key."`
 	SSO        *ssoIn      `json:"sso,omitempty" jsonschema:"The single sign-on provider; needs a key unlocking sso."`
+	SAML       *samlIn     `json:"saml,omitempty" jsonschema:"The single sign-on provider when it speaks SAML; needs a key unlocking sso."`
 	Branding   *brandingIn `json:"branding,omitempty" jsonschema:"The instance's own look; needs a key unlocking branding."`
 }
 
@@ -68,21 +84,34 @@ type ssoIn struct {
 	Remove       *bool   `json:"remove,omitempty" jsonschema:"True deletes the provider and brings the other sign-ins back."`
 }
 
+type samlIn struct {
+	MetadataURL    *string `json:"metadata_url,omitempty" jsonschema:"The provider's https metadata URL, fetched now and daily."`
+	MetadataXML    *string `json:"metadata_xml,omitempty" jsonschema:"The provider's metadata XML, instead of a URL."`
+	EmailAttribute *string `json:"email_attribute,omitempty" jsonschema:"The attribute the email is read from; email when empty."`
+	NameAttribute  *string `json:"name_attribute,omitempty" jsonschema:"The attribute the display name is read from; empty reads none."`
+	DisplayName    *string `json:"display_name,omitempty" jsonschema:"The name on the button, up to 40 characters."`
+	JoinRoleID     *string `json:"join_role_id,omitempty" jsonschema:"The default workspace's role a first sign-in gives, any but Owner."`
+	Only           *bool   `json:"only,omitempty" jsonschema:"As sso's only."`
+	Remove         *bool   `json:"remove,omitempty" jsonschema:"True deletes the SAML provider."`
+}
+
 // instanceSettings is instance_update's answer, keyed so later instance settings sit beside these.
 type instanceSettings struct {
 	License  license.Status    `json:"license"`
 	SSO      sso.View          `json:"sso"`
+	SAML     sso.SAMLView      `json:"saml"`
 	Branding branding.Settings `json:"branding"`
 }
 
-func instanceUpdateTool(l LicenseKeeper, s SSOSettings, b BrandingSettings) mcptool.Tool {
+func instanceUpdateTool(d instanceSettingsOf) mcptool.Tool {
 	return mcptool.New("instance_update", "Update instance",
 		"Changes the instance's own settings: its enterprise license key, single sign-on provider and branding. license_key replaces "+
 			"the key, or removes it when empty (the features stop, what they made stays); a key for another address, with a bad "+
 			"signature or expired is refused. sso saves the OIDC provider people sign in through, which needs a key unlocking sso; "+
-			"the provider is reached before anything is stored. branding sets the product name, logo, accent, an imported VS Code "+
+			"the provider is reached before anything is stored. saml saves a SAML provider instead; an instance holds one, so "+
+			"remove the other first. branding sets the product name, logo, accent, an imported VS Code "+
 			"theme and css shown instead of Nexul's, which needs a key unlocking branding; "+
-			"instance_get with styling_guide explains the css. Returns all three as instance_get shows them.",
+			"instance_get with styling_guide explains the css. Returns them all as instance_get shows them.",
 		mcptool.Hints{Idempotent: true, Local: false},
 		func(ctx context.Context, in instanceUpdateIn) (any, error) {
 			var out instanceSettings
@@ -90,58 +119,80 @@ func instanceUpdateTool(l LicenseKeeper, s SSOSettings, b BrandingSettings) mcpt
 			if in.LicenseKey != nil {
 				steps = append(steps, step{field: "license_key", run: func(ctx context.Context) (err error) {
 					if *in.LicenseKey == "" {
-						out.License, err = l.Remove(ctx)
+						out.License, err = d.l.Remove(ctx)
 						return err
 					}
-					out.License, err = l.Set(ctx, *in.LicenseKey)
+					out.License, err = d.l.Set(ctx, *in.LicenseKey)
 					return err
 				}})
 			}
 			if in.SSO != nil {
 				steps = append(steps, step{field: "sso", run: func(ctx context.Context) (err error) {
 					if in.SSO.Remove != nil && *in.SSO.Remove {
-						out.SSO, err = s.Remove(ctx)
+						out.SSO, err = d.s.Remove(ctx)
 						return err
 					}
-					out.SSO, err = s.Update(ctx, sso.Patch{
+					out.SSO, err = d.s.Update(ctx, sso.Patch{
 						IssuerURL: in.SSO.IssuerURL, ClientID: in.SSO.ClientID, ClientSecret: in.SSO.ClientSecret,
 						DisplayName: in.SSO.DisplayName, JoinRoleID: in.SSO.JoinRoleID, Only: in.SSO.Only,
 					})
 					return err
 				}})
 			}
+			if in.SAML != nil {
+				steps = append(steps, step{field: "saml", run: func(ctx context.Context) (err error) {
+					out.SAML, err = changeSAML(ctx, d.m, in.SAML)
+					return err
+				}})
+			}
 			if in.Branding != nil {
 				steps = append(steps, step{field: "branding", run: func(ctx context.Context) (err error) {
-					out.Branding, err = changeBranding(ctx, b, in.Branding)
+					out.Branding, err = changeBranding(ctx, d.b, in.Branding)
 					return err
 				}})
 			}
 			if _, err := runSteps(ctx, steps); err != nil {
 				return nil, err
 			}
-			return readBack(ctx, l, s, b, in, out)
+			return readBack(ctx, d, in, out)
 		})
 }
 
 // readBack fills what the call did not change, so every answer carries both settings.
-func readBack(ctx context.Context, l LicenseKeeper, s SSOSettings, b BrandingSettings, in instanceUpdateIn, out instanceSettings) (any, error) {
+func readBack(ctx context.Context, d instanceSettingsOf, in instanceUpdateIn, out instanceSettings) (any, error) {
 	var err error
 	if in.LicenseKey == nil {
-		if out.License, err = l.Status(ctx); err != nil {
+		if out.License, err = d.l.Status(ctx); err != nil {
 			return nil, fmt.Errorf("read the license: %w", err)
 		}
 	}
 	if in.SSO == nil {
-		if out.SSO, err = s.View(ctx); err != nil {
+		if out.SSO, err = d.s.View(ctx); err != nil {
 			return nil, fmt.Errorf("read single sign-on: %w", err)
 		}
 	}
+	if in.SAML == nil {
+		if out.SAML, err = d.m.SAMLView(ctx); err != nil {
+			return nil, fmt.Errorf("read saml: %w", err)
+		}
+	}
 	if in.Branding == nil {
-		if out.Branding, err = b.Get(ctx); err != nil {
+		if out.Branding, err = d.b.Get(ctx); err != nil {
 			return nil, fmt.Errorf("read branding: %w", err)
 		}
 	}
 	return out, nil
+}
+
+// changeSAML removes the SAML provider or saves the patch.
+func changeSAML(ctx context.Context, m SAMLSettings, in *samlIn) (sso.SAMLView, error) {
+	if in.Remove != nil && *in.Remove {
+		return m.RemoveSAML(ctx)
+	}
+	return m.UpdateSAML(ctx, sso.SAMLPatch{
+		MetadataURL: in.MetadataURL, MetadataXML: in.MetadataXML, EmailAttribute: in.EmailAttribute, NameAttribute: in.NameAttribute,
+		DisplayName: in.DisplayName, JoinRoleID: in.JoinRoleID, Only: in.Only,
+	})
 }
 
 // changeBranding applies one branding patch: clear alone, else the name, accent and themes, then the logo.

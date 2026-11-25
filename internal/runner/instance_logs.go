@@ -41,6 +41,12 @@ func (s *Service) WithSSO(read func(context.Context) (any, error)) *Service {
 	return s
 }
 
+// WithSAML attaches the read of the SAML provider settings instance_get includes, so runner never imports ee.
+func (s *Service) WithSAML(read func(context.Context) (any, error)) *Service {
+	s.saml = read
+	return s
+}
+
 // WithBranding attaches the read of the instance branding instance_get includes, so runner never imports ee.
 func (s *Service) WithBranding(read func(context.Context) (any, error)) *Service {
 	s.branding = read

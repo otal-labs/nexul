@@ -54,7 +54,15 @@ type Public struct {
 	Name   string `json:"name"`
 	// Only is true while every other sign-in method is hidden.
 	Only bool `json:"only"`
+	// Protocol is the provider's, oidc or saml, which picks the route the button starts at; empty when none is set.
+	Protocol string `json:"protocol"`
 }
+
+// The protocols a provider speaks; an instance holds one provider (ADR 0189).
+const (
+	ProtocolOIDC = "oidc"
+	ProtocolSAML = "saml"
+)
 
 // Patch changes the settings; an omitted field keeps its value, and the secret is write-only.
 type Patch struct {
@@ -112,9 +120,17 @@ var (
 
 // checkIssuer takes https issuers, and http only on a loopback address where a provider is run for development.
 func checkIssuer(raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+	if u, err := url.Parse(raw); err == nil && u.RawQuery != "" {
 		return fmt.Errorf("%w: issuer URL must be an absolute https URL such as https://login.example.com", apperrs.ErrInvalid)
+	}
+	return checkHTTPS("issuer URL", "https://login.example.com", raw)
+}
+
+// checkHTTPS takes an absolute https URL, and http only on a loopback address; label and example name it in the refusal.
+func checkHTTPS(label, example, raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" {
+		return fmt.Errorf("%w: %s must be an absolute https URL such as %s", apperrs.ErrInvalid, label, example)
 	}
 	if u.Scheme == "https" {
 		return nil
@@ -125,7 +141,7 @@ func checkIssuer(raw string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: issuer URL must use https", apperrs.ErrInvalid)
+	return fmt.Errorf("%w: %s must use https", apperrs.ErrInvalid, label)
 }
 
 func trim(p *string, keep string) string {

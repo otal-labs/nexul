@@ -129,7 +129,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		topology.MCPTools(opts.Topology),
 		deploy.MCPTools(opts.Deploy),
 		runner.MCPTools(opts.Runner),
-		composite.InstanceTools(opts.License, opts.SSO, opts.Branding),
+		composite.InstanceTools(opts.License, opts.SSO, opts.SSO, opts.Branding),
 		composite.HostTools(opts.Hosts),
 		gitprovider.MCPTools(opts.Git, opts.ChangeContext, opts.GitGate),
 		repository.MCPTools(opts.Repository),

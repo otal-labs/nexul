@@ -38,9 +38,11 @@ func (f *fakeLicenseKeeper) Remove(context.Context) (license.Status, error) {
 }
 
 type fakeSSOSettings struct {
-	view    sso.View
-	patches []sso.Patch
-	err     error
+	view        sso.View
+	patches     []sso.Patch
+	saml        sso.SAMLView
+	samlPatches []sso.SAMLPatch
+	err         error
 }
 
 func (f *fakeSSOSettings) View(context.Context) (sso.View, error) { return f.view, nil }
@@ -55,6 +57,20 @@ func (f *fakeSSOSettings) Update(_ context.Context, p sso.Patch) (sso.View, erro
 func (f *fakeSSOSettings) Remove(context.Context) (sso.View, error) {
 	f.view.Configured = false
 	return f.view, nil
+}
+
+func (f *fakeSSOSettings) SAMLView(context.Context) (sso.SAMLView, error) { return f.saml, nil }
+func (f *fakeSSOSettings) UpdateSAML(_ context.Context, p sso.SAMLPatch) (sso.SAMLView, error) {
+	if f.err != nil {
+		return sso.SAMLView{}, f.err
+	}
+	f.samlPatches = append(f.samlPatches, p)
+	f.saml.Configured = true
+	return f.saml, nil
+}
+func (f *fakeSSOSettings) RemoveSAML(context.Context) (sso.SAMLView, error) {
+	f.saml.Configured = false
+	return f.saml, nil
 }
 
 type fakeBrandingSettings struct {
@@ -88,14 +104,14 @@ func (f *fakeBrandingSettings) Clear(context.Context) (branding.Settings, error)
 	return f.Get(context.Background())
 }
 
-func instanceCall(t *testing.T, l LicenseKeeper, s SSOSettings, args string) (instanceSettings, error) {
+func instanceCall(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, args string) (instanceSettings, error) {
 	t.Helper()
 	return instanceCallWith(t, l, s, &fakeBrandingSettings{}, args)
 }
 
-func instanceCallWith(t *testing.T, l LicenseKeeper, s SSOSettings, b BrandingSettings, args string) (instanceSettings, error) {
+func instanceCallWith(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, b BrandingSettings, args string) (instanceSettings, error) {
 	t.Helper()
-	out, err := call(t, t.Context(), InstanceTools(l, s, b), "instance_update", args)
+	out, err := call(t, t.Context(), InstanceTools(l, s, s, b), "instance_update", args)
 	if err != nil {
 		return instanceSettings{}, err
 	}
@@ -138,6 +154,25 @@ func TestInstanceUpdate_SSOFieldsPassThroughAsAPatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, got.SSO.Configured)
 	assert.Len(t, s.patches, 1, "remove ignores the other fields")
+}
+
+func TestInstanceUpdate_SAMLFieldsPassThroughAsAPatch(t *testing.T) {
+	t.Parallel()
+	l, s := &fakeLicenseKeeper{key: "k"}, &fakeSSOSettings{}
+
+	got, err := instanceCall(t, l, s, `{"saml":{"metadata_url":"https://login.example.com/saml","only":false}}`)
+	require.NoError(t, err)
+	assert.True(t, got.SAML.Configured)
+	require.Len(t, s.samlPatches, 1)
+	assert.Equal(t, "https://login.example.com/saml", *s.samlPatches[0].MetadataURL)
+	assert.False(t, *s.samlPatches[0].Only, "false is a value, not an omission")
+	assert.Nil(t, s.samlPatches[0].MetadataXML, "an omitted field is left alone")
+	assert.Empty(t, s.patches, "the OIDC settings are not touched")
+
+	got, err = instanceCall(t, l, s, `{"saml":{"remove":true,"display_name":"ignored"}}`)
+	require.NoError(t, err)
+	assert.False(t, got.SAML.Configured)
+	assert.Len(t, s.samlPatches, 1, "remove ignores the other fields")
 }
 
 func TestInstanceUpdate_ASettingThatFailsAfterAnotherApplied_SaysWhatWasChanged(t *testing.T) {

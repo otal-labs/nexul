@@ -114,7 +114,7 @@ func TestHandler_PublicState_NeedsNoSession(t *testing.T) {
 	NewHandler(h.svc, &fakeBrowser{}).PublicRoutes().ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":true,"name":"Acme SSO","only":false}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":true,"name":"Acme SSO","only":false,"protocol":"oidc"}`, rec.Body.String())
 }
 
 func TestHandler_Settings_NeverReturnTheClientSecret_AndAnswerRefusalsWithTheirStatus(t *testing.T) {

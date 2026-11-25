@@ -78,6 +78,8 @@ type Service struct {
 	license func(context.Context) (any, error)
 	// sso reads the single sign-on settings instance_get includes; nil on a build that wires none.
 	sso func(context.Context) (any, error)
+	// saml reads the SAML provider settings instance_get includes; nil on a build that wires none.
+	saml func(context.Context) (any, error)
 	// branding reads the instance branding instance_get includes; nil on a build that wires none.
 	branding func(context.Context) (any, error)
 	// stylingGuide is how to write branding css, which instance_get returns when asked; empty on a build that wires none.

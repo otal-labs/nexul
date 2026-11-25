@@ -9,6 +9,7 @@ import type { LiveFollower } from "@/lib/live";
 
 export const getSsoKey = "ssoSettings";
 export const getSsoPublicKey = "ssoPublic";
+export const getSamlKey = "samlSettings";
 
 export const useSsoSettings = () =>
   useQuery({
@@ -70,6 +71,8 @@ export const useVerifySsoCheck = () =>
 export const ssoFollower: LiveFollower = {
   "instance.sso_changed": (_payload: unknown, { client }) =>
     Promise.all([client.invalidateQueries({ queryKey: [getSsoKey] }), client.invalidateQueries({ queryKey: [getSsoPublicKey] })]),
+  "instance.saml_changed": (_payload: unknown, { client }) =>
+    Promise.all([client.invalidateQueries({ queryKey: [getSamlKey] }), client.invalidateQueries({ queryKey: [getSsoPublicKey] })]),
 };
 
 // Joins the account a first sign-in made onto the person's existing one; the Team refetches on the duplicate's account.disabled.

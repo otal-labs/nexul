@@ -32,5 +32,7 @@ escape (ADR 0184, ADR 0186).
 - **Metadata.** By URL (https, refreshed daily and on demand) or upload. Metadata fetched by URL is not
   signature-checked in the first version; the https certificate is its protection. Every certificate in it verifies a
   response, so an IdP rotation overlaps; Nexul's own certificate rotates by publishing two until the Owner retires one.
+- **Settings over MCP.** `instance_update` gains a `saml` object beside `sso`, and `instance_get` reads it back without
+  the private key. The advertised size budget rises by 1,000 characters for it.
 
 Decided: 2026-11-14.

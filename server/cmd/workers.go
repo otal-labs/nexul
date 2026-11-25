@@ -68,6 +68,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc}).
 		WithLicense(func(ctx context.Context) (any, error) { return svc.licenseSvc.Status(ctx) }).
 		WithSSO(func(ctx context.Context) (any, error) { return svc.ssoSvc.View(ctx) }).
+		WithSAML(func(ctx context.Context) (any, error) { return svc.ssoSvc.SAMLView(ctx) }).
 		WithBranding(func(ctx context.Context) (any, error) { return svc.brandingSvc.Get(ctx) }).
 		WithStylingGuide(branding.StylingGuide())
 	if cfg.LogsURL != nil {

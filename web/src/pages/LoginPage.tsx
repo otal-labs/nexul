@@ -86,7 +86,7 @@ export const LoginPage = () => {
           {failure != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{signInErrorMessage(failure)}</InlineNotice>}
           {exchange.error != null && <InlineNotice title="Couldn't sign you in" className="mt-6">{errorMessage(exchange.error)}</InlineNotice>}
           <div className="mt-6 grid gap-2">
-            {ssoActive && <SsoSignInButton name={sso?.name ?? ""} primary />}
+            {ssoActive && <SsoSignInButton name={sso?.name ?? ""} protocol={sso?.protocol ?? "oidc"} primary />}
             {!ssoOnly && <ProviderButton provider="github" primary={!ssoActive} onSelect={startOAuth} />}
             {!ssoOnly && googleEnabled && <ProviderButton provider="google" primary={false} onSelect={startOAuth} />}
             {!ssoOnly && discordEnabled && <ProviderButton provider="discord" primary={false} onSelect={startOAuth} />}
