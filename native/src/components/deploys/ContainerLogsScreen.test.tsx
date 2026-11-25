@@ -1,4 +1,5 @@
 import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { Profiler } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { api } from "@/api/client";
@@ -88,7 +89,12 @@ const at = (n: number) => `2026-09-30T10:00:${String(n).padStart(2, "0")}.000000
 const line = (n: number, text = `line ${n}`, stream: ContainerLogLine["stream"] = "stdout"): ContainerLogLine => ({ ts: at(n), stream, line: text });
 
 const openSocket = () => act(async () => last().onopen?.());
-const emit = (lines: ContainerLogLine[]) => act(async () => last().onmessage?.({ data: JSON.stringify({ lines }) }));
+const send = (lines: ContainerLogLine[]) => act(async () => last().onmessage?.({ data: JSON.stringify({ lines }) }));
+const nextFrame = () => act(async () => void jest.advanceTimersByTime(16));
+const emit = async (lines: ContainerLogLine[]) => {
+  await send(lines);
+  await nextFrame();
+};
 const dropSocket = (code: number, reason = "") => act(async () => last().onclose?.({ code, reason }));
 const scroll = (distanceFromEnd: number) =>
   act(async () =>
@@ -244,6 +250,29 @@ describe("ContainerLogsScreen", () => {
     await openSocket();
     await emit([line(2), line(3)]);
     expect(screen.getAllByText(/^line \d$/).map((n) => n.props.children)).toEqual(["line 1", "line 2", "line 3"]);
+  });
+
+  test("a burst of 100 socket frames within one animation frame commits the screen once, every line in order", async () => {
+    let commits = 0;
+    await render(
+      <Profiler id="logs" onRender={() => (commits += 1)}>
+        <ContainerLogsScreen />
+      </Profiler>,
+    );
+    await openSocket();
+    await emit([line(0)]);
+
+    commits = 0;
+    const stamp = (n: number) => `2026-09-30T11:00:00.${String(n).padStart(9, "0")}Z`;
+    for (let frame = 0; frame < 100; frame++) {
+      await send(Array.from({ length: 5 }, (_, i) => ({ ts: stamp(frame * 5 + i), stream: "stdout" as const, line: `b${frame * 5 + i}` })));
+    }
+    expect(commits).toBe(0);
+    await nextFrame();
+
+    expect(commits).toBe(1);
+    const data = mockList.props.data as { line: string }[];
+    expect(data.map((l) => l.line)).toEqual(["line 0", ...Array.from({ length: 500 }, (_, i) => `b${i}`)]);
   });
 
   test("only the last 2000 lines are kept", async () => {

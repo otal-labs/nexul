@@ -63,7 +63,11 @@ const openSocket = () =>
     last().readyState = FakeSocket.OPEN;
     last().onopen?.();
   });
-const emit = (lines: ContainerLogWireLine[]) => act(async () => last().onmessage?.({ data: JSON.stringify({ lines }) }));
+const emit = (lines: ContainerLogWireLine[]) =>
+  act(async () => {
+    last().onmessage?.({ data: JSON.stringify({ lines }) });
+    vi.advanceTimersToNextFrame();
+  });
 const dropSocket = (code: number, reason = "") => act(async () => last().onclose?.({ code, reason }));
 const scrollTo = (away: boolean) =>
   act(async () => {
