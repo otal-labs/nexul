@@ -70,7 +70,7 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
         {commands && commands.length > 0 && (
           <ul className="divide-y divide-border">
             {commands.map((command) => (
-              <ComputerCommandRow key={command.id} command={command} onOutput={(c) => setShown({ command: c, open: true })} />
+              <ComputerCommandRow key={command.id} command={command} named={owner} onOutput={(c) => setShown({ command: c, open: true })} />
             ))}
           </ul>
         )}
