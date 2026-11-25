@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { appendLogLines, lastLogSeq } from "@nexul/client-core/deployLog";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
@@ -50,12 +51,21 @@ export const refetchDeployHistory = (client: QueryClient, key: string, { id, sta
   return client.invalidateQueries({ queryKey, exact: true });
 };
 
+// An open log fetches only the lines after its newest one, up to four batches a second; a closed one loads whole on open.
+const appendDeployLog = async (client: QueryClient, id: string) => {
+  const queryKey = [getDeployLogKey, id];
+  const cached = client.getQueryData<DeployLogLine[]>(queryKey);
+  if (!cached || !client.getQueryCache().find({ queryKey, exact: true })?.isActive()) return client.invalidateQueries({ queryKey, exact: true });
+  try {
+    const { data } = await api.get<DeployLogLine[]>(`/api/deploys/${id}/log?after=${lastLogSeq(cached)}`);
+    client.setQueryData<DeployLogLine[]>(queryKey, (lines) => appendLogLines(lines ?? [], data));
+  } catch {
+    await client.invalidateQueries({ queryKey, exact: true });
+  }
+};
+
 export const deployFollower: LiveFollower = {
   // Only deploy.updated refetches the record; the runner's topics fire before the deploy domain commits the change.
-  // ponytail: whole-log refetch per batch (≤ 4/s); append lines into the cache if logs get large.
   "deploy.updated": ({ id }: DeployFrame, { client }) =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: [getDeployKey, id], exact: true }),
-      client.invalidateQueries({ queryKey: [getDeployLogKey, id], exact: true }),
-    ]),
+    Promise.all([client.invalidateQueries({ queryKey: [getDeployKey, id], exact: true }), appendDeployLog(client, id)]),
 };

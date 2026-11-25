@@ -48,6 +48,7 @@ const mockGet = (url: string) => {
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve(me);
   if (url === "/api/deploys/d-1") return Promise.resolve(deploy);
   if (url === "/api/deploys/d-1/log") return Promise.resolve(lines);
+  if (url.startsWith("/api/deploys/d-1/log?after=")) return Promise.resolve(lines.filter((line) => line.seq > Number(url.split("=")[1])));
   if (url === "/api/stacks/s-1") return Promise.resolve({ id: "s-1", project_id: "p-1", name: "api" });
   throw new Error(`unexpected GET ${url}`);
 };
@@ -84,18 +85,20 @@ describe("DeployScreen", () => {
     expect(mockListProps.current).toMatchObject({ initialScrollAtEnd: true, alignItemsAtEnd: true, maintainScrollAtEnd: true });
   });
 
-  test("a live deploy.updated event appends the new line and keeps following the tail", async () => {
+  test("a live deploy.updated event fetches only the lines after the newest one held, appends them, and keeps following the tail", async () => {
     const client = await renderScreen();
     await screen.findByText("pulling image");
 
     lines = [...lines, { seq: 3, ts: 3_000, phase: "deploy", text: "container healthy" }];
-    const invalidate = jest.spyOn(client, "invalidateQueries");
+    jest.mocked(api.get).mockClear();
     await act(async () => {
-      dispatch(client)({ topic: "deploy.updated", type: "event", payload: {} });
-      await Promise.all(invalidate.mock.results.map((result) => result.value));
+      dispatch(client)({ topic: "deploy.updated", type: "event", payload: { id: "d-1", status: "running" } });
     });
 
     expect(await screen.findByText("container healthy")).toBeTruthy();
+    expect(screen.getByText("starting")).toBeTruthy();
+    expect(jest.mocked(api.get).mock.calls.map(([url]) => url)).not.toContain("/api/deploys/d-1/log");
+    expect(jest.mocked(api.get).mock.calls.map(([url]) => url)).toContain("/api/deploys/d-1/log?after=2");
     expect(mockListProps.current).toMatchObject({ maintainScrollAtEnd: true });
   });
 

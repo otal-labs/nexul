@@ -164,7 +164,7 @@ func TestIntegration_RunnerFailurePath(t *testing.T) {
 	stored, err := store.Deploys.GetByID(context.Background(), got.ID)
 	require.NoError(t, err)
 	assert.Equal(t, deploy.StatusFailed, stored.Status)
-	lines, err := svc.Log(context.Background(), got.ID)
+	lines, err := svc.Log(context.Background(), got.ID, 0)
 	require.NoError(t, err)
 	require.Len(t, lines, 3)
 	assert.Equal(t, "docker pull ghcr.io/onik/api:v1", lines[0].Text)

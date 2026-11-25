@@ -963,7 +963,7 @@ func TestHandleStatusChanged(t *testing.T) {
 		got, err := repo.GetByID(context.Background(), "d1")
 		require.NoError(t, err)
 		assert.Equal(t, StatusFailed, got.Status)
-		lines, err := s.Log(context.Background(), "d1")
+		lines, err := s.Log(context.Background(), "d1", 0)
 		require.NoError(t, err)
 		require.Len(t, lines, 1)
 		assert.Equal(t, LogLine{Seq: 1, TS: s.now().UnixMilli(), Phase: "", Text: "deploy failed: oom-killed"}, lines[0])
@@ -1187,7 +1187,7 @@ func TestHandleLog(t *testing.T) {
 		ev := DeployLogEvent{ID: "d1", Phase: "checkout", Log: "clone org/app@main\nCloning into '/data/repo'...\n", TS: 1695379028112}
 		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
 
-		lines, err := s.Log(context.Background(), "d1")
+		lines, err := s.Log(context.Background(), "d1", 0)
 		require.NoError(t, err)
 		assert.Equal(t, []LogLine{
 			{Seq: 1, TS: 1695379028112, Phase: "checkout", Text: "clone org/app@main"},
@@ -1202,7 +1202,7 @@ func TestHandleLog(t *testing.T) {
 		ev := DeployLogEvent{ID: "d1", Phase: "build", Log: "a\n\nb", TS: 5}
 		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
 
-		lines, err := s.Log(context.Background(), "d1")
+		lines, err := s.Log(context.Background(), "d1", 0)
 		require.NoError(t, err)
 		require.Len(t, lines, 3)
 		assert.Equal(t, "", lines[1].Text)
@@ -1212,7 +1212,7 @@ func TestHandleLog(t *testing.T) {
 		s := newTestService(repo, newFakeBus())
 		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
 		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "build", Log: "\n"})}))
-		lines, err := s.Log(context.Background(), "d1")
+		lines, err := s.Log(context.Background(), "d1", 0)
 		require.NoError(t, err)
 		assert.Empty(t, lines)
 		assert.Empty(t, repo.updatedEvents())
@@ -1255,14 +1255,14 @@ func TestHandleLog(t *testing.T) {
 func TestLog(t *testing.T) {
 	t.Run("unknown deploy is not found", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.Log(context.Background(), "nope")
+		_, err := s.Log(context.Background(), "nope", 0)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
 	t.Run("a deploy with no output yields an empty, non-nil slice", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
 		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
-		lines, err := s.Log(context.Background(), "d1")
+		lines, err := s.Log(context.Background(), "d1", 0)
 		require.NoError(t, err)
 		assert.NotNil(t, lines)
 		assert.Empty(t, lines)

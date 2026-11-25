@@ -1,10 +1,13 @@
 package deploy
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
@@ -124,8 +127,18 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, d)
 }
 
+// log serves the whole log, or with ?after=<seq> only the lines a live client has not fetched yet.
 func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
-	lines, err := h.svc.Log(r.Context(), r.PathValue("id"))
+	var after int64
+	if raw := r.URL.Query().Get("after"); raw != "" {
+		n, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || n < 0 {
+			httpx.WriteError(w, fmt.Errorf("%w: after must be a line's seq", apperrs.ErrInvalid))
+			return
+		}
+		after = n
+	}
+	lines, err := h.svc.Log(r.Context(), r.PathValue("id"), after)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

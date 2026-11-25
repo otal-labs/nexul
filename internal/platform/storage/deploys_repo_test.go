@@ -188,7 +188,7 @@ func TestDeploysRepo_ListLogLines_OrdersByTimeThenSeq(t *testing.T) {
 	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{{TS: 10, Phase: "checkout", Text: "late arrival"}}))
 	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-2", []deploy.LogLine{{TS: 1, Text: "other deploy"}}))
 
-	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1")
+	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1", 0)
 	require.NoError(t, err)
 	require.Len(t, got, 3)
 	assert.Equal(t, deploy.LogLine{Seq: 3, TS: 10, Phase: "checkout", Text: "late arrival"}, got[0])
@@ -196,11 +196,23 @@ func TestDeploysRepo_ListLogLines_OrdersByTimeThenSeq(t *testing.T) {
 	assert.Equal(t, deploy.LogLine{Seq: 2, TS: 20, Phase: "build", Text: "Step 2/3"}, got[2])
 }
 
+func TestDeploysRepo_ListLogLines_AfterASeqKeepsOnlyLaterLinesInTimeOrder(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{{TS: 20, Text: "Step 1/3"}, {TS: 20, Text: "Step 2/3"}}))
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{{TS: 30, Text: "Step 3/3"}, {TS: 10, Text: "late arrival"}}))
+
+	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1", 2)
+	require.NoError(t, err)
+	assert.Equal(t, []deploy.LogLine{{Seq: 4, TS: 10, Text: "late arrival"}, {Seq: 3, TS: 30, Text: "Step 3/3"}}, got)
+}
+
 func TestDeploysRepo_ListLogLines_Empty(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
-	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1")
+	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1", 0)
 	require.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Empty(t, got)
@@ -284,7 +296,7 @@ func TestDeploysRepo_ListLogTail_KeepsTheNewestLinesInListLogLinesOrder(t *testi
 		{TS: 30, Phase: "deploy", Text: "up"},
 	}))
 	require.NoError(t, s.Deploys.AppendLogLines(ctx, "dep-1", []deploy.LogLine{{TS: 10, Phase: "checkout", Text: "late arrival"}}))
-	all, err := s.Deploys.ListLogLines(ctx, "dep-1")
+	all, err := s.Deploys.ListLogLines(ctx, "dep-1", 0)
 	require.NoError(t, err)
 
 	got, total, err := s.Deploys.ListLogTail(ctx, "dep-1", 2)

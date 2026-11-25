@@ -116,6 +116,31 @@ func TestDeployRoutes_Log(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.JSONEq(t, `[{"seq":1,"ts":1695379028112,"phase":"checkout","text":"Cloning into '/data/repo'..."}]`, rec.Body.String())
 	})
+
+	t.Run("after a seq, only the lines a live client has not fetched come back", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		s := newTestService(repo, newFakeBus())
+		for _, line := range []string{"Step 1/2", "Step 2/2"} {
+			require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "build", Log: line, TS: 1})}))
+		}
+		h := NewHandler(s).Routes()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/d1/log?after=1", nil))
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `[{"seq":2,"ts":1,"phase":"build","text":"Step 2/2"}]`, rec.Body.String())
+	})
+
+	t.Run("an after that is not a seq is a 400", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		h := NewHandler(newTestService(repo, newFakeBus())).Routes()
+		for _, after := range []string{"abc", "-1"} {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/d1/log?after="+after, nil))
+			assert.Equal(t, http.StatusBadRequest, rec.Code, after)
+		}
+	})
 }
 
 func TestDeployRoutes_ListByStatus_Invalid(t *testing.T) {

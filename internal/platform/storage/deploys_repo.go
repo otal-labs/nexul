@@ -246,8 +246,8 @@ func insertOutboxRows(ctx context.Context, tx *sql.Tx, evts []eventbus.OutboxEve
 	return nil
 }
 
-func (r *DeploysRepo) ListLogLines(ctx context.Context, id string) ([]deploy.LogLine, error) {
-	rows, err := r.q.ListDeployLogLines(ctx, id)
+func (r *DeploysRepo) ListLogLines(ctx context.Context, id string, after int64) ([]deploy.LogLine, error) {
+	rows, err := r.q.ListDeployLogLines(ctx, sqlcgen.ListDeployLogLinesParams{DeployID: id, Seq: after})
 	if err != nil {
 		return nil, fmt.Errorf("list deploy %s log: %w", id, err)
 	}
