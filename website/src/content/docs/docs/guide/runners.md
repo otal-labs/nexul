@@ -79,7 +79,7 @@ The code in the command works once, for an hour. If the install fails, create a 
 
 A code nobody has used yet is listed on the **Runners** page under the machine it was made for, or under **No machine**, with the time it works until. Open its **⋯** and pick **Revoke code**, and it enrolls nothing; the command that carried it fails with an unknown code, so make a new command. You see the codes you made, the codes for a machine you have **Manage** on, and, as the instance Owner, every runner code. The code itself is never shown again, only its name and machine. Agents list them in `machine_list` (`open_enrollments`) and revoke one with `host_delete` and `code_id`; `host_create`'s result carries that id.
 
-The code that adds a computer is the same kind of code. It is listed under **Unused computer codes** in your settings, to you alone, even if you are the instance Owner. See [Paired computers](/docs/guide/paired-computers/).
+The code that adds a computer is the same kind of code. It is listed under **Unused computer codes** on the Agent page, to you alone, even if you are the instance Owner. See [Paired computers](/docs/guide/paired-computers/).
 
 A runner that makes a new machine puts you on it with **See**, **Deploy to**, **Manage** and **Delete**, in the same step; you hold no more than that, and the instance Owner or anyone with Manage on the machine can take you off. The code checks you again when the runner uses it: if someone else's machine bears that name by then, or you can no longer add machines, the install is refused and you create a new command.
 

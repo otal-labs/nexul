@@ -62,7 +62,7 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 ## Create or change a play
 
-Open **Plays** in the sidebar. Plays are grouped by type. A row shows when its last run started, the stage a ticket play shows on, how many of its auto plays are on, and when it is off. A play that needs a look says so on the row: how many runs are going, how many need an answer, or that its last run failed. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
+Open **Agent** in the sidebar. Its list holds your plays, grouped by type, above your computers and projects. A row shows when its last run started, the stage a ticket play shows on, how many of its auto plays are on, and when it is off. A play that needs a look says so on the row: how many runs are going, how many need an answer, or that its last run failed. Press **+** beside the list's title to make one, or open a play and press **Edit** to change it. **Clone** in a play's row menu opens a new play filled in from it and named with " copy" after its label. On a built-in play, it copies the instructions onto a [template](/docs/guide/memories/#templates) instead. A play has:
 
 - **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, interview, or stack. It can't change later.
@@ -97,7 +97,7 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 
 **Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change it under **Limits**, below any ticket play's auto plays; it applies to the whole workspace.
 
-**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details under [Settings → Computers](/docs/guide/paired-computers/#your-computers-in-order), or under **Limits** on a play's auto plays, which lists each of your computers with its own 1 to 5. A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
+**Each computer takes 1 run at a time** by default, pressed or automatic. Set its **Runs at once**, up to 5, in the computer's details on the [Agent page](/docs/guide/paired-computers/#your-computers-in-order), or under **Limits** on a play's auto plays, which lists each of your computers with its own 1 to 5. A full computer is passed over for the next one in its person's order, so an auto run waits ("computers busy") only when every computer that could take it is full, and starts as soon as one has room. Runs side by side work best when new threads start in their own worktree. The **At most once per ticket every** limit on an auto play is a different thing: how soon the same ticket may start that auto play again.
 
 Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computers busy)".
 
@@ -181,7 +181,7 @@ A run's details say **Ran with version 7** and open the history on that version,
 
 | Permission | Lets you |
 |---|---|
-| `plays:read` | see plays: **Plays** in the sidebar, their buttons, and their runs |
+| `plays:read` | see plays: the plays on the **Agent** page, their buttons, and their runs |
 | `plays:run` | press the plays you can see |
 | `plays:write` | create and edit plays, set who may see and run each one, stop anyone's run |
 | `plays:delete` | delete plays |
