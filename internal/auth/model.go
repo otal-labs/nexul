@@ -1,6 +1,11 @@
 package auth
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/still"
+)
 
 // Provider identifies a git/identity provider; the user model stays provider-agnostic for future ones.
 type Provider string
@@ -40,6 +45,17 @@ type User struct {
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`
 	AvatarOverrideURL *string `json:"avatar_override_url,omitempty"`
+}
+
+// MarshalJSON sends an uploaded picture as the link that serves it: the stored data URI runs to megabytes.
+func (u User) MarshalJSON() ([]byte, error) {
+	type plain User
+	out := plain(u)
+	if u.AvatarOverrideURL != nil && *u.AvatarOverrideURL != "" {
+		link := still.PersonLink(u.ID, *u.AvatarOverrideURL)
+		out.AvatarOverrideURL = &link
+	}
+	return json.Marshal(out)
 }
 
 // Passkey is one WebAuthn credential signing its owner in on the one domain (RPID) it was made for.

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/still"
 )
 
 // TestHandler_GithubGateReflectsLiveSettings proves the /auth/github 503 gate reads Settings.Configured() from the store on every request (T3), not a startup-time snapshot: clearing the stored credentials mid-session flips the very next request to 503, and restoring them flips it back, no restart involved.
@@ -779,9 +780,44 @@ func TestHandler_UpdateProfile(t *testing.T) {
 		require.NotNil(t, got.DisplayName)
 		require.NotNil(t, got.AvatarOverrideURL)
 		assert.Equal(t, "Manual Name", *got.DisplayName)
-		assert.Equal(t, "data:image/png;base64,aGVsbG8=", *got.AvatarOverrideURL)
+		assert.Equal(t, still.PersonLink("u1", "data:image/png;base64,aGVsbG8="), *got.AvatarOverrideURL, "the picture goes out as its link")
 		assert.Equal(t, "GitHub Name", got.Name, "provider-sourced name is untouched")
 		assert.Equal(t, "https://avatar/gh", got.AvatarURL, "provider-sourced avatar is untouched")
+		stored, err := users.GetUserByID(context.Background(), "u1")
+		require.NoError(t, err)
+		assert.Equal(t, "data:image/png;base64,aGVsbG8=", *stored.AvatarOverrideURL)
+	})
+
+	t.Run("sending back the link it was given keeps the picture", func(t *testing.T) {
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u9", Provider: ProviderGitHub, ProviderUserID: "9", Login: "lena"})
+		require.NoError(t, err)
+		picture := "data:image/png;base64,aGVsbG8="
+		require.NoError(t, users.SetProfileOverride(context.Background(), "u9", nil, &picture))
+		body := `{"display_name":"Renamed","avatar_override_url":"` + still.PersonLink("u9", picture) + `"}`
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPut, "/api/auth/profile", "u9", body))
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		stored, err := users.GetUserByID(context.Background(), "u9")
+		require.NoError(t, err)
+		assert.Equal(t, "Renamed", *stored.DisplayName)
+		assert.Equal(t, "data:image/png;base64,aGVsbG8=", *stored.AvatarOverrideURL)
+	})
+
+	t.Run("another person's link is refused, never stored", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPut, "/api/auth/profile", "u1",
+			`{"avatar_override_url":"`+still.PersonLink("u2", "data:image/png;base64,aGVsbG8=")+`"}`))
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("me sends a megabyte picture as a link of a few dozen bytes", func(t *testing.T) {
+		picture := "data:image/gif;base64," + strings.Repeat("R0lG", 256*1024)
+		require.NoError(t, users.SetProfileOverride(context.Background(), "u9", nil, &picture))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodGet, "/api/auth/me", "u9", ""))
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Less(t, rec.Body.Len(), 4096, "me carries the picture's link, not the picture")
+		assert.Contains(t, rec.Body.String(), still.PersonLink("u9", picture))
 	})
 
 	t.Run("rejects a non-data URI", func(t *testing.T) {
