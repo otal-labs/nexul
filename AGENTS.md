@@ -136,6 +136,7 @@ skipped and lint errors do not.
 | A background loop wakes on a write to every table its pass reads, and on no other | `TestLoopWrites_CoverEveryTableTheLoopsPassReads` and `TestStore_CommitsTo_AMachineTouchWakesNoLoopButTheMemo` in `internal/platform/storage` |
 | A paged list tool shows each viewer what the row-by-row check showed, and reads about one page of rows | `TestListTools_ShowWhatTheRowByRowCheckShowed` and the `TestRows_*` guards in `server/cmd/list_paging_test.go` |
 | Every non-GET route writes an audit row unless it is listed as read-only | `TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod` in `server/cmd/audit_integration_test.go` |
+| A tool whose result has a field named like a token, secret, link or code is marked `MintsCredential`, so a sign-in grant cannot call it | `TestToolResults_CredentialsComeOnlyFromToolsMarkedMintsCredential` in `internal/mcp/credential_guard_test.go` |
 | No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |
 | The web shell loads no page, editor, canvas, voice or shader | `web/src/pageChunks.test.tsx` |
 | A gated page's chunk loads only for a viewer who may open it | the gated page chunks cases in `web/src/RouterPermissions.test.tsx` |

@@ -48,7 +48,7 @@ func hostCreateTool(kinds map[string]HostKind) mcptool.Tool {
 			"on the machine. The result's id revokes an unused runner code with host_delete. A runner needs Manage on an "+
 			"existing machine or Add machines for a new one; an automations host needs Manage on an existing machine, and "+
 			"with no machine or an unknown one is the instance Owner's alone.",
-		mcptool.Hints{Additive: true, Local: true},
+		mcptool.Hints{Additive: true, Local: true, MintsCredential: true},
 		func(ctx context.Context, in hostCreateIn) (any, error) {
 			kind, err := hostKind(kinds, in.Kind)
 			if err != nil {
