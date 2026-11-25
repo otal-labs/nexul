@@ -23,6 +23,8 @@ runner runs it in bash, else sh, or in pwsh, else Windows PowerShell, with no in
   five minutes, returning the status, the exit code and the last 64 KB of output. `computer_list` with an id and
   `commands` reads the record back. The advertised size budget rises to 198,000 characters for it.
 
+Read computer activity is how anyone besides the owner reads that record. It is an instance area, `computer_activity:read`, which the instance Owner holds by right like every instance area since ADR 0151, so no role gains it on upgrade and no migration grants it. The use-case that acts on a computer leaves a note on the request (`internal/platform/auditnote`), and the audit row the HTTP or MCP adapter writes after it carries the computer, its owner and the command's job. `GET /api/audit` leaves those rows out, and `GET /api/audit/computer-activity` joins them to the job for the command, its exit code and its output.
+
 Rejected: running commands through T3 Code's own terminal, which needs a paired harness and a person's provider
 sign-in, and leaves no record Nexul owns.
 

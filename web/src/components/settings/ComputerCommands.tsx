@@ -51,6 +51,9 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
             <span className="text-foreground">Run commands from Nexul</span>
           </label>
         )}
+        {owner && (
+          <p className="text-xs text-muted-foreground">Commands run here are recorded and can be read by people with Read computer activity.</p>
+        )}
         {offThere && (
           <SettingsStatus tone="muted" detail={<span className="font-mono">nexul shell on</span>}>
             Off on the computer

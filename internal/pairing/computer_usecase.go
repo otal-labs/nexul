@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
@@ -85,6 +86,7 @@ func (s *Service) AddComputer(ctx context.Context, userID, name string) (*Comput
 	if err := s.repo.SaveComputer(ctx, computer); err != nil {
 		return nil, fmt.Errorf("save computer: %w", err)
 	}
+	auditnote.Computer(ctx, computer.ID, userID)
 	enrollment, err := runners.EnrollComputer(ctx, userID, computer.ID)
 	if err != nil {
 		// A computer no code can ever reach would wait forever, so it goes with the failure.

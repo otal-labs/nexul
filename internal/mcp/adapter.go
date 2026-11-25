@@ -21,6 +21,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/otal-labs/nexul/internal/attachments"
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
@@ -190,6 +191,7 @@ func toolHandler(t mcptool.Tool, limits *limiters, audit func(context.Context, s
 			return errorResult("A signed-in app cannot create credentials; revoking it must cut it off. Use a personal access token for this."), nil
 		}
 		start := time.Now()
+		ctx = auditnote.With(ctx)
 		out, err := t.Call(logging.CtxWithLogger(ctx, log), req.Params.Arguments)
 		if audit != nil && !t.Hints.ReadOnly {
 			audit(ctx, t.Name)

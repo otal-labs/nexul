@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
@@ -68,6 +69,7 @@ func Audited(r *http.Request) bool {
 // integration that made it (best-effort).
 func (s *Service) AuditLog(resolve ActorResolver, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(auditnote.With(r.Context()))
 		next.ServeHTTP(w, r)
 		if Audited(r) {
 			s.record(r.Context(), resolve, r.Method+" "+r.URL.Path)
@@ -87,13 +89,15 @@ func (s *Service) record(ctx context.Context, resolve ActorResolver, action stri
 	if actorID == "" {
 		return
 	}
+	note := auditnote.Read(ctx)
 	entry := AuditEntry{
-		ID:        ids.New(),
-		ActorType: actorType,
-		ActorID:   actorID,
-		TokenID:   tokenID,
-		Action:    action,
-		CreatedAt: s.cfg.Now().UTC(),
+		ID:         ids.New(),
+		ActorType:  actorType,
+		ActorID:    actorID,
+		TokenID:    tokenID,
+		Action:     action,
+		CreatedAt:  s.cfg.Now().UTC(),
+		ComputerID: note.ComputerID, ComputerOwnerID: note.OwnerID, JobID: note.JobID,
 	}
 	if err := s.cfg.Audit.Append(ctx, entry); err != nil {
 		logging.FromCtx(ctx).Error("audit append failed", "action", entry.Action, "err", err)

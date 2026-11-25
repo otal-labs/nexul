@@ -230,6 +230,12 @@ One command line a paired computer's personal runner runs as its person, asked f
 Each is recorded with who ran it and how it ended, kept forever, its output for 30 days.
 _Avoid_: remote shell, terminal, exec
 
+**Computer activity**:
+The record of what was done on people's computers: adding, renaming, pairing or removing one, and each command run
+there with who ran it, the command, the exit code and, for 30 days, the output. Read only with Read computer activity
+(`computer_activity:read`), an instance area the instance Owner holds by right; the audit log leaves it out.
+_Avoid_: audit trail, history
+
 **Computer sharing**:
 A paired computer's owner letting named people use it, through a rule on the
 computer naming each person (ADR 0148): See this computer, Run agents, Run

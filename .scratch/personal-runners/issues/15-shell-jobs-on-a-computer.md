@@ -1,6 +1,6 @@
 # 15 — Shell jobs on a computer: Read computer activity
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** nothing. Shell jobs themselves shipped (ADR 0209): the runner's job, both switches,
 `runner_shell_jobs` with its 30-day output purge, the HTTP routes and live socket, `command_run`, and the

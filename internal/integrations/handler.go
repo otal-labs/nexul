@@ -51,6 +51,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/integrations/scopes", h.scopes)
 	mux.HandleFunc("GET /api/events/catalog", h.catalog)
 	mux.HandleFunc("GET /api/audit", h.audit)
+	mux.HandleFunc("GET /api/audit/computer-activity", h.computerActivity)
 	return mux
 }
 
@@ -158,6 +159,16 @@ func (h *Handler) audit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"audit": entries})
+}
+
+func (h *Handler) computerActivity(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	rows, err := h.svc.ListComputerActivity(r.Context(), ActorID(r), limit)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"activity": rows})
 }
 
 func toScopes(raw []string) []Scope {

@@ -91,12 +91,14 @@ const (
 	IntegrationsWrite  Action = "integrations:write"
 	IntegrationsDelete Action = "integrations:delete"
 	AuditRead          Action = "audit:read"
-	LogsRead           Action = "logs:read"
-	EventsRead         Action = "events:read"
-	TemplatesRead      Action = "templates:read"
-	TemplatesWrite     Action = "templates:write"
-	CalendarWrite      Action = "calendar:write"
-	CalendarDelete     Action = "calendar:delete"
+	// ComputerActivityRead reads what was done on people's computers: the record only, never a computer itself.
+	ComputerActivityRead Action = "computer_activity:read"
+	LogsRead             Action = "logs:read"
+	EventsRead           Action = "events:read"
+	TemplatesRead        Action = "templates:read"
+	TemplatesWrite       Action = "templates:write"
+	CalendarWrite        Action = "calendar:write"
+	CalendarDelete       Action = "calendar:delete"
 )
 
 // ProjectsOpen is In this project: held only through a project's rules, never by a role or a token, so it is off the
@@ -218,6 +220,7 @@ var domainTable = []domainInfo{
 	{"connectors", "connectors", []string{read, write}, AreaInstance},
 	{"events", "events", []string{read}, AreaInstance},
 	{"audit", "audit log", []string{read}, AreaInstance},
+	{"computer_activity", "computer activity", []string{read}, AreaInstance},
 	{"logs", "the instance's logs", []string{read}, AreaInstance},
 	{"accounts", "accounts", []string{read, write, delete}, AreaInstance},
 	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
@@ -247,6 +250,7 @@ var instanceAreas = []InstanceArea{
 	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
 	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},
 	{"audit", "the audit log", []Action{AuditRead}},
+	{"computer_activity", "computer activity", []Action{ComputerActivityRead}},
 	{"logs", "the instance's logs", []Action{LogsRead}},
 }
 

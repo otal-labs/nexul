@@ -290,6 +290,10 @@ func (f *fakeAuditStore) Append(ctx context.Context, entry AuditEntry) error {
 	return nil
 }
 
+func (f *fakeAuditStore) ListComputerActivity(context.Context, int) ([]ComputerActivity, error) {
+	return nil, nil
+}
+
 func (f *fakeAuditStore) List(ctx context.Context, limit int) ([]AuditEntry, error) {
 	f.d.mu.Lock()
 	defer f.d.mu.Unlock()

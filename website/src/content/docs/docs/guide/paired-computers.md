@@ -174,7 +174,7 @@ A command runs as you, the person the app runs as, in `bash` (else `sh`) on Linu
 
 Two switches must both be on. **Run commands from Nexul**, in the section, is yours in Nexul, and turning it off stops every command running or waiting there. The computer's own setting is on once you run the install command, unless you add `--no-shell` to it; `sudo nexul shell off` on the computer (no `sudo` on Windows) turns it off and Nexul can never turn it back on, which `nexul shell on` there does. While it is off the section says **Off on the computer** and every command is recorded as refused.
 
-Every command is kept with who ran it, from where, when and how it ended, even after the computer is removed. Its output, its last MiB, is deleted 30 days after it ends. Only you read them; anyone else, a workspace Owner included, gets not found.
+Every command is kept with who ran it, from where, when and how it ended, even after the computer is removed. Its output, its last MiB, is deleted 30 days after it ends. Commands run here are recorded and can be read by people with Read computer activity: the instance's Owner, and anyone given **Read computer activity** on that instance area. They read only that record, at `GET /api/audit/computer-activity`, together with adding, renaming, pairing and removing computers. It never shows them a computer, its facts or anything else on it, and the audit log itself leaves these actions out. Anyone else, a workspace Owner included, gets not found for your computer.
 
 ### The computer's MCP token
 

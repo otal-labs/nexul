@@ -11,16 +11,20 @@ import (
 )
 
 const appendAudit = `-- name: AppendAudit :exec
-INSERT INTO audit_log (id, actor_type, actor_id, token_id, action, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO audit_log (id, actor_type, actor_id, token_id, action, created_at, computer_id, computer_owner_id, job_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type AppendAuditParams struct {
-	ID        string
-	ActorType string
-	ActorID   string
-	TokenID   sql.NullString
-	Action    string
-	CreatedAt int64
+	ID              string
+	ActorType       string
+	ActorID         string
+	TokenID         sql.NullString
+	Action          string
+	CreatedAt       int64
+	ComputerID      string
+	ComputerOwnerID string
+	JobID           string
 }
 
 func (q *Queries) AppendAudit(ctx context.Context, arg AppendAuditParams) error {
@@ -31,6 +35,9 @@ func (q *Queries) AppendAudit(ctx context.Context, arg AppendAuditParams) error 
 		arg.TokenID,
 		arg.Action,
 		arg.CreatedAt,
+		arg.ComputerID,
+		arg.ComputerOwnerID,
+		arg.JobID,
 	)
 	return err
 }
@@ -53,9 +60,10 @@ func (q *Queries) DeleteAuditBefore(ctx context.Context, arg DeleteAuditBeforePa
 }
 
 const listAudit = `-- name: ListAudit :many
-SELECT id, actor_type, actor_id, token_id, "action", created_at FROM audit_log ORDER BY created_at DESC, id DESC LIMIT ?
+SELECT id, actor_type, actor_id, token_id, "action", created_at, computer_id, computer_owner_id, job_id FROM audit_log WHERE computer_id = '' ORDER BY created_at DESC, id DESC LIMIT ?
 `
 
+// An action on a person's computer is computer activity, never in the audit log itself.
 func (q *Queries) ListAudit(ctx context.Context, limit int64) ([]AuditLog, error) {
 	rows, err := q.db.QueryContext(ctx, listAudit, limit)
 	if err != nil {
@@ -72,6 +80,76 @@ func (q *Queries) ListAudit(ctx context.Context, limit int64) ([]AuditLog, error
 			&i.TokenID,
 			&i.Action,
 			&i.CreatedAt,
+			&i.ComputerID,
+			&i.ComputerOwnerID,
+			&i.JobID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listComputerActivity = `-- name: ListComputerActivity :many
+SELECT a.id, a.actor_type, a.actor_id, a.token_id, a."action", a.created_at, a.computer_id, a.computer_owner_id, a.job_id,
+    COALESCE(c.name, '') AS computer_name,
+    COALESCE(NULLIF(o.name, ''), o.login, '') AS owner_name,
+    COALESCE(j.command, '') AS command,
+    COALESCE(j.status, '') AS job_status,
+    j.exit_code AS exit_code,
+    COALESCE(j.output, '') AS output
+FROM audit_log a
+LEFT JOIN pairing_computers c ON c.id = a.computer_id
+LEFT JOIN users o ON o.id = a.computer_owner_id
+LEFT JOIN runner_shell_jobs j ON j.id = a.job_id
+WHERE a.computer_id != ''
+ORDER BY a.created_at DESC, a.id DESC LIMIT ?
+`
+
+type ListComputerActivityRow struct {
+	AuditLog     AuditLog
+	ComputerName string
+	OwnerName    string
+	Command      string
+	JobStatus    string
+	ExitCode     sql.NullInt64
+	Output       string
+}
+
+// Actions on people's computers, newest first, each with the computer and its owner as they are named now and, for a
+// command, the command line, how it ended and its output while it is kept.
+func (q *Queries) ListComputerActivity(ctx context.Context, limit int64) ([]ListComputerActivityRow, error) {
+	rows, err := q.db.QueryContext(ctx, listComputerActivity, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListComputerActivityRow
+	for rows.Next() {
+		var i ListComputerActivityRow
+		if err := rows.Scan(
+			&i.AuditLog.ID,
+			&i.AuditLog.ActorType,
+			&i.AuditLog.ActorID,
+			&i.AuditLog.TokenID,
+			&i.AuditLog.Action,
+			&i.AuditLog.CreatedAt,
+			&i.AuditLog.ComputerID,
+			&i.AuditLog.ComputerOwnerID,
+			&i.AuditLog.JobID,
+			&i.ComputerName,
+			&i.OwnerName,
+			&i.Command,
+			&i.JobStatus,
+			&i.ExitCode,
+			&i.Output,
 		); err != nil {
 			return nil, err
 		}

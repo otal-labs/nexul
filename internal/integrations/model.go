@@ -76,6 +76,30 @@ type AuditEntry struct {
 	TokenID   string    `json:"token_id,omitempty"`
 	Action    string    `json:"action"`
 	CreatedAt time.Time `json:"created_at"`
+	// ComputerID, ComputerOwnerID and JobID name the person's computer an action was on and any command it started;
+	// such a row is computer activity, read only with computer_activity:read.
+	ComputerID      string `json:"-"`
+	ComputerOwnerID string `json:"-"`
+	JobID           string `json:"-"`
+}
+
+// ComputerActivity is one action on a person's computer as Read computer activity shows it: never the computer's
+// facts, only what was done there and, for a command, what it was and how it ended.
+type ComputerActivity struct {
+	ID           string    `json:"id"`
+	ActorType    string    `json:"actor_type"`
+	ActorID      string    `json:"actor_id"`
+	Action       string    `json:"action"`
+	CreatedAt    time.Time `json:"created_at"`
+	ComputerID   string    `json:"computer_id"`
+	ComputerName string    `json:"computer_name"`
+	OwnerID      string    `json:"owner_id"`
+	OwnerName    string    `json:"owner_name"`
+	JobID        string    `json:"job_id,omitempty"`
+	Command      string    `json:"command,omitempty"`
+	JobStatus    string    `json:"job_status,omitempty"`
+	ExitCode     *int      `json:"exit_code,omitempty"`
+	Output       string    `json:"output,omitempty"`
 }
 
 // SchemaEntry is one published version of an event's JSON Schema (ADR 0044); breaking changes ship as a new version.

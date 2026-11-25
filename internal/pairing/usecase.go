@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -935,6 +936,7 @@ func (s *Service) ownComputer(ctx context.Context, userID, computerID string) (*
 	if err != nil {
 		return nil, fmt.Errorf("get computer %s: %w", computerID, err)
 	}
+	auditnote.Computer(ctx, computer.ID, computer.UserID)
 	return computer, nil
 }
 

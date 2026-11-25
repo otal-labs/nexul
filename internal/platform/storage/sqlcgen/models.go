@@ -28,12 +28,15 @@ type Attachment struct {
 }
 
 type AuditLog struct {
-	ID        string
-	ActorType string
-	ActorID   string
-	TokenID   sql.NullString
-	Action    string
-	CreatedAt int64
+	ID              string
+	ActorType       string
+	ActorID         string
+	TokenID         sql.NullString
+	Action          string
+	CreatedAt       int64
+	ComputerID      string
+	ComputerOwnerID string
+	JobID           string
 }
 
 type AutoPlay struct {
