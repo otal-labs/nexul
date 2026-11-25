@@ -811,3 +811,7 @@ func (f *fakeTrailRepo) ListMemoryReads(_ context.Context, trailID string) ([]Fo
 	defer f.mu.Unlock()
 	return slices.Clone(f.found[trailID]), nil
 }
+
+func (agentTargets) OpenGuestRun(context.Context, string, pairing.Computer, harness.Client, *harness.Target) (func(context.Context), error) {
+	return func(context.Context) {}, nil
+}

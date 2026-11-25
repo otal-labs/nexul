@@ -1,13 +1,17 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"testing"
+	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
@@ -40,4 +44,48 @@ func TestHandleComputerGrantChanged_InterruptsOnlyTheTurnsTheShareNoLongerAllows
 		t.Fatal("alice's own turn was interrupted")
 	default:
 	}
+}
+
+func TestRunTurn_OnSomeoneElsesComputer_RunsOnItsOwnInstanceAndSaysWhose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+		)}}
+		target := testTarget()
+		target.Computer.UserID, target.Computer.Name, target.Provider = "u-alice", "Laptop", "claudeAgent"
+		targets := &fakeTargets{target: target, guestInstance: "nexul-guest-1"}
+		svc := NewService(Config{Conversations: conv, Targets: targets, Harnesses: registryOf(client), Live: &fakeLive{}})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-bob", "@Agent hi", true)))
+		synctest.Wait()
+
+		client.mu.Lock()
+		assert.Equal(t, "nexul-guest-1", client.lastTarget.Provider, "the turn starts on the run's own instance")
+		client.mu.Unlock()
+		assert.EqualValues(t, 1, targets.guestClosed.Load(), "and it goes when the turn ends")
+		_, systemPosts := conv.snapshot()
+		require.NotEmpty(t, systemPosts)
+		assert.Contains(t, systemPosts[0].body, "Run on someone else's Laptop")
+	})
+}
+
+func TestRunTurn_ARefusedSharedRunStartsNothing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		client := &fakeHarness{}
+		target := testTarget()
+		target.Computer.UserID = "u-alice"
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: target, guestErr: apperrs.ErrConflict}, Harnesses: registryOf(client), Live: &fakeLive{}})
+
+		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-bob", "@Agent hi", true)))
+		synctest.Wait()
+
+		client.mu.Lock()
+		assert.Empty(t, client.lastTarget.Provider, "no turn started")
+		client.mu.Unlock()
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1)
+		assert.Contains(t, systemPosts[0].body, "Agent turn failed to start")
+	})
 }

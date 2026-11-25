@@ -272,16 +272,8 @@ func (f *Server) read(ctx context.Context, conn *websocket.Conn, env *clientEnv)
 
 func (f *Server) handleRequest(env clientEnv) {
 	switch env.RPCTag {
-	case "server.getConfig":
-		f.ConfigCalls.Add(1)
-		f.Write(ExitSuccess(idString(env.ID), map[string]any{"environment": f.descriptor(), "providers": f.providers()}))
-	case "server.getSettings":
-		f.mu.Lock()
-		instances := maps.Clone(f.Instances)
-		f.mu.Unlock()
-		f.Write(ExitSuccess(idString(env.ID), map[string]any{"providerInstances": instances}))
-	case "server.updateSettings":
-		f.handleSettings(env)
+	case "server.getConfig", "server.getSettings", "server.updateSettings":
+		f.handleServer(env)
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
 	case "orchestration.getThreadProjection":
@@ -334,6 +326,23 @@ func (f *Server) providers() []map[string]any {
 		}
 	}
 	return out
+}
+
+// handleServer answers the config and settings calls.
+func (f *Server) handleServer(env clientEnv) {
+	if env.RPCTag == "server.updateSettings" {
+		f.handleSettings(env)
+		return
+	}
+	if env.RPCTag == "server.getConfig" {
+		f.ConfigCalls.Add(1)
+		f.Write(ExitSuccess(idString(env.ID), map[string]any{"environment": f.descriptor(), "providers": f.providers()}))
+		return
+	}
+	f.mu.Lock()
+	instances := maps.Clone(f.Instances)
+	f.mu.Unlock()
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"providerInstances": instances}))
 }
 
 // handleSettings applies an updateSettings call's instance mutation and answers with the settings after it.
