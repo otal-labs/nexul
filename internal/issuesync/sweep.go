@@ -92,8 +92,7 @@ func (s *Service) sweep(ctx context.Context, sy Sync) error {
 
 // sweepIssue applies one listed issue and, on a sweep after the backfill, posts the comments its webhooks missed.
 func (s *Service) sweepIssue(ctx context.Context, sy Sync, i Issue, since time.Time) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.lockIssue(sy.Owner, sy.Repo, i)()
 	if err := s.apply(ctx, sy, i, ""); err != nil {
 		return err
 	}
