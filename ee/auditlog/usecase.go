@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -29,16 +31,24 @@ type Licenses interface {
 
 // Secrets resolves a stream secret that is a secret reference; a nil Secrets takes each stored value as it is.
 type Secrets interface {
+	// Read asks the manager now, for a reference being saved.
 	Read(ctx context.Context, stored string) (string, error)
+	// Value may answer from a recent read, for a delivery.
+	Value(ctx context.Context, stored string) (string, error)
 }
 
 // Config wires the audit log use-cases.
 type Config struct {
 	Repo     Repo
+	Queue    Queue
 	Licenses Licenses
 	Gate     Gate
 	Secrets  Secrets
-	Now      func() time.Time
+	// InstanceURL is the instance's public address, which each delivery names.
+	InstanceURL func(context.Context) (string, error)
+	// Client posts deliveries; nil is one with a 15-second timeout that follows no redirect.
+	Client *http.Client
+	Now    func() time.Time
 }
 
 // Service is the audit log use-case layer the HTTP gateway, the MCP tool and the retention loop call.
@@ -50,6 +60,9 @@ type Service struct {
 func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
+	}
+	if cfg.Client == nil {
+		cfg.Client = &http.Client{Timeout: deliveryTimeout, CheckRedirect: refuseRedirect}
 	}
 	return &Service{cfg: cfg}
 }
@@ -84,15 +97,30 @@ func (s *Service) View(ctx context.Context) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	return s.view(ctx, st), nil
+	return s.view(ctx, st)
 }
 
-func (s *Service) view(ctx context.Context, st Settings) View {
+func (s *Service) view(ctx context.Context, st Settings) (View, error) {
+	stats, err := s.cfg.Queue.Stats(ctx)
+	if err != nil {
+		return View{}, err
+	}
 	unlocked := s.unlocked(ctx)
 	return View{
 		Unlocked: unlocked, RetentionDays: st.Days(), StreamURL: st.StreamURL, SecretSet: st.StreamSecret != "",
-		StreamEnabled: st.StreamEnabled, Streaming: unlocked && st.StreamEnabled,
+		StreamEnabled: st.StreamEnabled, Streaming: unlocked && st.StreamEnabled, Stats: stats,
+	}, nil
+}
+
+// Streaming reports whether an audit row written now is queued for the destination: the stream is on and the key
+// unlocks audit. A failed read counts as off, since the row itself must still be written.
+func (s *Service) Streaming(ctx context.Context) bool {
+	st, err := s.cfg.Repo.Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "read audit stream settings", "error", err)
+		return false
 	}
+	return st.StreamEnabled && st.StreamURL != "" && s.unlocked(ctx)
 }
 
 // Update saves the settings; it needs instance:write and a key that unlocks audit, and refuses days outside MinDays
@@ -120,7 +148,8 @@ func (s *Service) Update(ctx context.Context, p Patch) (Saved, error) {
 	if err := s.cfg.Repo.Set(ctx, next, evt); err != nil {
 		return Saved{}, err
 	}
-	return Saved{View: s.view(ctx, next), NewSecret: made}, nil
+	v, err := s.view(ctx, next)
+	return Saved{View: v, NewSecret: made}, err
 }
 
 // apply returns cur with p's changes, checked, and the secret it made, if any.
@@ -200,13 +229,13 @@ func (s *Service) Remove(ctx context.Context) (View, error) {
 		return View{}, err
 	}
 	if cur == (Settings{}) {
-		return s.view(ctx, Settings{}), nil
+		return s.view(ctx, Settings{})
 	}
 	evt := s.changed(SettingsChangedEvent{RetentionDays: MinDays, Removed: true, ChangedBy: actorID(ctx)}, s.cfg.Now())
 	if err := s.cfg.Repo.Delete(ctx, evt); err != nil {
 		return View{}, err
 	}
-	return s.view(ctx, Settings{}), nil
+	return s.view(ctx, Settings{})
 }
 
 func (s *Service) changed(e SettingsChangedEvent, at time.Time) eventbus.OutboxEvent {

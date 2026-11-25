@@ -417,13 +417,3 @@ func TestRedactEventPayload(t *testing.T) {
 		require.Error(t, err)
 	})
 }
-
-func TestSignWebhook(t *testing.T) {
-	sig := signWebhook("secret", []byte("payload"))
-	require.NotEmpty(t, sig)
-	assert.Contains(t, sig, "sha256=")
-	assert.True(t, VerifyWebhookSignature("secret", []byte("payload"), sig))
-	assert.False(t, VerifyWebhookSignature("other", []byte("payload"), sig))
-	assert.False(t, VerifyWebhookSignature("secret", []byte("payload2"), sig))
-	assert.False(t, VerifyWebhookSignature("secret", []byte("payload"), "sha256=deadbeef"))
-}

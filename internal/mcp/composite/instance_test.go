@@ -118,6 +118,7 @@ type fakeAuditSettings struct {
 	view    auditlog.View
 	patches []auditlog.Patch
 	removed bool
+	retried int
 }
 
 func (f *fakeAuditSettings) View(context.Context) (auditlog.View, error) { return f.view, nil }
@@ -128,6 +129,12 @@ func (f *fakeAuditSettings) Update(_ context.Context, p auditlog.Patch) (auditlo
 func (f *fakeAuditSettings) Remove(context.Context) (auditlog.View, error) {
 	f.removed = true
 	return f.view, nil
+}
+func (f *fakeAuditSettings) RetryFailed(context.Context) (auditlog.View, error) {
+	f.retried++
+	v := f.view
+	v.Dead = 0
+	return v, nil
 }
 
 func instanceCall(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, args string) (instanceSettings, error) {
@@ -323,4 +330,22 @@ func TestInstanceUpdate_AuditFieldsPassThroughAndNeverCarryASecret(t *testing.T)
 	require.NoError(t, err)
 	assert.True(t, a.removed)
 	assert.Len(t, a.patches, 1, "remove ignores the other fields")
+}
+
+func TestInstanceUpdate_RetryFailed_SendsTheDeadAgainAloneOrAfterAPatch(t *testing.T) {
+	t.Parallel()
+	a := &fakeAuditSettings{view: auditlog.View{Stats: auditlog.Stats{Dead: 3}}}
+	s := &fakeSSOSettings{}
+	d := instanceSettingsOf{l: &fakeLicenseKeeper{}, s: s, m: s, b: &fakeBrandingSettings{}, a: a}
+
+	got, err := instanceCallAll(t, d, `{"audit":{"retry_failed":true}}`)
+	require.NoError(t, err)
+	assert.Equal(t, 1, a.retried)
+	assert.Empty(t, a.patches, "a retry alone saves nothing")
+	assert.Zero(t, got.Audit.Dead)
+
+	_, err = instanceCallAll(t, d, `{"audit":{"stream_enabled":true,"retry_failed":true}}`)
+	require.NoError(t, err)
+	assert.Len(t, a.patches, 1)
+	assert.Equal(t, 2, a.retried)
 }

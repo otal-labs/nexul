@@ -94,6 +94,9 @@ type Store struct {
 	Pairing               *PairingRepo
 	InstanceTemplates     *InstanceTemplatesRepo
 	Welcome               *WelcomeRepo
+	AuditStream           *AuditStreamRepo
+
+	auditStream *auditStream
 }
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
@@ -101,7 +104,10 @@ func New(db *sql.DB, encKey []byte) *Store {
 	w := &Serializer{}
 	q := sqlcgen.New(db)
 	hot := sqlcgen.New(newPreparedReads(db))
+	stream := &auditStream{}
 	return &Store{
+		auditStream:           stream,
+		AuditStream:           &AuditStreamRepo{db: db, w: w, q: q},
 		db:                    db,
 		w:                     w,
 		Docs:                  &DocsRepo{db: db, w: w, q: q},
@@ -171,13 +177,13 @@ func New(db *sql.DB, encKey []byte) *Store {
 		IntegrationSubs:       &IntegrationSubscriptionsRepo{db: db, w: w, q: q},
 		IntegrationDeliveries: &IntegrationDeliveriesRepo{db: db, w: w, q: q},
 		EventSchemas:          &EventSchemasRepo{db: db, w: w, q: q},
-		Audit:                 &AuditRepo{db: db, w: w, q: q},
+		Audit:                 &AuditRepo{db: db, w: w, q: q, stream: stream},
 		EventRetention:        &EventRetentionRepo{db: db, w: w, q: q},
 		Connectors:            &ConnectorsRepo{db: db, w: w, q: q, encKey: encKey},
 		ConnectorAppConfig:    &ConnectorAppConfigRepo{db: db, w: w, q: q, encKey: encKey},
 		GitHubInstallations:   &GitHubInstallationsRepo{db: db, w: w, q: q},
 		GitHubUserLinks:       &GitHubUserLinksRepo{db: db, w: w, q: q, encKey: encKey},
-		Chat:                  &ChatRepo{db: db, w: w, q: q},
+		Chat:                  &ChatRepo{db: db, w: w, q: q, stream: stream},
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
 		Meetings:              &MeetingsRepo{db: db, w: w, q: q},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},

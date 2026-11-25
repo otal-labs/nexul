@@ -3,9 +3,6 @@ package integrations
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -15,6 +12,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/webhooksig"
 )
 
 // FanoutHandler turns every published event into signed deliveries for every subscribed install (ADR 0043), idempotently.
@@ -85,7 +83,7 @@ func (f *FanoutHandler) enqueue(ctx context.Context, installID string, ev eventb
 		Topic:         ev.Topic,
 		EventID:       ev.ID,
 		Payload:       payload,
-		Signature:     signWebhook(install.WebhookSecret, payload),
+		Signature:     webhooksig.Sign(install.WebhookSecret, payload),
 		URL:           install.WebhookURL,
 		Status:        DeliveryPending,
 		NextAttemptAt: now,
@@ -95,13 +93,6 @@ func (f *FanoutHandler) enqueue(ctx context.Context, installID string, ev eventb
 		return fmt.Errorf("fanout: enqueue delivery: %w", err)
 	}
 	return nil
-}
-
-// signWebhook computes the "sha256=<hex>" HMAC header value the integration verifies with the shared webhook secret.
-func signWebhook(secret string, payload []byte) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write(payload)
-	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
 // redactEventPayload blanks deploy.requested's Env values (secrets), keeping keys; other topics pass through (R5).
@@ -235,7 +226,7 @@ func (r *Relay) deliver(ctx context.Context, d *Delivery) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Nexul-Signature", d.Signature)
+	req.Header.Set(webhooksig.Header, d.Signature)
 	req.Header.Set("X-Nexul-Delivery-Id", d.ID)
 
 	resp, err := r.client.Do(req)

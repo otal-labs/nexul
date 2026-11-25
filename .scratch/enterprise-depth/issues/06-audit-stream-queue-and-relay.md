@@ -1,6 +1,6 @@
 # The audit stream: the queue and the relay
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 05
 
 Each audit row is signed and posted to the destination as it is written, and is never lost or waited on.

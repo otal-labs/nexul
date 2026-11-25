@@ -170,6 +170,9 @@ var routePermissions = map[string][]string{
 
 	"DELETE /api/instance/audit":                          {"instance:write"},
 	"PUT /api/instance/audit":                             {"instance:write"},
+	"POST /api/instance/audit/stream/retry":               {"instance:write"},
+	"POST /api/instance/audit/stream/rotate-secret":       {"instance:write"},
+	"POST /api/instance/audit/stream/test":                {"instance:write"},
 	"DELETE /api/instance/branding":                       {"instance:write"},
 	"PATCH /api/instance/branding":                        {"instance:write"},
 	"DELETE /api/instance/branding/logo":                  {"instance:write"},

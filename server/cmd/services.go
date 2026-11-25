@@ -452,6 +452,11 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		InstanceOwners: accessSvc.InstanceOwners, Secret: []byte(cfg.AuthSecret),
 	})
 	authSvc.SetSSOOnly(ssoSvc.OnlySSO)
+	auditlogSvc := auditlog.NewService(auditlog.Config{
+		Repo: store.AuditSettings, Queue: store.AuditStream, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache,
+		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
+	})
+	store.SetAuditStreaming(auditlogSvc.Streaming)
 	return &coreServices{
 		welcomeSvc:     welcomeSvc,
 		accessSvc:      accessSvc,
@@ -515,7 +520,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		ssoSvc:       ssoSvc,
 		ssoHandler:   sso.NewHandler(ssoSvc, authHandler),
 		brandingSvc:  brandingSvc,
-		auditlogSvc:  auditlog.NewService(auditlog.Config{Repo: store.AuditSettings, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache}),
+		auditlogSvc:  auditlogSvc,
 
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,

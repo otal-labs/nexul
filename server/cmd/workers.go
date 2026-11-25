@@ -116,6 +116,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.ssoSvc.RunSAMLRefreshLoop(ctx, time.Hour, logger)
 	go svc.deploySvc.RunRequestCounts(ctx, logger)
 	go svc.integrationsSvc.RunAuditRetention(ctx, svc.auditlogSvc.RetentionDays, logger)
+	go svc.auditlogSvc.NewRelay(store.CommitsTo(storage.AuditStreamWrites...).Next, logger).Run(ctx)
 	go svc.pairingSvc.RunShellUpkeep(ctx, logger)
 	go docs.RunSettleLoop(ctx, store.Docs, store.CommitsTo(storage.SettleWrites...).Next, logger)
 	go svc.calendarSvc.RunReminderLoop(ctx, store.CommitsTo(storage.ReminderWrites...).Next, logger)

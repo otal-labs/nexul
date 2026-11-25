@@ -37,6 +37,7 @@ var readOnlyRoutes = []string{
 	"POST /api/connectors/{id}/private-key/verify",
 	"POST /api/dns/tunnels/{tunnelID}/verify",
 	"POST /api/dns/verify",
+	"POST /api/instance/audit/stream/test",
 	"POST /api/instance/sso/verify",
 	"POST /api/instance/saml/verify",
 	"POST /api/invitations/preview",
