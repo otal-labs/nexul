@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ComputersSection } from "@/components/settings/ComputersSection";
+import { AgentComputerDetail } from "@/components/agent/AgentComputerDetail";
 import { pairingFollower } from "@/hooks/PairingHooks";
 import type { Computer } from "@/models/Pairing";
 import { followFrame } from "@/test/followFrame";
@@ -58,7 +58,7 @@ const renderSection = () => {
   render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
-        <ComputersSection />
+        <AgentComputerDetail computerId="c1" />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -104,10 +104,10 @@ describe("MoveComputerDialog", () => {
     await act(() => followFrame(pairingFollower, "computer.paired", { computer_id: "c1" }, client));
     expect(await screen.findByRole("heading", { name: "alice-laptop moved to the Nexul app" })).toBeInTheDocument();
     expect(screen.getByText("sudo cloudflared service uninstall")).toBeInTheDocument();
-    expect(screen.queryByText("Move this computer to the Nexul app"), "the row is the app's row now").not.toBeInTheDocument();
+    expect(screen.queryByText("Move this computer to the Nexul app"), "the pane is the app's pane now").not.toBeInTheDocument();
   });
 
-  it("keeps a computer whose move failed on its tunnel, says why on the row, and pairs again from the dialog", async () => {
+  it("keeps a computer whose move failed on its tunnel, says why on its pane, and pairs again from the dialog", async () => {
     listed = [{ ...tunnelLaptop, runner: connected, facts: answering, pair_error: "the harness refused this token" }];
     mocks.post.mockResolvedValue({ data: listed[0] });
     const user = userEvent.setup();

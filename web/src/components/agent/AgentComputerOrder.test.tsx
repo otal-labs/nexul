@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ComputersSection } from "@/components/settings/ComputersSection";
 import type { Computer } from "@/models/Pairing";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { renderAgent } from "@/test/agentComputers";
+import { asOwner } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), post: vi.fn(), del: vi.fn() }));
 
@@ -13,7 +13,6 @@ vi.mock("@/api/client", () => ({
   api: { get: mocks.get, put: mocks.put, patch: mocks.patch, post: mocks.post, delete: mocks.del },
   errorMessage: (e: { message?: string }) => e?.message ?? "Something went wrong",
 }));
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/components/settings/ComputerMCPToken", () => ({ ComputerMCPToken: () => null }));
 
@@ -38,41 +37,43 @@ const computer = (id: string, name: string, position: number, running = 0): Comp
 
 let computers: Computer[];
 
-const renderSection = () => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <MemoryRouter>
-      <QueryClientProvider client={client}>
-        <ComputersSection />
-      </QueryClientProvider>
-    </MemoryRouter>,
-  );
+const rest = (url: string) => {
+  if (url === "/api/pairing/computers") return { computers };
+  if (url === "/api/pairing/presence") return { computers: {} };
+  if (url === "/api/runners/enrollments") return [];
+  if (url === "/api/pairing/defaults") return {};
+  if (url === "/api/pairing/projects") return { links: [] };
+  if (url === "/api/projects") return [];
+  if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme", slug: "acme" }];
+  if (url.endsWith("/setup")) return { computer_id: "", confirmed_at: "2026-10-01T00:00:00Z", providers: [], turns: [], skipped_providers: [], models: {}, model_options: {}, folder: "" };
+  if (url.endsWith("/providers")) return { providers: [] };
+  throw new Error(`unexpected GET ${url}`);
 };
 
-const order = () => within(screen.getByRole("list", { name: /your computers, first runs first/i })).getAllByRole("button", { expanded: false }).map((b) => b.textContent).filter(Boolean);
+const yourComputers = () => screen.getByRole("region", { name: "Your computers" });
+// Each row's name in the list, top to bottom, without its status dot or its place number.
+const order = () => within(yourComputers()).getAllByRole("link").map((link) => link.querySelector("[title]")?.getAttribute("title"));
 
 describe("Your computers", () => {
   beforeEach(() => {
+    for (const fn of Object.values(mocks)) fn.mockReset();
     computers = [computer("c-laptop", "laptop", 0, 1), computer("c-box", "build-box", 1)];
-    mocks.get.mockReset().mockImplementation(async (url: string) => {
-      if (url === "/api/pairing/computers") return { data: { computers } };
-      if (url === "/api/pairing/presence") return { data: { computers: {} } };
-      if (url === "/api/pairing/resolve") return { data: { ok: true, computer_id: "c-laptop" } };
-      if (url.endsWith("/setup")) return { data: { computer_id: "", confirmed_at: "2026-10-01T00:00:00Z", providers: [], turns: [], skipped_providers: [], models: {}, model_options: {}, folder: "" } };
-      return { data: {} };
-    });
-    mocks.put.mockReset();
-    mocks.patch.mockReset();
+    mocks.get.mockImplementation(asOwner(rest));
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
+    useWorkspaceStore.persist.clearStorage();
   });
 
-  it("ranks the computers in their order with how busy each is", async () => {
-    renderSection();
+  it("ranks the computers in their order, and says how busy the open one is", async () => {
+    const user = userEvent.setup();
+    renderAgent("/acme/agent/computers/c-laptop");
 
     expect(await screen.findByText("#1")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
+    expect(order()).toEqual(["laptop", "build-box"]);
     expect(await screen.findByText("1 of 2 play runs")).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 play runs")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reorder laptop" })).toBeInTheDocument();
+
+    await user.click(within(yourComputers()).getByRole("link", { name: /build-box$/ }));
+    expect(await screen.findByText("0 of 2 play runs")).toBeInTheDocument();
   });
 
   it("moves a computer down from its menu, at once, and sends the new order", async () => {
@@ -81,7 +82,7 @@ describe("Your computers", () => {
       computers = [{ ...computers[1]!, position: 0 }, { ...computers[0]!, position: 1 }];
       return { data: {} };
     });
-    renderSection();
+    renderAgent("/acme/agent/computers/c-laptop");
 
     await user.click(await screen.findByRole("button", { name: "Actions for laptop" }));
     await user.click(await screen.findByRole("button", { name: "Move down" }));
@@ -93,20 +94,20 @@ describe("Your computers", () => {
   it("puts the order back when the server refuses it", async () => {
     const user = userEvent.setup();
     mocks.put.mockRejectedValue(new Error("the order must name each of your computers once"));
-    renderSection();
+    renderAgent("/acme/agent/computers/c-box");
 
     await user.click(await screen.findByRole("button", { name: "Actions for build-box" }));
     await user.click(await screen.findByRole("button", { name: "Move up" }));
 
+    await waitFor(() => expect(mocks.put).toHaveBeenCalled());
     await waitFor(() => expect(order()).toEqual(["laptop", "build-box"]));
   });
 
   it("sets how many runs a computer takes at once from its details", async () => {
     const user = userEvent.setup();
     mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
-    renderSection();
+    renderAgent("/acme/agent/computers/c-laptop");
 
-    await user.click(await screen.findByRole("button", { name: "laptop", expanded: false }));
     await user.click(within(await screen.findByRole("radiogroup", { name: "Runs at once on laptop" })).getByRole("radio", { name: "4" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });

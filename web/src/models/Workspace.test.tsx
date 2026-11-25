@@ -35,7 +35,7 @@ describe("switchWorkspacePath", () => {
     ["/a/stacks/s-1/deploys/d-1", "/b/topology"],
     ["/a/automations/au-1", "/b/automations"],
     ["/a/wizard/project/service?project=p-1", "/b/wizard/project/project"],
-    ["/a/plays/pl-1", "/b/plays"],
+    ["/a/agent/plays/pl-1", "/b/agent"],
     ["/a/configuration/general", "/b/configuration/general"],
     ["/a/nowhere", "/b"],
   ])("%s lands on %s", (from, to) => {
@@ -46,8 +46,8 @@ describe("switchWorkspacePath", () => {
     expect(switchWorkspacePath("/a/configuration/mentions", "b", everything)).toBe("/b/configuration/general");
   });
 
-  it("goes home from Plays when the viewer can't read plays there", () => {
-    expect(switchWorkspacePath("/a/plays/pl-1", "b", access(["tickets"]))).toBe("/b");
+  it("keeps the Agent page for a viewer who can't read plays there, since their computers live on it too", () => {
+    expect(switchWorkspacePath("/a/agent/computers/c-1", "b", access(["tickets"]))).toBe("/b/agent");
   });
 
   it("goes home when Configuration has nothing but Danger zone there", () => {

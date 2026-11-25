@@ -13,7 +13,7 @@ const deployNav: SidebarNavEntry[] = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/runners", label: "Runners", icon: Cpu },
   { to: "/topology", label: "Topology", icon: Network, area: "topology" },
-  { to: "/plays", label: "Plays", icon: Sparkles, area: "plays" },
+  { to: "/agent", label: "Agent", icon: Sparkles },
   { to: "/automations", label: "Automations", icon: Workflow, area: "automations" },
   { to: "/access", label: "Access", icon: ShieldCheck, area: "access" },
   { to: "/configuration", label: "Configuration", icon: SlidersHorizontal, area: "configuration" },

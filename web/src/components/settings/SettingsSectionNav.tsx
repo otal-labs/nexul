@@ -37,6 +37,8 @@ const revealActive = (el: HTMLAnchorElement | null) => el?.scrollIntoView?.({ bl
 export interface SettingsSectionNavItem {
   section: string;
   label: string;
+  /** Opens another page instead of a section here (Computers lives on the workspace's Agent page). */
+  to?: string | undefined;
   danger?: boolean;
   /** Set to show the update dot beside the label, with this as its screen-reader hint. */
   dot?: string | undefined;
@@ -75,7 +77,7 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           {item.danger && index > 0 && <li aria-hidden className="mx-2 h-4 w-px shrink-0 bg-border lg:hidden" />}
           <li className={cn("shrink-0", item.danger && index > 0 && "lg:mt-2.5 lg:border-t lg:border-border lg:pt-3")}>
             <Link
-              to={`${basePath}/${item.section}`}
+              to={item.to ?? `${basePath}/${item.section}`}
               ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section)}

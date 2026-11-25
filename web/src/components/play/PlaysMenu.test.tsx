@@ -176,7 +176,7 @@ describe("PlaysMenu", () => {
 
     await user.click(await screen.findByRole("button", { name: /Plays/ }));
     expect(await screen.findAllByText("No computer is paired to run plays.")).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/settings/pairing");
+    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/acme/agent");
     expect(screen.getByRole("button", { name: /To tickets via AI/ })).toBeDisabled();
   });
 

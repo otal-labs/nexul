@@ -176,6 +176,12 @@ user's own paired Harness and acts with only that user's permissions. Never a
 Runner — a Runner executes builds; the Agent converses and drives the product
 through MCP.
 
+**Agent page**:
+The workspace page, Agent in the sidebar, that holds what the Agent does by itself and where it runs: the plays and
+their auto plays, your computers in run order, the computers shared with you, and each project's run settings with
+Defaults first, as one list beside the open one (ADR 0211). Settings → Computers opens it.
+_Avoid_: Plays page, Computers settings
+
 **Steer**:
 Handing a mention whose Agent turn waits in the Harness's queue to the turn
 under way, whose reply then answers it; the steered turn ends with no reply of
@@ -301,7 +307,7 @@ _Avoid_: Checkout (that is a stack's on a machine), fallback T3 project
 
 **Project link**:
 One person's provider, model, model options, and start-in for one project
-they can open, set in Your settings → Computers → Projects, used on whichever
+they can open, set under Projects on the Agent page, used on whichever
 computer the run lands on. It follows Your computers or names its own list in
 its own order (ADR 0165). Each person has their own; nobody else's turns use
 it. A play pressed in a project no computer of theirs has asks where to run,
@@ -478,7 +484,7 @@ _Avoid_: Agent action, button, automation (that is event-driven code)
 
 **Auto play**:
 A play starting by itself when a moment matches, set up under Starts by itself
-on the play's page under Plays in the sidebar; a play can have several. Each names one moment (a ticket
+on the play's page on the Agent page; a play can have several. Each names one moment (a ticket
 becomes unblocked, enters a stage, is created, gets a developer or tester,
 fails a test; a doc is created, or changed once edits have settled and not
 by an agent; a stack's service crashes, or recovers), conditions on the

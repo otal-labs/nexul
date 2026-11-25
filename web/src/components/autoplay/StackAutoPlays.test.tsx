@@ -7,7 +7,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { AutoPlay } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
 import { pickOption } from "@/test/pickOption";
-import { renderPlaysPage } from "@/test/renderPlaysPage";
+import { renderAgentPage } from "@/test/renderAgentPage";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 
@@ -92,7 +92,7 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  renderPlaysPage("/acme/plays/pl-1");
+  renderAgentPage("/acme/agent/plays/pl-1");
   await screen.findByRole("region", { name: "Starts by itself" });
   return { user };
 };

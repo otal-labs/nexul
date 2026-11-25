@@ -9,6 +9,7 @@ import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 import { useRowGates } from "@/hooks/useRowGates";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { AGENT_PATH } from "@/models/Agent";
 import type { Play } from "@/models/Play";
 
 // A play's row menu, shared by its list row and its detail header; only the header can mount the History dialog, so it alone passes onHistory. Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
@@ -21,7 +22,7 @@ export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
     ...(play.builtin_key ? {} : { onClone: { permission: "plays:write", verb: "create plays" } }),
   });
   const canWrite = useActionState({ permission: "plays:write" }).state === "live";
-  const { playId } = useParams();
+  const { kind, id } = useParams();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const deletePlay = useDeletePlay(play.workspace_id);
@@ -39,7 +40,7 @@ export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
     if (!ok) return;
     deletePlay.mutate(play.id, {
       onSuccess: () => {
-        if (playId === play.id) void navigate(wsPath("/plays"));
+        if (kind === "plays" && id === play.id) void navigate(wsPath(AGENT_PATH));
       },
     });
   };

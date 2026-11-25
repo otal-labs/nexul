@@ -12,6 +12,7 @@ import { useEntityActions } from "@/hooks/useEntityActions";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 import { usePlayMenu } from "@/hooks/usePlayMenu";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { AGENT_PATH } from "@/models/Agent";
 import { PLAY_TYPE_LABELS, type WorkspacePlay } from "@/models/Play";
 
 interface PlayDetailHeaderProps {
@@ -20,7 +21,7 @@ interface PlayDetailHeaderProps {
 
 export const PlayDetailHeader = ({ play }: PlayDetailHeaderProps) => {
   const wsPath = useWorkspacePath();
-  const crumbs = useEmbeddedCrumbs([{ label: "Plays", to: wsPath("/plays") }, { label: `${PLAY_TYPE_LABELS[play.type]} play` }]);
+  const crumbs = useEmbeddedCrumbs([{ label: "Agent", to: wsPath(AGENT_PATH) }, { label: `${PLAY_TYPE_LABELS[play.type]} play` }]);
   const answer = useEntityActions("play", play.id);
   const { edit } = usePlayDialogs();
   const [historyOpen, setHistoryOpen] = useState(false);

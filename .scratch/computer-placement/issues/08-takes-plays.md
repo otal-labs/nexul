@@ -1,7 +1,7 @@
 # 08 — Takes plays
 
 **Status:** ready-for-agent
-**Blocked by:** 07
+**Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, decision 9 and Rules. ADR 0211.
 

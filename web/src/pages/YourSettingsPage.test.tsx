@@ -19,7 +19,6 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/components/settings/ComputersSection", () => ({ ComputersSection: () => <p>Computers card</p> }));
 
 const me = {
   user: { id: "u1", login: "onik97", name: "Onik", avatar_url: "", display_name: "Onik N" },
@@ -84,17 +83,15 @@ describe("YourSettingsPage", () => {
     expect(screen.getByText("LK")).toBeInTheDocument();
   });
 
-  it("marks Computers and its Computers tab while one of your computers has out-of-date skills", async () => {
+  it("marks the Computers link, which opens the Agent page, while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
         return Promise.resolve({ data: { computers: [{ id: "c1", name: "Home", token_expires_at: "2099-01-01T00:00:00Z", kind: "t3code", skills_outdated: true }] } });
       return mockGet(url);
     });
-    renderPage("/settings/pairing");
+    renderPage("/settings/profile");
 
-    expect(await screen.findByRole("link", { name: "Computers, skills out of date" })).toHaveAttribute("href", "/settings/pairing");
-    expect(screen.getByRole("tab", { name: "Your computers, skills out of date" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Projects" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Computers, skills out of date" })).toHaveAttribute("href", "/acme/agent");
   });
 
   it("opens Security as one page: the devices, then the tokens, then connecting a device", async () => {
@@ -106,14 +103,6 @@ describe("YourSettingsPage", () => {
     expect(cards).toEqual(["Signed-in devices", "Personal access tokens", "Connect a device"]);
     expect(screen.getByLabelText(/token name/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
-  });
-
-  it("lands a computer setup link on the Your computers tab with its setup param intact", async () => {
-    renderPage("/settings/pairing?setup=c1");
-
-    expect(await screen.findByRole("tab", { name: "Your computers", selected: true })).toBeInTheDocument();
-    expect(screen.getByText("Computers card")).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent("setup=c1");
   });
 
 });

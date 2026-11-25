@@ -138,14 +138,14 @@ describe("PlaysRailSection auto play signals", () => {
   it("links the person a run waits on to the fix for their computer setup", async () => {
     mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }), "u-alice");
     renderSection();
-    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/settings/pairing");
+    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/acme/agent");
   });
 
   it("sends a run held on its auto play's own computers to that auto play in the workspace, not to the person's computers", async () => {
     const picked = queueItem({ reason: "offline", run_on: "computer", computer_ids: ["c-1"], computer_id: "c-1" });
     mockApi(() => playQueue({ items: [picked] }), "u-alice");
     renderSection();
-    expect(await screen.findByRole("link", { name: "Auto play's computers" })).toHaveAttribute("href", "/acme/plays/play-1");
+    expect(await screen.findByRole("link", { name: "Auto play's computers" })).toHaveAttribute("href", "/acme/agent/plays/play-1");
   });
 
   it("says only what the gap is to anyone else, since the fix is in the run's person's own settings", async () => {
@@ -160,6 +160,6 @@ describe("PlaysRailSection auto play signals", () => {
     renderSection();
     expect((await screen.findByText(/Laptop is offline/)).textContent).toMatch(/^Alice .* · Laptop is offline$/);
     const last = screen.getByText(/Workstation doesn't have this project/);
-    expect(within(last).getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/settings/pairing/projects");
+    expect(within(last).getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/acme/agent");
   });
 });

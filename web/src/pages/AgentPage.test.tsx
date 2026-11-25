@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { renderPlaysPage } from "@/test/renderPlaysPage";
+import { renderAgentPage } from "@/test/renderAgentPage";
 import { expectWriteControls } from "@/test/gates";
-import { asOwner, asReader, settle } from "@/test/viewer";
+import { asReader, asViewer, settle } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn(), errorMessage: vi.fn() }));
 
@@ -33,7 +33,20 @@ const play = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+// The Owner's /me is the whole grid; the plays it holds are what this page reads.
+const OWNER_ME = {
+  role_name: "Owner",
+  roles: [{ id: "role-owner", name: "Owner", is_owner: true }],
+  permissions: ["plays:read", "plays:write", "plays:run", "plays:delete", "autoplays:read", "autoplays:write", "autoplays:delete"],
+};
+const asOwner = (rest: (url: string) => unknown) => asViewer(OWNER_ME, rest, { instance_permissions: [], instance_owner: true });
+
 const rest = (plays: unknown[]) => (url: string) => {
+  if (url === "/api/pairing/computers") return { computers: [] };
+  if (url === "/api/pairing/presence") return { computers: {} };
+  if (url === "/api/pairing/defaults") return {};
+  if (url === "/api/pairing/projects") return { links: [] };
+  if (url === "/api/runners/enrollments") return [];
   if (url === "/api/workspaces/ws-1/plays") return plays;
   if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme", slug: "acme" }];
   if (url === "/api/projects") return [{ id: "p-1", name: "Website" }];
@@ -60,15 +73,15 @@ describe("the plays list", () => {
         throw new Error("boom");
       }),
     );
-    renderPlaysPage();
+    renderAgentPage();
     expect(await screen.findByText("Plays failed")).toBeInTheDocument();
   });
 
   it("says there are no plays in the list and in the pane beside it", async () => {
     serve([]);
-    renderPlaysPage();
-    expect(await screen.findAllByText("No plays yet")).toHaveLength(2);
-    expect(screen.getByText("Select a play")).toBeInTheDocument();
+    renderAgentPage();
+    expect(await screen.findByText("No plays yet")).toBeInTheDocument();
+    expect(screen.getByText("Select a play or a computer")).toBeInTheDocument();
   });
 
   it("groups plays by type in the order Ticket, Doc, Stack, Interview and says what each shows on and whether it is off", async () => {
@@ -77,12 +90,13 @@ describe("the plays list", () => {
       play({ id: "s", label: "Investigate a crash", type: "stack", show_when_stage: null, enabled: false }),
       play({ id: "t", label: "Fix with AI" }),
     ]);
-    renderPlaysPage();
-    await screen.findByText("3 plays in Acme");
+    renderAgentPage();
+    await screen.findByText("Fix with AI");
 
-    expect(screen.getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Ticket", "Stack", "Interview"]);
-    expect(within(screen.getByRole("region", { name: "Ticket" })).getByText("On “In progress”")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Stack" })).getByText("Off")).toBeInTheDocument();
+    const groups = screen.getAllByRole("region").map((group) => group.getAttribute("aria-label"));
+    expect(groups.filter((label) => label?.endsWith(" plays"))).toEqual(["Ticket plays", "Stack plays", "Interview plays"]);
+    expect(within(screen.getByRole("region", { name: "Ticket plays" })).getByText("On “In progress”")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Stack plays" })).getByText("Off")).toBeInTheDocument();
   });
 
   it("says how many auto plays start a play by itself, between its stage and Off, and nothing when none is on", async () => {
@@ -91,8 +105,8 @@ describe("the plays list", () => {
       play({ id: "off", label: "Test with AI", type: "doc", show_when_stage: null, auto_plays_on: 0 }),
       play({ id: "unknown", label: "Clarify", type: "doc", show_when_stage: null }),
     ]);
-    renderPlaysPage();
-    await screen.findByText("3 plays in Acme");
+    renderAgentPage();
+    await screen.findByText("Test with AI");
 
     expect(screen.getAllByText("auto on").map((mark) => mark.closest(".text-xs")?.textContent)).toEqual(["On “In progress”2 auto onOff"]);
   });
@@ -102,7 +116,7 @@ describe("the plays list", () => {
     { name: "locks", showLocked: true },
   ])("$name New play for a reader", async ({ showLocked }) => {
     mocks.get.mockImplementation(asReader({ showLocked, permissions: ["plays:read"] }, rest([play()])));
-    renderPlaysPage();
+    renderAgentPage();
     await screen.findByText("Fix with AI");
     await expectWriteControls([{ role: "button", name: "New play", reason: "Your role can't create plays" }], showLocked);
   });
@@ -111,13 +125,13 @@ describe("the plays list", () => {
     const user = userEvent.setup();
     serve([]);
     mocks.post.mockResolvedValue({ data: play({ id: "pl-x", label: "Triage" }) });
-    const router = renderPlaysPage();
+    const router = renderAgentPage();
 
     await user.click(await screen.findByRole("button", { name: "New play" }));
     await user.type(await screen.findByLabelText("Label"), "Triage");
     await user.click(screen.getByRole("button", { name: "Create play" }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays/pl-x"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/agent/plays/pl-x"));
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/plays", expect.objectContaining({ label: "Triage", type: "ticket", show_when_stage: "progress" }));
   });
 });
@@ -126,16 +140,16 @@ describe("an open play", () => {
   it("opens from its row and reads what the play is", async () => {
     const user = userEvent.setup();
     serve([play()]);
-    const router = renderPlaysPage();
+    const router = renderAgentPage();
 
     await user.click(await screen.findByRole("link", { name: /Fix with AI/ }));
 
-    expect(router.state.location.pathname).toBe("/acme/plays/play-fix");
+    expect(router.state.location.pathname).toBe("/acme/agent/plays/play-fix");
     expect(await screen.findByRole("heading", { name: "Fix with AI", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("Ticket play")).toBeInTheDocument();
     expect(screen.getByText("Reads the ticket and opens a PR.")).toBeInTheDocument();
     expect(screen.getByText("Shows on")).toBeInTheDocument();
-    expect(await screen.findByText("Website")).toBeInTheDocument();
+    expect(await screen.findAllByText("Website"), "the project it skips, and its row under Projects").toHaveLength(2);
     expect(screen.getByText(/Read the ticket\./)).toHaveTextContent("Read the ticket. Open a PR.");
   });
 
@@ -143,7 +157,7 @@ describe("an open play", () => {
     const user = userEvent.setup();
     serve([play()]);
     mocks.patch.mockResolvedValue({ data: play({ enabled: false }) });
-    renderPlaysPage("/acme/plays/play-fix");
+    renderAgentPage("/acme/agent/plays/play-fix");
 
     await waitFor(() => expect(screen.getByRole("switch", { name: "Enabled" })).toBeEnabled());
     await user.click(screen.getByRole("switch", { name: "Enabled" }));
@@ -166,7 +180,7 @@ describe("an open play", () => {
     { name: "locks", showLocked: true },
   ])("$name the Enabled switch and Edit for a reader", async ({ showLocked }) => {
     mocks.get.mockImplementation(asReader({ showLocked, permissions: ["plays:read", "autoplays:read"] }, rest([play()])));
-    renderPlaysPage("/acme/plays/play-fix");
+    renderAgentPage("/acme/agent/plays/play-fix");
     await screen.findByRole("heading", { name: "Fix with AI", level: 1 });
     await expectWriteControls(
       [
@@ -179,7 +193,7 @@ describe("an open play", () => {
 
   it("has no auto plays section on an interview play", async () => {
     mocks.get.mockImplementation(asReader({ permissions: ["plays:read", "autoplays:read"] }, rest([play({ id: "i", label: "Interview a project", type: "interview", show_when_stage: null })])));
-    renderPlaysPage("/acme/plays/i");
+    renderAgentPage("/acme/agent/plays/i");
     await screen.findByRole("heading", { name: "Interview a project", level: 1 });
     await settle();
     expect(screen.queryByRole("region", { name: "Starts by itself" })).not.toBeInTheDocument();
@@ -187,7 +201,7 @@ describe("an open play", () => {
 
   it("has no auto plays section without autoplays:read", async () => {
     mocks.get.mockImplementation(asReader({ permissions: ["plays:read"] }, rest([play()])));
-    renderPlaysPage("/acme/plays/play-fix");
+    renderAgentPage("/acme/agent/plays/play-fix");
     await screen.findByRole("heading", { name: "Fix with AI", level: 1 });
     await settle();
     expect(screen.queryByRole("region", { name: "Starts by itself" })).not.toBeInTheDocument();
@@ -197,19 +211,19 @@ describe("an open play", () => {
     const user = userEvent.setup();
     serve([play()]);
     mocks.delete.mockResolvedValue({});
-    const router = renderPlaysPage("/acme/plays/play-fix");
+    const router = renderAgentPage("/acme/agent/plays/play-fix");
 
     await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     await user.click(await screen.findByRole("button", { name: "Delete play" }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/agent"));
   });
 
   it("says so for a play that isn't in the list", async () => {
     serve([play()]);
-    renderPlaysPage("/acme/plays/gone");
+    renderAgentPage("/acme/agent/plays/gone");
     expect(await screen.findByText("That play isn't here")).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { ChevronDown, LoaderCircle, Sparkles, Square } from "lucide-react";
 import { useState } from "react";
 
-import { FixLink } from "@/components/FixLink";
+import { ReadinessFixLink } from "@/components/pairing/ReadinessFixLink";
 import { PlayMenuRow } from "@/components/play/PlayMenuRow";
 import { PlayRunDialog } from "@/components/play/PlayRunDialog";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
         <PopoverContent align="end" className="w-72 p-1">
           {reason !== "" && (
             <p className="px-2 py-1.5 font-mono text-xs text-muted-foreground">
-              {reason} {!running && block?.link && <FixLink {...block.link} />}
+              {reason} {!running && block?.link && <ReadinessFixLink {...block.link} />}
             </p>
           )}
           {canStop && (

@@ -71,16 +71,16 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "rejected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "expired", link: { to: "/settings/pairing" } }),
+      expect(result.current).toMatchObject({ state: "expired", link: { to: "/agent" } }),
     );
   });
 
   it.each([
-    ["unpaired", "unpaired", "/settings/pairing"],
-    ["expired_token", "expired", "/settings/pairing"],
-    ["needs_location", "needs_location", "/settings/pairing/projects"],
-    ["no_computer_ready", "no_computer_ready", "/settings/pairing"],
-    ["setup_required", "no_computer_ready", "/settings/pairing"],
+    ["unpaired", "unpaired", "/agent"],
+    ["expired_token", "expired", "/agent"],
+    ["needs_location", "needs_location", "/agent"],
+    ["no_computer_ready", "no_computer_ready", "/agent"],
+    ["setup_required", "no_computer_ready", "/agent"],
   ])("maps the %s refusal to %s with a link to fix it", async (reason, state, to) => {
     mockRoutes({ resolve: { ok: false, reason }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
@@ -96,13 +96,13 @@ describe("useHarnessReadiness", () => {
     );
   });
 
-  it("links to the Projects tab when a passed-over computer lacks the project", async () => {
+  it("links to the Agent page when a passed-over computer lacks the project", async () => {
     const offline = { computer_id: "c1", name: "laptop", why: "offline", text: "laptop is offline" };
     const missing = { computer_id: "c2", name: "box", why: "no_checkout", text: "box doesn't have this project" };
     mockRoutes({ resolve: { ok: false, reason: "no_computer_ready", passed_over: [offline, missing] }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ link: { to: "/settings/pairing/projects", label: "Add it to a computer" } }),
+      expect(result.current).toMatchObject({ link: { to: "/agent", label: "Add it to a computer" } }),
     );
   });
 

@@ -7,6 +7,7 @@ import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { usePlayMenu } from "@/hooks/usePlayMenu";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { agentPath } from "@/models/Agent";
 import { type WorkspacePlay } from "@/models/Play";
 
 interface PlayListRowProps {
@@ -47,5 +48,5 @@ export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
     </span>
   );
 
-  return <ListPaneRow to={wsPath(`/plays/${play.id}`)} title={play.label} muted={!play.enabled} detail={detail || undefined} dense={!detail} selected={selected} menu={menu} meta={time} metaOnTitleLine />;
+  return <ListPaneRow to={wsPath(agentPath("plays", play.id))} title={play.label} muted={!play.enabled} detail={detail || undefined} dense={!detail} selected={selected} menu={menu} meta={time} metaOnTitleLine />;
 };

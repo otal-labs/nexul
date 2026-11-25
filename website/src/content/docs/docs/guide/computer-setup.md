@@ -9,7 +9,7 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 
 ## Run setup
 
-1. Open your settings, **Computers**, and press **Set up** on the computer's row (or **Re-run setup** in its **…** menu). **Set up**, the last step of **Add a computer**, opens the same screen.
+1. Open the **Agent** page, open the computer under **Your computers**, and press **Set up** (or **Re-run setup** in its **…** menu). **Set up**, the last step of **Add a computer**, opens the same screen.
 2. Each provider T3 Code lists on the computer has a row with a switch. Switch off any provider you don't use. The switch saves straight away, so a provider you switch off stops showing in the model pickers for plays and chat.
 3. Pick the model each provider's setup turn runs on, beside its name, or leave **Provider default**.
 4. Above the list, **Runs in** picks which of T3 Code's projects the turns run in. Setup only writes files in your home folder, so any of them works; change it if the preselected folder no longer exists. A computer with no T3 project, such as one just added with `computer.sh`, has nothing to pick: setup makes an empty `nexul-chat` project in `~/Code`, runs there, and keeps it as the computer's **Chat folder**.

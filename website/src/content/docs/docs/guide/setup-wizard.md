@@ -53,7 +53,7 @@ The first person to sign in becomes the workspace owner and walks through three 
 
 **Workspace ready** confirms the workspace, and the Welcome wizard takes over with what's yours to set up: **Connect GitHub** and **Your computer**. It opens on the first of them not done yet. Either can wait: **Skip for now** moves on, and **Finish later** leaves the wizard. Whatever is left stays under **Welcome** in your account menu, with a red dot until it's done.
 
-**Your computer** is where agents run: run its one command on that computer, the same as **Settings → Computers**. It needs no Cloudflare and no domain. The three checks, **Computer connected**, **T3 Code found** and **Paired**, turn green, then **Set up** sets up the computer. See [paired computers](/docs/guide/paired-computers/).
+**Your computer** is where agents run: run its one command on that computer, the same as **Add a computer** on the **Agent** page. It needs no Cloudflare and no domain. The three checks, **Computer connected**, **T3 Code found** and **Paired**, turn green, then **Set up** sets up the computer. See [paired computers](/docs/guide/paired-computers/).
 
 A new workspace has no projects, so the Welcome wizard ends with **Create your first project**, which opens the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project).
 

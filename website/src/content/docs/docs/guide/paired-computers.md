@@ -11,7 +11,7 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS with an account that can use `sudo`, Windows, or a Linux host with no systemd such as a container (see [A computer with no systemd](#a-computer-with-no-systemd)), and a way out to the internet. On a Mac, T3 Code answers only while you are logged in at it, and on Windows the Nexul app itself runs only while you are logged on (see [What the command does on the computer](#what-the-command-does-on-the-computer)).
 
-1. Open your settings, **Computers**, and press **Add a computer**. The [Welcome wizard](/docs/guide/welcome-wizard/)'s **Your computer** step runs the same steps.
+1. Open **Agent** in the sidebar and press **Add a computer** (the computer mark in the list's header). The [Welcome wizard](/docs/guide/welcome-wizard/)'s **Your computer** step runs the same steps.
 2. Copy the command under **macOS / Linux** and run it in a terminal on that computer, from your own account (not as root):
 
    ```sh
@@ -30,9 +30,9 @@ Adding a computer needs no Cloudflare and no domain: one command installs the Ne
 3. Watch the three checks. **Computer connected** passes once the Nexul app on the computer connects, **T3 Code found** once it finds T3 Code answering there (it reads **Installing** while the command installs T3 Code, which it does after the app connects), and **Paired** once Nexul has paired with T3 Code through the app's own connection. There's no pairing link to paste. A check that can't pass says what to do in its line: **Reconnecting**, **Offline**, **Closed** (open the T3 Code desktop app), **Not running**, **Missing** (run the command again without `--no-t3`), or **Failed** with the reason.
 4. Press **Set up**, then [set up the computer](/docs/guide/computer-setup/), and **Done**.
 
-If you won't run the command after all, the code stays good for an hour. To cancel it, find it under **Unused computer codes** in the **Computers** list and press **Revoke**; only you see it there. **Add this computer again** then makes a fresh command.
+If you won't run the command after all, the code stays good for an hour. To cancel it, find it under **Unused computer codes** below **Your computers** on the Agent page and press **Revoke**; only you see it there. **Add this computer again** then makes a fresh command.
 
-The computer is named after its hostname; **Rename** in its row's **…** menu changes that. If you close the dialog before running the command, the row reads **New computer** with **Add this computer again**, which makes a fresh command for the same row.
+The computer is named after its hostname; **Rename** in its **…** menu changes that. If you close the dialog before running the command, the computer reads **New computer** with **Add this computer again**, which makes a fresh command for the same computer.
 
 ### What the command does on the computer
 
@@ -109,11 +109,11 @@ The Nexul app only needs to connect to your Nexul address. When the network make
 
 ## Keep it paired
 
-Each computer is one row. A row shows a button only when something needs doing; everything else is in its **…** menu. Click the name to unfold the details.
+Each computer is one row under **Your computers** on the Agent page; open it to see it beside the list. Its page shows a button only when something needs doing, everything else is in its **…** menu, and its details follow.
 
 A computer added with **Add a computer** reads each part on its own: **Online**, **Reconnecting** for up to a minute after its connection drops (a computer that was asleep or paused for a moment comes back on its own, and its runs carry on), or **Offline** (with when it was last seen) for the computer itself, then **T3 Code answering**, **Open T3 Code** when the desktop app is closed, **T3 Code not running**, **Pairing failed** with the reason, or **T3 Code refused the session** when Nexul's session was revoked inside T3 Code (its connected clients list, or `t3 auth session revoke`). While **Re-pair now** runs, the row reads **Re-pairing** until T3 Code hands Nexul its new session. Nexul pairs it again on its own before the 30-day session ends, whenever the app is connected. Its buttons are **Add this computer again** when the app is gone from it, **Re-pair now** when a pairing failed, ran out or was refused, and **Set up** or **Update skills** for its setup; the **…** menu holds **Set up** or **Re-run setup**, **Re-pair now**, **Restart Nexul app** while it is online, **Rename** and **Remove**. Its details show T3 Code's state (**Running** with its port and version, **Not running**, or **Not installed**), then its facts.
 
-**Add this computer again** shows when the computer has no Nexul app: the command was never run, or the app was removed because its owner's account was disabled. It opens the same dialog with a fresh command for the same row, so the computer keeps its name, project links and setup, and Nexul pairs it again once the app connects.
+**Add this computer again** shows when the computer has no Nexul app: the command was never run, or the app was removed because its owner's account was disabled. It opens the same dialog with a fresh command for the same computer, so the computer keeps its name, project links and setup, and Nexul pairs it again once the app connects.
 
 ### Computers paired before the Nexul app
 
@@ -184,8 +184,8 @@ Setup gives the computer its own personal access token, "Nexul MCP on <computer>
 
 A computer is yours alone until you share it: nobody else sees it, a workspace Owner and the instance's Owner included. To let someone use it, open **Share…** in its row's **…** menu, press **Add a person**, pick them, and set what they may do, then **Save**:
 
-- **See this computer**: it shows in their **Computers** list under **Shared with you**, as "<you>'s <computer> (shared)", with its name and whether it is online. Its facts, setup, containers, MCP token and everything else stay yours.
-- **Run commands**: they run [commands](#commands-on-the-computer) on it from its row under **Shared with you**, and so does everything acting as them, such as their agent's `command_run`, while both of its switches are on. They see only the commands they ran; you see theirs among your own, named by who ran them. Taking it away stops every command of theirs still waiting or running there, recorded as cancelled with "access revoked".
+- **See this computer**: it shows on their Agent page under **Shared with you**, as "<you>'s <computer>", with whether it is online and what you let them do. Its facts, setup, containers, MCP token and everything else stay yours.
+- **Run commands**: they run [commands](#commands-on-the-computer) on it from its page under **Shared with you**, and so does everything acting as them, such as their agent's `command_run`, while both of its switches are on. They see only the commands they ran; you see theirs among your own, named by who ran them. Taking it away stops every command of theirs still waiting or running there, recorded as cancelled with "access revoked".
 - **Run agents**: they pick it as "<you>'s <computer> (shared)" in a play's run dialog, an auto play's computers or a project's, and their plays run in its T3 Code with Claude or Codex. It stays out of their order of computers, so it takes only the runs they send it. Each run reaches Nexul as them, with a token made for that run and gone when it ends, so their agent sees only what they can see in Nexul; it shows "Run by <them> using <your> <computer>" on the run and in its thread, and your computer's **Runs by others** lists who ran which play and how it ended, never what it did. Taking Run agents away stops their running turns there at once. A computer paired before this asks you to **Pair again** first.
 - **Read logs**: this runner's logs and its Docker containers' logs. It is off unless you allow it, and allowing it also lets them see the computer. They then read the Nexul app's own log, list the computer's containers and read each one's logs; the values of a container's own environment that are six characters or longer show as `••••` in what they read, which your own reads never do. A container's output can still show a secret the app derives or fetches by itself, so allow it only for people you would trust with that.
 
@@ -201,22 +201,22 @@ An agent shares a computer with [`permission_overwrite_update`](/docs/guide/mcp-
 
 ## Choose where turns run
 
-The **Computers** settings page has two tabs, **Computers** and **Projects**.
+Everything about where turns run is on the **Agent** page in the sidebar, beside your plays: **Your computers** in run order, **Shared with you**, and **Projects**. **Settings → Computers** opens it too. Open a computer or a project from the list to see and change it beside the list.
 
 ### Your computers, in order
 
-**Run order**, on the **Your computers** tab, is one ordered list, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer by its grip to change the order, or use **Move up** and **Move down** in its **…** menu. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
+**Your computers** is one ordered list, each row showing its place (`#1`) and its state as a dot, and runs go to the first computer in it that can take one: it is online, set up for the run's provider, holds the project, and has room. Drag a computer's row to change the order, or open it and use **Move up** and **Move down** in its **…** menu. While the list is filtered by a search, rows don't drag. A computer that can't take the run is passed over for the next one, so a laptop that is shut sends its runs to the computer after it. Computers shared with you are not in the list; they run nothing of yours unless an auto play [names one](/docs/guide/plays/#run-on-a-chosen-computer).
 
-Above the list, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own row says whether it can take a project's runs.
+Under **Defaults** in **Projects**, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own page says whether it can take a project's runs.
 
 Each computer's details set two things for it:
 
-- **Runs at once**, 1 to 5: how many play runs it takes side by side. Its row says how many are going, such as "1 of 2 play runs". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer. Lowering it stops no run already going: new runs wait until fewer than the new number are running.
+- **Runs at once**, 1 to 5: how many play runs it takes side by side. Its page says how many are going, such as "1 of 2 play runs". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer. Lowering it stops no run already going: new runs wait until fewer than the new number are running.
 - **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.
 
 ### Defaults and each project
 
-The Projects tab is one list. **Defaults** comes first and applies wherever a project says nothing of its own; every project you can open follows, from all your workspaces, each reading back what your runs there use, or **Uses defaults**. Open a row to change it; one row is open at a time.
+**Projects** on the Agent page lists **Defaults** first, which applies wherever a project says nothing of its own, then every project of this workspace you can open, each reading back what your runs there use, or **Uses defaults**. Open one to change it.
 
 Defaults set:
 
@@ -226,7 +226,7 @@ Defaults set:
 
 The model list comes from the first of your computers that is online. When none is, the model shows what is saved and reads "Turn on a computer to change it."
 
-A project's row shows, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to the repository the run works on, so a folder can have any name. A project with several repositories, such as an app and its tests repository, shows a checkout for each, named by repository: a run works in the tests repository's checkout when an automation started it from a git event there, or when its play's **Works in** is **Tests repository**, and in the app's otherwise. So a computer holding both takes each run in the right checkout, and a computer holding only the tests repository is passed over for app work. When a computer holds two clones of the same repository, **Pick a checkout** says which one, and the pick is remembered for that repository alone. A checkout picked before checkouts were per repository counts for the repository it is a clone of. A computer that has none reads **No checkout**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. A T3 project with no git remote never matches, so **Use an empty project** under **Add** picks one the computer already has, and creating one with a folder name that is already a T3 project uses that project. Either way, **Save** keeps the pick. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none. The Nexul app on the computer clones it with a short-lived, read-only token for that one repository, so the computer needs no GitHub sign-in to clone a private one; pushing from it later still does (`gh auth login`, for one). Without the GitHub App's private key, or with a Nexul app older than this, T3 Code clones with the computer's own git sign-in instead. A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
+A project's page shows, for each computer in order, the checkout a run there would use. Nexul finds it by matching each of the computer's T3 projects' git remote to the repository the run works on, so a folder can have any name. A project with several repositories, such as an app and its tests repository, shows a checkout for each, named by repository: a run works in the tests repository's checkout when an automation started it from a git event there, or when its play's **Works in** is **Tests repository**, and in the app's otherwise. So a computer holding both takes each run in the right checkout, and a computer holding only the tests repository is passed over for app work. When a computer holds two clones of the same repository, **Pick a checkout** says which one, and the pick is remembered for that repository alone. A checkout picked before checkouts were per repository counts for the repository it is a clone of. A computer that has none reads **No checkout**, and **Add** beside it clones the project's repository there, or creates an empty T3 project when there is nothing to clone. A T3 project with no git remote never matches, so **Use an empty project** under **Add** picks one the computer already has, and creating one with a folder name that is already a T3 project uses that project. Either way, **Save** keeps the pick. The clone lands beside the computer's other T3 projects, or in `~/Code` when it has none. The Nexul app on the computer clones it with a short-lived, read-only token for that one repository, so the computer needs no GitHub sign-in to clone a private one; pushing from it later still does (`gh auth login`, for one). Without the GitHub App's private key, or with a Nexul app older than this, T3 Code clones with the computer's own git sign-in instead. A computer paired before cloning existed shows "Pair it again to clone", with a **Pair again** button that fixes it in one click.
 
 **Computers** is **Your order** until you pick **Custom**, which gives the project its own list: only the computers in it, in its own order, with its own **Send runs to**. Drag a computer by its grip to move it, press its **×** to remove it, and use **Add computer** at the end of the list to put another in. The project can also pick its own model and where its threads start; anything left on **Same as defaults** follows them. **Save** keeps the changes; **Use defaults** clears them. What you set here is yours alone: each teammate's runs in the same project follow their own computers.
 
@@ -246,8 +246,8 @@ The page says why once, above or beside its play buttons, and each button repeat
 |---|---|
 | No computer is paired to run plays. | Add a computer, or finish adding one. |
 | Your computer's pairing has expired or was revoked. | Press **Re-pair now** on the computer's row. |
-| None of your computers has this project yet. | Pick a computer and its T3 project in the run dialog, or **Add** it to a computer on the Projects tab. |
-| None of your computers can take a run right now. | Fix one of the reasons it lists for each computer, below. When one lacks the project, the link opens the Projects tab. |
+| None of your computers has this project yet. | Pick a computer and its T3 project in the run dialog, or **Add** it to a computer from the project under **Projects** on the Agent page. |
+| None of your computers can take a run right now. | Fix one of the reasons it lists for each computer, below. When one lacks the project, the link opens the Agent page, where the project under **Projects** fixes it. |
 | @Agent can't use a provider on a computer until its setup is done. | Run setup for that computer. |
 | T3 Code on your computer is offline. | Check the computer is **Online** and T3 Code is running on it. |
 
@@ -260,7 +260,7 @@ A run that none of your computers can take says why for each one:
 | laptop is full (2 of 2 running) | Wait for a run to end, or raise its **Runs at once**. |
 | laptop isn't set up for claude | Run setup for that provider on it. |
 | laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |
-| laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add** it on the Projects tab. |
-| laptop has several checkouts of this project, or of acme/acme-e2e; pick one | **Pick a checkout** on the Projects tab. |
+| laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add** it from the project under **Projects** on the Agent page. |
+| laptop has several checkouts of this project, or of acme/acme-e2e; pick one | **Pick a checkout** from the project under **Projects** on the Agent page. |
 | laptop has no chat folder | Set its **Chat folder**. |
 | laptop needs pairing again | Press **Re-pair now** on its row. |

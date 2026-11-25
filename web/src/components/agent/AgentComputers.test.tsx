@@ -1,88 +1,66 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ContextAwareConfirmation } from "react-confirm";
-import { MemoryRouter, useLocation } from "react-router";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ComputersSection } from "@/components/settings/ComputersSection";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { computer, pairedBefore, renderAgent, unconfirmed } from "@/test/agentComputers";
+import { asOwner } from "@/test/viewer";
 
-const mocks = vi.hoisted(() => ({
-  get: vi.fn(),
-  put: vi.fn(),
-  post: vi.fn(),
-  patch: vi.fn(),
-  del: vi.fn(),
-  errorMessage: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), post: vi.fn(), patch: vi.fn(), del: vi.fn(), errorMessage: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
   api: { get: mocks.get, put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del },
   errorMessage: mocks.errorMessage,
 }));
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-
 vi.mock("@/components/settings/ComputerMCPToken", () => ({ ComputerMCPToken: () => null }));
 
-const computerList = (computers: unknown[]) => ({ computers });
-
-// A computer added with its app, online; overrides reshape it.
-const computer = (overrides: Record<string, unknown> = {}) => ({
-  id: "c1",
-  name: "Home",
-  server_url: "http://c1.nexul-computer.invalid",
-  runner: { connected: true, last_seen: "2026-10-10T12:00:00Z", reconnecting: false },
-  token_expires_at: "2099-01-01T00:00:00Z",
-  kind: "t3code",
-  harness_version: "0.0.34",
-  created_at: "2026-08-01T00:00:00Z",
-  updated_at: "2026-08-01T00:00:00Z",
-  ...overrides,
-});
-
-// A computer paired by URL before the Nexul app.
-const pairedBefore = (overrides: Record<string, unknown> = {}) => computer({ server_url: "https://home.example.com", runner: undefined, ...overrides });
-
-const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [] };
 let setup: Record<string, unknown> = unconfirmed;
+let presence: Record<string, string> = {};
+let computers: unknown[] = [];
+let extra: (url: string) => unknown = () => undefined;
 
-const serveComputers = (computers: unknown[]) =>
-  mocks.get.mockImplementation(async (url: string) => {
-    if (url.endsWith("/setup")) return { data: setup };
-    if (url.endsWith("/providers")) return { data: { providers: [] } };
-    return { data: computerList(computers) };
-  });
-
-const renderSection = (url = "/settings/pairing") => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const location: { search: string } = { search: "" };
-  const LocationProbe = () => {
-    location.search = useLocation().search;
-    return null;
-  };
-  const view = render(
-    <MemoryRouter initialEntries={[url]}>
-      <QueryClientProvider client={client}>
-        <ContextAwareConfirmation.ConfirmationRoot />
-        <ComputersSection />
-        <LocationProbe />
-      </QueryClientProvider>
-    </MemoryRouter>,
-  );
-  return { ...view, client, location };
+// Every read the page makes, with the computers as the list and the open pane both see them.
+const rest = (url: string) => {
+  const own = extra(url);
+  if (own !== undefined) return own;
+  if (url === "/api/pairing/computers") return { computers };
+  if (url === "/api/pairing/presence") return { computers: presence };
+  if (url === "/api/runners/enrollments") return [];
+  if (url === "/api/pairing/defaults") return {};
+  if (url === "/api/pairing/projects") return { links: [] };
+  if (url === "/api/projects") return [];
+  if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme", slug: "acme" }];
+  if (url.endsWith("/setup")) return setup;
+  if (url.endsWith("/providers")) return { providers: [] };
+  throw new Error(`unexpected GET ${url}`);
 };
 
-describe("ComputersSection", () => {
+const serveComputers = (list: unknown[]) => {
+  computers = list;
+};
+
+const openComputer = (id = "c1") => `/acme/agent/computers/${id}`;
+const pane = (name: string) => screen.findByRole("heading", { name, level: 1 });
+const yourComputers = () => screen.getByRole("region", { name: "Your computers" });
+const goTo = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await user.click(within(yourComputers()).getByRole("link", { name: new RegExp(`${name}$`) }));
+  await pane(name);
+};
+
+describe("the computers on the Agent page", () => {
   beforeEach(() => {
-    mocks.get.mockReset();
-    mocks.put.mockReset();
-    mocks.post.mockReset();
-    mocks.patch.mockReset();
-    mocks.del.mockReset();
-    mocks.errorMessage.mockClear();
-    serveComputers([]);
+    for (const fn of Object.values(mocks)) fn.mockReset();
+    mocks.get.mockImplementation(asOwner(rest));
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
+    useWorkspaceStore.persist.clearStorage();
+    setup = unconfirmed;
+    presence = {};
+    computers = [];
+    extra = () => undefined;
   });
 
   it("lists a computer someone shares with you under yours, by its owner's name and online state only", async () => {
@@ -90,36 +68,36 @@ describe("ComputersSection", () => {
       pairedBefore(),
       { id: "c-bob", name: "Laptop", runner: { connected: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:run_commands", "computers:see"] } },
     ]);
-    renderSection();
-    expect(await screen.findByRole("heading", { name: "Shared with you" })).toBeInTheDocument();
-    expect(screen.getByText("Bob's Laptop (shared)")).toBeInTheDocument();
+    renderAgent(openComputer("c-bob"));
+
+    const group = await screen.findByRole("region", { name: "Shared with you" });
+    expect(within(group).getByRole("link", { name: /Bob's Laptop/ })).toHaveTextContent("Run commands");
+    expect(await pane("Bob's Laptop")).toBeInTheDocument();
     expect(screen.getByText("Online")).toBeInTheDocument();
-    expect(screen.getByText("Run commands")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Actions for Laptop" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Actions for Bob's Laptop" })).not.toBeInTheDocument();
   });
 
   it("shows a shared computer that just dropped as reconnecting, not offline", async () => {
     serveComputers([{ id: "c-bob", name: "Laptop", runner: { connected: false, reconnecting: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see"] } }]);
-    renderSection();
+    renderAgent(openComputer("c-bob"));
+
     expect(await screen.findByText("Reconnecting")).toBeInTheDocument();
     expect(screen.queryByText("Offline")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when there are no computers", async () => {
-    renderSection();
+    renderAgent("/acme/agent");
     expect(await screen.findByText("No computers yet")).toBeInTheDocument();
   });
 
-  it("lists a computer paired before the app folded, with its address and version one click away", async () => {
+  it("opens a computer paired before the app with its address and version in view", async () => {
     serveComputers([pairedBefore()]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent("/acme/agent");
 
-    const row = await screen.findByRole("button", { name: "Home" });
-    expect(row).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("term")).not.toBeInTheDocument();
-
-    await user.click(row);
+    await user.click(await within(await screen.findByRole("region", { name: "Your computers" })).findByRole("link", { name: /Home/ }));
+    await pane("Home");
     expect(screen.getAllByRole("term").map((t) => t.textContent)).toContain("Address");
     expect(screen.getByText("https://home.example.com")).toBeInTheDocument();
     expect(screen.getByText("0.0.34")).toBeInTheDocument();
@@ -143,12 +121,10 @@ describe("ComputersSection", () => {
         },
       }),
     ]);
-    const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
-    const terms = screen.getAllByRole("term").map((t) => t.textContent);
-    expect(terms).not.toContain("Address");
+    await pane("Home");
+    expect(screen.getAllByRole("term").map((t) => t.textContent)).not.toContain("Address");
     expect(screen.queryByText(/nexul-computer\.invalid/)).not.toBeInTheDocument();
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText(/port 47200 · 0\.0\.46 · background service/)).toBeInTheDocument();
@@ -166,24 +142,23 @@ describe("ComputersSection", () => {
       computer({ id: "c3", name: "Old", facts: { t3, providers: [], projects: [] } }),
     ]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     expect(screen.getByText("Not signed in")).toBeInTheDocument();
     expect(screen.getByText(/Plays can't push\. Run gh auth login\./)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Desk" }));
+    await goTo(user, "Desk");
     expect(screen.getByText("Signed in")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Old" }));
-    expect(screen.getAllByRole("term").filter((t) => t.textContent === "GitHub")).toHaveLength(2);
+    await goTo(user, "Old");
+    expect(screen.getAllByRole("term").filter((t) => t.textContent === "GitHub")).toHaveLength(0);
   });
 
   it("lists each tool the computer has, with its version and where it is, and the ones it lacks", async () => {
     const tools = [{ name: "git", path: "C:\\Program Files\\Git\\cmd\\git.exe", version: "2.47.1.windows.1" }, { name: "gh" }];
     serveComputers([computer({ facts: { t3: { state: "answering" }, tools, providers: [], projects: [] } })]);
-    const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     expect(screen.getAllByRole("term").filter((t) => t.textContent === "Tools")).toHaveLength(1);
     expect(screen.getByText("2.47.1.windows.1")).toBeInTheDocument();
     expect(screen.getByText("C:\\Program Files\\Git\\cmd\\git.exe")).toBeInTheDocument();
@@ -195,21 +170,18 @@ describe("ComputersSection", () => {
     const providers = [{ id: "claudeAgent", driver: "claudeAgent", name: "Claude", sign_in: "signed_in" as const, models: [] }];
     const missing_providers = [{ id: "codex", driver: "codex", name: "Codex" }];
     serveComputers([computer({ facts: { t3: { state: "answering" }, providers, missing_providers, projects: [] } })]);
-    const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
-    const row = screen.getByText("Codex").closest("li");
-    expect(row).toHaveTextContent("Not installed");
+    await pane("Home");
+    expect(screen.getByText("Codex").closest("li")).toHaveTextContent("Not installed");
     expect(screen.getByText("Claude").closest("li")).toHaveTextContent("Signed in");
   });
 
   it("lists the provider CLIs row when every provider switched on is missing", async () => {
     serveComputers([computer({ facts: { t3: { state: "answering" }, providers: [], missing_providers: [{ id: "codex", driver: "codex", name: "Codex" }], projects: [] } })]);
-    const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     expect(screen.getAllByRole("term").filter((t) => t.textContent === "Provider CLIs")).toHaveLength(1);
     expect(screen.getByText("Codex").closest("li")).toHaveTextContent("Not installed");
   });
@@ -219,9 +191,9 @@ describe("ComputersSection", () => {
     serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git", version: "2.47.1" }, { name: "gh", install }], providers: [], projects: [] } })]);
     mocks.post.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     await user.click(screen.getByRole("button", { name: "Install gh" }));
     expect(await screen.findByText("Install gh on Home?")).toBeInTheDocument();
     expect(screen.getByText("brew install gh")).toBeInTheDocument();
@@ -242,9 +214,9 @@ describe("ComputersSection", () => {
       .mockRejectedValueOnce(sudoRefused("that sudo password was wrong"))
       .mockResolvedValueOnce({ data: undefined });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     await user.click(screen.getByRole("button", { name: "Install git" }));
     await user.click(screen.getAllByRole("button", { name: "Install git" }).at(-1)!);
     expect(await screen.findByText("Sudo password for Home")).toBeInTheDocument();
@@ -265,15 +237,12 @@ describe("ComputersSection", () => {
 
   it("says git has no identity and sets it from the GitHub sign-in after showing it", async () => {
     serveComputers([computer({ facts: { t3: { state: "answering" }, tools: [{ name: "git", path: "/usr/bin/git" }], providers: [], projects: [] } })]);
-    const serve = mocks.get.getMockImplementation()!;
-    mocks.get.mockImplementation(async (url: string) =>
-      url === "/api/pairing/git-identity" ? { data: { name: "Alice Example", email: "1+alice@users.noreply.github.com" } } : serve(url),
-    );
+    extra = (url) => (url === "/api/pairing/git-identity" ? { name: "Alice Example", email: "1+alice@users.noreply.github.com" } : undefined);
     mocks.post.mockResolvedValue({ data: { name: "Alice Example", email: "1+alice@users.noreply.github.com" } });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     expect(screen.getByText("Not set")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Use my GitHub identity" }));
     expect(await screen.findByText("Alice Example <1+alice@users.noreply.github.com>")).toBeInTheDocument();
@@ -289,20 +258,20 @@ describe("ComputersSection", () => {
       computer({ id: "c2", name: "Old", facts: { t3, providers: [], projects: [] } }),
     ]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
-    await user.click(screen.getByRole("button", { name: "Old" }));
+    await pane("Home");
     expect(screen.getByText("Alice <alice@example.com>")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use my GitHub identity" })).not.toBeInTheDocument();
+    await goTo(user, "Old");
     expect(screen.queryByRole("button", { name: "Use my GitHub identity" })).not.toBeInTheDocument();
   });
 
   it("asks to open a closed desktop app", async () => {
     serveComputers([computer({ server_url: "", facts: { t3: { state: "not_running", install: "desktop_app" }, providers: [], projects: [] } })]);
-    const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await pane("Home");
     expect(screen.getByText("Not running")).toBeInTheDocument();
     expect(screen.getByText(/Open T3 Code · desktop app/)).toBeInTheDocument();
   });
@@ -314,18 +283,19 @@ describe("ComputersSection", () => {
       computer({ id: "c2", name: "Desk", facts: { t3, providers: [], projects: [] } }),
     ]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
-    await user.click(await screen.findByRole("button", { name: "Home" }));
-    await user.click(screen.getByRole("button", { name: "Desk" }));
+    await pane("Home");
     expect(screen.getByText("Restart failed: the user service manager is not running")).toBeInTheDocument();
+    expect(screen.queryAllByText(/^restarted /)).toHaveLength(0);
+    await goTo(user, "Desk");
     expect(screen.getAllByText(/^restarted /)).toHaveLength(1);
   });
 
   it("offers a computer paired before the app only its move and Remove", async () => {
     const user = userEvent.setup();
     serveComputers([pairedBefore({ token_expires_at: "0001-01-01T00:00:00Z", tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" } })]);
-    renderSection();
+    renderAgent(openComputer());
 
     expect(await screen.findByText("Move this computer to the Nexul app")).toBeInTheDocument();
     expect(screen.getByText(/agent work can't run here until it moves/i)).toBeInTheDocument();
@@ -338,7 +308,7 @@ describe("ComputersSection", () => {
   it("badges an unconfirmed computer and opens the dialog straight at Set up for it", async () => {
     serveComputers([computer()]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     expect(await screen.findByText("Needs setup")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^set up$/i }));
@@ -349,13 +319,13 @@ describe("ComputersSection", () => {
   it("opens the named computer's Set up step from the setup link, and closing it forgets the link", async () => {
     serveComputers([computer(), computer({ id: "c2", name: "Mint" })]);
     const user = userEvent.setup();
-    const { location } = renderSection("/settings/pairing?setup=c2");
+    const { router } = renderAgent(`${openComputer("c2")}?setup=c2`);
 
     expect(await screen.findByRole("dialog", { name: /set up mint/i })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: /set up home/i })).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(location.search).toBe("");
+    expect(router.state.location.search).toBe("");
   });
 
   it("lists each provider with its confirmed-at time and follows a setup push without a refresh, changing nothing itself", async () => {
@@ -368,13 +338,14 @@ describe("ComputersSection", () => {
       turns: [{ run_id: "r0", turn_id: "t0", provider: "codex", provider_name: "Codex", state: "confirmed", status: "Confirmed", updated_at: at }],
     };
     serveComputers([computer()]);
-    const { client } = renderSection();
+    const { client } = renderAgent(openComputer());
 
     expect(await screen.findByText("Setup confirmed")).toBeInTheDocument();
     expect(screen.getByTitle("Codex")).toBeInTheDocument();
     expect(screen.getByText("confirmed 2d ago")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Actions for Home" }));
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
 
     setup = {
       ...setup,
@@ -405,7 +376,7 @@ describe("ComputersSection", () => {
     serveComputers([computer()]);
     mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     expect(await screen.findAllByText("skills out of date")).toHaveLength(2);
     expect(screen.getByText("Skills out of date")).toBeInTheDocument();
@@ -429,7 +400,7 @@ describe("ComputersSection", () => {
       turns: [{ run_id: "r0", turn_id: "t0", provider: "opencode", provider_name: "OpenCode", kind: "setup", state: "failed", status: "npx missing", updated_at: at }],
     };
     serveComputers([computer()]);
-    renderSection();
+    renderAgent(openComputer());
 
     expect(await screen.findByText("setup failed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
@@ -448,37 +419,32 @@ describe("ComputersSection", () => {
       ["online with its session refused by T3 Code", { runner: online, facts: answering }, "rejected", ["Online", "T3 Code refused the session"]],
       ["back any moment after a drop", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: true } }, undefined, ["Reconnecting"]],
       ["offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, undefined, ["Offline"]],
-    ])("reads each lane on its own when %s", async (_, state, presence, lanes) => {
+    ])("reads each lane on its own when %s", async (_, state, lane, lanes) => {
       serveComputers([computer({ server_url: relay, ...state })]);
-      mocks.get.mockImplementation(async (url: string) => {
-        if (url.endsWith("/setup")) return { data: setup };
-        if (url.endsWith("/presence")) return { data: { computers: presence ? { c1: presence } : {} } };
-        return { data: computerList([computer({ server_url: relay, ...state })]) };
-      });
-      renderSection();
+      presence = lane ? { c1: lane } : {};
+      renderAgent(openComputer());
 
-      for (const lane of lanes) expect(await screen.findByText(lane)).toBeInTheDocument();
+      for (const text of lanes) expect(await screen.findByText(text)).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /add this computer again/i })).not.toBeInTheDocument();
     });
 
     it("doesn't call T3 Code running from the last report of a computer that went offline", async () => {
       const facts = { ...answering, t3: { ...answering.t3, version: "0.1.1", install: "command_line" } };
       serveComputers([computer({ server_url: relay, runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" }, facts })]);
-      const user = userEvent.setup();
-      renderSection();
+      renderAgent(openComputer());
 
-      await user.click(await screen.findByRole("button", { name: "Home" }));
+      await pane("Home");
       expect(screen.getByText("Unknown while offline")).toBeInTheDocument();
       expect(screen.getByText("port 3773 · 0.1.1 · command line")).toBeInTheDocument();
       expect(screen.queryByText("Running")).not.toBeInTheDocument();
     });
 
-    it("offers Add this computer again once its app is gone, with a fresh command for the same row", async () => {
+    it("offers Add this computer again once its app is gone, with a fresh command for the same computer", async () => {
       serveComputers([computer({ server_url: relay, runner: undefined, token_expires_at: "0001-01-01T00:00:00Z" })]);
       const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.fresh";
       mocks.post.mockResolvedValue({ data: { computer: computer({ server_url: relay }), token: "eyJ.fresh", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: "" } } });
       const user = userEvent.setup();
-      renderSection();
+      renderAgent(openComputer());
 
       expect(await screen.findByText("Nexul app not installed")).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: /add this computer again/i }));
@@ -487,12 +453,12 @@ describe("ComputersSection", () => {
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/enrollments", { id: "c1" });
     });
 
-    it("re-pairs now through its app instead of asking for a link, saying so on the row until it is done", async () => {
+    it("re-pairs now through its app instead of asking for a link, saying so in the pane until it is done", async () => {
       serveComputers([computer({ server_url: relay, runner: online, facts: answering })]);
       let finish: (value: unknown) => void = () => {};
       mocks.post.mockReturnValue(new Promise((resolve) => (finish = resolve)));
       const user = userEvent.setup();
-      renderSection();
+      renderAgent(openComputer());
 
       await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
       await user.click(screen.getByRole("button", { name: "Re-pair now" }));
@@ -509,7 +475,7 @@ describe("ComputersSection", () => {
       serveComputers([computer({ server_url: relay, runner: online })]);
       mocks.patch.mockResolvedValue({ data: computer({ name: "Work laptop", server_url: relay }) });
       const user = userEvent.setup();
-      renderSection();
+      renderAgent(openComputer());
 
       await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
       await user.click(screen.getByRole("button", { name: "Rename" }));
@@ -525,7 +491,7 @@ describe("ComputersSection", () => {
     serveComputers([computer({ running: 0 })]);
     mocks.post.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
     await user.click(screen.getByRole("button", { name: "Restart Nexul app" }));
@@ -539,7 +505,7 @@ describe("ComputersSection", () => {
     serveComputers([computer({ running: 2 })]);
     mocks.post.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
     await user.click(screen.getByRole("button", { name: "Restart Nexul app" }));
@@ -553,7 +519,7 @@ describe("ComputersSection", () => {
   it("offers no restart for an offline computer", async () => {
     serveComputers([computer({ running: 0, runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: false } })]);
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
     expect(screen.queryByRole("button", { name: "Restart Nexul app" })).not.toBeInTheDocument();
@@ -563,7 +529,7 @@ describe("ComputersSection", () => {
     serveComputers([computer()]);
     mocks.del.mockResolvedValue({ data: {} });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
     await user.click(screen.getByRole("button", { name: /^remove$/i }));
@@ -583,7 +549,7 @@ describe("ComputersSection", () => {
     serveComputers([computer({ token_expires_at: "0001-01-01T00:00:00Z" })]);
     mocks.del.mockResolvedValue({ data: {} });
     const user = userEvent.setup();
-    renderSection();
+    renderAgent(openComputer());
 
     await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
     await user.click(screen.getByRole("button", { name: /^remove$/i }));

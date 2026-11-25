@@ -1,5 +1,5 @@
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 
 import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
@@ -37,7 +37,7 @@ interface ListPaneRowProps {
   /** Loads what the row opens once the pointer rests on it or it takes focus. */
   prefetch?: ReturnType<typeof useHoverPrefetch>;
   /** Lets the row be picked up, by a mouse or a held touch, from anywhere on it. */
-  drag?: { setNodeRef: (el: HTMLElement | null) => void; listeners: DraggableSyntheticListeners; isDragging: boolean };
+  drag?: { setNodeRef: (el: HTMLElement | null) => void; listeners: DraggableSyntheticListeners; isDragging: boolean; style?: CSSProperties };
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
@@ -77,6 +77,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
         ref={setRef}
         {...prefetch}
         {...drag?.listeners}
+        style={drag?.style}
         className={cn(
           "group relative my-0.5 flex scroll-my-10 gap-2 rounded-md px-3 transition-colors duration-150 ease-standard",
           metaOnTitleLine ? "items-start" : "items-center",

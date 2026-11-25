@@ -1,4 +1,4 @@
-import { FixLink } from "@/components/FixLink";
+import { ReadinessFixLink } from "@/components/pairing/ReadinessFixLink";
 import { useRunBlock } from "@/hooks/PairingProjectHooks";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ export const HarnessReadinessNote = ({ projectId, className }: HarnessReadinessN
   if (!blocked?.message) return null;
   return (
     <span className={cn("block text-xs text-muted-foreground", className)}>
-      {blocked.message} {blocked.link && <FixLink {...blocked.link} />}
+      {blocked.message} {blocked.link && <ReadinessFixLink {...blocked.link} />}
     </span>
   );
 };

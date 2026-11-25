@@ -230,7 +230,7 @@ describe("Layout", () => {
       user: ownerUser,
       permissions: ownerGrid,
       main: ["/acme/inbox", "/acme/board/BE", "/acme/projects/BE/interview", "/acme/docs", "/acme/memories", "/acme/projects/BE/settings"],
-      workspace: ["/acme/calendar", "/acme/runners", "/acme/topology", "/acme/plays", "/acme/automations", "/acme/access", "/acme/configuration"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/topology", "/acme/agent", "/acme/automations", "/acme/access", "/acme/configuration"],
       create: ["New channel", "New voice channel", "New direct message"],
     },
     {
@@ -238,7 +238,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["chat:read", "tickets:read"],
       main: ["/acme/inbox", "/acme/board/BE"],
-      workspace: ["/acme/calendar", "/acme/runners"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/agent"],
       create: [],
     },
     {
@@ -246,7 +246,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["docs:read"],
       main: ["/acme/inbox", "/acme/docs"],
-      workspace: ["/acme/calendar", "/acme/runners"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/agent"],
       create: [],
     },
     {
@@ -254,7 +254,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["topology:read"],
       main: ["/acme/inbox"],
-      workspace: ["/acme/calendar", "/acme/runners", "/acme/topology"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/topology", "/acme/agent"],
       create: [],
     },
     {
@@ -262,7 +262,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["roles:write"],
       main: ["/acme/inbox"],
-      workspace: ["/acme/calendar", "/acme/runners", "/acme/access"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/agent", "/acme/access"],
       create: [],
     },
     {
@@ -270,7 +270,7 @@ describe("Layout", () => {
       user: member,
       permissions: ["chat:write"],
       main: ["/acme/inbox"],
-      workspace: ["/acme/calendar", "/acme/runners"],
+      workspace: ["/acme/calendar", "/acme/runners", "/acme/agent"],
       create: ["New direct message"],
     },
   ])("sidebar by permission: $name", async ({ user, permissions, main, workspace, create }) => {
