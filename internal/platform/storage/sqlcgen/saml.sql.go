@@ -9,6 +9,15 @@ import (
 	"context"
 )
 
+const deleteExpiredSAMLRequests = `-- name: DeleteExpiredSAMLRequests :exec
+DELETE FROM saml_requests WHERE created_at < ?
+`
+
+func (q *Queries) DeleteExpiredSAMLRequests(ctx context.Context, createdAt int64) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSAMLRequests, createdAt)
+	return err
+}
+
 const deleteSAMLSettings = `-- name: DeleteSAMLSettings :exec
 DELETE FROM saml_settings WHERE id = 1
 `
@@ -43,6 +52,20 @@ func (q *Queries) GetSAMLSettings(ctx context.Context) (SamlSetting, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const insertSAMLRequest = `-- name: InsertSAMLRequest :exec
+INSERT INTO saml_requests (id, created_at) VALUES (?, ?)
+`
+
+type InsertSAMLRequestParams struct {
+	ID        string
+	CreatedAt int64
+}
+
+func (q *Queries) InsertSAMLRequest(ctx context.Context, arg InsertSAMLRequestParams) error {
+	_, err := q.db.ExecContext(ctx, insertSAMLRequest, arg.ID, arg.CreatedAt)
+	return err
 }
 
 const setSAMLSettings = `-- name: SetSAMLSettings :exec
@@ -91,4 +114,21 @@ func (q *Queries) SetSAMLSettings(ctx context.Context, arg SetSAMLSettingsParams
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const takeSAMLRequest = `-- name: TakeSAMLRequest :execrows
+DELETE FROM saml_requests WHERE id = ? AND created_at >= ?
+`
+
+type TakeSAMLRequestParams struct {
+	ID        string
+	CreatedAt int64
+}
+
+func (q *Queries) TakeSAMLRequest(ctx context.Context, arg TakeSAMLRequestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, takeSAMLRequest, arg.ID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

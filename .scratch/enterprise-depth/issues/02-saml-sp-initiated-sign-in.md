@@ -1,6 +1,6 @@
 # SAML sign-in, started by Nexul
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 01
 
 A person signs in through the SAML provider and lands in an account, in a session marked as single sign-on.

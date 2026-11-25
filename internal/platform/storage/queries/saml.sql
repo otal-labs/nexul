@@ -13,3 +13,12 @@ ON CONFLICT (id) DO UPDATE SET metadata_url = excluded.metadata_url, metadata_xm
 
 -- name: DeleteSAMLSettings :exec
 DELETE FROM saml_settings WHERE id = 1;
+
+-- name: InsertSAMLRequest :exec
+INSERT INTO saml_requests (id, created_at) VALUES (?, ?);
+
+-- name: DeleteExpiredSAMLRequests :exec
+DELETE FROM saml_requests WHERE created_at < ?;
+
+-- name: TakeSAMLRequest :execrows
+DELETE FROM saml_requests WHERE id = ? AND created_at >= ?;

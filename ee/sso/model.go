@@ -80,8 +80,10 @@ type Account struct {
 	Status string
 }
 
-// Identity is who the provider says signed in: Key is the issuer-scoped subject, Email is verified.
+// Identity is who the provider says signed in: Provider is its protocol, Key the issuer-scoped subject, Email is the
+// address the provider vouches for.
 type Identity struct {
+	Provider  string
 	Key       string
 	Email     string
 	Name      string

@@ -74,7 +74,7 @@ func (q *Queries) GetSSOSettings(ctx context.Context) (SsoSetting, error) {
 }
 
 const moveSSOIdentity = `-- name: MoveSSOIdentity :execrows
-UPDATE user_identities SET user_id = ?1 WHERE user_id = ?2 AND provider = 'oidc'
+UPDATE user_identities SET user_id = ?1 WHERE user_id = ?2 AND provider IN ('oidc', 'saml')
 `
 
 type MoveSSOIdentityParams struct {

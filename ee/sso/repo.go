@@ -34,8 +34,8 @@ type Repo interface {
 // Accounts is how a sign-in finds, links and makes the person's account; implemented in internal/platform/storage, which
 // joins a new account to the default workspace the way an invitation does.
 type Accounts interface {
-	// BySubject finds the account an issuer-scoped subject is already linked to; ErrNotFound when none.
-	BySubject(ctx context.Context, key string) (Account, error)
+	// BySubject finds the account a provider's issuer-scoped subject is already linked to; ErrNotFound when none.
+	BySubject(ctx context.Context, provider, key string) (Account, error)
 	// ByEmail finds the account with a Google or Discord sign-in on that verified email; ErrNotFound when none.
 	ByEmail(ctx context.Context, email string) (Account, error)
 	// Link attaches the subject to the account, which then signs in through it.

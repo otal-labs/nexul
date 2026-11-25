@@ -431,8 +431,8 @@ func (s *Service) Complete(ctx context.Context, state, code string) (string, err
 	if claims.Subject == "" || email == "" || !claims.EmailVerified {
 		return "", errUnverified
 	}
-	id := Identity{Key: st.IssuerURL + "#" + claims.Subject, Email: email, Name: claims.Name, AvatarURL: claims.Picture}
-	userID, err := s.account(ctx, st, id)
+	id := Identity{Provider: ProtocolOIDC, Key: st.IssuerURL + "#" + claims.Subject, Email: email, Name: claims.Name, AvatarURL: claims.Picture}
+	userID, err := s.account(ctx, st.JoinRoleID, id)
 	if err != nil {
 		return "", err
 	}
@@ -471,8 +471,8 @@ func (s *Service) exchange(ctx context.Context, st Settings, state, code string)
 	return idp.Exchange(ctx, code, state)
 }
 
-func (s *Service) account(ctx context.Context, st Settings, id Identity) (string, error) {
-	acct, err := s.cfg.Accounts.BySubject(ctx, id.Key)
+func (s *Service) account(ctx context.Context, joinRoleID string, id Identity) (string, error) {
+	acct, err := s.cfg.Accounts.BySubject(ctx, id.Provider, id.Key)
 	if err == nil {
 		return admit(acct)
 	}
@@ -496,7 +496,7 @@ func (s *Service) account(ctx context.Context, st Settings, id Identity) (string
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return "", err
 	}
-	ok, err := s.cfg.Accounts.CanJoinAs(ctx, st.JoinRoleID)
+	ok, err := s.cfg.Accounts.CanJoinAs(ctx, joinRoleID)
 	if err != nil {
 		return "", err
 	}
@@ -504,7 +504,7 @@ func (s *Service) account(ctx context.Context, st Settings, id Identity) (string
 		return "", errNotReady
 	}
 	userID := ids.New()
-	if err := s.cfg.Accounts.Create(ctx, userID, id, st.JoinRoleID, s.cfg.Now()); err != nil {
+	if err := s.cfg.Accounts.Create(ctx, userID, id, joinRoleID, s.cfg.Now()); err != nil {
 		return "", err
 	}
 	return userID, nil

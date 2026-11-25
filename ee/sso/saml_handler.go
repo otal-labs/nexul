@@ -1,7 +1,9 @@
 package sso
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
@@ -63,6 +65,42 @@ func (h *Handler) removeSAML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+// startSAML sends the browser to the provider with a signed AuthnRequest whose id the response must name.
+func (h *Handler) startSAML(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	target, err := h.svc.StartSAML(ctx)
+	if err != nil {
+		h.failed(w, r, signInCode(err), err)
+		return
+	}
+	http.Redirect(w, r, target, http.StatusFound)
+}
+
+// acs takes the provider's posted response, the assertion consumer service, and lands on /login with the session token
+// as the other callbacks do. The post is cross-site, so no cookie ties it to the browser; its InResponseTo does.
+func (h *Handler) acs(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	r = r.WithContext(ctx)
+	r.Body = http.MaxBytesReader(w, r.Body, maxSAMLResponse+64<<10)
+	if err := r.ParseForm(); err != nil {
+		h.failed(w, r, codeFailed, err)
+		return
+	}
+	userID, err := h.svc.CompleteSAML(ctx, r.PostForm.Get("SAMLResponse"))
+	if err != nil {
+		h.failed(w, r, signInCode(err), err)
+		return
+	}
+	token, err := h.browser.SSOSessionFor(r, userID)
+	if err != nil {
+		h.failed(w, r, codeFailed, err)
+		return
+	}
+	http.Redirect(w, r, h.browser.SPAOrigin(r)+"/login?token="+token, http.StatusSeeOther)
 }
 
 // spMetadata serves the service provider metadata an identity provider fetches or the Owner downloads.

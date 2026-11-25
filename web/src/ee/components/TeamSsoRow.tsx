@@ -11,13 +11,11 @@ import type { TeamPerson } from "@/models/Team";
 import { loginHandle } from "@/models/User";
 import { personName } from "@/utils/TeamUtility";
 
-const SSO_PROVIDER = "oidc";
-
 // The Team sends the single sign-on identity among the providers, though Provider names only the ones with a mark.
 const providersOf = (person: TeamPerson): readonly string[] => person.providers;
 
-// An account a first sign-in through the provider made: single sign-on is its only way in.
-const onlySso = (person: TeamPerson): boolean => providersOf(person).length === 1 && providersOf(person)[0] === SSO_PROVIDER;
+// An account a first sign-in through the provider made: single sign-on, stored under its protocol, is its only way in.
+const onlySso = (person: TeamPerson, protocol: string): boolean => providersOf(person).length === 1 && providersOf(person)[0] === protocol;
 
 // Whether the person signs in through the provider; for the instance Owner, also the way to move that sign-in here
 // from the duplicate account a first sign-in made.
@@ -28,8 +26,8 @@ export const TeamSsoRow = ({ person }: { person: TeamPerson }) => {
   const move = useMoveSsoSignIn();
   const { open: confirm } = useConfirmationDialog();
   if (!sso?.active) return null;
-  const linked = providersOf(person).includes(SSO_PROVIDER);
-  const duplicates = (team?.people ?? []).filter((other) => other.id !== person.id && other.status !== "removed" && onlySso(other));
+  const linked = providersOf(person).includes(sso.protocol);
+  const duplicates = (team?.people ?? []).filter((other) => other.id !== person.id && other.status !== "removed" && onlySso(other, sso.protocol));
   if (!linked && (!canMove || duplicates.length === 0)) return null;
   const name = personName(person);
 

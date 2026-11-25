@@ -23,8 +23,11 @@ var (
 	_ sso.Accounts = (*SSORepo)(nil)
 )
 
-// ssoProvider is the provider name an OIDC sign-in identity is stored under.
-const ssoProvider = "oidc"
+// isSSOProvider reports whether a sign-in identity was made by single sign-on, OIDC or SAML, the providers stored by
+// their protocol's name.
+func isSSOProvider(provider string) bool {
+	return provider == sso.ProtocolOIDC || provider == sso.ProtocolSAML
+}
 
 // SSORepo stores the instance's one single sign-on provider, its client secret sealed, and the accounts it signs in.
 type SSORepo struct {
@@ -143,9 +146,9 @@ func (r *SSORepo) Delete(ctx context.Context, evts ...eventbus.OutboxEvent) erro
 	})
 }
 
-// BySubject finds the account an issuer-scoped subject is linked to.
-func (r *SSORepo) BySubject(ctx context.Context, key string) (sso.Account, error) {
-	row, err := r.q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: ssoProvider, ProviderUserID: key})
+// BySubject finds the account a provider's issuer-scoped subject is linked to.
+func (r *SSORepo) BySubject(ctx context.Context, provider, key string) (sso.Account, error) {
+	row, err := r.q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: provider, ProviderUserID: key})
 	if err != nil {
 		return sso.Account{}, fmt.Errorf("get user by sso subject: %w", notFoundIfNoRows(err))
 	}
@@ -162,7 +165,7 @@ func (r *SSORepo) ByEmail(ctx context.Context, email string) (sso.Account, error
 }
 
 func ssoIdentity(userID string, id sso.Identity) *auth.Identity {
-	return &auth.Identity{UserID: userID, Provider: ssoProvider, ProviderUserID: id.Key, Login: id.Email, Name: id.Name, AvatarURL: id.AvatarURL}
+	return &auth.Identity{UserID: userID, Provider: auth.Provider(id.Provider), ProviderUserID: id.Key, Login: id.Email, Name: id.Name, AvatarURL: id.AvatarURL}
 }
 
 // Link attaches the subject to the account as an identity, like Profile's link does for the other providers.
@@ -301,7 +304,7 @@ func (r *SSORepo) RefuseGrant(ctx context.Context, userID string) (int, error) {
 func (r *SSORepo) MoveSignIn(ctx context.Context, fromID, toID, actorID string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		from, login, err := checkMove(ctx, q, fromID, toID)
+		from, moved, err := checkMove(ctx, q, fromID, toID)
 		if err != nil {
 			return err
 		}
@@ -315,7 +318,7 @@ func (r *SSORepo) MoveSignIn(ctx context.Context, fromID, toID, actorID string) 
 			return fmt.Errorf("move sso grant: %w", err)
 		}
 		evts := []eventbus.OutboxEvent{
-			{ID: ids.New(), Topic: auth.TopicIdentityLinked, Payload: auth.IdentityChangedEvent{UserID: toID, Provider: ssoProvider, Login: login}},
+			{ID: ids.New(), Topic: auth.TopicIdentityLinked, Payload: auth.IdentityChangedEvent{UserID: toID, Provider: auth.Provider(moved.Provider), Login: moved.Login}},
 		}
 		if from.AccountStatus == string(auth.AccountActive) {
 			if _, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{AccountStatus: string(auth.AccountDisabled), UpdatedAt: time.Now().Unix(), ID: fromID}); err != nil {
@@ -332,30 +335,30 @@ func (r *SSORepo) MoveSignIn(ctx context.Context, fromID, toID, actorID string) 
 }
 
 // checkMove refuses a move that would leave someone without a way in or give an account a second single sign-on, and
-// returns the account moved from with its sign-in's email.
-func checkMove(ctx context.Context, q *sqlcgen.Queries, fromID, toID string) (sqlcgen.User, string, error) {
+// returns the account moved from with its single sign-on identity.
+func checkMove(ctx context.Context, q *sqlcgen.Queries, fromID, toID string) (sqlcgen.User, sqlcgen.UserIdentity, error) {
 	from, err := q.GetUserByID(ctx, fromID)
 	if err != nil {
-		return sqlcgen.User{}, "", fmt.Errorf("get account %s: %w", fromID, notFoundIfNoRows(err))
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, fmt.Errorf("get account %s: %w", fromID, notFoundIfNoRows(err))
 	}
 	to, err := q.GetUserByID(ctx, toID)
 	if err != nil {
-		return sqlcgen.User{}, "", fmt.Errorf("get account %s: %w", toID, notFoundIfNoRows(err))
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, fmt.Errorf("get account %s: %w", toID, notFoundIfNoRows(err))
 	}
 	if to.AccountStatus == string(auth.AccountRemoved) {
-		return sqlcgen.User{}, "", fmt.Errorf("%w: the account to move single sign-on to was removed; restore it first", apperrs.ErrInvalid)
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, fmt.Errorf("%w: the account to move single sign-on to was removed; restore it first", apperrs.ErrInvalid)
 	}
-	login, err := onlySSOLogin(ctx, q, fromID)
+	moved, err := onlySSOIdentity(ctx, q, fromID)
 	if err != nil {
-		return sqlcgen.User{}, "", err
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, err
 	}
 	if err := hasNoSSO(ctx, q, toID); err != nil {
-		return sqlcgen.User{}, "", err
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, err
 	}
 	if err := protectLastActiveOwner(ctx, q, from, auth.AccountDisabled); err != nil {
-		return sqlcgen.User{}, "", err
+		return sqlcgen.User{}, sqlcgen.UserIdentity{}, err
 	}
-	return from, login, nil
+	return from, moved, nil
 }
 
 // endSessionsOf deletes every session of the user and returns a session.revoked event for each.
@@ -379,16 +382,16 @@ func endSessionsOf(ctx context.Context, q *sqlcgen.Queries, userID string) ([]ev
 	return evts, nil
 }
 
-// onlySSOLogin is the email of the account's single sign-on, refused unless that is its one sign-in.
-func onlySSOLogin(ctx context.Context, q *sqlcgen.Queries, userID string) (string, error) {
+// onlySSOIdentity is the account's single sign-on identity, refused unless that is its one sign-in.
+func onlySSOIdentity(ctx context.Context, q *sqlcgen.Queries, userID string) (sqlcgen.UserIdentity, error) {
 	identities, err := q.ListIdentitiesByUser(ctx, userID)
 	if err != nil {
-		return "", fmt.Errorf("list identities of %s: %w", userID, err)
+		return sqlcgen.UserIdentity{}, fmt.Errorf("list identities of %s: %w", userID, err)
 	}
-	if len(identities) != 1 || identities[0].Provider != ssoProvider {
-		return "", fmt.Errorf("%w: single sign-on moves only from an account whose one sign-in it is", apperrs.ErrInvalid)
+	if len(identities) != 1 || !isSSOProvider(identities[0].Provider) {
+		return sqlcgen.UserIdentity{}, fmt.Errorf("%w: single sign-on moves only from an account whose one sign-in it is", apperrs.ErrInvalid)
 	}
-	return identities[0].Login, nil
+	return identities[0], nil
 }
 
 func hasNoSSO(ctx context.Context, q *sqlcgen.Queries, userID string) error {
@@ -397,7 +400,7 @@ func hasNoSSO(ctx context.Context, q *sqlcgen.Queries, userID string) error {
 		return fmt.Errorf("list identities of %s: %w", userID, err)
 	}
 	for _, id := range identities {
-		if id.Provider == ssoProvider {
+		if isSSOProvider(id.Provider) {
 			return fmt.Errorf("%w: that account already signs in through single sign-on", apperrs.ErrConflict)
 		}
 	}

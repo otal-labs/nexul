@@ -84,3 +84,46 @@ func TestSSORepo_TurnOnSAMLOnly_EndsEverySessionOutsideSSOButTheKeptUsers(t *tes
 	require.NoError(t, err)
 	assert.Len(t, pending, 2, "the settings change and one session.revoked")
 }
+
+func TestSSORepo_SAMLRequests_AreTakenOnceAndOnlyWhileFresh(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	at := time.Unix(10_000, 0)
+	require.NoError(t, s.SSO.SaveSAMLRequest(ctx, "old", at.Add(-time.Hour), at.Add(-2*time.Hour)))
+	require.NoError(t, s.SSO.SaveSAMLRequest(ctx, "stale", at.Add(-11*time.Minute), at.Add(-time.Hour)))
+	require.NoError(t, s.SSO.SaveSAMLRequest(ctx, "fresh", at, at.Add(-30*time.Minute)))
+
+	var left int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM saml_requests`).Scan(&left))
+	assert.Equal(t, 2, left, "saving drops the requests older than its bound")
+	stale, err := s.SSO.TakeSAMLRequest(ctx, "stale", at.Add(-10*time.Minute))
+	require.NoError(t, err)
+	assert.False(t, stale, "a request older than its life is not taken")
+	fresh, err := s.SSO.TakeSAMLRequest(ctx, "fresh", at.Add(-10*time.Minute))
+	require.NoError(t, err)
+	assert.True(t, fresh)
+	again, err := s.SSO.TakeSAMLRequest(ctx, "fresh", at.Add(-10*time.Minute))
+	require.NoError(t, err)
+	assert.False(t, again, "a request is taken once")
+	assert.Error(t, s.SSO.SaveSAMLRequest(ctx, "stale", at, at.Add(-time.Hour)), "an id is never kept twice")
+}
+
+func TestSSORepo_MoveSignIn_MovesASAMLSignInToo(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	seedDefaultRoles(t, s)
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("alice", "gh-alice", "alice"))
+	require.NoError(t, err)
+	id := sso.Identity{Provider: sso.ProtocolSAML, Key: "https://idp.example.com#alice-1", Email: "alice@example.com"}
+	require.NoError(t, s.SSO.Create(ctx, "u-dup", id, "role-member", time.Unix(500, 0)))
+
+	require.NoError(t, s.SSO.MoveSignIn(ctx, "u-dup", "alice", "owner"))
+
+	acct, err := s.SSO.BySubject(ctx, sso.ProtocolSAML, id.Key)
+	require.NoError(t, err)
+	assert.Equal(t, "alice", acct.UserID)
+	_, err = s.SSO.BySubject(ctx, sso.ProtocolOIDC, id.Key)
+	require.Error(t, err, "a SAML subject is not an OIDC one")
+}
