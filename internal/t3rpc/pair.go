@@ -18,7 +18,11 @@ import (
 const wellKnownEnvironmentPath = "/.well-known/t3/environment"
 
 // clientScopes is what Nexul uses of the scopes `t3 pair` grants; T3 issues those the grant holds and drops unknown ones.
-const clientScopes = "orchestration:read orchestration:operate terminal:operate source-control:write relay:read"
+// providers:manage lets a run started through a computer's share use a provider instance of its own (ADR 0210).
+const clientScopes = "orchestration:read orchestration:operate terminal:operate source-control:write relay:read providers:manage"
+
+// previousClientScopes is for T3 from before providers:manage, which refuses the whole request over a scope it lacks.
+const previousClientScopes = "orchestration:read orchestration:operate terminal:operate source-control:write relay:read"
 
 // legacyClientScopes is for T3 from before source-control:write, which refuses the whole request over a scope it lacks.
 const legacyClientScopes = "orchestration:read orchestration:operate terminal:operate review:write relay:read"
@@ -33,10 +37,12 @@ type tokenExchangeResponse struct {
 
 // Exchange trades a `t3 pair` one-time token for a bearer session (RFC 8693 token-exchange grant).
 func Exchange(ctx context.Context, client *http.Client, serverURL, oneTimeToken string) (bearerToken string, expiresIn time.Duration, err error) {
-	bearerToken, expiresIn, err = exchange(ctx, client, serverURL, oneTimeToken, clientScopes)
-	// T3 checks scopes before it spends the token, so a refusal over them leaves it good for the retry.
-	if err != nil && strings.Contains(err.Error(), "invalid_scope") {
-		return exchange(ctx, client, serverURL, oneTimeToken, legacyClientScopes)
+	// T3 checks scopes before it spends the token, so a refusal over them leaves it good for the next, smaller ask.
+	for _, scopes := range []string{clientScopes, previousClientScopes, legacyClientScopes} {
+		bearerToken, expiresIn, err = exchange(ctx, client, serverURL, oneTimeToken, scopes)
+		if err == nil || !strings.Contains(err.Error(), "invalid_scope") {
+			return bearerToken, expiresIn, err
+		}
 	}
 	return bearerToken, expiresIn, err
 }

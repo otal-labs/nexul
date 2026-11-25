@@ -177,3 +177,11 @@ ORDER BY po.allow IS NOT NULL, c.position, c.created_at DESC;
 -- name: ListUsersWithReadyComputer :many
 SELECT DISTINCT user_id FROM pairing_computers
 WHERE token_expires_at > 0 AND setup_confirmed_at IS NOT NULL AND user_id IN (SELECT value FROM json_each(sqlc.arg(user_ids)));
+
+-- name: ListPairingSharedRuns :many
+-- The play runs people other than its owner ran on a computer, newest first: who, which play, when and how it ended,
+-- never what it did (ADR 0210).
+SELECT t.id, t.play_label, t.starter_id, COALESCE(NULLIF(u.name, ''), u.login, '') AS starter_name, t.state, t.started_at, t.ended_at
+FROM play_trails t LEFT JOIN users u ON u.id = t.starter_id
+WHERE t.computer_id = sqlc.arg(computer_id) AND t.starter_id != sqlc.arg(owner_id)
+ORDER BY t.started_at DESC, t.id DESC LIMIT sqlc.arg(lim);

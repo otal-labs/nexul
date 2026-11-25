@@ -189,6 +189,21 @@ type fakeTargets struct {
 	// override records the last ResolveTargetOverride call, so a test can assert an override reached the seam.
 	override *TargetOverride
 	hang     bool
+	// guestInstance, when set, is the instance OpenGuestRun points a turn at; guestErr refuses it; guestClosed counts closes.
+	guestInstance string
+	guestErr      error
+	guestClosed   atomic.Int32
+}
+
+func (f *fakeTargets) OpenGuestRun(_ context.Context, userID string, computer pairing.Computer, _ harness.Client, target *harness.Target) (func(context.Context), error) {
+	if computer.UserID == userID || computer.UserID == "" {
+		return func(context.Context) {}, nil
+	}
+	if f.guestErr != nil {
+		return nil, f.guestErr
+	}
+	target.Provider = f.guestInstance
+	return func(context.Context) { f.guestClosed.Add(1) }, nil
 }
 
 func (f *fakeTargets) ResolveConfirmedTarget(_ context.Context, _ string, target pairing.ResolvedTarget) (*pairing.ResolvedTarget, error) {

@@ -3,7 +3,7 @@ import { Controller, type Control, type FieldValues, type Path } from "react-hoo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import type { Computer } from "@/models/Pairing";
-import { notRunnableYet, sharedComputerName } from "@/models/SharedComputer";
+import { notRunnableYet, runsAgents, sharedComputerName } from "@/models/SharedComputer";
 
 interface HarnessComputerFieldProps<T extends FieldValues> {
   control: Control<T>;
@@ -57,9 +57,10 @@ export const HarnessComputerField = <T extends FieldValues>({
               })}
               {withShared &&
                 shared?.map((computer) => (
-                  <SelectItem key={computer.id} value={computer.id} disabled>
+                  <SelectItem key={computer.id} value={computer.id} disabled={!runsAgents(computer) || !computer.runner?.connected}>
                     {sharedComputerName(computer)}
-                    <span className="ml-1.5 text-muted-foreground">{notRunnableYet}</span>
+                    {!runsAgents(computer) && <span className="ml-1.5 text-muted-foreground">{notRunnableYet}</span>}
+                    {runsAgents(computer) && !computer.runner?.connected && <span className="ml-1.5 text-muted-foreground">Offline</span>}
                   </SelectItem>
                 ))}
             </SelectContent>

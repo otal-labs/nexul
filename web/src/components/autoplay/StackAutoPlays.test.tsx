@@ -174,7 +174,7 @@ describe("a stack play's auto plays", () => {
     );
   });
 
-  it("seeds Picked computers with the viewer's computers in their order, saves the list after a remove and an add, and lists shared computers as not pickable", async () => {
+  it("seeds Picked computers with the viewer's computers in their order, saves the list after a remove and an add, and offers a shared computer only with Run agents", async () => {
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: "Add auto play" }));
     const runOn = screen.getByRole("region", { name: "Run on" });
@@ -182,7 +182,7 @@ describe("a stack play's auto plays", () => {
     await pickOption(user, "Run on", "Picked computers");
     const list = await within(runOn).findByRole("list", { name: "This auto play's computers" });
     expect(rowNames(list)).toEqual(["Alice laptop", "Home server"]);
-    expect(within(list).queryByRole("button", { name: "Add computer" })).not.toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: "Add computer" })).toBeInTheDocument();
 
     expect(within(list).getAllByRole("button", { name: /^Reorder/ })).toHaveLength(2);
     await user.click(within(list).getByRole("button", { name: "Remove Alice laptop" }));
@@ -194,10 +194,10 @@ describe("a stack play's auto plays", () => {
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((o) => o.textContent)).toEqual([
       "Alice laptop",
-      "Bob's Build box (shared) · can't run here yet",
-      "Carol's Phone (shared) · can't run here yet",
+      "Bob's Build box (shared)",
+      "Carol's Phone (shared) · can't run agents here",
     ]);
-    expect(items.map((o) => o.getAttribute("aria-disabled"))).toEqual([null, "true", "true"]);
+    expect(items.map((o) => o.getAttribute("aria-disabled"))).toEqual([null, null, "true"]);
     await user.click(screen.getByRole("menuitem", { name: "Alice laptop" }));
     expect(rowNames(list)).toEqual(["Home server", "Alice laptop"]);
     expect(within(list).getAllByRole("button", { name: /^Reorder/ })).toHaveLength(2);

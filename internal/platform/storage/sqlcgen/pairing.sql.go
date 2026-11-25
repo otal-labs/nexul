@@ -711,6 +711,62 @@ func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID st
 	return items, nil
 }
 
+const listPairingSharedRuns = `-- name: ListPairingSharedRuns :many
+SELECT t.id, t.play_label, t.starter_id, COALESCE(NULLIF(u.name, ''), u.login, '') AS starter_name, t.state, t.started_at, t.ended_at
+FROM play_trails t LEFT JOIN users u ON u.id = t.starter_id
+WHERE t.computer_id = ?1 AND t.starter_id != ?2
+ORDER BY t.started_at DESC, t.id DESC LIMIT ?3
+`
+
+type ListPairingSharedRunsParams struct {
+	ComputerID string
+	OwnerID    string
+	Lim        int64
+}
+
+type ListPairingSharedRunsRow struct {
+	ID          string
+	PlayLabel   string
+	StarterID   string
+	StarterName string
+	State       string
+	StartedAt   int64
+	EndedAt     sql.NullInt64
+}
+
+// The play runs people other than its owner ran on a computer, newest first: who, which play, when and how it ended,
+// never what it did (ADR 0210).
+func (q *Queries) ListPairingSharedRuns(ctx context.Context, arg ListPairingSharedRunsParams) ([]ListPairingSharedRunsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingSharedRuns, arg.ComputerID, arg.OwnerID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPairingSharedRunsRow
+	for rows.Next() {
+		var i ListPairingSharedRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayLabel,
+			&i.StarterID,
+			&i.StarterName,
+			&i.State,
+			&i.StartedAt,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPairingTunnelComputers = `-- name: ListPairingTunnelComputers :many
 SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
 `

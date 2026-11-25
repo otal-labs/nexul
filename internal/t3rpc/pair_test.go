@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,7 +59,27 @@ func TestExchange_FallsBackToTheLegacyScopesWhenT3RefusesTheCurrentOnes(t *testi
 	token, _, err := Exchange(context.Background(), srv.Client(), srv.URL, "tok")
 	require.NoError(t, err)
 	assert.Equal(t, "bearer-xyz", token)
-	assert.Equal(t, []string{clientScopes, legacyClientScopes}, asked)
+	assert.Equal(t, []string{clientScopes, previousClientScopes, legacyClientScopes}, asked)
+}
+
+func TestExchange_AsksWithoutProvidersManageWhenT3PredatesIt(t *testing.T) {
+	t.Parallel()
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		asked = append(asked, r.Form.Get("scope"))
+		if strings.Contains(r.Form.Get("scope"), "providers:manage") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"code":"invalid_request","reason":"invalid_scope"}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "bearer-xyz", "token_type": "Bearer"})
+	}))
+	defer srv.Close()
+
+	_, _, err := Exchange(t.Context(), srv.Client(), srv.URL, "tok")
+	require.NoError(t, err)
+	assert.Equal(t, []string{clientScopes, previousClientScopes}, asked)
 }
 
 func TestExchange_DefaultsExpiryWhenMissing(t *testing.T) {

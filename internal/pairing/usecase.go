@@ -71,6 +71,8 @@ type Config struct {
 	Identities GitIdentities
 	// Shells runs commands on a computer through its runner; nil runs none.
 	Shells Shells
+	// RunTokens mints the token a run on someone else's computer reaches Nexul with; nil runs none there.
+	RunTokens RunTokens
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -94,6 +96,7 @@ type Service struct {
 	tools          ComputerTools
 	identities     GitIdentities
 	shells         Shells
+	runTokens      RunTokens
 	shellQueue     *shellQueue
 	// shellRuns joins the goroutines that hand queued commands to their computers' runners.
 	shellRuns sync.WaitGroup
@@ -118,7 +121,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, shells: cfg.Shells, shellQueue: newShellQueue(), settingUp: map[string]context.CancelCauseFunc{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, shells: cfg.Shells, runTokens: cfg.RunTokens, shellQueue: newShellQueue(), settingUp: map[string]context.CancelCauseFunc{},
 		pairFailures: map[string]string{},
 	}
 }
@@ -907,7 +910,7 @@ func fillPick(pick, fallback modelPick) modelPick {
 }
 
 func (s *Service) fetchTargetComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
-	computer, err := s.repo.GetComputer(ctx, userID, computerID)
+	computer, err := s.runComputer(ctx, userID, computerID)
 	if err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) {
 			return nil, &NotConfiguredError{Reason: ReasonUnpaired}
@@ -921,6 +924,16 @@ func (s *Service) fetchTargetComputer(ctx context.Context, userID, computerID st
 		return nil, &NotConfiguredError{Reason: ReasonExpiredToken}
 	}
 	return computer, nil
+}
+
+// runComputer is a computer userID's runs may land on: their own, or one its owner shares with them by Run agents,
+// read again on every call so a revoked share stops the next run (ADR 0210).
+func (s *Service) runComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
+	c, err := s.repo.GetComputer(ctx, userID, computerID)
+	if err == nil || !errors.Is(err, apperrs.ErrNotFound) {
+		return c, err
+	}
+	return s.computerWith(ctx, userID, computerID, permissions.ComputersAgents)
 }
 
 // ownComputer returns one of userID's own computers; another user's id is ErrNotFound, never a permission leak.

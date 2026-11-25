@@ -29,6 +29,9 @@ type activeTurn struct {
 	queue bool
 	// ticketID is the ticket a ticket thread belongs to, "" for any other conversation.
 	ticketID string
+	// computerID, ownerID and viaUserID are where the turn runs, whose computer that is, and whom it acts for; a
+	// turn on someone else's computer stops when their share no longer gives Run agents (ADR 0210).
+	computerID, ownerID, viaUserID string
 }
 
 // setQueued marks or unmarks the turn's request message as waiting in the harness's queue, once per change; a mention

@@ -5,6 +5,7 @@ import { isTrailActive } from "@nexul/client-core/trail";
 
 import { microheaderClass } from "@/components/Microheader";
 import { TrailFoundMemories } from "@/components/play/TrailFoundMemories";
+import { TrailSharedRunLine } from "@/components/play/TrailSharedRunLine";
 import { TrailVersion } from "@/components/play/TrailVersion";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
@@ -56,6 +57,7 @@ const ComputerName = ({ trail }: TrailFactsProps) => {
       {shown && computers && !computer && <Muted>A computer you can't see</Muted>}
       {computer && <span className="font-medium break-words">{sharedComputerName(computer)}</span>}
       {presence && <SettingsStatus tone={presence.tone}>{ended ? `${presence.text} now` : presence.text}</SettingsStatus>}
+      {computer && <TrailSharedRunLine trail={trail} computer={computer} />}
     </>
   );
 };

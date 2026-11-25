@@ -16,6 +16,7 @@ const (
 
 	// sourceControlWrite is the scope T3's projectClone.start requires.
 	sourceControlWrite = "source-control:write"
+	providersManage    = "providers:manage"
 )
 
 // CanClone reports whether T3 granted the bearer session the scope a clone needs; a T3 that does not say counts as yes.
@@ -25,6 +26,15 @@ func CanClone(ctx context.Context, client *http.Client, serverURL, bearerToken s
 		return false, err
 	}
 	return scopes == nil || slices.Contains(scopes, sourceControlWrite), nil
+}
+
+// CanManageProviders is whether the session may add and remove provider instances; a T3 that does not say cannot.
+func CanManageProviders(ctx context.Context, client *http.Client, serverURL, bearerToken string) (bool, error) {
+	scopes, err := sessionScopes(ctx, client, serverURL, bearerToken)
+	if err != nil {
+		return false, err
+	}
+	return slices.Contains(scopes, providersManage), nil
 }
 
 // sessionScopes reads the scopes of the bearer session: nil when T3 does not say, empty when it names an empty grant.

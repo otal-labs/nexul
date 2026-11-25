@@ -135,6 +135,7 @@ type computerResult struct {
 	ContainerLogs    *computerContainerLogs `json:"container_logs,omitempty"`
 	RunnerLogs       *computerRunnerLogs    `json:"runner_logs,omitempty"`
 	Commands         []ShellJob             `json:"commands,omitempty"`
+	SharedRuns       []SharedRun            `json:"shared_runs,omitempty"`
 	ShellEnabled     bool                   `json:"shell_enabled"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`
 	Position         int                    `json:"position"`
@@ -249,6 +250,9 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 		r.T3Projects, r.T3ProjectsError = listedT3Projects(ctx, s, userID, c.ID)
 	}
 	if r.Checkouts, err = pickedCheckouts(ctx, s, userID, c.ID); err != nil {
+		return r, err
+	}
+	if r.SharedRuns, err = s.ListSharedRuns(ctx, userID, c.ID); err != nil {
 		return r, err
 	}
 	if c.Facts != nil && c.Facts.Docker != nil && c.Facts.Docker.Available {
