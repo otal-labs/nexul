@@ -44,6 +44,7 @@ type Store struct {
 	License               *LicenseRepo
 	SSO                   *SSORepo
 	Branding              *BrandingRepo
+	AuditSettings         *AuditSettingsRepo
 	GitHubManifests       *GitHubManifestsRepo
 	SetupCodes            *SetupCodesRepo
 	ConnectCodes          *ConnectCodesRepo
@@ -132,6 +133,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		License:               &LicenseRepo{db: db, w: w, q: q},
 		SSO:                   &SSORepo{db: db, w: w, q: q, encKey: encKey},
 		Branding:              &BrandingRepo{db: db, w: w, q: q},
+		AuditSettings:         &AuditSettingsRepo{db: db, w: w, q: q, encKey: encKey},
 		GitHubManifests:       &GitHubManifestsRepo{db: db, w: w, q: q, encKey: encKey},
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
 		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},

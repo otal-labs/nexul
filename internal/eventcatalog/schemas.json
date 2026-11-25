@@ -5064,6 +5064,44 @@
       "import"
     ]
   },
+  "instance.audit_settings_changed": {
+    "type": "object",
+    "properties": {
+      "retention_days": {
+        "type": "integer",
+        "description": "How many days audit rows are now kept; 45 when the settings were removed."
+      },
+      "stream_url": {
+        "type": "string",
+        "description": "Where each audit row is sent; empty when there is no destination."
+      },
+      "stream_enabled": {
+        "type": "boolean",
+        "description": "True while the stream is switched on."
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "True when the settings were removed and the instance holds none."
+      },
+      "changed_by": {
+        "type": "string",
+        "description": "The account that saved or removed the settings."
+      },
+      "changed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "retention_days",
+      "stream_url",
+      "stream_enabled",
+      "removed",
+      "changed_by",
+      "changed_at"
+    ]
+  },
   "instance.branding_changed": {
     "type": "object",
     "properties": {

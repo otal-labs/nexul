@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
@@ -125,6 +126,7 @@ type coreServices struct {
 	ssoSvc       *sso.Service
 	ssoHandler   *sso.Handler
 	brandingSvc  *branding.Service
+	auditlogSvc  *auditlog.Service
 
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
@@ -513,6 +515,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		ssoSvc:       ssoSvc,
 		ssoHandler:   sso.NewHandler(ssoSvc, authHandler),
 		brandingSvc:  brandingSvc,
+		auditlogSvc:  auditlog.NewService(auditlog.Config{Repo: store.AuditSettings, Licenses: licenseSvc, Gate: accessSvc, Secrets: secretCache}),
 
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,

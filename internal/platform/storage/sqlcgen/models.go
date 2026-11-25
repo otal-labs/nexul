@@ -39,6 +39,16 @@ type AuditLog struct {
 	JobID           string
 }
 
+type AuditSetting struct {
+	ID            int64
+	RetentionDays int64
+	StreamUrl     string
+	StreamSecret  string
+	StreamEnabled int64
+	UpdatedBy     string
+	UpdatedAt     int64
+}
+
 type AutoPlay struct {
 	ID                string
 	PlayID            string

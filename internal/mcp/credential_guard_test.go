@@ -29,6 +29,7 @@ var notCredentials = map[string]string{
 	"instance_url":       "this instance's own address",
 	"server_url":         "a computer's harness address, which takes a token of its own",
 	"secrets_changed":    "the names of variables whose secret changed, never a value",
+	"stream_url":         "where the audit stream posts, refused with a user or password in it; its signing secret is never returned",
 
 	"attachment_create url":                "the attachment's path, which needs the reader's own sign-in",
 	"ticket_get test_target.url":           "a preview or test environment's address",

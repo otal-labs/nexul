@@ -13,7 +13,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
-// AuditRetention is how long an audit row, a dedupe record, a published outbox row and a deploy log line are kept (ADR 0138); a constant because the install takes no settings.
+// AuditRetention is how long a dedupe record, a published outbox row and a deploy log line are kept, and an audit row
+// unless the enterprise setting keeps it longer (ADR 0138, ADR 0190).
 const AuditRetention = 45 * 24 * time.Hour
 
 // auditPurgeBatch bounds one retention delete, so the purge never holds the single writer for long.
@@ -105,10 +106,22 @@ func (s *Service) record(ctx context.Context, resolve ActorResolver, action stri
 	}
 }
 
-// PurgeAudit deletes the rows older than AuditRetention, one bounded batch per write; unchecked, since it runs from
-// a background loop, not a request.
-func (s *Service) PurgeAudit(ctx context.Context) (int64, error) {
-	return purgeInBatches(ctx, "audit rows", s.cfg.Now().Add(-AuditRetention), s.cfg.Audit.DeleteBefore)
+// KeepDays returns how many days of audit rows to keep, read on every purge; the composition root passes the
+// enterprise setting's (ADR 0190), so this package never imports ee.
+type KeepDays func(ctx context.Context) (int, error)
+
+// PurgeAudit deletes the rows older than the days keep returns, never fewer than AuditRetention, one bounded batch per
+// write; a failed read of the days deletes nothing. Unchecked, since it runs from a background loop, not a request.
+func (s *Service) PurgeAudit(ctx context.Context, keep KeepDays) (int64, error) {
+	retention := AuditRetention
+	if keep != nil {
+		days, err := keep(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("read audit retention: %w", err)
+		}
+		retention = max(retention, time.Duration(days)*24*time.Hour)
+	}
+	return purgeInBatches(ctx, "audit rows", s.cfg.Now().Add(-retention), s.cfg.Audit.DeleteBefore)
 }
 
 // PurgeEvents deletes the dedupe records, published outbox rows and deploy log lines older than AuditRetention, in
@@ -150,10 +163,10 @@ func purgeInBatches(ctx context.Context, what string, before time.Time, del func
 	}
 }
 
-// RunAuditRetention purges at start and daily after that, until ctx is cancelled.
-func (s *Service) RunAuditRetention(ctx context.Context, log *slog.Logger) {
+// RunAuditRetention purges at start and daily after that, keeping the audit rows keep says, until ctx is cancelled.
+func (s *Service) RunAuditRetention(ctx context.Context, keep KeepDays, log *slog.Logger) {
 	for {
-		n, err := s.PurgeAudit(ctx)
+		n, err := s.PurgeAudit(ctx, keep)
 		events, eventsErr := s.PurgeEvents(ctx)
 		n, err = n+events, errors.Join(err, eventsErr)
 		if err != nil {

@@ -1533,7 +1533,8 @@ token granted `X:write` also receives `X:read` at mint.
 **Audit log**:
 The instance's record of changes: one row per change made over the HTTP
 gateway or by an MCP tool that is not read-only, naming the user who made
-it, kept 45 days. Reads are not recorded. Read with `audit:read`.
+it, kept 45 days, or up to 1,095 with the enterprise feature, whose saved days
+hold after its key lapses. Reads are not recorded. Read with `audit:read`.
 _Avoid_: Audit (that is the doc a play writes), activity log, access log
 
 **Setup code**:

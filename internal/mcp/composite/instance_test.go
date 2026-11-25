@@ -3,12 +3,14 @@ package composite
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
@@ -104,6 +106,22 @@ func (f *fakeBrandingSettings) Clear(context.Context) (branding.Settings, error)
 	return f.Get(context.Background())
 }
 
+type fakeAuditSettings struct {
+	view    auditlog.View
+	patches []auditlog.Patch
+	removed bool
+}
+
+func (f *fakeAuditSettings) View(context.Context) (auditlog.View, error) { return f.view, nil }
+func (f *fakeAuditSettings) Update(_ context.Context, p auditlog.Patch) (auditlog.Saved, error) {
+	f.patches = append(f.patches, p)
+	return auditlog.Saved{View: f.view, NewSecret: "made-by-the-server"}, nil
+}
+func (f *fakeAuditSettings) Remove(context.Context) (auditlog.View, error) {
+	f.removed = true
+	return f.view, nil
+}
+
 func instanceCall(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, args string) (instanceSettings, error) {
 	t.Helper()
 	return instanceCallWith(t, l, s, &fakeBrandingSettings{}, args)
@@ -111,7 +129,12 @@ func instanceCall(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, args string
 
 func instanceCallWith(t *testing.T, l LicenseKeeper, s *fakeSSOSettings, b BrandingSettings, args string) (instanceSettings, error) {
 	t.Helper()
-	out, err := call(t, t.Context(), InstanceTools(l, s, s, b), "instance_update", args)
+	return instanceCallAll(t, instanceSettingsOf{l: l, s: s, m: s, b: b, a: &fakeAuditSettings{}}, args)
+}
+
+func instanceCallAll(t *testing.T, d instanceSettingsOf, args string) (instanceSettings, error) {
+	t.Helper()
+	out, err := call(t, t.Context(), InstanceTools(d.l, d.s, d.m, d.b, d.a), "instance_update", args)
 	if err != nil {
 		return instanceSettings{}, err
 	}
@@ -250,4 +273,32 @@ func TestInstanceUpdate_ABrandingRefusalAfterAKeyWasSaved_SaysWhatWasChanged(t *
 	require.True(t, errors.As(err, &partial), "%v", err)
 	assert.Equal(t, []string{"license_key"}, partial.Applied)
 	assert.Equal(t, "key-1", l.key)
+}
+
+func TestInstanceUpdate_AuditFieldsPassThroughAndNeverCarryASecret(t *testing.T) {
+	t.Parallel()
+	a := &fakeAuditSettings{view: auditlog.View{RetentionDays: 45}}
+	s := &fakeSSOSettings{}
+	d := instanceSettingsOf{l: &fakeLicenseKeeper{}, s: s, m: s, b: &fakeBrandingSettings{}, a: a}
+
+	got, err := instanceCallAll(t, d, `{}`)
+	require.NoError(t, err)
+	assert.Equal(t, 45, got.Audit.RetentionDays, "the audit settings are read back whatever the call changed")
+	assert.Empty(t, a.patches)
+
+	got, err = instanceCallAll(t, d, `{"audit":{"retention_days":365,"stream_url":"https://logs.example.com","stream_enabled":false}}`)
+	require.NoError(t, err)
+	require.Len(t, a.patches, 1)
+	assert.Equal(t, 365, *a.patches[0].RetentionDays)
+	assert.Equal(t, "https://logs.example.com", *a.patches[0].StreamURL)
+	assert.False(t, *a.patches[0].StreamEnabled, "false is a value, not an omission")
+	assert.Nil(t, a.patches[0].StreamSecret, "an omitted field is left alone")
+	b, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), "made-by-the-server", "a secret the server made never reaches the model")
+
+	_, err = instanceCallAll(t, d, `{"audit":{"remove":true,"retention_days":90}}`)
+	require.NoError(t, err)
+	assert.True(t, a.removed)
+	assert.Len(t, a.patches, 1, "remove ignores the other fields")
 }

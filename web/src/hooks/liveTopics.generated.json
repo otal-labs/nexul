@@ -70,6 +70,7 @@
   "doc.updated",
   "doc.watchers.changed",
   "import.progress",
+  "instance.audit_settings_changed",
   "instance.branding_changed",
   "instance.license_changed",
   "instance.saml_changed",

@@ -22,10 +22,12 @@ type Feature string
 const (
 	FeatureSSO      Feature = "sso"
 	FeatureBranding Feature = "branding"
+	// FeatureAudit keeps the audit log longer and streams it (ADR 0190).
+	FeatureAudit Feature = "audit"
 )
 
 // Features lists every enterprise feature this build knows; a key may name others a newer build added.
-var Features = []Feature{FeatureSSO, FeatureBranding}
+var Features = []Feature{FeatureSSO, FeatureBranding, FeatureAudit}
 
 // NoticeWindow is how long before its expiry the instance Owner is told the key is running out.
 const NoticeWindow = 14 * 24 * time.Hour

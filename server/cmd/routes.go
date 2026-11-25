@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/internal/access"
@@ -188,6 +189,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("DELETE /api/instance/branding", brandingRoutes)
 	apiMux.Handle("PUT /api/instance/branding/logo", brandingRoutes)
 	apiMux.Handle("DELETE /api/instance/branding/logo", brandingRoutes)
+	auditRoutes := auditlog.NewHandler(svc.auditlogSvc).Routes()
+	apiMux.Handle("GET /api/instance/audit", auditRoutes)
+	apiMux.Handle("PUT /api/instance/audit", auditRoutes)
+	apiMux.Handle("DELETE /api/instance/audit", auditRoutes)
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -212,6 +217,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		License:       svc.licenseSvc,
 		SSO:           svc.ssoSvc,
 		Branding:      svc.brandingSvc,
+		AuditLog:      svc.auditlogSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -356,7 +362,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("agent", "The @Agent chat pipeline's stop control")
 	spec.SetTagDescription("integrations", "Integration installs, subscriptions, deliveries")
 	spec.SetTagDescription("events", "Published event-schema catalog")
-	spec.SetTagDescription("audit", "Audit log")
+	spec.SetTagDescription("audit", "Audit log, and its enterprise retention and stream settings")
 	spec.SetTagDescription("logs", "The instance's logs: the browser log relay into the server's sinks, and reading them back")
 	spec.SetTagDescription("sso", "Sign in through the instance's one identity provider, OpenID Connect or SAML, an enterprise feature")
 	spec.SetTagDescription("branding", "The instance's own look: product name, logo, accent and an imported VS Code theme, shown only while a license key unlocks it")
@@ -379,6 +385,9 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/instance/branding/logo", "Needs instance:write: remove the logo", "branding")
 	spec.Register("GET", "/api/branding", "Public: the look the web app paints, empty while no key unlocks branding", "branding")
 	spec.Register("GET", "/api/branding/logo", "Public: the instance's logo, served sandboxed", "branding")
+	spec.Register("GET", "/api/instance/audit", "Needs instance:read: the audit log settings, days kept and the stream destination, and whether the license unlocks them; the stream secret is never returned", "audit")
+	spec.Register("PUT", "/api/instance/audit", "Needs instance:write and a license key unlocking audit: retention_days (45 to 1095), stream_url (https), stream_secret (or a secret reference; one is made and returned once as new_secret when none is saved) and stream_enabled; omitted fields keep their value, an empty stream_url removes the destination", "audit")
+	spec.Register("DELETE", "/api/instance/audit", "Needs instance:write: remove the audit log settings; rows go back to being kept 45 days and the stream stops", "audit")
 	spec.Register("GET", "/api/instance/license", "Needs instance:read: the enterprise license key's state, who it is for, what it unlocks and when it expires", "license")
 	spec.Register("PUT", "/api/instance/license", "Needs instance:write: paste a license key; one for another instance address, with a bad signature or already expired is refused with the reason", "license")
 	spec.Register("GET", "/api/instance/sso", "Needs instance:read: the single sign-on provider's settings, whether the license unlocks it and whether its button shows; the client secret is never returned", "sso")
@@ -592,5 +601,5 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/templates/clone", "Copy a template's text from one layer over another; read where the source lives, write where the target does", "templates")
 	spec.Register("POST", "/api/templates/reset", "Reset a template at a layer: the instance to its code default, a workspace or project to the instance's text", "templates")
 	spec.Register("POST", "/api/templates/delete", "Needs templates:write: delete a role template the instance added; the shipped ones only reset", "templates")
-	spec.Register("GET", "/api/audit", "Audit log: changes made through the API and over MCP, kept 45 days; reads are not recorded", "audit")
+	spec.Register("GET", "/api/audit", "Audit log: changes made through the API and over MCP, kept 45 days or as long as the enterprise retention setting says; reads are not recorded", "audit")
 }
