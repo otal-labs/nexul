@@ -1,8 +1,8 @@
 package integrations
 
-import "crypto/hmac"
+import "github.com/otal-labs/nexul/internal/platform/webhooksig"
 
-// VerifyWebhookSignature is how a receiver checks the header signWebhook produced.
+// VerifyWebhookSignature is how a receiver checks the header a delivery carries.
 func VerifyWebhookSignature(secret string, payload []byte, header string) bool {
-	return hmac.Equal([]byte(header), []byte(signWebhook(secret, payload)))
+	return webhooksig.Verify(secret, payload, header)
 }

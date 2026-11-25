@@ -55,14 +55,18 @@ func toSchemaEntry(row sqlcgen.EventSchema) integrations.SchemaEntry {
 
 // AuditRepo persists audit-log rows.
 type AuditRepo struct {
-	db *sql.DB
-	w  *Serializer
-	q  *sqlcgen.Queries
+	db     *sql.DB
+	w      *Serializer
+	q      *sqlcgen.Queries
+	stream *auditStream
 }
 
+// Append writes the row, and queues it for the audit stream while the stream is on and unlocked; a computer's
+// activity is never in the audit log, so it is never streamed.
 func (r *AuditRepo) Append(ctx context.Context, entry integrations.AuditEntry) error {
+	stream := entry.ComputerID == "" && r.stream.queues(ctx)
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).AppendAudit(ctx, sqlcgen.AppendAuditParams{
+		err := appendAudit(ctx, r.q.WithTx(tx), sqlcgen.AppendAuditParams{
 			ID:         entry.ID,
 			ActorType:  entry.ActorType,
 			ActorID:    entry.ActorID,
@@ -70,7 +74,7 @@ func (r *AuditRepo) Append(ctx context.Context, entry integrations.AuditEntry) e
 			Action:     entry.Action,
 			CreatedAt:  entry.CreatedAt.Unix(),
 			ComputerID: entry.ComputerID, ComputerOwnerID: entry.ComputerOwnerID, JobID: entry.JobID,
-		})
+		}, stream)
 		if err != nil {
 			return fmt.Errorf("append audit: %w", err)
 		}

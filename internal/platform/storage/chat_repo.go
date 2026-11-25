@@ -22,6 +22,8 @@ type ChatRepo struct {
 	db *sql.DB
 	w  *Serializer
 	q  *sqlcgen.Queries
+	// stream decides whether a bot post's audit row is queued for the audit stream.
+	stream *auditStream
 }
 
 // CreateConversation trips a unique index on a duplicate channel name or ticket thread.
@@ -255,6 +257,7 @@ func (r *ChatRepo) CreateMessage(ctx context.Context, m *chat.Message, evts ...e
 
 // CreateBotMessage counts the post first, so a bot deleted since its URL was checked writes nothing.
 func (r *ChatRepo) CreateBotMessage(ctx context.Context, m *chat.Message, audit string, evts ...eventbus.OutboxEvent) error {
+	stream := r.stream.queues(ctx)
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.CountBotwebhookPost(ctx, sqlcgen.CountBotwebhookPostParams{LastPostAt: sql.NullInt64{Int64: m.CreatedAt.Unix(), Valid: true}, ID: m.AuthorID})
@@ -267,7 +270,7 @@ func (r *ChatRepo) CreateBotMessage(ctx context.Context, m *chat.Message, audit 
 		if err := insertMessage(ctx, q, m); err != nil {
 			return err
 		}
-		err = q.AppendAudit(ctx, sqlcgen.AppendAuditParams{ID: ids.New(), ActorType: "bot", ActorID: m.AuthorID, Action: audit, CreatedAt: m.CreatedAt.Unix()})
+		err = appendAudit(ctx, q, sqlcgen.AppendAuditParams{ID: ids.New(), ActorType: "bot", ActorID: m.AuthorID, Action: audit, CreatedAt: m.CreatedAt.Unix()}, stream)
 		if err != nil {
 			return fmt.Errorf("audit post of bot %s: %w", m.AuthorID, err)
 		}

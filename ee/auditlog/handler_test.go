@@ -38,7 +38,7 @@ func TestHandler_SaveReadAndRemove(t *testing.T) {
 
 	rec = serve(t, routes, http.MethodDelete, "")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"unlocked":true,"retention_days":45,"stream_url":"","stream_secret_set":false,"stream_enabled":false,"streaming":false}`, rec.Body.String())
+	assert.JSONEq(t, `{"unlocked":true,"retention_days":45,"stream_url":"","stream_secret_set":false,"stream_enabled":false,"streaming":false,"pending":0,"dead":0}`, rec.Body.String())
 }
 
 func TestHandler_RefusalsCarryTheirStatus(t *testing.T) {

@@ -51,6 +51,7 @@ type AuditSettings interface {
 	View(ctx context.Context) (auditlog.View, error)
 	Update(ctx context.Context, p auditlog.Patch) (auditlog.Saved, error)
 	Remove(ctx context.Context) (auditlog.View, error)
+	RetryFailed(ctx context.Context) (auditlog.View, error)
 }
 
 // InstanceTools is instance_update, the one tool that changes the instance's own settings (ADR 0185): the enterprise
@@ -81,6 +82,7 @@ type auditIn struct {
 	StreamURL     *string `json:"stream_url,omitempty" jsonschema:"The https URL each audit row is posted to, signed; empty removes it."`
 	StreamSecret  *string `json:"stream_secret,omitempty" jsonschema:"The signing secret or a secret reference, never returned; left out, one is made that Settings shows on rotating."`
 	StreamEnabled *bool   `json:"stream_enabled,omitempty" jsonschema:"True queues each new audit row for the destination."`
+	RetryFailed   bool    `json:"retry_failed,omitempty" jsonschema:"True sends the dead deliveries, those that failed 8 times, again."`
 	Remove        *bool   `json:"remove,omitempty" jsonschema:"True deletes the settings: rows are kept 45 days and nothing streams."`
 }
 
@@ -225,10 +227,15 @@ func changeAudit(ctx context.Context, a AuditSettings, in *auditIn) (auditlog.Vi
 	if in.Remove != nil && *in.Remove {
 		return a.Remove(ctx)
 	}
-	saved, err := a.Update(ctx, auditlog.Patch{
-		RetentionDays: in.RetentionDays, StreamURL: in.StreamURL, StreamSecret: in.StreamSecret, StreamEnabled: in.StreamEnabled,
-	})
-	return saved.View, err
+	patch := auditlog.Patch{RetentionDays: in.RetentionDays, StreamURL: in.StreamURL, StreamSecret: in.StreamSecret, StreamEnabled: in.StreamEnabled}
+	if patch == (auditlog.Patch{}) && in.RetryFailed {
+		return a.RetryFailed(ctx)
+	}
+	saved, err := a.Update(ctx, patch)
+	if err != nil || !in.RetryFailed {
+		return saved.View, err
+	}
+	return a.RetryFailed(ctx)
 }
 
 // changeSAML removes the SAML provider, rotates or retires Nexul's certificate, or saves the patch.

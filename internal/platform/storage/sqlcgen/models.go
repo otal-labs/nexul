@@ -49,6 +49,16 @@ type AuditSetting struct {
 	UpdatedAt     int64
 }
 
+type AuditStreamDelivery struct {
+	AuditID       string
+	Status        string
+	Attempts      int64
+	NextAttemptAt int64
+	DeliveredAt   sql.NullInt64
+	LastError     string
+	CreatedAt     int64
+}
+
 type AutoPlay struct {
 	ID                string
 	PlayID            string

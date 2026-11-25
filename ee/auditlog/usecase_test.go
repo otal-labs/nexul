@@ -3,6 +3,7 @@ package auditlog
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,21 +59,32 @@ func (s fakeSecrets) Read(_ context.Context, stored string) (string, error) {
 	return "resolved", nil
 }
 
+func (s fakeSecrets) Value(ctx context.Context, stored string) (string, error) {
+	if !strings.HasPrefix(stored, "op://") {
+		return stored, nil
+	}
+	return s.Read(ctx, stored)
+}
+
 type harness struct {
 	svc      *Service
 	repo     *fakeRepo
+	queue    *fakeQueue
 	licenses *fakeLicenses
+	clock    *time.Time
 }
 
 var now = time.Date(2026, 11, 14, 9, 30, 0, 0, time.UTC)
 
 func newHarness(t *testing.T, unlocked bool) harness {
 	t.Helper()
-	h := harness{repo: &fakeRepo{}, licenses: &fakeLicenses{on: unlocked}}
+	clock := now
+	h := harness{repo: &fakeRepo{}, queue: newFakeQueue(), licenses: &fakeLicenses{on: unlocked}, clock: &clock}
 	h.svc = NewService(Config{
-		Repo: h.repo, Licenses: h.licenses, Gate: fakeGate{},
-		Secrets: fakeSecrets{"op://vault/missing/secret": errors.New("item not found")},
-		Now:     func() time.Time { return now },
+		Repo: h.repo, Queue: h.queue, Licenses: h.licenses, Gate: fakeGate{},
+		Secrets:     fakeSecrets{"op://vault/missing/secret": errors.New("item not found")},
+		InstanceURL: func(context.Context) (string, error) { return "https://nexul.example.com", nil },
+		Now:         func() time.Time { return *h.clock },
 	})
 	return h
 }

@@ -52,6 +52,7 @@ internal/
     paging/              # the offset and limit window a list call takes
     permissions/         # the permission table every actor is checked against
     wake/                # the storage serializer's commit broadcast
+    webhooksig/          # the X-Nexul-Signature HMAC every outbound webhook carries
   plays/                 # plays domain: user-fired Agent turn definitions and their runs
   presence/              # keeps a harness WebSocket open per paired computer
   push/                  # Expo push messages for each notification, per phone session
@@ -259,7 +260,7 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
   `GOEXPERIMENT=jsonv2`; its API is not final until it ships without the
   flag.
 - A loop that delivers what a commit wrote (the outbox relay, the webhook
-  relay, each automations dial-in connection) waits on the storage
+  relay, the audit stream relay, each automations dial-in connection) waits on the storage
   serializer's commit broadcast (`internal/platform/wake`), with a ticker as
   the fallback for a failed attempt: a few seconds for the relays, whose
   retries wait on time, and minutes for a dial-in connection, which an idle
@@ -395,7 +396,7 @@ session) has a `main_test.go` with
 `func TestMain(m *testing.M) { goleak.VerifyTestMain(m) }`
 (`go.uber.org/goleak`), so a goroutine still running after the package's
 tests fail the run. `internal/platform/live`, `collab`, `runner`, `install`, `t3client`,
-`t3clientv2`, `t3rpc`, `plays` and `agent` carry it. A leak found any other
+`t3clientv2`, `t3rpc`, `plays`, `agent` and `ee/auditlog` carry it. A leak found any other
 way shows up in production as a goroutine count that only grows.
 
 ---

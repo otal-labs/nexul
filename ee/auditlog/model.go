@@ -44,6 +44,48 @@ type View struct {
 	StreamEnabled bool   `json:"stream_enabled"`
 	// Streaming is Unlocked and StreamEnabled: new audit rows are queued for the destination.
 	Streaming bool `json:"streaming"`
+	Stats
+}
+
+// Stats is how the stream's queue stands.
+type Stats struct {
+	// Pending is the rows waiting to be sent, retries included.
+	Pending int `json:"pending"`
+	// Dead is the rows that failed 8 times and wait for a retry.
+	Dead            int        `json:"dead"`
+	LastDeliveredAt *time.Time `json:"last_delivered_at,omitempty"`
+	// LastError is the newest reason a delivery failed, among the rows still pending or dead.
+	LastError string `json:"last_error,omitempty"`
+}
+
+// Pending is one queued audit row, as the relay sends it.
+type Pending struct {
+	ID        string
+	ActorType string
+	ActorID   string
+	TokenID   string
+	Action    string
+	CreatedAt time.Time
+	Attempts  int
+}
+
+// delivery is the body of one POST: the audit row, a delivery_id fresh per attempt, and the instance it came from;
+// a receiver dedupes on id, since delivery is at least once.
+type delivery struct {
+	DeliveryID  string    `json:"delivery_id"`
+	ID          string    `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	ActorType   string    `json:"actor_type"`
+	ActorID     string    `json:"actor_id"`
+	TokenID     string    `json:"token_id"`
+	Action      string    `json:"action"`
+	InstanceURL string    `json:"instance_url"`
+}
+
+// TestResult is what a test delivery got back: the receiver's status, or why nothing came back.
+type TestResult struct {
+	Status int    `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 // Saved is what a save answers the browser: the view, and the signing secret the server made in that call, shown once.
