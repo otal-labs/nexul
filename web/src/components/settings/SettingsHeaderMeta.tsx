@@ -5,7 +5,6 @@ import { useFetchMe, useFetchSettings, useListPATs, useListSessions } from "@/ho
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchInvitations } from "@/hooks/InvitationHooks";
-import { useListComputers } from "@/hooks/PairingHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useFetchTemplates } from "@/hooks/TemplateHooks";
 import { getThemeDefinition } from "@/lib/themePalettes";
@@ -45,11 +44,6 @@ const SecurityMeta = () => {
       ]}
     />
   );
-};
-
-const PairingMeta = () => {
-  const { data: computers } = useListComputers();
-  return <HeaderFacts parts={[computers && count(computers.length, "computer")]} />;
 };
 
 const InstanceMeta = () => {
@@ -116,7 +110,6 @@ export const SettingsHeaderMeta = ({ section }: SettingsHeaderMetaProps) => (
     {section === "profile" && <ProfileMeta />}
     {section === "appearance" && <AppearanceMeta />}
     {section === "security" && <SecurityMeta />}
-    {section === "pairing" && <PairingMeta />}
     {section === "instance" && <InstanceMeta />}
     {section === "team" && <TeamMeta />}
     {section === "sign-in" && <SignInMeta />}

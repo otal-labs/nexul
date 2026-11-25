@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { ChevronRight, Plus, RefreshCw, Wrench } from "lucide-react";
+import { Plus, RefreshCw, Wrench } from "lucide-react";
 import { useSearchParams } from "react-router";
 
+import { Container } from "@/components/Container";
+import { PageHeader } from "@/components/PageHeader";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { SetupComputerDialog } from "@/components/pairing/SetupComputerDialog";
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
 import { ComputerLoad } from "@/components/settings/ComputerLoad";
-import { useComputerOrder } from "@/components/settings/ComputerOrderContext";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
@@ -15,13 +16,15 @@ import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { usePairNow, useRestartApp } from "@/hooks/ComputerHooks";
 import { useDeleteComputer } from "@/hooks/PairingHooks";
+import { useComputerMoves } from "@/hooks/useComputerMoves";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { AGENT_PATH } from "@/models/Agent";
 import { computerLanes, worstFirst } from "@/models/ComputerChecks";
 import { computerEntity } from "@/models/PermissionPanel";
 import { onlySkillsOutdated, RenameComputerFormSchema, setupSummary, stillPairing, type Computer, type RenameComputerFormData } from "@/models/Pairing";
-import { cn } from "@/lib/utils";
 import { daysUntil } from "@/utils/TimeUtility";
 
 // Shown until the computer's app reports its hostname.
@@ -29,13 +32,14 @@ const UNNAMED = "New computer";
 
 type Primary = "again" | "repair" | "update" | "setup" | undefined;
 
-interface RunnerComputerRowProps {
+interface RunnerComputerPaneProps {
   computer: Computer;
   presence?: string | undefined;
 }
 
-// A computer added with its app: each lane's health on its own, at most one action for what needs doing, the rest in its menu.
-export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps) => {
+// A computer added with its app: each lane's health on its own, at most one action for what needs doing, the rest in its
+// menu, then everything it reports.
+export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPaneProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pairing = stillPairing(computer);
   const { data: setup } = useFetchComputerSetup(pairing ? "" : computer.id);
@@ -46,8 +50,8 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const { open: openRename } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const openPermissions = usePermissionsDialog();
-  const [folded, setFolded] = useState(true);
-  const { grip, moveActions } = useComputerOrder();
+  const moveActions = useComputerMoves(computer.id);
+  const wsPath = useWorkspacePath();
   const [setupOpen, setSetupOpen] = useState(!pairing && searchParams.get("setup") === computer.id);
 
   const name = computer.name || UNNAMED;
@@ -102,80 +106,67 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   ];
 
   return (
-    <div className="py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {grip}
-        <button
-          type="button"
-          aria-expanded={!folded}
-          onClick={() => setFolded(!folded)}
-          className="group -ml-1 flex min-w-[min(12rem,100%)] flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left"
-        >
-          <ChevronRight
-            aria-hidden
-            className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover:text-foreground", !folded && "rotate-90")}
-          />
-          <span className={cn("line-clamp-2 text-sm font-medium break-words", !computer.name && "text-muted-foreground")} title={name}>
-            {name}
+    <Container className="space-y-6 py-8 sm:pr-3.5">
+      <PageHeader
+        crumbs={[{ label: "Agent", to: wsPath(AGENT_PATH) }, { label: "Your computers" }]}
+        title={name}
+        meta={
+          <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+            {worstFirst(lines).map((line) => (
+              <SettingsStatus key={line.text} tone={line.tone} detail={line.detail}>
+                {line.text}
+              </SettingsStatus>
+            ))}
+            {!pairing && <ComputerLoad computer={computer} />}
           </span>
-        </button>
-        {!pairing && <ComputerLoad computer={computer} />}
-        {/* Mounted whatever the row shows, so the row changing as the computer connects can't close the dialog. */}
-        <AddComputerDialog
-          again={{ id: computer.id, name: computer.name }}
-          trigger={
-            primary === "again" && (
-              <Button type="button" variant="outline" size="sm">
-                <Plus className="size-4" aria-hidden />
-                Add this computer again
+        }
+        actions={
+          <>
+            {/* Mounted whatever the pane shows, so the pane changing as the computer connects can't close the dialog. */}
+            <AddComputerDialog
+              again={{ id: computer.id, name: computer.name }}
+              trigger={
+                primary === "again" && (
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="size-4" aria-hidden />
+                    Add this computer again
+                  </Button>
+                )
+              }
+            />
+            {primary === "repair" && (
+              <Button type="button" variant="outline" size="sm" loading={pairNow.isPending} onClick={() => pairNow.mutate()}>
+                <RefreshCw className="size-4" aria-hidden />
+                Re-pair now
               </Button>
-            )
-          }
-        />
-        {primary === "repair" && (
-          <Button type="button" variant="outline" size="sm" loading={pairNow.isPending} onClick={() => pairNow.mutate()}>
-            <RefreshCw className="size-4" aria-hidden />
-            Re-pair now
-          </Button>
-        )}
-        {primary === "update" && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            loading={update.isPending}
-            onClick={() => {
-              update.mutate();
-              setSetupOpen(true);
-            }}
-          >
-            <RefreshCw className="size-4" aria-hidden />
-            Update skills
-          </Button>
-        )}
-        {primary === "setup" && (
-          <Button type="button" variant="outline" size="sm" onClick={() => setSetupOpen(true)}>
-            <Wrench className="size-4" aria-hidden />
-            {setupLabel}
-          </Button>
-        )}
-        <RowActionsMenu subject={name} actions={actions} />
-      </div>
-      <p className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5", grip ? "pl-18" : "pl-6")}>
-        {worstFirst(lines).map((line) => (
-          <SettingsStatus key={line.text} tone={line.tone} detail={line.detail}>
-            {line.text}
-          </SettingsStatus>
-        ))}
-      </p>
-      <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
-        <div>
-          <div className={cn("pt-3", grip ? "pl-18" : "pl-6")}>
-            <ComputerDetails computer={computer} setup={setup} />
-          </div>
-        </div>
-      </div>
+            )}
+            {primary === "update" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                loading={update.isPending}
+                onClick={() => {
+                  update.mutate();
+                  setSetupOpen(true);
+                }}
+              >
+                <RefreshCw className="size-4" aria-hidden />
+                Update skills
+              </Button>
+            )}
+            {primary === "setup" && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setSetupOpen(true)}>
+                <Wrench className="size-4" aria-hidden />
+                {setupLabel}
+              </Button>
+            )}
+            <RowActionsMenu subject={name} actions={actions} />
+          </>
+        }
+      />
+      <ComputerDetails computer={computer} setup={setup} />
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}
-    </div>
+    </Container>
   );
 };

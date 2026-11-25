@@ -2,6 +2,7 @@ import type { AxiosError } from "axios";
 import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
+import { AGENT_PATH, agentPath } from "@/models/Agent";
 import type { ComputerFacts } from "@/models/ComputerFacts";
 import type { SharedComputer } from "@/models/SharedComputer";
 
@@ -351,9 +352,8 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// Your settings → Computers with the computer's Set up step open.
-export const computerSetupPath = (computerId: string) =>
-  `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
+// The computer on the Agent page with its Set up step open, workspace-relative.
+export const computerSetupPath = (computerId: string) => `${agentPath("computers", computerId)}?setup=${encodeURIComponent(computerId)}`;
 
 // Mirrors pairing.ReasonNeedsLocation: no computer of the person's has the project, so their run asks where (ADR 0165).
 export const NEEDS_LOCATION_REASON = "needs_location";
@@ -550,9 +550,10 @@ export interface ReadinessLink {
   label: string;
 }
 
-export const COMPUTERS_SETTINGS_PATH = "/settings/pairing";
-export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_SETTINGS_PATH, label: "Add a computer" };
-export const COMPUTER_PROJECTS_PATH = `${COMPUTERS_SETTINGS_PATH}/projects`;
+// Workspace-relative: the Agent page holds your computers and each project's run settings (ADR 0211).
+export const COMPUTERS_PATH = AGENT_PATH;
+export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_PATH, label: "Add a computer" };
+export const COMPUTER_PROJECTS_PATH = AGENT_PATH;
 
 const CHECKOUT_FIX_LINKS: Partial<Record<PassOver["why"], ReadinessLink>> = {
   no_checkout: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
@@ -569,7 +570,7 @@ export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "
   unpaired: { message: "No computer is paired to run plays.", link: ADD_COMPUTER_LINK },
   expired: {
     message: "Your computer's pairing has expired or was revoked.",
-    link: { to: COMPUTERS_SETTINGS_PATH, label: "Re-pair it" },
+    link: { to: COMPUTERS_PATH, label: "Re-pair it" },
   },
   needs_location: {
     message: "None of your computers has this project yet.",
@@ -577,7 +578,7 @@ export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "
   },
   no_computer_ready: {
     message: "None of your computers can take a run right now.",
-    link: { to: COMPUTERS_SETTINGS_PATH, label: "Your computers" },
+    link: { to: COMPUTERS_PATH, label: "Your computers" },
   },
   offline: { message: "T3 Code on your computer is offline." },
 };

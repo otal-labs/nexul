@@ -5,14 +5,13 @@ import { personLabel } from "@nexul/client-core/person";
 import { waitingLines } from "@nexul/client-core/playQueue";
 
 import { Button } from "@/components/ui/button";
-import { FixLink } from "@/components/FixLink";
+import { ReadinessFixLink } from "@/components/pairing/ReadinessFixLink";
 import { signalActionClass, signalRowClass } from "@/components/play/signalRowClass";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useCancelQueuedRun } from "@/hooks/PlayQueueHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useActionState } from "@/hooks/useActionState";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
 import { waitingLink } from "@/utils/PlayQueueUtility";
@@ -31,8 +30,7 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
   const mine = me?.user.id === item.person_id;
-  const wsPath = useWorkspacePath();
-  const link = waitingLink(item, wsPath);
+  const link = waitingLink(item);
   const lines = waitingLines(item);
   const canCancel = item.status === "queued" && (mine || canWrite);
 
@@ -54,7 +52,7 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
             {i === lines.length - 1 && mine && link && (
               <>
                 {" · "}
-                <FixLink {...link} />
+                <ReadinessFixLink {...link} />
               </>
             )}
           </p>

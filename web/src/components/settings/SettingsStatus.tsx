@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export type SettingsStatusTone = "success" | "warning" | "destructive" | "info" | "muted";
 
-const dotClass: Record<SettingsStatusTone, string> = {
+export const statusDotClass: Record<SettingsStatusTone, string> = {
   success: "bg-success",
   warning: "bg-warning-mark",
   destructive: "bg-destructive",
@@ -23,7 +23,7 @@ interface SettingsStatusProps {
 // A setting's state at a glance: a status dot beside plain text, never a tinted chip. A changed tone crossfades the dot.
 export const SettingsStatus = ({ tone, children, detail, className }: SettingsStatusProps) => (
   <span className={cn("inline-flex min-w-0 items-center gap-1.5 text-xs", className)}>
-    <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard", dotClass[tone])} />
+    <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard", statusDotClass[tone])} />
     <span className={cn("shrink-0 font-medium", tone === "muted" ? "text-muted-foreground" : "text-foreground")}>{children}</span>
     {/* Space alone sets the detail apart; the hidden comma keeps it a separate phrase when read aloud. */}
     {detail && (

@@ -14,6 +14,7 @@ import { TabSegmentContext } from "@/hooks/useTabPath";
 import { ErrorPage } from "@/pages/ErrorPage";
 import {
   AccessPage,
+  AgentPage,
   AutomationPage,
   AutomationsPage,
   BoardPage,
@@ -31,7 +32,6 @@ import {
   MemoriesPage,
   OAuthAuthorizePage,
   OwnerWizardPage,
-  PlaysPage,
   ProjectSettingsPage,
   ProjectWizardImportPage,
   ProjectWizardPage,
@@ -88,8 +88,8 @@ const workspaceRoutes: RouteObject[] = [
   { path: "board/:projectId", handle: projectGate("tickets"), element: <BoardPage /> },
   { path: "tickets/:ticketId/:tab?", handle: projectGate("tickets"), element: <TicketPage /> },
   { path: "runners", element: <RunnersPage /> },
-  { path: "plays", handle: gate("plays"), element: <PlaysPage /> },
-  { path: "plays/:playId", handle: gate("plays"), element: <PlaysPage /> },
+  { path: "agent", element: <AgentPage /> },
+  { path: "agent/:kind/:id", element: <AgentPage /> },
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },
   ...staticTabs("access", ["roles", "channels"], "access", <AccessPage />),

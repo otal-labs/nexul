@@ -7,7 +7,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { AutoPlay } from "@/models/AutoPlay";
 import type { Memory } from "@/models/Memory";
 import { pickOption } from "@/test/pickOption";
-import { renderPlaysPage } from "@/test/renderPlaysPage";
+import { renderAgentPage } from "@/test/renderAgentPage";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 
@@ -112,7 +112,7 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  const router = renderPlaysPage("/acme/plays/pl-1");
+  const router = renderAgentPage("/acme/agent/plays/pl-1");
   await screen.findByRole("region", { name: "Starts by itself" });
   return { user, router };
 };
@@ -183,7 +183,7 @@ describe("a play's auto plays", () => {
     await user.click(screen.getByRole("link", { name: /Test with AI/ }));
     await user.click(within(await discardPrompt()).getByRole("button", { name: "Cancel" }));
 
-    expect(router.state.location.pathname).toBe("/acme/plays/pl-1");
+    expect(router.state.location.pathname).toBe("/acme/agent/plays/pl-1");
     expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
   });
 
@@ -194,13 +194,13 @@ describe("a play's auto plays", () => {
 
     await user.click(screen.getByRole("link", { name: /Test with AI/ }));
     await user.click(within(await discardPrompt()).getByRole("button", { name: "Discard changes" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays/pl-2"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/agent/plays/pl-2"));
     await waitFor(() => expect(screen.queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument());
 
     await user.click(screen.getByRole("link", { name: /Fix with AI/ }));
     await user.click(await screen.findByRole("button", { name: /becomes unblocked/ }));
     await user.click(screen.getByRole("link", { name: /Test with AI/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/plays/pl-2"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/acme/agent/plays/pl-2"));
     expect(screen.queryByRole("dialog", { name: "Discard changes?" })).not.toBeInTheDocument();
   });
 

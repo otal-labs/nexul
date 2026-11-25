@@ -105,7 +105,7 @@ const sectionLandings: Record<string, { area?: RouteArea; path: string }> = {
   runners: { path: "/runners" },
   topology: { area: "topology", path: "/topology" },
   stacks: { area: "topology", path: "/topology" },
-  plays: { area: "plays", path: "/plays" },
+  agent: { path: "/agent" },
   automations: { area: "automations", path: "/automations" },
   wizard: { area: "wizard", path: "/wizard/project/project" },
 };

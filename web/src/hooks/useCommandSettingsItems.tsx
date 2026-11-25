@@ -29,15 +29,6 @@ const tabRows = (base: string, hint: string, tabs: Tab[]): Row[] =>
 const YOUR_KEYWORDS: Partial<Record<YourSettingsSection, string>> = {
   appearance: "theme dark light mode palette colours",
   security: "devices phone sessions sign out tokens api mcp personal access key",
-  pairing: "pair t3 computer",
-};
-
-// Computers' first tab is the section row itself, so only its other tabs are listed.
-const YOUR_TABS: Partial<Record<YourSettingsSection, Tab[]>> = {
-  pairing: [
-    ["projects", "Projects"],
-    ["defaults", "Defaults"],
-  ],
 };
 
 const SECTION_KEYWORDS: Partial<Record<SettingsSection, string>> = {
@@ -73,7 +64,6 @@ const PROJECT_KEYWORDS: Partial<Record<ProjectSettingsSection, string>> = {
 const yourRows = (): Row[] =>
   YOUR_SETTINGS_SECTIONS.flatMap((section) => [
     { label: yourLabels[section], path: `/settings/${section}`, hint: "Settings", keywords: YOUR_KEYWORDS[section] },
-    ...tabRows(`/settings/${section}`, `Settings › ${yourLabels[section]}`, YOUR_TABS[section] ?? []),
   ]);
 
 const sectionRows = (sections: SettingsSection[], base: string, hint: string): Row[] =>

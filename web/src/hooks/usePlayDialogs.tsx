@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { PlayForm } from "@/components/play/PlayForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { agentPath } from "@/models/Agent";
 import { emptyPlayForm, playToFormData, SavePlayFormSchema, type Play, type SavePlayFormData } from "@/models/Play";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -22,7 +23,7 @@ export const usePlayDialogs = () => {
       formOptions: { defaultValues },
     });
     const id = (result.data as { id?: string } | null)?.id;
-    if (result.success && id) void navigate(wsPath(`/plays/${id}`));
+    if (result.success && id) void navigate(wsPath(agentPath("plays", id)));
   };
 
   const create = () => createFrom("New play", emptyPlayForm());

@@ -141,7 +141,7 @@ describe("InboxPage", () => {
     const list = await screen.findByRole("navigation", { name: "Notifications" });
     expect(await within(list).findByRole("button", { name: /Move your computers to the Nexul app.*move to the Nexul app/ })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Move your computers to the Nexul app" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Computers" })).toHaveAttribute("href", "/settings/pairing");
+    expect(screen.getByRole("link", { name: "Open the Agent page" })).toHaveAttribute("href", "/acme/agent");
   });
 
   it.each([
