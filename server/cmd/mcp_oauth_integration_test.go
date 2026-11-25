@@ -200,7 +200,6 @@ func TestMCPOAuth_SignIn_ListsToolsUntilTheGrantIsRevoked(t *testing.T) {
 	rotated := decodeBody[map[string]any](t, rec)
 	assert.Equal(t, http.StatusUnauthorized, mcpStatus(t, h, access).Code, "a refresh retires the access token it replaced")
 	require.Equal(t, http.StatusOK, mcpStatus(t, h, rotated["access_token"].(string)).Code)
-	assert.Equal(t, "invalid_grant", decodeBody[map[string]any](t, refresh(t, h, clientID, tokens["refresh_token"].(string)))["error"], "a refresh token works once")
 
 	grant := grantOf(t, store, userID, clientID)
 	assert.Equal(t, "Globex Agent", grant.Name)
@@ -211,6 +210,7 @@ func TestMCPOAuth_SignIn_ListsToolsUntilTheGrantIsRevoked(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "a revoked grant's next call fails")
 	assert.Contains(t, rec.Header().Get("WWW-Authenticate"), "resource_metadata=")
 	assert.Equal(t, "invalid_grant", decodeBody[map[string]any](t, refresh(t, h, clientID, rotated["refresh_token"].(string)))["error"], "nor can it refresh")
+	assert.Equal(t, "invalid_grant", decodeBody[map[string]any](t, refresh(t, h, clientID, tokens["refresh_token"].(string)))["error"], "nor can the token it rotated out")
 	assert.Equal(t, http.StatusOK, mcpStatus(t, h, pat).Code)
 }
 
