@@ -1,6 +1,6 @@
 # The Audit log card, its guide page and glossary terms
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 05, 06
 
 ## Done looks like

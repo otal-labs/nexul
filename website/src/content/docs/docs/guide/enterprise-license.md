@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Nexul's enterprise features, [single sign-on](/docs/guide/single-sign-on/) and branding, run on an instance that holds a valid **license key**. Everything else in Nexul is free and stays free: a key only ever unlocks features that were built as enterprise features, never one that shipped without a key.
+Nexul's enterprise features, [single sign-on](/docs/guide/single-sign-on/), [branding](/docs/guide/branding/) and a longer, streamed [audit log](/docs/guide/audit-log/), run on an instance that holds a valid **license key**. Everything else in Nexul is free and stays free: a key only ever unlocks features that were built as enterprise features, never one that shipped without a key.
 
 A key is a short block of text naming who it is for, the address of the one instance it covers, the features it unlocks and the date it expires. It is signed, and the server checks the signature against a public key built into Nexul. Nothing is sent anywhere to check it, so a key works on an instance with no internet access.
 
@@ -60,6 +60,10 @@ Click **Remove key**, then **Remove**. The features stop the same way they do at
 ## Branding
 
 A key that includes **Branding** unlocks the instance's own name, logo, accent and color theme: see [Branding](/docs/guide/branding/). Without that feature in the key, the instance keeps Nexul's look.
+
+## Audit log
+
+A key that includes **Audit log** keeps the audit log up to 1,095 days instead of 45 and streams each change, signed, to your own log store: see [Audit log](/docs/guide/audit-log/). The days you saved still hold after the key lapses.
 
 ## From an agent
 

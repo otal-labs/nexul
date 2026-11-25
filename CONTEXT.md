@@ -1545,6 +1545,13 @@ it, kept 45 days, or up to 1,095 with the enterprise feature, whose saved days
 hold after its key lapses. Reads are not recorded. Read with `audit:read`.
 _Avoid_: Audit (that is the doc a play writes), activity log, access log
 
+**Audit stream**:
+The enterprise feature's sending of each audit row, as it is written, to one HTTPS destination the instance Owner sets:
+a JSON POST signed with `X-Nexul-Signature`, queued in the same write as the row so none is lost, sent at least once,
+retried for a few minutes, then held as failed until the Owner retries it. A receiver dedupes on the row's `id`. Only
+rows written while it is on are sent.
+_Avoid_: Audit webhook, log forwarding, SIEM export, log drain
+
 **Setup code**:
 The code (`nxs_`) that proves someone at the instance's own server is the one
 setting it up. The server writes a fresh one on every start until the first

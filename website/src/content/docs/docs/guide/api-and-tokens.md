@@ -58,7 +58,7 @@ Events arrive as signed HTTP POSTs:
 - `X-Nexul-Delivery-Id` is unique per delivery. A failed delivery is retried, so use it to drop duplicates.
 - Nothing from a direct message or a private channel is ever sent.
 
-Every event has a versioned JSON Schema in `GET /api/events/catalog`. A list in a payload is always an array, `[]` when empty, never `null`. Every change made through the API or by an agent over MCP, with a token or a session, is recorded in `GET /api/audit` and kept 45 days, longer with an enterprise key. Reads are not recorded. Published events and the records that stop an event from being handled twice are kept 45 days too, except that an enabled automation that has not yet read an event keeps it.
+Every event has a versioned JSON Schema in `GET /api/events/catalog`. A list in a payload is always an array, `[]` when empty, never `null`. Every change made through the API or by an agent over MCP, with a token or a session, is recorded in `GET /api/audit` and kept 45 days, longer with an enterprise key, which can also stream it to your log store (see [Audit log](/docs/guide/audit-log/)). Reads are not recorded. Published events and the records that stop an event from being handled twice are kept 45 days too, except that an enabled automation that has not yet read an event keeps it.
 
 ## Signing in a phone
 

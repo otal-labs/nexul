@@ -7,6 +7,7 @@ import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSetting
 import { InstanceAccessSection } from "@/components/settings/InstanceAccessSection";
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
 import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
+import { AuditLogSection } from "@/ee/components/AuditLogSection";
 import { BrandingSection } from "@/ee/components/BrandingSection";
 import { LicenseSection } from "@/ee/components/LicenseSection";
 import { SsoSection } from "@/ee/components/SsoSection";
@@ -37,6 +38,7 @@ const InstancePanel = () => {
       {settings && <InstanceUrlSection settings={settings} />}
       <LicenseSection />
       <BrandingSection />
+      <AuditLogSection />
     </>
   );
 };
