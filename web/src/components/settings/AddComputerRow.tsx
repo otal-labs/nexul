@@ -3,6 +3,7 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Computer } from "@/models/Pairing";
+import { sharedComputerName } from "@/models/SharedComputer";
 
 interface AddComputerRowProps {
   // The computers that can still be added.
@@ -24,8 +25,8 @@ export const AddComputerRow = ({ computers, unavailable, onAdd }: AddComputerRow
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-w-xs min-w-52">
         {computers.map((c) => (
-          <DropdownMenuItem key={c.id} onSelect={() => onAdd(c.id)} title={c.name}>
-            <span className="truncate">{c.name}</span>
+          <DropdownMenuItem key={c.id} onSelect={() => onAdd(c.id)} title={sharedComputerName(c)}>
+            <span className="truncate">{sharedComputerName(c)}</span>
           </DropdownMenuItem>
         ))}
         {unavailable.map((c) => (

@@ -225,6 +225,21 @@ func (r *PairingRepo) SetComputerPlacement(ctx context.Context, userID, computer
 	})
 }
 
+func (r *PairingRepo) ListSharedRuns(ctx context.Context, computerID, ownerID string, limit int) ([]pairing.SharedRun, error) {
+	rows, err := r.q.ListPairingSharedRuns(ctx, sqlcgen.ListPairingSharedRunsParams{ComputerID: computerID, OwnerID: ownerID, Lim: int64(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list shared runs on computer %s: %w", computerID, err)
+	}
+	out := make([]pairing.SharedRun, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, pairing.SharedRun{
+			TrailID: row.ID, Play: row.PlayLabel, StarterID: row.StarterID, StarterName: row.StarterName, State: row.State,
+			StartedAt: time.Unix(row.StartedAt, 0).UTC(), EndedAt: unixPtrFromNull(row.EndedAt),
+		})
+	}
+	return out, nil
+}
+
 func (r *PairingRepo) CountRunning(ctx context.Context, computerIDs []string) (map[string]int, error) {
 	out := map[string]int{}
 	if len(computerIDs) == 0 {

@@ -24,6 +24,8 @@ interface RankedComputersFieldProps {
   disabled?: boolean;
   // Computers listed in the Add menu that cannot be picked.
   unavailable?: { id: string; label: string }[];
+  // Computers the Add menu offers beside the person's own, never part of their order: those shared with them by Run agents.
+  extra?: Computer[];
   // Puts the segmented Your order / Custom control in a labelled settings field; a field whose owner picks the mode elsewhere leaves it out.
   label?: string;
   toggle?: boolean;
@@ -38,6 +40,7 @@ export const RankedComputersField = ({
   onChange,
   disabled = false,
   unavailable = [],
+  extra = [],
   label,
   toggle = true,
   renderRow,
@@ -46,7 +49,7 @@ export const RankedComputersField = ({
   const custom = ids.length > 0;
   const editable = custom && !disabled;
   const listed = custom ? ids : own.map((c) => c.id);
-  const rest = own.filter((c) => !ids.includes(c.id));
+  const rest = [...own, ...extra].filter((c) => !ids.includes(c.id));
   const controlsFor = (id: string): RowControls => ({
     sortable: editable && ids.length > 1,
     onRemove: editable && ids.length > 1 ? () => onChange(ids.filter((x) => x !== id)) : undefined,

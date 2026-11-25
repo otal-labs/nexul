@@ -137,6 +137,9 @@ type TargetResolver interface {
 	// ResolveTargetOverride pins the computer, provider, and model a turn resolves against, checked against
 	// the caller's own; plain strings, not a TargetOverride, so pairing's implementation needs no agent import.
 	ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string, options []harness.OptionSetting) (*pairing.ResolvedTarget, error)
+	// OpenGuestRun points target at an instance of its own when userID runs on someone else's computer, and returns
+	// what removes it once the turn ends (ADR 0210).
+	OpenGuestRun(ctx context.Context, userID string, computer pairing.Computer, client harness.Client, target *harness.Target) (func(context.Context), error)
 }
 
 // TargetOverride pins a turn's computer, provider, and model, chosen for one run instead of derived from
@@ -424,7 +427,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 			return
 		}
 	}
-	if conv.ThreadID == "" && (req.Watch || req.KeepThread) {
+	if lacksThread(conv.ThreadID, req) {
 		obs.OnFinished(noThread(req), "")
 		return
 	}
@@ -440,6 +443,13 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		Since:        req.Since,
 		KeepSession:  req.KeepThread,
 	}}
+	closeGuest, err := s.openSharedRun(ctx, setupCtx, req, target.Computer, client, &turn.target)
+	if err != nil {
+		failed(err.Error())
+		return
+	}
+	defer closeGuest(ctx)
+	turn.computerID, turn.ownerID, turn.viaUserID = target.Computer.ID, target.Computer.UserID, viaUserID
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, turn)
 
@@ -492,6 +502,44 @@ func (s *Service) openFailed(ctx context.Context, req TurnRequest, err error, ob
 	}
 	s.postSystemMessage(ctx, req.ConversationID, req.ViaUserID, fmt.Sprintf("Agent turn failed to %s: %v", startVerb(req), err))
 	obs.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: err.Error()}, "")
+}
+
+// lacksThread is a turn that must follow or keep the conversation's harness thread on one that never had one.
+func lacksThread(threadID string, req TurnRequest) bool {
+	return threadID == "" && (req.Watch || req.KeepThread)
+}
+
+// openSharedRun points a fresh turn on someone else's computer at an instance of its own and says in the thread whose
+// computer it runs on; a turn that follows one already running changes nothing (ADR 0210).
+func (s *Service) openSharedRun(ctx, setupCtx context.Context, req TurnRequest, computer pairing.Computer, client harness.Client, target *harness.Target) (func(context.Context), error) {
+	if req.Watch {
+		return func(context.Context) {}, nil
+	}
+	closeGuest, err := s.targets.OpenGuestRun(setupCtx, req.ViaUserID, computer, client, target)
+	if err != nil {
+		s.postSystemMessage(ctx, req.ConversationID, req.ViaUserID, "Agent turn failed to start: "+err.Error())
+		return nil, err
+	}
+	if computer.UserID != "" && computer.UserID != req.ViaUserID {
+		s.postSystemMessage(ctx, req.ConversationID, req.ViaUserID, s.sharedRunLine(ctx, req.ViaUserID, computer))
+	}
+	return closeGuest, nil
+}
+
+// sharedRunLine names who runs a turn on whose computer, wherever such a run appears (ADR 0210).
+func (s *Service) sharedRunLine(ctx context.Context, starterID string, computer pairing.Computer) string {
+	if s.users == nil {
+		return "Run on someone else's " + computer.Name
+	}
+	starter, err := s.users.Login(ctx, starterID)
+	if err != nil {
+		starter = "someone"
+	}
+	owner, err := s.users.Login(ctx, computer.UserID)
+	if err != nil {
+		owner = "its owner"
+	}
+	return fmt.Sprintf("Run by %s using %s's %s", starter, owner, computer.Name)
 }
 
 // openTurn starts the turn, or with watch follows the one already running on t's session.

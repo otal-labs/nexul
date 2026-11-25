@@ -97,7 +97,10 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
 
 // What an action covers where its label alone leaves that open.
 const panelHints: Partial<Record<PanelEntity["type"], Record<string, string>>> = {
-  computer: { "computers:read_logs": "This runner's logs and its Docker containers' logs" },
+  computer: {
+    "computers:read_logs": "This runner's logs and its Docker containers' logs",
+    "computers:run_agents": "Their plays run here as them in Nexul, but their agent could still read your own Nexul login saved on this computer",
+  },
 };
 
 export const permissionHint = (action: string, type: PanelEntity["type"]) => panelHints[type]?.[action];

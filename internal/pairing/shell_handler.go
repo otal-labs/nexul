@@ -48,6 +48,15 @@ func (h *Handler) listCommands(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, mcptool.PageOf(jobs, total, win))
 }
 
+func (h *Handler) listSharedRuns(w http.ResponseWriter, r *http.Request) {
+	runs, err := h.svc.ListSharedRuns(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"runs": runs})
+}
+
 func (h *Handler) getCommand(w http.ResponseWriter, r *http.Request) {
 	job, err := h.svc.GetShellJob(r.Context(), actorID(r), r.PathValue("jobID"))
 	if err != nil {

@@ -8,15 +8,15 @@ import { RankedComputersField } from "@/components/settings/RankedComputersField
 import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import { useListComputers } from "@/hooks/PairingHooks";
 import type { AutoPlayDraft } from "@/models/AutoPlay";
-import { notRunnableYet, sharedComputerName } from "@/models/SharedComputer";
+import { notRunnableYet, runsAgents, sharedComputerName } from "@/models/SharedComputer";
 
-// The viewer's own computers: in their own order, or the ones they picked, ranked. One shared with them is listed as every other picker lists it, not pickable. A computer already in the list that they can't see stays a row, so a save never drops it.
+// The viewer's own computers and those shared with them by Run agents: in their own order, or the ones they picked, ranked. One shared without Run agents is listed, not pickable. A computer already in the list that they can't see stays a row, so a save never drops it.
 export const ChosenComputers = () => {
   const { setValue, formState } = useFormContext<AutoPlayDraft>();
   const ids = useWatch<AutoPlayDraft, "computer_ids">({ name: "computer_ids" });
   const { data: own } = useListComputers();
   const { data: shared = [] } = useListSharedComputers();
-  const unavailable = shared.map((computer) => ({ id: computer.id, label: `${sharedComputerName(computer)} · ${notRunnableYet}` }));
+  const unavailable = shared.filter((c) => !runsAgents(c)).map((computer) => ({ id: computer.id, label: `${sharedComputerName(computer)} · ${notRunnableYet}` }));
   const nameOf = (id: string) => {
     const computer = [...(own ?? []), ...shared].find((c) => c.id === id);
     return computer ? sharedComputerName(computer) : "A computer you can't see";
@@ -30,6 +30,7 @@ export const ChosenComputers = () => {
           subject="auto play"
           toggle={false}
           own={own}
+          extra={shared.filter(runsAgents)}
           ids={ids}
           onChange={(next) => setValue("computer_ids", next, { shouldDirty: true })}
           disabled={formState.disabled}

@@ -162,11 +162,19 @@ func (s *Service) candidates(ctx context.Context, p *plan) ([]Computer, error) {
 	out := make([]Computer, 0, len(ids))
 	for _, id := range ids {
 		i := slices.IndexFunc(own, func(c Computer) bool { return c.ID == strings.TrimSpace(id) })
-		if i < 0 && len(p.req.ComputerIDs) > 0 {
-			return nil, &NotConfiguredError{Reason: ReasonUnpaired}
-		}
 		if i >= 0 {
 			out = append(out, own[i])
+			continue
+		}
+		shared, err := s.runComputer(ctx, p.req.UserID, strings.TrimSpace(id))
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return nil, err
+		}
+		if err != nil && len(p.req.ComputerIDs) > 0 {
+			return nil, &NotConfiguredError{Reason: ReasonUnpaired}
+		}
+		if err == nil {
+			out = append(out, *shared)
 		}
 	}
 	return out, nil

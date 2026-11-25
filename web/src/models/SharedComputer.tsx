@@ -28,8 +28,11 @@ export const sharedComputerAbilities = (shared: SharedComputer) => {
   return abilities.length > 0 ? abilities.join(" · ") : "See only";
 };
 
-// Why a picker lists a shared computer it can't pick: running on someone else's computer isn't built yet.
-export const notRunnableYet = "can't run here yet";
+// Why a picker lists a shared computer it can't pick: its owner's share doesn't give Run agents.
+export const notRunnableYet = "can't run agents here";
+
+// Whether the viewer's runs may land on a computer shared with them: its owner's share gives Run agents.
+export const runsAgents = (computer: Computer) => !!computer.shared?.permissions.includes(ComputerPermission.RunAgents);
 
 // The two halves of the one computers request: the viewer's own, and those shared with them.
 export const ownComputers = (computers: Computer[]) => computers.filter((c) => !c.shared);

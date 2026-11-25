@@ -363,6 +363,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Logger:        logger,
 	})
 	mustSubscribe(ctx, bus, "agent.mention", chat.TopicMessageCreated, " for agent pipeline", agentSvc.HandleMessageCreated)
+	mustSubscribe(ctx, bus, "agent.shared_runs", access.TopicComputerGrantChanged, " to stop a turn whose computer share ended", agentSvc.HandleComputerGrantChanged)
 	mustSubscribe(ctx, bus, "agent.settle", tickets.TopicStatusChanged, " to settle a done ticket's harness session", agentSvc.HandleTicketStatusChanged)
 	mustSubscribe(ctx, bus, "agent.settle", docs.TopicClarificationClosed, " to settle a clarified doc's harness session", agentSvc.HandleClarificationClosed)
 	agentHandler := agent.NewHandler(agentSvc)

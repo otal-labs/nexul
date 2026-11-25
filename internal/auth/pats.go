@@ -25,7 +25,13 @@ const patTouchInterval = 5 * time.Minute
 
 // MintPAT creates a PAT for the calling user; the raw token is returned once and never persisted, only its hash.
 func (s *Service) MintPAT(ctx context.Context, userID, name string) (string, *PersonalAccessToken, error) {
-	return s.mintPAT(ctx, userID, name, "")
+	return s.mintPAT(ctx, userID, name, "", nil)
+}
+
+// MintRunPAT mints the token one run on someone else's computer reaches Nexul with as userID (ADR 0210); it expires at
+// expires, and the run revokes it sooner when it ends.
+func (s *Service) MintRunPAT(ctx context.Context, userID, name string, expires time.Time) (string, *PersonalAccessToken, error) {
+	return s.mintPAT(ctx, userID, name, "", &expires)
 }
 
 // MintComputerPAT mints the token a paired computer's providers connect to MCP with, replacing its active one.
@@ -37,10 +43,10 @@ func (s *Service) MintComputerPAT(ctx context.Context, userID, computerID, compu
 	if err := s.RevokeComputerPAT(ctx, userID, computerID); err != nil {
 		return "", nil, err
 	}
-	return s.mintPAT(ctx, userID, "Nexul MCP on "+strings.TrimSpace(computerName), computerID)
+	return s.mintPAT(ctx, userID, "Nexul MCP on "+strings.TrimSpace(computerName), computerID, nil)
 }
 
-func (s *Service) mintPAT(ctx context.Context, userID, name, computerID string) (string, *PersonalAccessToken, error) {
+func (s *Service) mintPAT(ctx context.Context, userID, name, computerID string, expires *time.Time) (string, *PersonalAccessToken, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", nil, fmt.Errorf("%w: token name is required", apperrs.ErrInvalid)
@@ -60,6 +66,7 @@ func (s *Service) mintPAT(ctx context.Context, userID, name, computerID string) 
 		CreatedAt:  s.cfg.Now(),
 		ComputerID: computerID,
 		TokenHash:  hashToken(raw),
+		ExpiresAt:  expires,
 	}
 	if err := s.cfg.PATs.Create(ctx, pat, tokenEvent(TopicTokenMinted, *pat)); err != nil {
 		return "", nil, fmt.Errorf("create pat: %w", err)

@@ -39,6 +39,8 @@ type Repo interface {
 	ReorderComputers(ctx context.Context, userID string, ids []string, at time.Time) error
 	// SetComputerPlacement sets one of userID's own computers' runs at once and chat folder, or ErrNotFound.
 	SetComputerPlacement(ctx context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, at time.Time) error
+	// ListSharedRuns returns the newest limit play runs people other than ownerID ran on computerID.
+	ListSharedRuns(ctx context.Context, computerID, ownerID string, limit int) ([]SharedRun, error)
 	// CountRunning returns how many play runs are going on each of computerIDs, leaving out the idle ones.
 	CountRunning(ctx context.Context, computerIDs []string) (map[string]int, error)
 	// SwitchComputerKind moves computer id from kind from to to with evt's event for its owner; one not on from is untouched.

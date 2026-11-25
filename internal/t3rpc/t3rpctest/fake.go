@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -51,6 +52,12 @@ type Server struct {
 	Cloned      chan map[string]any // payload of each projectClone.start call
 	Mutated     chan map[string]any // payload of each projects.mutate call
 	Secrets     chan map[string]any // payload of each secrets.answerRequest call
+	// Instances are the provider instances settings hold, by id; server.updateSettings applies its mutation to them.
+	Instances map[string]map[string]any
+	// SessionPermissions is what /api/auth/session says the session holds; nil answers 404, as an older T3 does.
+	SessionPermissions []string
+	// SettingsUpdates gets the payload of each server.updateSettings call.
+	SettingsUpdates chan map[string]any
 	// Branches answers vcs.refreshStatus per folder with the branch it is on; an unnamed folder is not a git repository.
 	Branches map[string]string
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
@@ -84,7 +91,9 @@ type Server struct {
 	clonedID string
 
 	connMu sync.Mutex
-	conn   *websocket.Conn
+	// mu guards Instances.
+	mu   sync.Mutex
+	conn *websocket.Conn
 
 	pairMu    sync.Mutex
 	pairSpent bool
@@ -110,21 +119,22 @@ type clientEnv struct {
 // New starts a fake T3 server that t's cleanup stops.
 func New(t testing.TB) *Server {
 	f := &Server{
-		t:           t,
-		bearer:      "bearer-token",
-		ticket:      "ws-ticket-1",
-		TicketField: "ticket",
-		PairToken:   "pair-token",
-		Dialed:      make(chan url.Values, 8),
-		Subscribed:  make(chan string, 4),
-		SubscribeIn: make(chan map[string]any, 4),
-		Acks:        make(chan string, 16),
-		Dispatched:  make(chan map[string]any, 16),
-		Persisted:   make(chan map[string]any, 4),
-		Launched:    make(chan map[string]any, 4),
-		Cloned:      make(chan map[string]any, 4),
-		Mutated:     make(chan map[string]any, 4),
-		Secrets:     make(chan map[string]any, 4),
+		t:               t,
+		bearer:          "bearer-token",
+		ticket:          "ws-ticket-1",
+		TicketField:     "ticket",
+		PairToken:       "pair-token",
+		Dialed:          make(chan url.Values, 8),
+		Subscribed:      make(chan string, 4),
+		SubscribeIn:     make(chan map[string]any, 4),
+		Acks:            make(chan string, 16),
+		Dispatched:      make(chan map[string]any, 16),
+		Persisted:       make(chan map[string]any, 4),
+		Launched:        make(chan map[string]any, 4),
+		Cloned:          make(chan map[string]any, 4),
+		Mutated:         make(chan map[string]any, 4),
+		Secrets:         make(chan map[string]any, 4),
+		SettingsUpdates: make(chan map[string]any, 4),
 
 		ShellSubscribed: make(chan string, 4),
 		Pings:           make(chan struct{}, 64),
@@ -133,6 +143,13 @@ func New(t testing.TB) *Server {
 	mux.HandleFunc("/oauth/token", f.handleExchange)
 	mux.HandleFunc("/api/auth/websocket-ticket", f.handleTicket)
 	mux.HandleFunc("/ws", f.handleWS)
+	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
+		if f.SessionPermissions == nil {
+			http.NotFound(w, nil)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"permissions": f.SessionPermissions})
+	})
 	mux.HandleFunc("/.well-known/t3/environment", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(f.descriptor())
 	})
@@ -255,12 +272,8 @@ func (f *Server) read(ctx context.Context, conn *websocket.Conn, env *clientEnv)
 
 func (f *Server) handleRequest(env clientEnv) {
 	switch env.RPCTag {
-	case "server.getConfig":
-		f.ConfigCalls.Add(1)
-		f.Write(ExitSuccess(idString(env.ID), map[string]any{"environment": f.descriptor(), "providers": []map[string]any{{
-			"instanceId": "claudeAgent", "driver": "claudeAgent", "displayName": "Claude", "enabled": true, "installed": true,
-			"version": "2.1.288", "models": []map[string]any{{"slug": "claude-opus-5-5", "name": "Claude Opus 5.5", "isDefault": true}},
-		}}}))
+	case "server.getConfig", "server.getSettings", "server.updateSettings":
+		f.handleServer(env)
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
 	case "orchestration.getThreadProjection":
@@ -294,6 +307,70 @@ func (f *Server) handleRequest(env clientEnv) {
 	default:
 		f.t.Errorf("fake: unexpected RPC %q", env.RPCTag)
 	}
+}
+
+// providers is what server.getConfig lists: Claude, then each instance settings hold, all ready.
+func (f *Server) providers() []map[string]any {
+	claude := func(id string) map[string]any {
+		return map[string]any{
+			"instanceId": id, "driver": "claudeAgent", "displayName": "Claude", "enabled": true, "installed": true,
+			"version": "2.1.288", "models": []map[string]any{{"slug": "claude-opus-5-5", "name": "Claude Opus 5.5", "isDefault": true}},
+		}
+	}
+	out := []map[string]any{claude("claudeAgent")}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, id := range slices.Sorted(maps.Keys(f.Instances)) {
+		if id != "claudeAgent" {
+			out = append(out, claude(id))
+		}
+	}
+	return out
+}
+
+// handleServer answers the config and settings calls.
+func (f *Server) handleServer(env clientEnv) {
+	if env.RPCTag == "server.updateSettings" {
+		f.handleSettings(env)
+		return
+	}
+	if env.RPCTag == "server.getConfig" {
+		f.ConfigCalls.Add(1)
+		f.Write(ExitSuccess(idString(env.ID), map[string]any{"environment": f.descriptor(), "providers": f.providers()}))
+		return
+	}
+	f.mu.Lock()
+	instances := maps.Clone(f.Instances)
+	f.mu.Unlock()
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"providerInstances": instances}))
+}
+
+// handleSettings applies an updateSettings call's instance mutation and answers with the settings after it.
+func (f *Server) handleSettings(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable updateSettings payload: %v", err)
+	}
+	select {
+	case f.SettingsUpdates <- in:
+	default:
+	}
+	f.mu.Lock()
+	if m, ok := in["providerInstanceMutation"].(map[string]any); ok {
+		id, _ := m["instanceId"].(string)
+		if f.Instances == nil {
+			f.Instances = map[string]map[string]any{}
+		}
+		if m["operation"] == "remove" {
+			delete(f.Instances, id)
+		}
+		if inst, ok := m["instance"].(map[string]any); ok {
+			f.Instances[id] = inst
+		}
+	}
+	instances := maps.Clone(f.Instances)
+	f.mu.Unlock()
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"providerInstances": instances}))
 }
 
 // writeShell sends the shell snapshot; from protocol 2 it is schemaVersion 2 and a second snapshot follows.

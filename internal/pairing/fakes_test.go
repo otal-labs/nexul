@@ -536,3 +536,7 @@ func (f *fakeTokens) RevokeComputerToken(_ context.Context, userID, computerID s
 func pairAt(svc *Service, ctx context.Context, userID string, kind harness.Kind, name, serverURL, secret string) (*Computer, error) {
 	return svc.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
 }
+
+func (f *fakeRepo) ListSharedRuns(context.Context, string, string, int) ([]SharedRun, error) {
+	return nil, nil
+}

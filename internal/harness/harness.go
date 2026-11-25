@@ -505,6 +505,17 @@ type Client interface {
 	Steer(ctx context.Context, t Target) error
 }
 
+// GuestInstances is a Client that can run one person's turns on another's computer under their own Nexul token
+// (ADR 0210): a provider instance like base whose MCP connection to Nexul at mcpURL carries token, and nothing of the
+// owner's own Nexul connection.
+type GuestInstances interface {
+	// OpenGuest makes that instance, labelled label, and returns its id once the harness lists it; a Target's
+	// Provider set to the id runs there. ErrConflict when the session or the provider cannot.
+	OpenGuest(ctx context.Context, s Session, base, mcpURL, token, label string) (string, error)
+	// CloseGuest removes an instance OpenGuest made; its token leaves the computer with it.
+	CloseGuest(ctx context.Context, s Session, instanceID string) error
+}
+
 // ImageTaker is a Client that sends its agent only some image types; a Client that is not one sends every image.
 type ImageTaker interface {
 	TakesImage(mime string) bool
