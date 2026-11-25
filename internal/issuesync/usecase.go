@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -121,9 +120,9 @@ const rateFloor = 200
 // Service applies GitHub issues to tickets.
 type Service struct {
 	d Deps
-	// mu serializes applying issues and writing them, so a webhook, the sweep and a write never interleave on one issue.
-	mu   sync.Mutex
-	pace *pacer
+	// locks serialize applying and writing each issue, so a webhook, the sweep and a write never interleave on one.
+	locks keyedLocks
+	pace  *pacer
 }
 
 // New builds the Service.
@@ -225,12 +224,11 @@ func (s *Service) HandleIssue(ctx context.Context, owner, repo, action string, i
 	if err != nil || bot {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.lockIssue(owner, repo, i)()
 	return s.apply(ctx, sy, i, action)
 }
 
-// apply brings the issue's ticket in step with it, filing one for an issue the sync newly covers; callers hold mu.
+// apply brings the issue's ticket in step with it, filing one for an issue the sync newly covers; callers hold its lock.
 func (s *Service) apply(ctx context.Context, sy Sync, i Issue, action string) error {
 	link, err := s.d.Repo.GetLink(ctx, sy.Owner, sy.Repo, i.Number)
 	linked := err == nil
@@ -441,8 +439,7 @@ func (s *Service) HandleComment(ctx context.Context, owner, repo string, number 
 	if err != nil || bot {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	defer s.locks.lock(issueKey(owner, repo, number))()
 	link, err := s.d.Repo.GetLink(ctx, owner, repo, number)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil
@@ -453,7 +450,7 @@ func (s *Service) HandleComment(ctx context.Context, owner, repo string, number 
 	return s.comment(ctx, link, action, c)
 }
 
-// comment posts a new comment, edits or deletes a known one, and posts an edit of a comment it never saw; callers hold mu.
+// comment posts a new comment, edits or deletes a known one, and posts an edit of a comment it never saw; callers hold the issue's lock.
 func (s *Service) comment(ctx context.Context, link Link, action string, c Comment) error {
 	cl, err := s.d.Repo.GetCommentLink(ctx, c.ID)
 	known := err == nil

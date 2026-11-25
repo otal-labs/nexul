@@ -242,16 +242,14 @@ func (s Sync) issueWrite(f TicketFields, ticketID string) IssueWrite {
 	return IssueWrite{Title: f.Title, Body: f.Body + "\n\n" + ticketMarkerFor(ticketID), Closed: f.Closed, Labels: labels, Assignees: f.Assignees}
 }
 
-// pushTicket writes one ticket to its issue, or makes the issue a trigger label asked for; it holds mu so a webhook
-// never applies an issue halfway through being written.
+// pushTicket writes one ticket to its issue, or makes the issue a trigger label asked for; it holds the issue's lock so
+// a webhook never applies an issue halfway through being written.
 func (s *Service) pushTicket(ctx context.Context, p TicketPush) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	link, err := s.d.Repo.GetLinkByTicket(ctx, p.TicketID)
-	linked := err == nil
-	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+	unlock, link, linked, err := s.lockTicket(ctx, p.TicketID)
+	if err != nil {
 		return err
 	}
+	defer unlock()
 	if linked {
 		p.Owner, p.Repo = link.Owner, link.Repo
 	}
@@ -419,14 +417,13 @@ func (s *Service) lost(ctx context.Context, link Link) error {
 // pushComment mirrors one message to its ticket's issue: a new one is posted once however often it is retried, an
 // edit edits the comment, and a delete deletes it.
 func (s *Service) pushComment(ctx context.Context, p CommentPush) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	link, err := s.d.Repo.GetLinkByTicket(ctx, p.TicketID)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return s.d.Repo.DoneCommentPush(ctx, p)
-	}
+	unlock, link, linked, err := s.lockTicket(ctx, p.TicketID)
 	if err != nil {
 		return err
+	}
+	defer unlock()
+	if !linked {
+		return s.d.Repo.DoneCommentPush(ctx, p)
 	}
 	_, on, err := s.enabled(ctx, link.Owner, link.Repo)
 	if err != nil {
