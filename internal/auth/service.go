@@ -287,7 +287,7 @@ func NewService(cfg Config) *Service {
 		exchanges:     newFailureLimiter(exchangeMaxFailures, exchangeWindow),
 		ceremonies:    newPasskeyCeremonies(),
 		registrations: newFailureLimiter(oauthRegistrations, oauthRegistrationSpan),
-		oauthCodes:    &oauthCodes{m: map[string]oauthCode{}},
+		oauthCodes:    newOAuthCodes(),
 	}
 }
 

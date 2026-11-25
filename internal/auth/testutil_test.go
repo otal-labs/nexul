@@ -419,10 +419,12 @@ type fakePATStore struct {
 	byID   map[string]*PersonalAccessToken
 	outbox []eventbus.OutboxEvent
 	getErr error
+	// previous is each grant's last rotated-away refresh hash, by grant id.
+	previous map[string]string
 }
 
 func newFakePATStore() *fakePATStore {
-	return &fakePATStore{byID: map[string]*PersonalAccessToken{}}
+	return &fakePATStore{byID: map[string]*PersonalAccessToken{}, previous: map[string]string{}}
 }
 
 func (f *fakePATStore) Create(_ context.Context, p *PersonalAccessToken, evts ...eventbus.OutboxEvent) error {
@@ -493,16 +495,29 @@ func (f *fakePATStore) GetActiveForComputer(_ context.Context, userID, computerI
 	return nil, apperrs.ErrNotFound
 }
 
-func (f *fakePATStore) RotateByRefresh(_ context.Context, oldRefreshHash, clientID string, next PersonalAccessToken) (*PersonalAccessToken, error) {
+func (f *fakePATStore) RotateByRefresh(_ context.Context, oldRefreshHash, clientID string, expiresAfter time.Time, next PersonalAccessToken) (*PersonalAccessToken, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, p := range f.byID {
-		if p.RefreshHash != oldRefreshHash || p.OAuthClientID != clientID || p.RevokedAt != nil {
+		if p.RefreshHash != oldRefreshHash || p.OAuthClientID != clientID || p.RevokedAt != nil || !p.ExpiresAt.After(expiresAfter) {
 			continue
 		}
+		f.previous[p.ID] = p.RefreshHash
 		p.TokenHash, p.RefreshHash, p.ExpiresAt, p.Prefix = next.TokenHash, next.RefreshHash, next.ExpiresAt, next.Prefix
 		cp := *p
 		return &cp, nil
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakePATStore) GetByPreviousRefresh(_ context.Context, hash string) (*PersonalAccessToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, prev := range f.previous {
+		if p := f.byID[id]; prev == hash && p.RevokedAt == nil {
+			cp := *p
+			return &cp, nil
+		}
 	}
 	return nil, apperrs.ErrNotFound
 }

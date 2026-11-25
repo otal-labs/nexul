@@ -13,7 +13,9 @@ Decision: the instance is its own OAuth authorization server for its MCP endpoin
   provider they use, shows the name the client registered beside where approving sends them, and only a browser
   session may approve, never a token or someone viewing as the person.
 - **A grant is a personal access token row.** It carries the client, an access token that expires after an hour, and a
-  refresh token that rotates on each use. So it lists, shows its last use and revokes exactly as a pasted token does,
+  refresh token that rotates on each use and is refused after 30 days unused. A spent code (for its first hour, while
+  it is held in memory) or the refresh token the grant last rotated away from, presented again, revokes the grant
+  (RFC 9700), since one of the two parties holding it is not the client; an older refresh token is only refused. So it lists, shows its last use and revokes exactly as a pasted token does,
   authenticates through the same path with the person's own permissions, and a revoke stops both its tokens at once.
 - **A grant works only where it was issued, and mints nothing that outlives it.** Its token authenticates at `/mcp`
   alone, never the HTTP gateway or a live socket, and a tool that hands out a credential (a personal, computer or

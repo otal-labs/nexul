@@ -97,7 +97,7 @@ func (r *PATsRepo) TouchLastUsed(ctx context.Context, id string) error {
 	})
 }
 
-func (r *PATsRepo) RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, next auth.PersonalAccessToken) (*auth.PersonalAccessToken, error) {
+func (r *PATsRepo) RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, expiresAfter time.Time, next auth.PersonalAccessToken) (*auth.PersonalAccessToken, error) {
 	var out *auth.PersonalAccessToken
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		row, err := r.q.WithTx(tx).RotatePATByRefresh(ctx, sqlcgen.RotatePATByRefreshParams{
@@ -107,6 +107,7 @@ func (r *PATsRepo) RotateByRefresh(ctx context.Context, oldRefreshHash, clientID
 			Prefix:         next.Prefix,
 			OldRefreshHash: sql.NullString{String: oldRefreshHash, Valid: true},
 			OauthClientID:  clientID,
+			ExpiresAfter:   sql.NullInt64{Int64: expiresAfter.Unix(), Valid: true},
 		})
 		if err != nil {
 			return fmt.Errorf("rotate grant: %w", notFoundIfNoRows(err))
@@ -115,6 +116,14 @@ func (r *PATsRepo) RotateByRefresh(ctx context.Context, oldRefreshHash, clientID
 		return nil
 	})
 	return out, err
+}
+
+func (r *PATsRepo) GetByPreviousRefresh(ctx context.Context, hash string) (*auth.PersonalAccessToken, error) {
+	row, err := r.q.GetPATByPreviousRefresh(ctx, sql.NullString{String: hash, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("get grant by previous refresh: %w", notFoundIfNoRows(err))
+	}
+	return toPAT(row), nil
 }
 
 func toPAT(row sqlcgen.PersonalAccessToken) *auth.PersonalAccessToken {

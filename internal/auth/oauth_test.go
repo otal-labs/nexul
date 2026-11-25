@@ -273,7 +273,7 @@ func TestRefreshOAuth_ErrorsFirst(t *testing.T) {
 }
 
 func TestOAuthCodes_CapAndSweep(t *testing.T) {
-	codes := &oauthCodes{m: map[string]oauthCode{}}
+	codes := newOAuthCodes()
 	now := time.Now()
 	for range oauthCodeCap {
 		_, err := codes.put(now, oauthCode{})
@@ -367,4 +367,77 @@ func TestGrant_AuthenticatesOnlyWhereSignInIssuedIt(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, call(s.RequireWS(next), "/ws/events?token="+tokens.AccessToken, false))
 	assert.Equal(t, http.StatusOK, call(s.RequireMCPAuth(next), "/mcp", true))
 	assert.Equal(t, clientID, grant)
+}
+
+func mcpStatus(s *Service, access string) int {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req.Header.Set("Authorization", "Bearer "+access)
+	rec := httptest.NewRecorder()
+	s.RequireMCPAuth(next).ServeHTTP(rec, req)
+	return rec.Code
+}
+
+func TestExchangeOAuthCode_AReplayRevokesTheGrantTheCodeMinted(t *testing.T) {
+	s, _, _, userID := newOAuthHarness(t)
+	clientID := mustClient(t, s)
+	ctx := t.Context()
+	code := approvedCode(t, s, userID, clientID)
+	tokens, err := s.ExchangeOAuthCode(ctx, clientID, code, testRedirect, testVerifier)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, mcpStatus(s, tokens.AccessToken))
+
+	_, err = s.ExchangeOAuthCode(ctx, clientID, code, testRedirect, testVerifier)
+	assert.Equal(t, "invalid_grant", oauthCode0(err))
+	assert.Equal(t, http.StatusUnauthorized, mcpStatus(s, tokens.AccessToken), "the access token from the code stops working")
+	_, err = s.RefreshOAuth(ctx, clientID, tokens.RefreshToken)
+	assert.Equal(t, "invalid_grant", oauthCode0(err), "and so does its refresh token")
+	assert.Contains(t, s.cfg.PATs.(*fakePATStore).topics(), TopicTokenRevoked)
+}
+
+func TestOAuthCodes_AReplayWhileTheGrantIsMintedRevokesIt(t *testing.T) {
+	codes := newOAuthCodes()
+	now := time.Now()
+	raw, err := codes.put(now, oauthCode{})
+	require.NoError(t, err)
+	_, ok := codes.take(now, raw)
+	require.True(t, ok)
+	assert.Nil(t, codes.replay(now, raw), "no grant minted yet")
+	assert.True(t, codes.spend(raw, PersonalAccessToken{ID: "g1"}), "the exchange learns of the replay and revokes")
+	assert.Nil(t, codes.replay(now.Add(oauthSpentKeep), raw), "a spent code is forgotten after its keep")
+}
+
+func TestRefreshOAuth_ReusingARotatedTokenRevokesTheGrant(t *testing.T) {
+	s, _, _, userID := newOAuthHarness(t)
+	clientID := mustClient(t, s)
+	ctx := t.Context()
+	first, err := s.ExchangeOAuthCode(ctx, clientID, approvedCode(t, s, userID, clientID), testRedirect, testVerifier)
+	require.NoError(t, err)
+	second, err := s.RefreshOAuth(ctx, clientID, first.RefreshToken)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, mcpStatus(s, second.AccessToken))
+
+	_, err = s.RefreshOAuth(ctx, clientID, first.RefreshToken)
+	assert.Equal(t, "invalid_grant", oauthCode0(err))
+	assert.Equal(t, http.StatusUnauthorized, mcpStatus(s, second.AccessToken), "the grant's current access token stops working")
+	_, err = s.RefreshOAuth(ctx, clientID, second.RefreshToken)
+	assert.Equal(t, "invalid_grant", oauthCode0(err), "and so does its current refresh token")
+}
+
+func TestRefreshOAuth_ARefreshTokenUnusedFor30DaysIsRefused(t *testing.T) {
+	s, _, _, userID := newOAuthHarness(t)
+	clientID := mustClient(t, s)
+	ctx := t.Context()
+	minted := time.Now()
+	s.cfg.Now = func() time.Time { return minted }
+	first, err := s.ExchangeOAuthCode(ctx, clientID, approvedCode(t, s, userID, clientID), testRedirect, testVerifier)
+	require.NoError(t, err)
+
+	s.cfg.Now = func() time.Time { return minted.Add(oauthRefreshIdle - time.Minute) }
+	second, err := s.RefreshOAuth(ctx, clientID, first.RefreshToken)
+	require.NoError(t, err, "used within 30 days")
+
+	s.cfg.Now = func() time.Time { return minted.Add(2*oauthRefreshIdle - time.Minute + time.Second) }
+	_, err = s.RefreshOAuth(ctx, clientID, second.RefreshToken)
+	assert.Equal(t, "invalid_grant", oauthCode0(err), "30 days after its last use")
 }

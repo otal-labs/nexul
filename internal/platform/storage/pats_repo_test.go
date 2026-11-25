@@ -152,19 +152,47 @@ func TestPATsRepo_RotateByRefresh_WorksOnceAndNeverOnARevokedOrOtherClientsGrant
 
 	later := time.Unix(9000, 0).UTC()
 	next := auth.PersonalAccessToken{TokenHash: "access-2", RefreshHash: "refresh-2", Prefix: "cess-2", ExpiresAt: &later}
-	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-2", next)
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-2", time.Unix(0, 0), next)
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "another client's refresh")
 
-	got, err := s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", next)
+	got, err := s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", time.Unix(0, 0), next)
 	require.NoError(t, err)
 	assert.Equal(t, "g1", got.ID)
 	assert.Equal(t, later, *got.ExpiresAt)
 	_, err = s.PATs.GetByHash(ctx, "access-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "the old access token is gone")
-	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", next)
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", time.Unix(0, 0), next)
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a refresh hash works once")
 
 	require.NoError(t, s.PATs.Revoke(ctx, "g1", "u1"))
-	_, err = s.PATs.RotateByRefresh(ctx, "refresh-2", "client-1", auth.PersonalAccessToken{TokenHash: "access-3", RefreshHash: "refresh-3", Prefix: "cess-3"})
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-2", "client-1", time.Unix(0, 0), auth.PersonalAccessToken{TokenHash: "access-3", RefreshHash: "refresh-3", Prefix: "cess-3"})
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a revoked grant")
+}
+
+func TestPATsRepo_RotateByRefresh_KeepsThePreviousHashAndRefusesAnIdleGrant(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "alice"))
+	require.NoError(t, err)
+	expires := time.Unix(5000, 0).UTC()
+	grant := newPATRecord("u1", "Globex Agent", "access-1", "g1", time.Unix(100, 0).UTC())
+	grant.OAuthClientID, grant.RefreshHash, grant.ExpiresAt = "client-1", "refresh-1", &expires
+	require.NoError(t, s.PATs.Create(ctx, grant))
+
+	_, err = s.PATs.GetByPreviousRefresh(ctx, "refresh-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "never rotated")
+	later := time.Unix(9000, 0).UTC()
+	next := auth.PersonalAccessToken{TokenHash: "access-2", RefreshHash: "refresh-2", Prefix: "cess-2", ExpiresAt: &later}
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", expires, next)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a grant whose access token expired before the cutoff is idle")
+	_, err = s.PATs.RotateByRefresh(ctx, "refresh-1", "client-1", expires.Add(-time.Second), next)
+	require.NoError(t, err)
+
+	got, err := s.PATs.GetByPreviousRefresh(ctx, "refresh-1")
+	require.NoError(t, err)
+	assert.Equal(t, "g1", got.ID)
+	require.NoError(t, s.PATs.Revoke(ctx, "g1", "u1"))
+	_, err = s.PATs.GetByPreviousRefresh(ctx, "refresh-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a revoked grant")
 }

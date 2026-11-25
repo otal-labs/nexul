@@ -13,7 +13,7 @@ A [paired computer](/docs/guide/paired-computers/) needs none of this: its [setu
 
 Paste your instance's MCP URL, `https://nexul.example.com/mcp`, into your tool and sign in. Claude's custom connectors, the MCP Inspector, and any client that supports MCP sign-in open a Nexul page in your browser: sign in the way you usually do, check the app's name and where it sends you back to, and click **Allow**. The tool then connects as you.
 
-Each app you allow is listed under **Settings → Security**, **Personal access tokens**, marked as a signed-in app, with when it was last used. Revoke it there and the app's next call gets `401`. Its access token lasts an hour and the app renews it by itself until you revoke it. So that revoking it always cuts it off, a signed-in app can't create or read credentials: tokens, computers' install commands, automations' tokens, invitation links, or bots' webhook URLs. Use a personal access token for those.
+Each app you allow is listed under **Settings → Security**, **Personal access tokens**, marked as a signed-in app, with when it was last used. Revoke it there and the app's next call gets `401`. Its access token lasts an hour and the app renews it by itself until you revoke it, or until it goes 30 days without renewing; then sign it in again. If a sign-in code or an old refresh token is ever sent twice, which happens when one was copied, Nexul revokes the app's sign-in and it has to sign in again. So that revoking it always cuts it off, a signed-in app can't create or read credentials: tokens, computers' install commands, automations' tokens, invitation links, or bots' webhook URLs. Use a personal access token for those.
 
 ### With a token instead
 
