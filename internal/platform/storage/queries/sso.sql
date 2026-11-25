@@ -20,4 +20,4 @@ ORDER BY i.created_at, u.id LIMIT 1;
 SELECT is_owner_role FROM roles WHERE id = ? AND workspace_id = ?;
 
 -- name: MoveSSOIdentity :execrows
-UPDATE user_identities SET user_id = sqlc.arg(to_user_id) WHERE user_id = sqlc.arg(from_user_id) AND provider = 'oidc';
+UPDATE user_identities SET user_id = sqlc.arg(to_user_id) WHERE user_id = sqlc.arg(from_user_id) AND provider IN ('oidc', 'saml');

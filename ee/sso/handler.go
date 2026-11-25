@@ -55,6 +55,8 @@ func (h *Handler) PublicRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/sso", h.public)
 	mux.HandleFunc("GET /auth/oidc", h.start)
 	mux.HandleFunc("GET /auth/oidc/callback", h.callback)
+	mux.HandleFunc("GET /auth/saml", h.startSAML)
+	mux.HandleFunc("POST /auth/saml/acs", h.acs)
 	mux.HandleFunc("GET /auth/saml/metadata", h.spMetadata)
 	return mux
 }

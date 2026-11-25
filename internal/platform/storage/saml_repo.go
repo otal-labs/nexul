@@ -86,6 +86,34 @@ func (r *SSORepo) DeleteSAML(ctx context.Context, evts ...eventbus.OutboxEvent) 
 	})
 }
 
+// SaveSAMLRequest keeps a sign-in request's id and drops the requests sent before dropBefore, in one write.
+func (r *SSORepo) SaveSAMLRequest(ctx context.Context, id string, at, dropBefore time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if err := q.DeleteExpiredSAMLRequests(ctx, dropBefore.Unix()); err != nil {
+			return fmt.Errorf("drop expired saml requests: %w", err)
+		}
+		if err := q.InsertSAMLRequest(ctx, sqlcgen.InsertSAMLRequestParams{ID: id, CreatedAt: at.Unix()}); err != nil {
+			return fmt.Errorf("save saml request: %w", classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+// TakeSAMLRequest deletes the request and reports whether it was waiting and sent at since or later.
+func (r *SSORepo) TakeSAMLRequest(ctx context.Context, id string, since time.Time) (bool, error) {
+	var taken int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).TakeSAMLRequest(ctx, sqlcgen.TakeSAMLRequestParams{ID: id, CreatedAt: since.Unix()})
+		taken = n
+		return err
+	})
+	if err != nil {
+		return false, fmt.Errorf("take saml request: %w", err)
+	}
+	return taken == 1, nil
+}
+
 func (r *SSORepo) samlParams(s sso.SAMLSettings) (sqlcgen.SetSAMLSettingsParams, error) {
 	sealed, err := crypto.Encrypt(r.encKey, []byte(s.SPKey))
 	if err != nil {

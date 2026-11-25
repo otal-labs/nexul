@@ -24,6 +24,8 @@ type fakeSAMLRepo struct {
 	writes int
 	// kept is the users TurnOnSAMLOnly was told to keep signed in; nil until it runs.
 	kept []string
+	// requests is each waiting sign-in request by id, with when it was sent.
+	requests map[string]time.Time
 }
 
 func (r *fakeSAMLRepo) GetSAML(context.Context) (SAMLSettings, error) { return r.st, nil }
@@ -35,6 +37,23 @@ func (r *fakeSAMLRepo) SetSAML(_ context.Context, s SAMLSettings, e ...eventbus.
 func (r *fakeSAMLRepo) TurnOnSAMLOnly(_ context.Context, s SAMLSettings, keep []string, e ...eventbus.OutboxEvent) error {
 	r.kept = append([]string{}, keep...)
 	return r.SetSAML(context.Background(), s, e...)
+}
+func (r *fakeSAMLRepo) SaveSAMLRequest(_ context.Context, id string, at, dropBefore time.Time) error {
+	if r.requests == nil {
+		r.requests = map[string]time.Time{}
+	}
+	for k, sent := range r.requests {
+		if sent.Before(dropBefore) {
+			delete(r.requests, k)
+		}
+	}
+	r.requests[id] = at
+	return nil
+}
+func (r *fakeSAMLRepo) TakeSAMLRequest(_ context.Context, id string, since time.Time) (bool, error) {
+	sent, ok := r.requests[id]
+	delete(r.requests, id)
+	return ok && !sent.Before(since), nil
 }
 func (r *fakeSAMLRepo) DeleteSAML(_ context.Context, e ...eventbus.OutboxEvent) error {
 	r.st, r.writes = SAMLSettings{}, r.writes+1

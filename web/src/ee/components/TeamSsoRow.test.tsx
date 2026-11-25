@@ -36,11 +36,12 @@ const person = (id: string, providers: string[], over: Partial<TeamPerson> = {})
 const alice = person("alice", ["github"]);
 const duplicate = person("dup", ["oidc"], { login: "alice@example.com", name: "Alice" });
 const removed = person("gone", ["oidc"], { login: "gone@example.com", status: "removed" });
+const samlDuplicate = person("saml-dup", ["saml"], { login: "alice@acme.example.com", name: "Alice at Acme" });
 
-const serve = (active: boolean) =>
+const serve = (active: boolean, protocol = "oidc") =>
   mocks.get.mockImplementation((url: string) =>
     Promise.resolve({
-      data: url === "/api/auth/sso" ? { active, name: "Acme SSO", only: false } : { people: [alice, duplicate, removed], workspaces: [] },
+      data: url === "/api/auth/sso" ? { active, name: "Acme SSO", only: false, protocol } : { people: [alice, duplicate, removed, samlDuplicate], workspaces: [] },
     }),
   );
 
@@ -79,6 +80,18 @@ describe("TeamSsoRow", () => {
     renderRow(duplicate);
     expect(await screen.findByText("Signs in through Acme SSO")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Move from another account" })).not.toBeInTheDocument();
+  });
+
+  it("matches the sign-ins of whichever protocol the provider speaks", async () => {
+    serve(true, "saml");
+    mocks.confirm.mockResolvedValue(true);
+    renderRow(alice);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Move from another account" }));
+    expect(screen.queryByRole("menuitem", { name: /alice@example\.com/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("menuitem", { name: /alice@acme\.example\.com/ }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/instance/sso/move", { from_account_id: "saml-dup", to_account_id: "alice" }));
   });
 
   it("shows nothing while single sign-on is off", async () => {

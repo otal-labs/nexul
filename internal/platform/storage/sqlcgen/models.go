@@ -1276,6 +1276,11 @@ type RunnerShellJob struct {
 	EndedAt         sql.NullInt64
 }
 
+type SamlRequest struct {
+	ID        string
+	CreatedAt int64
+}
+
 type SamlSetting struct {
 	ID              int64
 	MetadataUrl     string

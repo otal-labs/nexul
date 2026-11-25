@@ -99,7 +99,7 @@ func newAccounts() *fakeAccounts {
 	}
 }
 
-func (a *fakeAccounts) BySubject(_ context.Context, key string) (Account, error) {
+func (a *fakeAccounts) BySubject(_ context.Context, _, key string) (Account, error) {
 	if acct, ok := a.bySubject[key]; ok {
 		return acct, nil
 	}
@@ -246,7 +246,7 @@ func TestComplete_VerifiedEmailOfAnExistingAccount_LinksItAndSignsIn(t *testing.
 
 	require.NoError(t, err)
 	assert.Equal(t, "u-alice", userID)
-	assert.Equal(t, Identity{Key: issuerKey, Email: "alice@example.com", Name: "Alice"}, h.accounts.linked["u-alice"])
+	assert.Equal(t, Identity{Provider: ProtocolOIDC, Key: issuerKey, Email: "alice@example.com", Name: "Alice"}, h.accounts.linked["u-alice"])
 	assert.Empty(t, h.accounts.created)
 }
 

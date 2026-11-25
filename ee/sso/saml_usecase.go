@@ -24,6 +24,10 @@ type SAMLRepo interface {
 	// as TurnOnOnly does.
 	TurnOnSAMLOnly(ctx context.Context, s SAMLSettings, keepUsers []string, evts ...eventbus.OutboxEvent) error
 	DeleteSAML(ctx context.Context, evts ...eventbus.OutboxEvent) error
+	// SaveSAMLRequest keeps the id of a sign-in request sent at at, and drops the ones sent before dropBefore.
+	SaveSAMLRequest(ctx context.Context, id string, at, dropBefore time.Time) error
+	// TakeSAMLRequest deletes the request and reports whether it was waiting and was sent at since or later.
+	TakeSAMLRequest(ctx context.Context, id string, since time.Time) (bool, error)
 }
 
 const (

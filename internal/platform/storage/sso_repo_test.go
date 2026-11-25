@@ -120,11 +120,11 @@ func TestSSORepo_Create_AdmitsLikeAnInvitationDoes(t *testing.T) {
 	s := newTestStore(t)
 	ctx := t.Context()
 	seedDefaultRoles(t, s)
-	id := sso.Identity{Key: "https://login.example.com#sub-1", Email: "alice@example.com", Name: "Alice", AvatarURL: "https://example.com/a.png"}
+	id := sso.Identity{Provider: sso.ProtocolOIDC, Key: "https://login.example.com#sub-1", Email: "alice@example.com", Name: "Alice", AvatarURL: "https://example.com/a.png"}
 
 	require.NoError(t, s.SSO.Create(ctx, "u-alice", id, "role-member", time.Unix(500, 0)))
 
-	acct, err := s.SSO.BySubject(ctx, id.Key)
+	acct, err := s.SSO.BySubject(ctx, sso.ProtocolOIDC, id.Key)
 	require.NoError(t, err)
 	assert.Equal(t, sso.Account{UserID: "u-alice", Status: "active"}, acct)
 	user, err := s.Users.GetUserByID(ctx, "u-alice")
@@ -147,7 +147,7 @@ func TestSSORepo_Create_ASecondSignInOfTheSameSubject_LeavesNoHalfMadeAccount(t 
 	s := newTestStore(t)
 	ctx := t.Context()
 	seedDefaultRoles(t, s)
-	id := sso.Identity{Key: "https://login.example.com#sub-1", Email: "alice@example.com"}
+	id := sso.Identity{Provider: sso.ProtocolOIDC, Key: "https://login.example.com#sub-1", Email: "alice@example.com"}
 	require.NoError(t, s.SSO.Create(ctx, "u-1", id, "role-member", time.Unix(500, 0)))
 
 	err := s.SSO.Create(ctx, "u-2", id, "role-member", time.Unix(600, 0))
@@ -192,11 +192,11 @@ func TestSSORepo_Link_LetsTheAccountSignInThroughTheProvider(t *testing.T) {
 	ctx := t.Context()
 	_, _, err := s.Users.UpsertUser(ctx, &auth.Identity{UserID: "u-google", Provider: auth.ProviderGoogle, ProviderUserID: "g1", Login: "alice@example.com"})
 	require.NoError(t, err)
-	id := sso.Identity{Key: "https://login.example.com#sub-1", Email: "alice@example.com", Name: "Alice"}
+	id := sso.Identity{Provider: sso.ProtocolOIDC, Key: "https://login.example.com#sub-1", Email: "alice@example.com", Name: "Alice"}
 
 	require.NoError(t, s.SSO.Link(ctx, "u-google", id))
 
-	acct, err := s.SSO.BySubject(ctx, id.Key)
+	acct, err := s.SSO.BySubject(ctx, sso.ProtocolOIDC, id.Key)
 	require.NoError(t, err)
 	assert.Equal(t, "u-google", acct.UserID)
 	identities, err := s.Users.ListIdentities(ctx, "u-google")
@@ -384,7 +384,7 @@ func TestSSORepo_MoveSignIn_JoinsTheDuplicateOntoTheExistingAccount(t *testing.T
 	seedDefaultRoles(t, s)
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-alice", "gh-alice", "alice"))
 	require.NoError(t, err)
-	id := sso.Identity{Key: "https://login.example.com#sub-1", Email: "alice@example.com"}
+	id := sso.Identity{Provider: sso.ProtocolOIDC, Key: "https://login.example.com#sub-1", Email: "alice@example.com"}
 	require.NoError(t, s.SSO.Create(ctx, "u-dup", id, "role-member", time.Unix(500, 0)))
 	require.NoError(t, s.SSO.SaveGrant(ctx, "u-dup", "refresh-1", time.Unix(500, 0)))
 	now := time.Now().UTC()
@@ -396,7 +396,7 @@ func TestSSORepo_MoveSignIn_JoinsTheDuplicateOntoTheExistingAccount(t *testing.T
 
 	require.NoError(t, s.SSO.MoveSignIn(ctx, "u-dup", "u-alice", "u-owner"))
 
-	acct, err := s.SSO.BySubject(ctx, id.Key)
+	acct, err := s.SSO.BySubject(ctx, sso.ProtocolOIDC, id.Key)
 	require.NoError(t, err)
 	assert.Equal(t, sso.Account{UserID: "u-alice", Status: "active"}, acct, "the next sign-in through the provider lands on the existing account")
 	grants, err := s.SSO.StaleGrants(ctx, time.Unix(1_000, 0), 10)
@@ -437,14 +437,14 @@ func TestSSORepo_MoveSignIn_RefusesAndChangesNothing(t *testing.T) {
 				require.NoError(t, err)
 			}
 			require.NoError(t, s.Users.SetAccountStatus(ctx, "u-gone", auth.AccountRemoved))
-			require.NoError(t, s.SSO.Create(ctx, "u-dup", sso.Identity{Key: "iss#dup", Email: "dup@example.com"}, "role-member", time.Unix(500, 0)))
-			require.NoError(t, s.SSO.Link(ctx, "u-both", sso.Identity{Key: "iss#both", Email: "both@example.com"}))
+			require.NoError(t, s.SSO.Create(ctx, "u-dup", sso.Identity{Provider: sso.ProtocolOIDC, Key: "iss#dup", Email: "dup@example.com"}, "role-member", time.Unix(500, 0)))
+			require.NoError(t, s.SSO.Link(ctx, "u-both", sso.Identity{Provider: sso.ProtocolOIDC, Key: "iss#both", Email: "both@example.com"}))
 			before := outboxTopics(t, s)
 
 			err := s.SSO.MoveSignIn(ctx, tc.from, tc.to, "u-owner")
 
 			require.ErrorIs(t, err, tc.want)
-			acct, err := s.SSO.BySubject(ctx, "iss#dup")
+			acct, err := s.SSO.BySubject(ctx, sso.ProtocolOIDC, "iss#dup")
 			require.NoError(t, err)
 			assert.Equal(t, sso.Account{UserID: "u-dup", Status: "active"}, acct)
 			assert.Equal(t, before, outboxTopics(t, s))

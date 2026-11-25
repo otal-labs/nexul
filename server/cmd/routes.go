@@ -252,6 +252,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /auth/oidc", ssoPublic)
 	httpMux.Handle("GET /auth/oidc/callback", ssoPublic)
 	httpMux.Handle("GET /api/auth/sso", ssoPublic)
+	httpMux.Handle("GET /auth/saml", ssoPublic)
+	httpMux.Handle("POST /auth/saml/acs", ssoPublic)
 	httpMux.Handle("GET /auth/saml/metadata", ssoPublic)
 	// A machine holds no session: these authenticate with an enrollment code or the runner's own credential.
 	runnerPublic := runnerHTTP.PublicRoutes()
