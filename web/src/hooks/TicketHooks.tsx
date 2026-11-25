@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { toast } from "sonner";
 
 import { requires } from "@nexul/client-core/requires";
+import { isTrailActive } from "@nexul/client-core/trail";
 
 import { api, errorMessage } from "@/api/client";
 import { ticketMoveRequest } from "@/api/ticketMoveRequest";
@@ -31,7 +32,7 @@ import {
   type Ticket,
   type TicketLinks,
 } from "@/models/Ticket";
-import { isTrailActive, type RunFrame } from "@/models/Trail";
+import { type RunFrame } from "@/models/Trail";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTicketLinksKey = "getTicketLinks";

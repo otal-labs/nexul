@@ -1,6 +1,7 @@
 import { CheckCircle2, CircleHelp, LoaderCircle, XCircle } from "lucide-react";
 
-import { isTrailActive, type TrailState } from "@/models/Trail";
+import { isTrailActive, type TrailState } from "@nexul/client-core/trail";
+
 import { cn } from "@/lib/utils";
 
 interface TrailStateIconProps {

@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
+import { isTrailActive } from "@nexul/client-core/trail";
+
 import { microheaderClass } from "@/components/Microheader";
 import { TrailFoundMemories } from "@/components/play/TrailFoundMemories";
 import { TrailVersion } from "@/components/play/TrailVersion";
@@ -13,7 +15,7 @@ import { runnerPresence } from "@/models/ComputerChecks";
 import { findModel } from "@/models/ModelPick";
 import { passOverLines } from "@/models/Pairing";
 import { sharedComputerName } from "@/models/SharedComputer";
-import { isTrailActive, type Trail } from "@/models/Trail";
+import { type Trail } from "@/models/Trail";
 import { useIsViewingAs } from "@/stores/viewAsStore";
 
 interface TrailFactsProps {

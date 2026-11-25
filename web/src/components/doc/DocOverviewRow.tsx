@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { DocStateIcon } from "@/components/doc/DocStateIcon";
 import { formatShortAgo } from "@/components/doc/docTime";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DocListItem } from "@/models/Doc";
 import { docPath } from "@/models/Project";
-import type { TrailState } from "@/models/Trail";
 import { formatFullTime } from "@/utils/TimeUtility";
 
 interface DocOverviewRowProps {

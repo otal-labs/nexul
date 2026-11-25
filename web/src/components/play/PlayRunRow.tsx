@@ -1,13 +1,14 @@
 import { WorkflowIcon, ZapIcon } from "lucide-react";
 
 import { personLabel } from "@nexul/client-core/person";
+import { trailSummary } from "@nexul/client-core/trail";
 
 import { formatShortAgo } from "@/components/doc/docTime";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { trailSummary, type PlayRun } from "@/models/Trail";
+import { type PlayRun } from "@/models/Trail";
 
 interface PlayRunRowProps {
   run: PlayRun;

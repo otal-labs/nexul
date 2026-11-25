@@ -1,9 +1,10 @@
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchInterviewSources, useInterviewPlays, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
 import { useActiveTrail } from "@/hooks/TrailHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { lastDraftedAt, sourceChange } from "@/models/InterviewSource";
-import type { TrailState } from "@/models/Trail";
 
 interface InterviewDraftRunLineProps {
   projectId: string;

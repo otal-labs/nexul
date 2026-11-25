@@ -1,8 +1,10 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import type { AutoPlayLevel } from "@nexul/client-core/autoPlayText";
+
 import { ComposerSection, InlineSelect, QuietIcon } from "@/components/autoplay/ComposerControls";
 import { PriorityRuleRow } from "@/components/autoplay/PriorityRuleRow";
-import { blankRule, LEVEL_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type AutoPlayLevel } from "@/models/AutoPlay";
+import { blankRule, LEVEL_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft } from "@/models/AutoPlay";
 
 // "[High] if <condition>" rows, checked in order, then "Otherwise [Normal]".
 export const PrioritySection = () => {

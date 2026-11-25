@@ -1,6 +1,8 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { personLabel } from "@nexul/client-core/person";
+import { FIELD_LABELS, type AutoPlayField } from "@nexul/client-core/autoPlayText";
+import { PLAY_STAGE_LABELS, PLAY_STAGES } from "@nexul/client-core/plays";
 
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchMemories } from "@/hooks/MemoryHooks";
@@ -12,8 +14,7 @@ import { projectStatusesQuery } from "@/hooks/StatusHooks";
 import { useFetchAllLabels } from "@/hooks/LabelHooks";
 import { projectTicketTypesQuery } from "@/hooks/TicketTypeHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { FIELD_LABELS, ID_FIELDS, type AutoPlayField } from "@/models/AutoPlay";
-import { PLAY_STAGE_LABELS, PLAY_STAGES } from "@/models/Play";
+import { ID_FIELDS } from "@/models/AutoPlay";
 import type { Memory } from "@/models/Memory";
 import type { Project } from "@/models/Project";
 

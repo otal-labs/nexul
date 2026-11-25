@@ -1,53 +1,21 @@
+import {
+  FIELD_OPS,
+  LEVEL_LABELS,
+  type AutoPlayField,
+  type AutoPlayGroup,
+  type AutoPlayLevel,
+  type AutoPlayMatch,
+  type AutoPlayMoment,
+  type AutoPlayOp,
+  type AutoPlayRule,
+  type AutoPlayRunOn,
+  type AutoPlaySubject,
+} from "@nexul/client-core/autoPlayText";
+import type { PlayStage } from "@nexul/client-core/plays";
+
 import { browserTimezone } from "@/models/Meeting";
-import type { Play, PlayStage } from "@/models/Play";
+import type { Play } from "@/models/Play";
 import { DEFAULT_SWEEP_RUNS, type AutoPlaySchedule } from "@/models/Schedule";
-
-// Mirrors internal/plays/autoplay.go: what starts a play by itself, its conditions, priority, and whom it runs on.
-export type AutoPlayMoment =
-  | "ticket.unblocked"
-  | "ticket.entered_stage"
-  | "ticket.created"
-  | "ticket.developer_set"
-  | "ticket.tester_set"
-  | "ticket.test_failed"
-  | "doc.created"
-  | "doc.changed"
-  | "stack.service_crashed"
-  | "stack.service_recovered"
-  | "stack.error_rate_crossed"
-  | "schedule";
-
-export type AutoPlayMatch = "all" | "any";
-export type AutoPlayLevel = "high" | "normal" | "low";
-export type AutoPlayRunOn = "developer" | "tester" | "causer" | "computer";
-export type AutoPlayOp = "is" | "is_not" | "set" | "unset";
-export type AutoPlayField =
-  | "type"
-  | "project"
-  | "stage"
-  | "status"
-  | "category"
-  | "label"
-  | "developer"
-  | "tester"
-  | "source_doc"
-  | "linked_pr"
-  | "blocked"
-  | "folder"
-  | "stack"
-  | "service";
-
-// Values are ids for project, status, folder and stack, names for type, category, label and service, user ids for developer and tester.
-export interface AutoPlayRule {
-  field: AutoPlayField;
-  op: AutoPlayOp;
-  values?: string[];
-}
-
-export interface AutoPlayGroup {
-  match: AutoPlayMatch;
-  rules: AutoPlayRule[];
-}
 
 export interface AutoPlayPriority {
   rules: { level: AutoPlayLevel; when: AutoPlayGroup }[];
@@ -101,8 +69,6 @@ export interface AutoPlayLimits {
 export const MIN_DAILY_CAP = 1;
 export const MAX_DAILY_CAP = 50;
 
-export type AutoPlaySubject = "ticket" | "doc" | "stack";
-
 // What an auto play's play fires on; an interview play has no auto plays, so it never gets here.
 export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {
   if (play.type === "doc" || play.type === "stack") return play.type;
@@ -138,79 +104,10 @@ export const MOMENT_LABELS: Record<AutoPlayMoment, string> = {
   schedule: "On a schedule",
 };
 
-// The moment as the list row's sentence says it after "When a ticket".
-export const MOMENT_PHRASES: Record<AutoPlayMoment, string> = {
-  "ticket.unblocked": "becomes unblocked",
-  "ticket.entered_stage": "enters",
-  "ticket.created": "is created",
-  "ticket.developer_set": "gets a developer",
-  "ticket.tester_set": "gets a tester",
-  "ticket.test_failed": "fails a test",
-  "doc.created": "is created",
-  "doc.changed": "changes",
-  "stack.service_crashed": "service crashes",
-  "stack.service_recovered": "service recovers",
-  "stack.error_rate_crossed": "error rate goes over its limit",
-  schedule: "comes up on a schedule",
-};
-
 export const SUBJECT_FIELDS: Record<AutoPlaySubject, AutoPlayField[]> = {
   ticket: ["type", "project", "stage", "status", "category", "label", "developer", "tester", "source_doc", "linked_pr", "blocked"],
   doc: ["project", "folder"],
   stack: ["project", "stack", "service"],
-};
-
-export const FIELD_LABELS: Record<AutoPlayField, string> = {
-  type: "Type",
-  project: "Project",
-  stage: "Stage",
-  status: "Status",
-  category: "Category",
-  label: "Label",
-  developer: "Developer",
-  tester: "Tester",
-  source_doc: "Has source doc",
-  linked_pr: "Has linked PR",
-  blocked: "Blocked",
-  folder: "Folder",
-  stack: "Stack",
-  service: "Service",
-};
-
-const VALUE_OPS: AutoPlayOp[] = ["is", "is_not"];
-const PRESENCE_OPS: AutoPlayOp[] = ["set", "unset"];
-const ANY_OP: AutoPlayOp[] = ["is", "is_not", "set", "unset"];
-
-export const FIELD_OPS: Record<AutoPlayField, AutoPlayOp[]> = {
-  type: VALUE_OPS,
-  project: VALUE_OPS,
-  stage: VALUE_OPS,
-  status: VALUE_OPS,
-  folder: VALUE_OPS,
-  stack: VALUE_OPS,
-  service: VALUE_OPS,
-  category: ANY_OP,
-  label: ANY_OP,
-  developer: ANY_OP,
-  tester: ANY_OP,
-  source_doc: PRESENCE_OPS,
-  linked_pr: PRESENCE_OPS,
-  blocked: PRESENCE_OPS,
-};
-
-const OP_LABELS: Record<AutoPlayOp, string> = { is: "is", is_not: "is not", set: "is set", unset: "is not set" };
-
-// A yes/no field reads its set and unset as yes and no, with no value box after it.
-export const opLabel = (field: AutoPlayField, op: AutoPlayOp): string => {
-  if (FIELD_OPS[field] === PRESENCE_OPS) return op === "set" ? "yes" : "no";
-  return OP_LABELS[op];
-};
-
-// A yes/no rule as a phrase, "Has a linked PR", where the editor's select reads "Has linked PR yes".
-export const PRESENCE_PHRASES: Partial<Record<AutoPlayField, Record<"set" | "unset", string>>> = {
-  source_doc: { set: "Has a source doc", unset: "Has no source doc" },
-  linked_pr: { set: "Has a linked PR", unset: "Has no linked PR" },
-  blocked: { set: "Is blocked", unset: "Is not blocked" },
 };
 
 export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
@@ -218,19 +115,10 @@ export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
 export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "stack", "developer", "tester"]);
 
-export const LEVEL_LABELS: Record<AutoPlayLevel, string> = { high: "High", normal: "Normal", low: "Low" };
-
 export const RUN_ON_LABELS: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
-};
-
-// Where a rule runs, read as a place beside named computers rather than a role.
-export const RUN_ON_PHRASES: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
-  developer: "The developer's computers",
-  tester: "The tester's computers",
-  causer: "The computers of whoever caused it",
 };
 
 // What the Run on select offers: the computer run-on is two choices, the person's own order and a list they picked.

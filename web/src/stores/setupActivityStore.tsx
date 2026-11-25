@@ -1,6 +1,8 @@
 import { create } from "zustand";
 
-import { mergeLiveStep, type ActivityEntry } from "@/models/Trail";
+import { mergeLiveStep } from "@nexul/client-core/trail";
+
+import { type ActivityEntry } from "@/models/Trail";
 
 const MAX_STEPS = 200;
 

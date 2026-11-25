@@ -12,13 +12,6 @@ export interface QuestionAnswer {
   answers: QuestionAnswers;
 }
 
-// One answer as a line: the free text, else the chosen values.
-export const answerText = (answer: AnswerValue | undefined): string => {
-  if (!answer) return "";
-  if (answer.text) return answer.text;
-  return (answer.selected ?? []).join(", ");
-};
-
 const QUESTION_FENCE = "```nexul-question\n";
 
 // The Agent posts a question as its own message with the question JSON fenced; anything else is a plain message.

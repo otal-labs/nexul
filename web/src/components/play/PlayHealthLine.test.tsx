@@ -1,8 +1,9 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import type { PlayRunHealth } from "@nexul/client-core/plays";
+
 import { PlayHealthLine } from "@/components/play/PlayHealthLine";
-import type { PlayRunHealth } from "@/models/Play";
 
 const health = (overrides: Partial<PlayRunHealth> = {}): PlayRunHealth => ({
   last_run: { state: "done", started_at: new Date(Date.now() - 2 * 3600_000).toISOString() },

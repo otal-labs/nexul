@@ -1,11 +1,13 @@
 import { ZapIcon } from "lucide-react";
 
+import { PLAY_STAGE_LABELS, playAttention } from "@nexul/client-core/plays";
+
 import { formatShortAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { usePlayMenu } from "@/hooks/usePlayMenu";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { PLAY_STAGE_LABELS, playAttention, type WorkspacePlay } from "@/models/Play";
+import { type WorkspacePlay } from "@/models/Play";
 
 interface PlayListRowProps {
   play: WorkspacePlay;

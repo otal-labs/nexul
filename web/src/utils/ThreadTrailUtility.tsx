@@ -1,9 +1,10 @@
+import { isTrailActive, type TrailState, segmentTranscript, type TranscriptSegment } from "@nexul/client-core/trail";
+
 import type { Message } from "@/models/Chat";
 import { parseQuestionMessage } from "@/models/Question";
-import { isTrailActive, type ActivityEntry, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
-import { segmentTranscript, type TranscriptSegment } from "@/utils/TrailTranscriptUtility";
+import { type ActivityEntry, type Trail, type TrailQuestion } from "@/models/Trail";
 
-export type TrailTurn = Extract<TranscriptSegment, { kind: "turn" }>;
+export type TrailTurn = Extract<TranscriptSegment<ActivityEntry>, { kind: "turn" }>;
 
 // The Agent's turns that led to one message of the thread, with the run they belong to.
 export interface TrailBlock {

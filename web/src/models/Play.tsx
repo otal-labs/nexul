@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { TrailState } from "@/models/Trail";
+import { PLAY_STAGES, type PlayRunHealth, type PlayStage } from "@nexul/client-core/plays";
 
 // An interview play runs on a project's Interview page; its run target id is the project id. A stack play runs on a stack.
 export const PLAY_TYPES = ["ticket", "doc", "interview", "stack"] as const;
@@ -11,18 +11,6 @@ export const PLAY_TYPE_LABELS: Record<PlayType, string> = {
   doc: "Doc",
   interview: "Interview",
   stack: "Stack",
-};
-
-// Mirrors the Go backend's five fixed board stages (ADR 0022); a ticket play shows on exactly one.
-export const PLAY_STAGES = ["backlog", "progress", "review", "testing", "done"] as const;
-export type PlayStage = (typeof PLAY_STAGES)[number];
-
-export const PLAY_STAGE_LABELS: Record<PlayStage, string> = {
-  backlog: "Backlog",
-  progress: "In progress",
-  review: "Review",
-  testing: "Testing",
-  done: "Done",
 };
 
 // Which of a project's repositories a play's runs work on, by role; a project with no tests repository runs it in its app's.
@@ -73,25 +61,6 @@ export interface ListedPlay extends Play {
 
 // A play on the workspace's plays list, which alone carries what its runs say about it.
 export interface WorkspacePlay extends ListedPlay, PlayRunHealth {}
-
-export const needAnswers = (n: number) => (n === 1 ? "1 needs an answer" : `${n} need answers`);
-
-// What needs a look now, busiest first: runs in flight, then runs waiting on an answer, then a newest run that failed.
-export const playAttention = (play: WorkspacePlay): { state: TrailState; text: string } | undefined => {
-  if (play.running > 0) return { state: "running", text: `${play.running} running` };
-  if (play.waiting > 0) return { state: "waiting", text: needAnswers(play.waiting) };
-  if (play.last_run?.state === "failed") return { state: "failed", text: "Last run failed" };
-  return undefined;
-};
-
-// Mirrors internal/plays.RunHealth: what the runs this person can see say about a play. last_run is null until it has run.
-export interface PlayRunHealth {
-  last_run: { state: TrailState; started_at: string } | null;
-  runs_7d: number;
-  failed_7d: number;
-  waiting: number;
-  running: number;
-}
 
 // show_when_stage is "" for no stage (any play but a ticket play) rather than null, so it plugs straight into FormSelect's
 // empty-value sentinel; the refine below is the client-side half of the same rule the API enforces.

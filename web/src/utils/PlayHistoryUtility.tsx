@@ -1,5 +1,7 @@
+import { PLAY_STAGE_LABELS, type PlayStage } from "@nexul/client-core/plays";
+
 import type { HistoryFieldChange } from "@/models/History";
-import { PLAY_REPOSITORY_LABELS, PLAY_STAGE_LABELS, type PlayRepository, type PlayStage } from "@/models/Play";
+import { PLAY_REPOSITORY_LABELS, type PlayRepository } from "@/models/Play";
 
 const FIELD_LABELS: Record<string, string> = {
   enabled: "Enabled",

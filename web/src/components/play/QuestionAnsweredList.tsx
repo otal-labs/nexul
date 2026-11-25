@@ -1,4 +1,6 @@
-import { answerText, type HarnessQuestion, type QuestionAnswer } from "@/models/Question";
+import { answerText } from "@nexul/client-core/question";
+
+import { type HarnessQuestion, type QuestionAnswer } from "@/models/Question";
 
 interface QuestionAnsweredListProps {
   question: HarnessQuestion;

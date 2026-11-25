@@ -1,19 +1,11 @@
 import { useFormContext, useWatch } from "react-hook-form";
 
+import { FIELD_LABELS, FIELD_OPS, opLabel, type AutoPlayField, type AutoPlayOp } from "@nexul/client-core/autoPlayText";
+
 import { InlineSelect } from "@/components/autoplay/ComposerControls";
 import { ValuesPicker } from "@/components/autoplay/ValuesPicker";
 import { useAutoPlayValues } from "@/hooks/AutoPlayValueHooks";
-import {
-  blankRule,
-  FIELD_LABELS,
-  FIELD_OPS,
-  opLabel,
-  SUBJECT_FIELDS,
-  takesValues,
-  type AutoPlayDraft,
-  type AutoPlayField,
-  type AutoPlayOp,
-} from "@/models/AutoPlay";
+import { blankRule, SUBJECT_FIELDS, takesValues, type AutoPlayDraft } from "@/models/AutoPlay";
 
 export type RulePath = `groups.${number}.rules.${number}` | `priority.rules.${number}.when.rules.${number}`;
 

@@ -1,8 +1,9 @@
+import type { TrailState } from "@nexul/client-core/trail";
+
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import type { Memory } from "@/models/Memory";
-import type { TrailState } from "@/models/Trail";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface InterviewRunLineProps {

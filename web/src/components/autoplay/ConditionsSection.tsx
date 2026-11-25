@@ -1,10 +1,12 @@
 import { ListPlusIcon } from "lucide-react";
 import { useFormContext, useWatch } from "react-hook-form";
 
+import type { AutoPlayMatch } from "@nexul/client-core/autoPlayText";
+
 import { ComposerSection, InlineSelect, QuietIcon } from "@/components/autoplay/ComposerControls";
 import { ConditionRow } from "@/components/autoplay/ConditionRow";
 import { NestedGroupEditor } from "@/components/autoplay/NestedGroupEditor";
-import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type AutoPlayMatch, type DraftGroup } from "@/models/AutoPlay";
+import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type DraftGroup } from "@/models/AutoPlay";
 
 // "[All] of these N conditions must match:", a row per condition, nested groups one indent in.
 export const ConditionsSection = () => {
