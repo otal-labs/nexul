@@ -1034,18 +1034,19 @@ type PermissionOverwrite struct {
 }
 
 type PersonalAccessToken struct {
-	ID            string
-	UserID        string
-	Name          string
-	TokenHash     string
-	Prefix        string
-	CreatedAt     int64
-	LastUsedAt    sql.NullInt64
-	RevokedAt     sql.NullInt64
-	ComputerID    string
-	OauthClientID string
-	RefreshHash   sql.NullString
-	ExpiresAt     sql.NullInt64
+	ID                  string
+	UserID              string
+	Name                string
+	TokenHash           string
+	Prefix              string
+	CreatedAt           int64
+	LastUsedAt          sql.NullInt64
+	RevokedAt           sql.NullInt64
+	ComputerID          string
+	OauthClientID       string
+	RefreshHash         sql.NullString
+	ExpiresAt           sql.NullInt64
+	PreviousRefreshHash sql.NullString
 }
 
 type Play struct {

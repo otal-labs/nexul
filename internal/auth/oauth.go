@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/url"
 	"strings"
@@ -29,6 +30,10 @@ const (
 	oauthRegistrationSpan = time.Hour
 	oauthUngrantedTTL     = 24 * time.Hour
 	oauthDefaultName      = "MCP client"
+	oauthRefreshIdle      = 30 * 24 * time.Hour
+	// shortcut: a spent code is remembered in memory for the access token's hour, so a later replay or a restart only
+	// refuses it; keep spent codes in the database if a replay after that must revoke too.
+	oauthSpentKeep = oauthAccessTTL
 )
 
 // OAuthError is an RFC 6749 error the token and registration endpoints answer with.
@@ -83,10 +88,22 @@ type oauthCode struct {
 	expires   time.Time
 }
 
+// spentCode is a code already exchanged, kept so that a replay revokes the grant it minted.
+type spentCode struct {
+	grant    *PersonalAccessToken
+	replayed bool
+	until    time.Time
+}
+
 // ponytail: codes live in memory for their minute, so a restart mid-sign-in means approving again.
 type oauthCodes struct {
-	mu sync.Mutex
-	m  map[string]oauthCode
+	mu    sync.Mutex
+	m     map[string]oauthCode
+	spent map[string]spentCode
+}
+
+func newOAuthCodes() *oauthCodes {
+	return &oauthCodes{m: map[string]oauthCode{}, spent: map[string]spentCode{}}
 }
 
 func (c *oauthCodes) put(now time.Time, code oauthCode) (string, error) {
@@ -101,6 +118,11 @@ func (c *oauthCodes) put(now time.Time, code oauthCode) (string, error) {
 			delete(c.m, k)
 		}
 	}
+	for k, v := range c.spent {
+		if !now.Before(v.until) {
+			delete(c.spent, k)
+		}
+	}
 	if len(c.m) >= oauthCodeCap {
 		return "", fmt.Errorf("%w: too many sign-ins at once, try again in a minute", apperrs.ErrRateLimited)
 	}
@@ -109,7 +131,7 @@ func (c *oauthCodes) put(now time.Time, code oauthCode) (string, error) {
 	return raw, nil
 }
 
-// take hands a code out once; a replay or a code past its minute finds nothing.
+// take hands a code out once and keeps it as spent; a replay or a code past its minute finds nothing.
 func (c *oauthCodes) take(now time.Time, raw string) (oauthCode, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -119,7 +141,36 @@ func (c *oauthCodes) take(now time.Time, raw string) (oauthCode, bool) {
 	if !ok || !now.Before(code.expires) {
 		return oauthCode{}, false
 	}
+	c.spent[key] = spentCode{until: now.Add(oauthSpentKeep)}
 	return code, true
+}
+
+// spend records the grant a spent code minted, and reports whether the code was replayed while it was being minted.
+func (c *oauthCodes) spend(raw string, grant PersonalAccessToken) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	key := hashToken(raw)
+	spent, ok := c.spent[key]
+	if !ok {
+		return false
+	}
+	spent.grant = &grant
+	c.spent[key] = spent
+	return spent.replayed
+}
+
+// replay marks a spent code as replayed and returns the grant it minted, nil when it minted none (yet).
+func (c *oauthCodes) replay(now time.Time, raw string) *PersonalAccessToken {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	key := hashToken(raw)
+	spent, ok := c.spent[key]
+	if !ok || !now.Before(spent.until) {
+		return nil
+	}
+	spent.replayed = true
+	c.spent[key] = spent
+	return spent.grant
 }
 
 // OAuthEnabled reports whether MCP clients can sign in, so the discovery documents exist.
@@ -308,8 +359,12 @@ func (s *Service) ExchangeOAuthCode(ctx context.Context, clientID, code, redirec
 	if !s.OAuthEnabled() {
 		return nil, errOAuthOff
 	}
-	grant, ok := s.oauthCodes.take(s.cfg.Now(), code)
-	if !ok || grant.clientID != clientID || grant.requested != redirectURI {
+	now := s.cfg.Now()
+	grant, ok := s.oauthCodes.take(now, code)
+	if !ok {
+		return nil, s.revokeReplayed(ctx, s.oauthCodes.replay(now, code))
+	}
+	if grant.clientID != clientID || grant.requested != redirectURI {
 		return nil, errOAuthBadGrant
 	}
 	if !pkceMatches(verifier, grant.challenge) {
@@ -338,7 +393,23 @@ func (s *Service) ExchangeOAuthCode(ctx context.Context, clientID, code, redirec
 	if err := s.cfg.PATs.Create(ctx, &pat, tokenEvent(TopicTokenMinted, pat)); err != nil {
 		return nil, fmt.Errorf("create grant: %w", err)
 	}
+	if s.oauthCodes.spend(code, pat) {
+		return nil, s.revokeReplayed(ctx, &pat)
+	}
 	return tokens, nil
+}
+
+// revokeReplayed revokes the grant a replayed code or refresh token minted (RFC 9700), and refuses the replay.
+func (s *Service) revokeReplayed(ctx context.Context, grant *PersonalAccessToken) error {
+	if grant == nil {
+		return errOAuthBadGrant
+	}
+	err := s.cfg.PATs.Revoke(ctx, grant.ID, grant.UserID, tokenEvent(TopicTokenRevoked, *grant))
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("revoke replayed grant %s: %w", grant.ID, err)
+	}
+	slog.WarnContext(ctx, "oauth: replayed sign-in code or refresh token, grant revoked", "grant_id", grant.ID, "user_id", grant.UserID)
+	return errOAuthBadGrant
 }
 
 func pkceMatches(verifier, challenge string) bool {
@@ -349,7 +420,8 @@ func pkceMatches(verifier, challenge string) bool {
 	return subtle.ConstantTimeCompare([]byte(base64.RawURLEncoding.EncodeToString(sum[:])), []byte(challenge)) == 1
 }
 
-// RefreshOAuth rotates a grant: a new access and refresh token, and the old refresh token stops working.
+// RefreshOAuth rotates a grant: a new access and refresh token, and the old refresh token stops working. Presenting
+// that old one again revokes the grant, and a refresh token unused for oauthRefreshIdle is refused.
 func (s *Service) RefreshOAuth(ctx context.Context, clientID, refresh string) (*OAuthTokens, error) {
 	if !s.OAuthEnabled() {
 		return nil, errOAuthOff
@@ -361,9 +433,11 @@ func (s *Service) RefreshOAuth(ctx context.Context, clientID, refresh string) (*
 	if err != nil {
 		return nil, err
 	}
-	pat, err := s.cfg.PATs.RotateByRefresh(ctx, hashToken(refresh), clientID, next)
+	// A grant's expires_at is its last rotation plus the access token's life.
+	expiresAfter := s.cfg.Now().Add(oauthAccessTTL - oauthRefreshIdle)
+	pat, err := s.cfg.PATs.RotateByRefresh(ctx, hashToken(refresh), clientID, expiresAfter, next)
 	if errors.Is(err, apperrs.ErrNotFound) {
-		return nil, errOAuthBadGrant
+		return nil, s.revokeReused(ctx, hashToken(refresh))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("rotate grant: %w", err)
@@ -373,6 +447,17 @@ func (s *Service) RefreshOAuth(ctx context.Context, clientID, refresh string) (*
 		return nil, errOAuthBadGrant
 	}
 	return tokens, nil
+}
+
+func (s *Service) revokeReused(ctx context.Context, refreshHash string) error {
+	grant, err := s.cfg.PATs.GetByPreviousRefresh(ctx, refreshHash)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return errOAuthBadGrant
+	}
+	if err != nil {
+		return fmt.Errorf("find grant by previous refresh: %w", err)
+	}
+	return s.revokeReplayed(ctx, grant)
 }
 
 // newGrantTokens mints a grant's raw tokens and the row fields that hold their hashes.

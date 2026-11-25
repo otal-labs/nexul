@@ -20,6 +20,11 @@ WHERE user_id = ? AND computer_id = ? AND computer_id != '' AND revoked_at IS NU
 
 -- name: RotatePATByRefresh :one
 UPDATE personal_access_tokens
-SET token_hash = sqlc.arg(token_hash), refresh_hash = sqlc.arg(refresh_hash), expires_at = sqlc.arg(expires_at), prefix = sqlc.arg(prefix)
+SET token_hash = sqlc.arg(token_hash), refresh_hash = sqlc.arg(refresh_hash), expires_at = sqlc.arg(expires_at), prefix = sqlc.arg(prefix),
+    previous_refresh_hash = refresh_hash
 WHERE refresh_hash = sqlc.arg(old_refresh_hash) AND oauth_client_id = sqlc.arg(oauth_client_id) AND revoked_at IS NULL
+    AND expires_at > sqlc.arg(expires_after)
 RETURNING *;
+
+-- name: GetPATByPreviousRefresh :one
+SELECT * FROM personal_access_tokens WHERE previous_refresh_hash = ? AND revoked_at IS NULL;

@@ -110,8 +110,11 @@ type PATStore interface {
 	TouchLastUsed(ctx context.Context, id string) error
 	// GetActiveForComputer returns the computer's unrevoked token, or ErrNotFound.
 	GetActiveForComputer(ctx context.Context, userID, computerID string) (*PersonalAccessToken, error)
-	// RotateByRefresh swaps an unrevoked grant's token and refresh hashes for next's, or returns ErrNotFound.
-	RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, next PersonalAccessToken) (*PersonalAccessToken, error)
+	// RotateByRefresh swaps an unrevoked grant's token and refresh hashes for next's, keeping the old refresh hash as its
+	// previous one; a grant whose access token expired before expiresAfter is ErrNotFound, as is a missing one.
+	RotateByRefresh(ctx context.Context, oldRefreshHash, clientID string, expiresAfter time.Time, next PersonalAccessToken) (*PersonalAccessToken, error)
+	// GetByPreviousRefresh returns the unrevoked grant that last rotated away from this refresh hash, or ErrNotFound.
+	GetByPreviousRefresh(ctx context.Context, hash string) (*PersonalAccessToken, error)
 }
 
 // OAuthClientStore keeps the MCP clients that registered themselves.
