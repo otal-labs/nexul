@@ -1,6 +1,6 @@
 # Audit log retention setting and the stream's settings
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** ADR 0190 decided (the destination and delivery)
 
 The Owner can keep the audit log longer and save one stream destination. Nothing is sent yet.

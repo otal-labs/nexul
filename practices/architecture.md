@@ -379,7 +379,8 @@ Third-party integrations extend the product without running inside it
   privilege scopes, signed webhooks, revocable tokens, and an audit log are
   the baseline.
 - The audit log records changes, not reads, from both adapters, and keeps
-  them 45 days (ADR 0138). A GET writes no row; a non-GET route that only
+  them 45 days, or as long as the enterprise setting says (ADR 0138,
+  ADR 0190). A GET writes no row; a non-GET route that only
   reads joins the list in `integrations.Audited`, which a test checks
   against the real route table. An MCP tool that is not read-only writes
   one row per call through the adapter's audit hook.

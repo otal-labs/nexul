@@ -82,6 +82,8 @@ type Service struct {
 	saml func(context.Context) (any, error)
 	// branding reads the instance branding instance_get includes; nil on a build that wires none.
 	branding func(context.Context) (any, error)
+	// audit reads the audit log settings instance_get includes; nil on a build that wires none.
+	audit func(context.Context) (any, error)
 	// stylingGuide is how to write branding css, which instance_get returns when asked; empty on a build that wires none.
 	stylingGuide string
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only

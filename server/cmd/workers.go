@@ -70,6 +70,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		WithSSO(func(ctx context.Context) (any, error) { return svc.ssoSvc.View(ctx) }).
 		WithSAML(func(ctx context.Context) (any, error) { return svc.ssoSvc.SAMLView(ctx) }).
 		WithBranding(func(ctx context.Context) (any, error) { return svc.brandingSvc.Get(ctx) }).
+		WithAudit(func(ctx context.Context) (any, error) { return svc.auditlogSvc.View(ctx) }).
 		WithStylingGuide(branding.StylingGuide())
 	if cfg.LogsURL != nil {
 		runnerSvc.WithLogs(logstore.New(logstore.Config{URL: cfg.LogsURL, Email: cfg.LogsEmail, Password: cfg.LogsPassword}))
@@ -113,7 +114,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.notifSvc.RunCleanupLoop(ctx, logger)
 	go svc.ssoSvc.RunRecheckLoop(ctx, time.Hour, logger)
 	go svc.deploySvc.RunRequestCounts(ctx, logger)
-	go svc.integrationsSvc.RunAuditRetention(ctx, logger)
+	go svc.integrationsSvc.RunAuditRetention(ctx, svc.auditlogSvc.RetentionDays, logger)
 	go svc.pairingSvc.RunShellUpkeep(ctx, logger)
 	go docs.RunSettleLoop(ctx, store.Docs, store.CommitsTo(storage.SettleWrites...).Next, logger)
 	go svc.calendarSvc.RunReminderLoop(ctx, store.CommitsTo(storage.ReminderWrites...).Next, logger)

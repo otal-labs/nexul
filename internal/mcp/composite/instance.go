@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
@@ -43,10 +44,17 @@ type BrandingSettings interface {
 	Clear(ctx context.Context) (branding.Settings, error)
 }
 
+// AuditSettings is the slice of the audit log use-cases instance_update calls.
+type AuditSettings interface {
+	View(ctx context.Context) (auditlog.View, error)
+	Update(ctx context.Context, p auditlog.Patch) (auditlog.Saved, error)
+	Remove(ctx context.Context) (auditlog.View, error)
+}
+
 // InstanceTools is instance_update, the one tool that changes the instance's own settings (ADR 0185): the enterprise
-// license key, and the single sign-on provider, OIDC or SAML, and branding that key unlocks.
-func InstanceTools(l LicenseKeeper, s SSOSettings, m SAMLSettings, b BrandingSettings) []mcptool.Tool {
-	return []mcptool.Tool{instanceUpdateTool(instanceSettingsOf{l: l, s: s, m: m, b: b})}
+// license key, and the single sign-on provider, OIDC or SAML, branding and audit log settings that key unlocks.
+func InstanceTools(l LicenseKeeper, s SSOSettings, m SAMLSettings, b BrandingSettings, a AuditSettings) []mcptool.Tool {
+	return []mcptool.Tool{instanceUpdateTool(instanceSettingsOf{l: l, s: s, m: m, b: b, a: a})}
 }
 
 // instanceSettingsOf is every settings use-case instance_update reaches.
@@ -55,6 +63,7 @@ type instanceSettingsOf struct {
 	s SSOSettings
 	m SAMLSettings
 	b BrandingSettings
+	a AuditSettings
 }
 
 type instanceUpdateIn struct {
@@ -62,6 +71,15 @@ type instanceUpdateIn struct {
 	SSO        *ssoIn      `json:"sso,omitempty" jsonschema:"The single sign-on provider; needs a key unlocking sso."`
 	SAML       *samlIn     `json:"saml,omitempty" jsonschema:"The single sign-on provider when it speaks SAML; needs a key unlocking sso."`
 	Branding   *brandingIn `json:"branding,omitempty" jsonschema:"The instance's own look; needs a key unlocking branding."`
+	Audit      *auditIn    `json:"audit,omitempty" jsonschema:"How long the audit log is kept and where it streams; needs a key unlocking audit."`
+}
+
+type auditIn struct {
+	RetentionDays *int    `json:"retention_days,omitempty" jsonschema:"Days audit rows are kept, 45 to 1095."`
+	StreamURL     *string `json:"stream_url,omitempty" jsonschema:"The https URL each audit row is posted to, signed; empty removes it."`
+	StreamSecret  *string `json:"stream_secret,omitempty" jsonschema:"The signing secret or a secret reference, never returned; left out, one is made that Settings shows on rotating."`
+	StreamEnabled *bool   `json:"stream_enabled,omitempty" jsonschema:"True queues each new audit row for the destination."`
+	Remove        *bool   `json:"remove,omitempty" jsonschema:"True deletes the settings: rows are kept 45 days and nothing streams."`
 }
 
 type brandingIn struct {
@@ -101,6 +119,7 @@ type instanceSettings struct {
 	SSO      sso.View          `json:"sso"`
 	SAML     sso.SAMLView      `json:"saml"`
 	Branding branding.Settings `json:"branding"`
+	Audit    auditlog.View     `json:"audit"`
 }
 
 func instanceUpdateTool(d instanceSettingsOf) mcptool.Tool {
@@ -111,7 +130,8 @@ func instanceUpdateTool(d instanceSettingsOf) mcptool.Tool {
 			"the provider is reached before anything is stored. saml saves a SAML provider instead; an instance holds one, so "+
 			"remove the other first. branding sets the product name, logo, accent, an imported VS Code "+
 			"theme and css shown instead of Nexul's, which needs a key unlocking branding; "+
-			"instance_get with styling_guide explains the css. Returns them all as instance_get shows them.",
+			"instance_get with styling_guide explains the css. audit keeps the audit log longer and streams each row to a signed "+
+			"https webhook, which needs a key unlocking audit. Returns them all as instance_get shows them.",
 		mcptool.Hints{Idempotent: true, Local: false},
 		func(ctx context.Context, in instanceUpdateIn) (any, error) {
 			var out instanceSettings
@@ -151,6 +171,12 @@ func instanceUpdateTool(d instanceSettingsOf) mcptool.Tool {
 					return err
 				}})
 			}
+			if in.Audit != nil {
+				steps = append(steps, step{field: "audit", run: func(ctx context.Context) (err error) {
+					out.Audit, err = changeAudit(ctx, d.a, in.Audit)
+					return err
+				}})
+			}
 			if _, err := runSteps(ctx, steps); err != nil {
 				return nil, err
 			}
@@ -181,7 +207,24 @@ func readBack(ctx context.Context, d instanceSettingsOf, in instanceUpdateIn, ou
 			return nil, fmt.Errorf("read branding: %w", err)
 		}
 	}
+	if in.Audit == nil {
+		if out.Audit, err = d.a.View(ctx); err != nil {
+			return nil, fmt.Errorf("read the audit log settings: %w", err)
+		}
+	}
 	return out, nil
+}
+
+// changeAudit applies one audit patch; a secret the server made stays out of the answer, since a result never carries
+// a secret.
+func changeAudit(ctx context.Context, a AuditSettings, in *auditIn) (auditlog.View, error) {
+	if in.Remove != nil && *in.Remove {
+		return a.Remove(ctx)
+	}
+	saved, err := a.Update(ctx, auditlog.Patch{
+		RetentionDays: in.RetentionDays, StreamURL: in.StreamURL, StreamSecret: in.StreamSecret, StreamEnabled: in.StreamEnabled,
+	})
+	return saved.View, err
 }
 
 // changeSAML removes the SAML provider or saves the patch.

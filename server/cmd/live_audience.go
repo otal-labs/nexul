@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
@@ -217,6 +218,7 @@ var liveRules = map[string]liveRule{
 	license.TopicChanged:               anywhere(permissions.InstanceRead),
 	sso.TopicChanged:                   anywhere(permissions.InstanceRead),
 	sso.TopicSAMLChanged:               anywhere(permissions.InstanceRead),
+	auditlog.TopicSettingsChanged:      anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
 	dns.TopicTunnelChanged:             anywhere(permissions.DNSRead),

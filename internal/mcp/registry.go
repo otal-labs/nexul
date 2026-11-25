@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/otal-labs/nexul/ee/auditlog"
 	"github.com/otal-labs/nexul/ee/branding"
 	"github.com/otal-labs/nexul/ee/license"
 	"github.com/otal-labs/nexul/ee/sso"
@@ -64,6 +65,7 @@ type RegistryOptions struct {
 	License       *license.Service
 	SSO           *sso.Service
 	Branding      *branding.Service
+	AuditLog      *auditlog.Service
 	// Hosts adapts each host kind (runner, automations host, machine) to the shared host_create and host_delete tools.
 	Hosts       map[string]composite.HostKind
 	DNS         *dns.Service
@@ -129,7 +131,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		topology.MCPTools(opts.Topology),
 		deploy.MCPTools(opts.Deploy),
 		runner.MCPTools(opts.Runner),
-		composite.InstanceTools(opts.License, opts.SSO, opts.SSO, opts.Branding),
+		composite.InstanceTools(opts.License, opts.SSO, opts.SSO, opts.Branding, opts.AuditLog),
 		composite.HostTools(opts.Hosts),
 		gitprovider.MCPTools(opts.Git, opts.ChangeContext, opts.GitGate),
 		repository.MCPTools(opts.Repository),

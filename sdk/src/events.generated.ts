@@ -97,6 +97,7 @@ export interface EventPayloads {
   "identity.linked": { "user_id": string; "provider": string; "login": string; };
   "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
   "import.progress": { "user_id": string; "import": { "id": string; "workspace_id": string; "project_id": string; "source": string; "from": string; "state": "scanning" | "ready" | "importing" | "completed" | "failed" | "cancelled"; "created_by": string; "total": number; "done": number; "failed": number; "report": { "tickets": number; "comments": number; "docs": number; "archived": number; "people": { "login"?: string; "email"?: string; "username"?: string; "name": string; "member": string; }[]; "statuses": ({ "name": string; "kind": "backlog" | "progress" | "review" | "testing" | "done"; "column": string; "new": boolean; })[]; "skipped": number; "relations_skipped": number; "files_copied": number; "files_linked": number; "unsupported": number; "failures": { "kind": string; "source_id": string; "title"?: string; "error": string; }[]; "error"?: string; "cursor"?: string; }; "created_at": string; "updated_at": string; }; };
+  "instance.audit_settings_changed": { "retention_days": number; "stream_url": string; "stream_enabled": boolean; "removed": boolean; "changed_by": string; "changed_at": string; };
   "instance.branding_changed": { "cleared": boolean; "changed_by": string; "changed_at": string; };
   "instance.license_changed": { "licensee": string; "features": string[]; "expires_at"?: string; "removed": boolean; "changed_by": string; "changed_at": string; };
   "instance.saml_changed": { "display_name": string; "entity_id": string; "only": boolean; "removed": boolean; "changed_by": string; "changed_at": string; };
@@ -293,6 +294,7 @@ export const TOPICS: Topic[] = [
   "identity.linked",
   "identity.unlinked",
   "import.progress",
+  "instance.audit_settings_changed",
   "instance.branding_changed",
   "instance.license_changed",
   "instance.saml_changed",
@@ -487,6 +489,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "identity.linked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "import.progress": {"user_id":"fixture-user_id","import":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source":"fixture-source","from":"fixture-from","state":"scanning","created_by":"fixture-created_by","total":1,"done":1,"failed":1,"report":{"tickets":1,"comments":1,"docs":1,"archived":1,"people":[{"login":"fixture-login","email":"fixture-email","username":"fixture-username","name":"fixture-name","member":"fixture-member"}],"statuses":[{"name":"fixture-name","kind":"backlog","column":"fixture-column","new":false}],"skipped":1,"relations_skipped":1,"files_copied":1,"files_linked":1,"unsupported":1,"failures":[{"kind":"fixture-kind","source_id":"fixture-source_id","title":"fixture-title","error":"fixture-error"}],"error":"fixture-error","cursor":"fixture-cursor"},"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
+  "instance.audit_settings_changed": {"retention_days":1,"stream_url":"fixture-stream_url","stream_enabled":false,"removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.branding_changed": {"cleared":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.license_changed": {"licensee":"fixture-licensee","features":["fixture-features"],"expires_at":"2026-01-01T00:00:00Z","removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
   "instance.saml_changed": {"display_name":"fixture-display_name","entity_id":"fixture-entity_id","only":false,"removed":false,"changed_by":"fixture-changed_by","changed_at":"2026-01-01T00:00:00Z"},
