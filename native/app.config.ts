@@ -78,6 +78,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "./plugins/withReleaseSigning",
+    "./plugins/withAndroidShrink",
     "expo-secure-store",
     "@react-native-community/datetimepicker",
     // Android tints the white silhouette with this color; the muted foreground token reads on both the light and dark shade.
