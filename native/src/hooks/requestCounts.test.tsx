@@ -90,6 +90,7 @@ const message = (n: number): Message => ({
 
 const ticket = (id: string, number: number) => ({
   id, project_id: "p-1", type_id: "", title: `Ticket ${number}`, body: "", status: "st-todo", position: 0, number, developer: "", tester: "", labels: null,
+  created_at: "2026-11-25T10:00:00Z", updated_at: "2026-11-25T10:00:00Z",
 });
 
 const responses: Record<string, unknown> = {
@@ -210,7 +211,12 @@ afterEach(() => {
   focusManager.setFocused(undefined);
 });
 
-const ticketFrame = (topic: string, id: string) => ({ topic, type: "event", payload: { ticket: { id, project_id: "p-1" }, from: "a", to: "b" } });
+// Ticket frames carry the whole ticket, as the server publishes them.
+const ticketFrame = (topic: string, id: string) => ({
+  topic,
+  type: "event",
+  payload: { ticket: { ...ticket(id, Number(id.slice(2))), title: "Renamed", updated_at: "2026-11-25T10:01:00Z" }, from: "a", to: "b" },
+});
 
 describe("requests a session sends", () => {
   // Every query any mounted screen holds refetches once: the socket was closed in the background, so it may be behind.
@@ -241,32 +247,26 @@ describe("requests a session sends", () => {
     expect(gets).toEqual([]);
   });
 
-  test("a ticket frame refetches the board's list and that ticket, nothing else", async () => {
+  // The frame carries the ticket, so the board and the open ticket take it in place: an agent moving cards costs no download.
+  test.each(["ticket.status_changed", "ticket.updated", "ticket.developer_changed", "ticket.due_date_changed", "ticket.finished"])(
+    "%s on a ticket the board shows sends no request",
+    async (topic) => {
+      const client = await renderSession();
+
+      const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame(topic, "t-1")));
+
+      expect(gets).toEqual([]);
+      expect(client.getQueryData<{ title: string }[]>(["getTicketsByProject", "p-1"])?.[0]?.title).toBe("Renamed");
+    },
+  );
+
+  // The server owns a new ticket's place, so a ticket the list doesn't hold yet refetches that list once.
+  test("a frame for a ticket the board doesn't hold yet refetches the board's list, nothing else", async () => {
     const client = await renderSession();
 
-    const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.status_changed", "t-1")));
+    const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.status_changed", "t-9")));
 
-    expect(gets.sort()).toEqual(["/api/tickets/t-1", "/api/tickets?project_id=p-1&without=body"]);
-  });
-
-  // The server publishes ticket.assignee_changed beside ticket.developer_changed for older clients; following both refetched twice.
-  test("a developer change, published under both of its topics, refetches once", async () => {
-    const client = await renderSession();
-
-    const gets = await requestsDuring(client, () => {
-      dispatch(client)(ticketFrame("ticket.developer_changed", "t-2"));
-      dispatch(client)(ticketFrame("ticket.assignee_changed", "t-2"));
-    });
-
-    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1&without=body"]);
-  });
-
-  test("a due date change refetches the board's list and that ticket, nothing else", async () => {
-    const client = await renderSession();
-
-    const gets = await requestsDuring(client, () => dispatch(client)(ticketFrame("ticket.due_date_changed", "t-2")));
-
-    expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1&without=body"]);
+    expect(gets).toEqual(["/api/tickets?project_id=p-1&without=body"]);
   });
 
   const roleFrame = (roleID: string) => ({

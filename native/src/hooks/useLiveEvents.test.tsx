@@ -137,8 +137,6 @@ describe("dispatch", () => {
 
   // Each record opened or listed caches its own detail query, so a frame refetches only the one it names.
   test.each([
-    ["ticket.status_changed", { ticket: { id: "rec-1" }, from: "a", to: "b" }, [getTicketKey]],
-    ["ticket.updated", { ticket: { id: "rec-1" } }, [getTicketKey]],
     ["ticket.deleted", { id: "rec-1", title: "Gone" }, [getTicketKey]],
     ["ticket.project_changed", { ticket_id: "rec-1", project_id: "p-2", previous_project_id: "p-1" }, [getTicketKey]],
     ["meeting.updated", { meeting: { id: "rec-1", workspace_id: "ws-1" } }, [getMeetingKey]],
@@ -163,15 +161,30 @@ describe("dispatch", () => {
     });
   });
 
-  test("a ticket frame reaches a ticket a chat link opened by its key", () => {
+  // The frame carries the whole ticket, so each view holding it takes the copy, however a link opened it.
+  test("a ticket frame writes its copy into every view of that ticket and no other, refetching nothing", () => {
     const client = new QueryClient();
-    client.setQueryData([getTicketKey, "WEB-12", "acme"], { id: "t-1" });
-    client.setQueryData([getTicketKey, "WEB-13", "acme"], { id: "t-2" });
+    const ticket = (id: string, title: string, at: string) => ({ id, project_id: "p-1", title, body: "", updated_at: at });
+    client.setQueryData([getTicketKey, "WEB-12", "acme"], ticket("t-1", "Old", "2026-11-25T10:00:00Z"));
+    client.setQueryData([getTicketKey, "WEB-13", "acme"], ticket("t-2", "Other", "2026-11-25T10:00:00Z"));
+    const invalidate = jest.spyOn(client, "invalidateQueries");
 
-    dispatch(client)({ topic: "ticket.updated", type: "event", payload: { ticket: { id: "t-1" } } });
+    dispatch(client)({ topic: "ticket.updated", type: "event", payload: { ticket: { ...ticket("t-1", "New", "2026-11-25T10:01:00Z"), body: "b" } } });
 
-    expect(client.getQueryState([getTicketKey, "WEB-12", "acme"])?.isInvalidated).toBe(true);
-    expect(client.getQueryState([getTicketKey, "WEB-13", "acme"])?.isInvalidated).toBe(false);
+    expect(client.getQueryData([getTicketKey, "WEB-12", "acme"])).toMatchObject({ title: "New", body: "b" });
+    expect(client.getQueryData([getTicketKey, "WEB-13", "acme"])).toMatchObject({ title: "Other" });
+    expect(invalidate.mock.calls.flatMap(([filters]) => filters?.queryKey ?? [])).not.toContain(getTicketKey);
+  });
+
+  // A frame can trail a newer copy the viewer's own save already wrote.
+  test("a ticket frame older than the copy shown leaves it alone", () => {
+    const client = new QueryClient();
+    const shown = { id: "t-1", project_id: "p-1", title: "Saved", body: "", updated_at: "2026-11-25T10:05:00Z" };
+    client.setQueryData([getTicketKey, "t-1", ""], shown);
+
+    dispatch(client)({ topic: "ticket.updated", type: "event", payload: { ticket: { ...shown, title: "Stale", updated_at: "2026-11-25T10:00:00Z" } } });
+
+    expect(client.getQueryData([getTicketKey, "t-1", ""])).toBe(shown);
   });
 
   // A query cached with an Infinity stale time only refreshes when a pushed topic invalidates it.
