@@ -29,21 +29,21 @@ const RunStatus = ({ trail }: { trail: Trail }) => (
   </View>
 );
 
-// Stop while it works or waits, Continue once it ended; both for its starter or a plays:write holder only.
+// The run's steps and question first, then Stop while it works or waits, or Continue once it ended; both for its starter or a plays:write holder only.
 const RunBody = ({ trail, tab }: { trail: Trail; tab: RunTab }) => {
   const canAct = useCanActOnRun(trail);
   const stop = useStopRun();
   const active = isTrailActive(trail.state);
   return (
     <View className="gap-5 px-4">
+      {trail.last_error !== "" && <Text className="text-row text-destructive">{trail.last_error}</Text>}
+      <RunTranscript trail={trail} />
       {active && canAct && (
-        <Button variant="outline" disabled={stop.isPending} onPress={() => stop.mutate(trail.id)}>
+        <Button variant="outline" size="sm" className="self-start" disabled={stop.isPending} onPress={() => stop.mutate(trail.id)}>
           <Text>{stop.isPending ? "Stopping…" : "Stop run"}</Text>
         </Button>
       )}
       {stop.error && <ErrorDisplay error={stop.error} className="px-0" />}
-      {trail.last_error !== "" && <Text className="text-row text-destructive">{trail.last_error}</Text>}
-      <RunTranscript trail={trail} />
       {!active && canAct && <RunContinueForm trail={trail} tab={tab} />}
     </View>
   );
