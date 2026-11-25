@@ -12,6 +12,7 @@ jest.mock("@/components/docs/DocBody", () => ({
   DocBody: ({ body }: { body: string }) => jest.requireActual("react").createElement(jest.requireActual("react-native").Text, null, body),
 }));
 jest.mock("@/hooks/ProjectHooks", () => ({ useRevokedProject: () => false }));
+jest.mock("@/components/plays/TargetPlaysSection", () => ({ TargetPlaysSection: () => null }));
 
 let mockCanWrite = true;
 jest.mock("@/hooks/WorkspaceHooks", () => ({ useAreaAccess: () => (area: string) => area === "editDocs" && mockCanWrite }));

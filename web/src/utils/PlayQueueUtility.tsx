@@ -1,4 +1,4 @@
-import { onlyComputersFull } from "@nexul/client-core/playQueue";
+import { onlyComputersFull, waitingWhy } from "@nexul/client-core/playQueue";
 
 import type { PlayType } from "@/models/Play";
 import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, checkoutFixLink, type ReadinessLink } from "@/models/Pairing";
