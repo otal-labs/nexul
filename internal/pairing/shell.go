@@ -3,6 +3,7 @@ package pairing
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Shell job limits (the personal runners spec, Later: shell jobs).
@@ -59,10 +61,12 @@ var shellNames = []string{"", "bash", "sh", "pwsh", "powershell"}
 
 // ShellJob is one command run on a computer through its runner.
 type ShellJob struct {
-	ID              string     `json:"id"`
-	ComputerID      string     `json:"computer_id"`
-	OwnerID         string     `json:"owner_id"`
-	RequesterID     string     `json:"requester_id"`
+	ID          string `json:"id"`
+	ComputerID  string `json:"computer_id"`
+	OwnerID     string `json:"owner_id"`
+	RequesterID string `json:"requester_id"`
+	// RequesterName is who ran it as the list shows them; set on a list only.
+	RequesterName   string     `json:"requester_name,omitempty"`
 	Adapter         string     `json:"adapter"`
 	Shell           string     `json:"shell"`
 	Command         string     `json:"command"`
@@ -145,6 +149,8 @@ type liveJob struct {
 	done chan struct{}
 	// claimed is set, under the queue's lock, once the job got a place on its computer.
 	claimed bool
+	// requester is who ran it, never changed, so the queue reads it without the job's lock.
+	requester string
 
 	mu        sync.Mutex
 	timer     *time.Timer
@@ -188,7 +194,7 @@ func (s *Service) RunCommand(ctx context.Context, userID, computerID string, in 
 	if err := s.repo.InsertShellJob(ctx, job, shellJobEvent(job)); err != nil {
 		return nil, fmt.Errorf("record command on %s: %w", c.Name, err)
 	}
-	live := &liveJob{job: job, svc: s, done: make(chan struct{}), watchers: map[*jobFeed]struct{}{}}
+	live := &liveJob{job: job, svc: s, requester: userID, done: make(chan struct{}), watchers: map[*jobFeed]struct{}{}}
 	s.shellQueue.mu.Lock()
 	s.shellQueue.jobs[job.ID] = live
 	s.shellQueue.order[job.ComputerID] = append(s.shellQueue.order[job.ComputerID], job.ID)
@@ -222,16 +228,12 @@ func validateCommand(in *RunCommandInput) error {
 	return nil
 }
 
-// commandsComputer is a computer the caller may run commands on; any other is not found, so a refusal says nothing.
+// commandsComputer is a computer the caller owns, or one shared with them with Run commands; any other is not found.
 func (s *Service) commandsComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
-	c, err := s.ownComputer(ctx, userID, computerID)
-	if err != nil {
-		return nil, err
-	}
 	if s.shells == nil {
 		return nil, apperrs.Fatal(fmt.Errorf("%w: commands on computers are not wired", apperrs.ErrFatal))
 	}
-	return c, nil
+	return s.computerWith(ctx, userID, computerID, permissions.ComputersCommands)
 }
 
 // startDueJobs starts the queued jobs on computerID that now fit in its shellJobsAtOnce.
@@ -428,13 +430,18 @@ func (s *Service) mayReadJob(_ context.Context, userID string, job ShellJob) boo
 	return userID != "" && (userID == job.OwnerID || userID == job.RequesterID)
 }
 
-// ListShellJobs pages a computer's commands newest first, without output: every job to its owner.
+// ListShellJobs pages a computer's commands newest first, without output: every job to its owner, and to a person it
+// is shared with by Run commands only their own.
 func (s *Service) ListShellJobs(ctx context.Context, userID, computerID string, w paging.Window) ([]ShellJob, int, error) {
-	c, err := s.ownComputer(ctx, userID, computerID)
+	c, err := s.computerWith(ctx, userID, computerID, permissions.ComputersCommands)
 	if err != nil {
 		return nil, 0, err
 	}
-	jobs, total, err := s.repo.ListShellJobs(ctx, c.ID, "", w.Clamped())
+	requester := ""
+	if c.UserID != userID {
+		requester = userID
+	}
+	jobs, total, err := s.repo.ListShellJobs(ctx, c.ID, requester, w.Clamped())
 	if err != nil {
 		return nil, 0, fmt.Errorf("list commands on %s: %w", c.Name, err)
 	}
@@ -496,19 +503,42 @@ func (s *Service) SetShellEnabled(ctx context.Context, userID, computerID string
 	c.ShellEnabled = enabled
 	c.BearerToken = ""
 	if !enabled {
-		s.cancelComputerJobs(ctx, c.ID, "commands from Nexul were turned off for this computer")
+		s.cancelComputerJobs(ctx, c.ID, "", "commands from Nexul were turned off for this computer")
 	}
 	return c, nil
 }
 
-// cancelComputerJobs stops every live job on computerID, saying why.
-func (s *Service) cancelComputerJobs(ctx context.Context, computerID, why string) {
+// cancelComputerJobs stops every live job on computerID, or only requesterID's when it is set, saying why.
+func (s *Service) cancelComputerJobs(ctx context.Context, computerID, requesterID, why string) {
 	s.shellQueue.mu.Lock()
-	jobIDs := slices.Clone(s.shellQueue.order[computerID])
+	var jobIDs []string
+	for _, id := range s.shellQueue.order[computerID] {
+		if requesterID == "" || s.shellQueue.jobs[id].requester == requesterID {
+			jobIDs = append(jobIDs, id)
+		}
+	}
 	s.shellQueue.mu.Unlock()
 	for _, id := range jobIDs {
 		s.cancelLive(ctx, id, why)
 	}
+}
+
+// HandleComputerGrantChanged stops what a person ran on a computer shared with them once its rule no longer gives them
+// Run commands: queued jobs are dropped and running ones killed, both as access revoked.
+func (s *Service) HandleComputerGrantChanged(ctx context.Context, ev eventbus.Event) error {
+	var p struct {
+		ComputerID  string   `json:"computer_id"`
+		UserID      string   `json:"user_id"`
+		Permissions []string `json:"permissions"`
+	}
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if p.UserID == "" || slices.Contains(p.Permissions, string(permissions.ComputersCommands)) {
+		return nil
+	}
+	s.cancelComputerJobs(ctx, p.ComputerID, p.UserID, "access revoked")
+	return nil
 }
 
 // OpenShellOutput streams a job's output from its first line: live while it runs, what was kept once it ended.

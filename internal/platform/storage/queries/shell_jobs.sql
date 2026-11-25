@@ -13,10 +13,11 @@ WHERE id = ? AND status IN ('queued', 'running');
 SELECT * FROM runner_shell_jobs WHERE id = ?;
 
 -- name: ListShellJobs :many
--- A computer's jobs newest first; a requester id narrows them to that person's own.
-SELECT * FROM runner_shell_jobs
-WHERE computer_id = sqlc.arg(computer_id) AND (sqlc.arg(requester_id) = '' OR requester_id = sqlc.arg(requester_id))
-ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
+-- A computer's jobs newest first, each with the name of who ran it; a requester id narrows them to that person's own.
+SELECT sqlc.embed(j), COALESCE(NULLIF(u.name, ''), u.login, '') AS requester_name
+FROM runner_shell_jobs j LEFT JOIN users u ON u.id = j.requester_id
+WHERE j.computer_id = sqlc.arg(computer_id) AND (sqlc.arg(requester_id) = '' OR j.requester_id = sqlc.arg(requester_id))
+ORDER BY j.created_at DESC, j.id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(off);
 
 -- name: CountShellJobs :one
 SELECT COUNT(*) FROM runner_shell_jobs

@@ -1,6 +1,6 @@
 # 18 — Share a computer: Run commands
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 15. The computer-rule prerequisite has merged.
 

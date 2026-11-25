@@ -87,8 +87,8 @@ func (r *PairingRepo) ListShellJobs(ctx context.Context, computerID, requesterID
 	}
 	jobs := make([]pairing.ShellJob, 0, len(rows))
 	for _, row := range rows {
-		job := toShellJob(row)
-		job.Output = ""
+		job := toShellJob(row.RunnerShellJob)
+		job.Output, job.RequesterName = "", row.RequesterName
 		jobs = append(jobs, job)
 	}
 	return jobs, int(total), nil

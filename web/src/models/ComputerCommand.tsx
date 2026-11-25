@@ -7,7 +7,10 @@ export type CommandStatus = "queued" | "running" | "succeeded" | "failed" | "tim
 export interface ComputerCommand {
   id: string;
   computer_id: string;
+  owner_id: string;
   requester_id: string;
+  // Who ran it, on a list; the owner's list names each person a share let run one.
+  requester_name?: string;
   adapter: "web" | "mcp";
   shell: string;
   command: string;
