@@ -85,6 +85,36 @@ func TestSSORepo_TurnOnSAMLOnly_EndsEverySessionOutsideSSOButTheKeptUsers(t *tes
 	assert.Len(t, pending, 2, "the settings change and one session.revoked")
 }
 
+func TestSSORepo_RefreshSAML_StoresTheReadOnlyWhileTheSameProviderIsSaved(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	st := sso.SAMLSettings{
+		MetadataURL: "https://idp.example.com/metadata", IdP: sso.IdPMetadata{EntityID: "https://idp.example.com", SSOURL: "https://idp.example.com/sso", Certificates: []string{"AAA"}},
+		DisplayName: "Acme", SPKey: "k", SPCertificate: "c", SPPreviousCertificate: "old", UpdatedAt: time.Unix(1_000, 0),
+	}
+	require.NoError(t, s.SSO.SetSAML(ctx, st))
+	idp := st.IdP
+	idp.Certificates = []string{"AAA", "BBB"}
+
+	require.NoError(t, s.SSO.RefreshSAML(ctx, st.MetadataURL, idp, time.Unix(2_000, 0), "", eventbus.OutboxEvent{ID: "e1", Topic: sso.TopicSAMLChanged, Payload: sso.SAMLChangedEvent{}}))
+
+	got, err := s.SSO.GetSAML(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"AAA", "BBB"}, got.IdP.Certificates)
+	assert.Equal(t, time.Unix(2_000, 0).UTC(), got.RefreshedAt)
+	assert.Equal(t, "old", got.SPPreviousCertificate)
+
+	require.NoError(t, s.SSO.RefreshSAML(ctx, "https://idp.example.com/other", sso.IdPMetadata{EntityID: idp.EntityID}, time.Unix(3_000, 0), "down",
+		eventbus.OutboxEvent{ID: "e2", Topic: sso.TopicSAMLChanged, Payload: sso.SAMLChangedEvent{}}))
+	got, err = s.SSO.GetSAML(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, got.RefreshError, "a read of a URL no longer saved is dropped")
+	pending, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	assert.Len(t, pending, 1, "with its event")
+}
+
 func TestSSORepo_SAMLRequests_AreTakenOnceAndOnlyWhileFresh(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

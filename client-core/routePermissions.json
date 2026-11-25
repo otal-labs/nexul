@@ -195,6 +195,8 @@
   "POST /api/imports": ["none"],
   "POST /api/imports/{id}/cancel": ["none"],
   "POST /api/imports/{id}/confirm": ["none"],
+  "POST /api/instance/saml/retire": ["instance:write"],
+  "POST /api/instance/saml/rotate": ["instance:write"],
   "POST /api/instance/saml/verify": ["instance:write"],
   "POST /api/instance/sso/move": ["instance:write"],
   "POST /api/instance/sso/verify": ["instance:write"],

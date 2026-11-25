@@ -67,6 +67,25 @@ func (h *Handler) removeSAML(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, v)
 }
 
+func (h *Handler) rotateSAML(w http.ResponseWriter, r *http.Request) {
+	h.answer(w)(h.svc.RotateSAMLCertificate(r.Context()))
+}
+
+func (h *Handler) retireSAML(w http.ResponseWriter, r *http.Request) {
+	h.answer(w)(h.svc.RetireSAMLCertificate(r.Context()))
+}
+
+// answer writes a use-case's view, or its error.
+func (h *Handler) answer(w http.ResponseWriter) func(SAMLView, error) {
+	return func(v SAMLView, err error) {
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, v)
+	}
+}
+
 // startSAML sends the browser to the provider with a signed AuthnRequest whose id the response must name.
 func (h *Handler) startSAML(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)

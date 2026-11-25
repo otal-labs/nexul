@@ -89,6 +89,8 @@ func TestSAMLRoutes_ThroughTheRouter(t *testing.T) {
 		{http.MethodPut, "/api/instance/saml", `{}`},
 		{http.MethodDelete, "/api/instance/saml", ""},
 		{http.MethodPost, "/api/instance/saml/verify?check=email", `{}`},
+		{http.MethodPost, "/api/instance/saml/rotate", ``},
+		{http.MethodPost, "/api/instance/saml/retire", ``},
 	} {
 		rec := callAPI(t, h, c.method, c.path, member, c.body)
 		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s: %s", c.method, c.path, rec.Body.String())

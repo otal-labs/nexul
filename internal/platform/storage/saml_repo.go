@@ -37,9 +37,32 @@ func (r *SSORepo) GetSAML(ctx context.Context) (sso.SAMLSettings, error) {
 		MetadataURL: row.MetadataUrl, MetadataXML: row.MetadataXml,
 		IdP:            sso.IdPMetadata{EntityID: row.IdpEntityID, SSOURL: row.IdpSsoUrl, Certificates: certs},
 		EmailAttribute: row.EmailAttribute, NameAttribute: row.NameAttribute, DisplayName: row.DisplayName, JoinRoleID: row.JoinRoleID,
-		Only: row.SamlOnly != 0, SPKey: string(key), SPCertificate: row.SpCertificate,
+		Only: row.SamlOnly != 0, SPKey: string(key), SPCertificate: row.SpCertificate, SPPreviousCertificate: row.SpPreviousCertificate,
+		RefreshedAt: timeOrZero(row.RefreshedAt), RefreshError: row.RefreshError,
 		UpdatedBy: row.UpdatedBy, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
+}
+
+// RefreshSAML stores a metadata read while metadataURL and the entity id are still the saved ones; otherwise the
+// provider was saved anew meanwhile and the read is dropped.
+func (r *SSORepo) RefreshSAML(ctx context.Context, metadataURL string, idp sso.IdPMetadata, at time.Time, refreshErr string, evts ...eventbus.OutboxEvent) error {
+	certs, err := json.Marshal(append([]string{}, idp.Certificates...))
+	if err != nil {
+		return fmt.Errorf("encode saml idp certificates: %w", err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).RefreshSAMLMetadata(ctx, sqlcgen.RefreshSAMLMetadataParams{
+			IdpSsoUrl: idp.SSOURL, IdpCertificates: string(certs), RefreshedAt: at.Unix(), RefreshError: refreshErr,
+			MetadataUrl: metadataURL, IdpEntityID: idp.EntityID,
+		})
+		if err != nil {
+			return fmt.Errorf("refresh saml metadata: %w", err)
+		}
+		if n == 0 {
+			return nil
+		}
+		return enqueueWorkspaceOutbox(ctx, tx, evts)
+	})
 }
 
 // SetSAML replaces the SAML settings, with its events in the same transaction.
@@ -127,6 +150,7 @@ func (r *SSORepo) samlParams(s sso.SAMLSettings) (sqlcgen.SetSAMLSettingsParams,
 		MetadataUrl: s.MetadataURL, MetadataXml: s.MetadataXML, IdpEntityID: s.IdP.EntityID, IdpSsoUrl: s.IdP.SSOURL,
 		IdpCertificates: string(certs), EmailAttribute: s.EmailAttribute, NameAttribute: s.NameAttribute,
 		DisplayName: s.DisplayName, JoinRoleID: s.JoinRoleID, SamlOnly: boolToInt(s.Only), SpKey: sealed,
-		SpCertificate: s.SPCertificate, UpdatedBy: s.UpdatedBy, UpdatedAt: s.UpdatedAt.Unix(),
+		SpCertificate: s.SPCertificate, SpPreviousCertificate: s.SPPreviousCertificate, RefreshedAt: secondsOrZero(s.RefreshedAt),
+		RefreshError: s.RefreshError, UpdatedBy: s.UpdatedBy, UpdatedAt: s.UpdatedAt.Unix(),
 	}, nil
 }

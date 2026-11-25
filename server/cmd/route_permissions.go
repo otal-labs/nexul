@@ -183,6 +183,8 @@ var routePermissions = map[string][]string{
 	"DELETE /api/instance/saml":                           {"instance:write"},
 	"PUT /api/instance/saml":                              {"instance:write"},
 	"POST /api/instance/saml/verify":                      {"instance:write"},
+	"POST /api/instance/saml/rotate":                      {"instance:write"},
+	"POST /api/instance/saml/retire":                      {"instance:write"},
 	"POST /api/instance/upgrade":                          {"instance:write"},
 	"POST /api/integrations":                              {"integrations:write"},
 	"DELETE /api/integrations/{id}":                       {"integrations:delete"},

@@ -55,6 +55,14 @@ func (r *fakeSAMLRepo) TakeSAMLRequest(_ context.Context, id string, since time.
 	delete(r.requests, id)
 	return ok && !sent.Before(since), nil
 }
+func (r *fakeSAMLRepo) RefreshSAML(_ context.Context, metadataURL string, idp IdPMetadata, at time.Time, refreshErr string, e ...eventbus.OutboxEvent) error {
+	if r.st.MetadataURL != metadataURL || r.st.IdP.EntityID != idp.EntityID {
+		return nil
+	}
+	r.st.IdP, r.st.RefreshedAt, r.st.RefreshError, r.writes = idp, at, refreshErr, r.writes+1
+	r.events = append(r.events, e...)
+	return nil
+}
 func (r *fakeSAMLRepo) DeleteSAML(_ context.Context, e ...eventbus.OutboxEvent) error {
 	r.st, r.writes = SAMLSettings{}, r.writes+1
 	r.events = append(r.events, e...)

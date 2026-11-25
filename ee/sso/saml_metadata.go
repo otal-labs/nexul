@@ -208,12 +208,18 @@ func idpDescriptor(m IdPMetadata) *saml.EntityDescriptor {
 }
 
 // spMetadataXML is the service provider metadata an identity provider registers: the entity id, the assertion consumer
-// service and the signing certificate. No encryption key is offered, since encrypted assertions are not taken.
-func spMetadataXML(sp *saml.ServiceProvider) ([]byte, error) {
+// service and the signing certificate, then previousPEM while a rotation keeps it published. No encryption key is
+// offered, since encrypted assertions are not taken.
+func spMetadataXML(sp *saml.ServiceProvider, previousPEM string) ([]byte, error) {
 	ed := sp.Metadata()
 	for i := range ed.SPSSODescriptors {
 		d := &ed.SPSSODescriptors[i]
 		d.KeyDescriptors = slices.DeleteFunc(d.KeyDescriptors, func(k saml.KeyDescriptor) bool { return k.Use == "encryption" })
+		if block, _ := pem.Decode([]byte(previousPEM)); block != nil {
+			d.KeyDescriptors = append(d.KeyDescriptors, saml.KeyDescriptor{Use: "signing", KeyInfo: saml.KeyInfo{X509Data: saml.X509Data{
+				X509Certificates: []saml.X509Certificate{{Data: base64.StdEncoding.EncodeToString(block.Bytes)}},
+			}}})
+		}
 	}
 	var buf bytes.Buffer
 	buf.WriteString(xml.Header)

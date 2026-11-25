@@ -73,6 +73,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/instance/saml", h.updateSAML)
 	mux.HandleFunc("DELETE /api/instance/saml", h.removeSAML)
 	mux.HandleFunc("POST /api/instance/saml/verify", h.verifySAML)
+	mux.HandleFunc("POST /api/instance/saml/rotate", h.rotateSAML)
+	mux.HandleFunc("POST /api/instance/saml/retire", h.retireSAML)
 	return mux
 }
 
