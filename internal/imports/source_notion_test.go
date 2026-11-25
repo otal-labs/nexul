@@ -308,6 +308,7 @@ func TestNotionImport_ArchivesTheDocsAStoppedImportNeverFilled(t *testing.T) {
 			stub.mu.Lock()
 			stub.pages = nil
 			stub.mu.Unlock()
+			svc.now = func() time.Time { return time.Now().Add(retryAfter) }
 			svc.Pass(t.Context())
 		}},
 	}

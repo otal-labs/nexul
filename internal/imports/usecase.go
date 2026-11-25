@@ -118,6 +118,8 @@ type Service struct {
 	now     func() time.Time
 	// writing is the import the loop is writing now; its own stop archives what it left unfilled.
 	writing atomic.Pointer[string]
+	// paused is when each import a passing failure paused may be read again; only the loop touches it.
+	paused map[string]time.Time
 }
 
 // Deps are the Service's collaborators.
@@ -140,7 +142,7 @@ type Deps struct {
 func NewService(d Deps) *Service {
 	s := &Service{
 		repo: d.Repo, owners: d.Owners, project: d.Projects, board: d.Board, people: d.People, desk: d.Desk,
-		shelf: d.Shelf, files: d.Files, sources: d.Sources, log: d.Log, now: time.Now,
+		shelf: d.Shelf, files: d.Files, sources: d.Sources, log: d.Log, now: time.Now, paused: map[string]time.Time{},
 	}
 	if s.files == nil {
 		s.files = NewFetcher()
