@@ -478,3 +478,21 @@ describe("MessageList scroll anchors", () => {
     expect(anchors()).toEqual([]);
   });
 });
+
+describe("MessageList play frames", () => {
+  it("a frame for the running run repaints only its stream bubble, never the replies earlier runs ended on", () => {
+    const done = [0, 1, 2].map((k) => trail({ id: `tr-${k}`, reply_message_id: `reply-${k}`, activity: [{ ...read, call_id: `c-${k}` }, reply] }));
+    const running = trail({ id: "tr-live", state: "running", ended_at: null, reply_message_id: "", activity: [read] });
+    const messages = done.flatMap((t) => [message({ id: `ask-${t.id}`, body: "Started Fix with AI" }), message({ id: t.reply_message_id, author_kind: "agent", body: "Opened the PR." })]);
+    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "", text: "", streaming: true, activity: "/src/x.go", activityKind: "tool_call", activityTool: "Edit" }));
+    renderThread(messages, [...done, running]);
+    items.renders = 0;
+    act(() =>
+      usePlayRunStore.getState().applyFrame({
+        trail_id: "tr-live", play_id: "play-1", target_type: "ticket", target_id: "t-1", state: "running",
+        activity: { ...edit, kind: "tool_call" }, ended_at: null, last_error: "",
+      }),
+    );
+    expect(items.renders).toBe(1);
+  });
+});
