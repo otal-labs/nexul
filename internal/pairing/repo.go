@@ -11,6 +11,7 @@ import (
 // Repo is the slice of SQLite the pairing domain needs; bearer tokens arrive already encrypted.
 type Repo interface {
 	SetupStore
+	ShellJobStore
 
 	// SaveComputer upserts a computer and its events in one transaction; the tunnel is written on create only.
 	SaveComputer(ctx context.Context, c Computer, evts ...eventbus.OutboxEvent) error

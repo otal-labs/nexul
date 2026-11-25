@@ -68,6 +68,8 @@ type Config struct {
 	Tools ComputerTools
 	// Identities reads the git identity a person's GitHub sign-in gives them; nil offers none.
 	Identities GitIdentities
+	// Shells runs commands on a computer through its runner; nil runs none.
+	Shells Shells
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -90,7 +92,11 @@ type Service struct {
 	restarter      AppRestarter
 	tools          ComputerTools
 	identities     GitIdentities
-	setupMu        sync.Mutex
+	shells         Shells
+	shellQueue     *shellQueue
+	// shellRuns joins the goroutines that hand queued commands to their computers' runners.
+	shellRuns sync.WaitGroup
+	setupMu   sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn claimed, keyed by setupKey, each with the stop for its running
 	// turn, nil until that turn starts.
 	settingUp map[string]context.CancelCauseFunc
@@ -111,7 +117,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, settingUp: map[string]context.CancelCauseFunc{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, computerAccess: cfg.ComputerAccess, repositories: cfg.Repositories, cloner: cfg.Cloner, restarter: cfg.Restarter, tools: cfg.Tools, identities: cfg.Identities, shells: cfg.Shells, shellQueue: newShellQueue(), settingUp: map[string]context.CancelCauseFunc{},
 		pairFailures: map[string]string{},
 	}
 }

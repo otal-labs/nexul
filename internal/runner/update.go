@@ -21,7 +21,7 @@ func (c *Client) handleUpdate(ctx context.Context, frame Frame) {
 		return
 	}
 	c.mu.Lock()
-	busy := c.jobCancel != nil
+	busy := c.jobCancel != nil || c.shellsRunning()
 	if busy {
 		fr := frame
 		c.pendingUpdate = &fr
@@ -45,12 +45,21 @@ func (c *Client) jobFinished(ctx context.Context, id string) {
 	}
 	c.jobCancel = nil
 	c.jobID = ""
+	c.mu.Unlock()
+	c.applyDeferredUpdate(ctx)
+}
+
+// applyDeferredUpdate applies an update that waited for running work, once no deploy job and no shell job runs.
+func (c *Client) applyDeferredUpdate(ctx context.Context) {
+	c.mu.Lock()
 	pending := c.pendingUpdate
+	if pending == nil || c.jobCancel != nil || c.shellsRunning() {
+		c.mu.Unlock()
+		return
+	}
 	c.pendingUpdate = nil
 	c.mu.Unlock()
-	if pending != nil {
-		c.applyUpdateFrame(ctx, *pending)
-	}
+	c.applyUpdateFrame(ctx, *pending)
 }
 
 // applyUpdateFrame resolves the running executable and applies frame, logging the outcome; a failed update

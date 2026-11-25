@@ -101,6 +101,10 @@ type Handler struct {
 	logsMu  sync.Mutex
 	logSubs map[string]logSub
 
+	// shellMu/shellSubs route shell_output and shell_result frames to the job waiting on them, keyed by job id.
+	shellMu   sync.Mutex
+	shellSubs map[string]shellSub
+
 	// streamsMu guards the stream ids waiting for their runner and each runner's open streams (streams.go).
 	streamsMu     sync.Mutex
 	streamWaiters map[string]*streamWaiter
@@ -181,6 +185,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		conns:           make(map[string]*runnerConn),
 		discoverWaiters: make(map[string]chan Frame),
 		logSubs:         make(map[string]logSub),
+		shellSubs:       make(map[string]shellSub),
 		streamWaiters:   make(map[string]*streamWaiter),
 		openStreams:     make(map[string]map[string]context.CancelFunc),
 		replyWaiters:    make(map[string]replyWaiter),
@@ -610,6 +615,7 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		defer func() { _ = c.ws.Close(websocket.StatusNormalClosure, "") }()
 		current := h.removeConn(c)
 		h.endLogSubs(c)
+		h.endShellSubs(c)
 		if job := c.jobSnapshot(); job != nil {
 			h.publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 				ID: job.ID, Status: DeployStatusFailed, Error: "runner disconnected",
@@ -668,7 +674,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Commit: f.Commit, Services: f.Services,
 		})
-	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken, FrameGitCloneResult, FrameRestartResult, FrameInstallToolResult, FrameGitIdentityResult:
+	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken, FrameGitCloneResult, FrameRestartResult, FrameInstallToolResult, FrameGitIdentityResult, FrameShellOutput, FrameShellResult:
 		h.deliverReply(c, f)
 		return nil
 	case FrameFacts:
@@ -777,6 +783,8 @@ func (h *Handler) deliverReply(c *runnerConn, f Frame) {
 		h.deliverRefusal(c, f)
 	case FrameT3PairToken, FrameGitCloneResult, FrameRestartResult, FrameInstallToolResult, FrameGitIdentityResult:
 		h.deliverAnswer(c, f)
+	case FrameShellOutput, FrameShellResult:
+		h.deliverShell(c, f)
 	}
 }
 

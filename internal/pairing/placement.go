@@ -622,6 +622,7 @@ type ComputerPatch struct {
 	Name          *string
 	RunsAtOnce    *int
 	ChatProjectID *string
+	ShellEnabled  *bool
 }
 
 // UpdateComputer renames the caller's own computer and sets its runs at once and chat folder, each only when given.
@@ -632,6 +633,11 @@ func (s *Service) UpdateComputer(ctx context.Context, userID, computerID string,
 	}
 	if patch.Name != nil {
 		if c, err = s.RenameComputer(ctx, userID, computerID, *patch.Name); err != nil {
+			return nil, err
+		}
+	}
+	if patch.ShellEnabled != nil {
+		if c, err = s.SetShellEnabled(ctx, userID, computerID, *patch.ShellEnabled); err != nil {
 			return nil, err
 		}
 	}

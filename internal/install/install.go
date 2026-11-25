@@ -59,6 +59,8 @@ func Run(ctx context.Context, cmd string, args []string) error {
 			return errors.New("usage: nexul run computer")
 		}
 		return h.runRunComputer(ctx, args[1:])
+	case "shell":
+		return h.runShellSwitch(ctx, args)
 	case "service-host":
 		if len(args) != 1 {
 			return errors.New("usage: nexul service-host <unit>")

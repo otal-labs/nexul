@@ -17,6 +17,8 @@ export interface ComputerFacts {
   docker?: { available: boolean; version?: string };
   // Each tool Nexul runs on the computer, found or not; absent from a runner older than this report.
   tools?: ToolFacts[];
+  // Whether the computer lets its runner run commands from Nexul (`nexul shell on|off` there); absent from older runners.
+  shell?: { enabled: boolean };
   providers: ProviderFacts[];
   // Providers T3 Code has switched on whose CLI it can't find; absent when there are none.
   missing_providers?: MissingProviderFacts[];

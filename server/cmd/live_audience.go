@@ -95,6 +95,7 @@ var liveRules = map[string]liveRule{
 	pairing.TopicFactsChanged:        ownFrame,
 	pairing.TopicPairFailed:          ownFrame,
 	pairing.TopicPresenceChanged:     ownFrame,
+	pairing.TopicShellJobChanged:     computerGrantFrame,
 	imports.TopicProgress:            ownFrame,
 	access.TopicGrantChanged:         grantFrame,
 	access.TopicComputerGrantChanged: computerGrantFrame,

@@ -83,6 +83,7 @@ type Facts struct {
 	FreeDiskBytes int64        `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
 	Docker        *DockerFacts `json:"docker,omitempty" jsonschema:"Docker as the person the runner runs as reaches it; absent from runners older than container logs."`
 	Tools         []ToolFacts  `json:"tools,omitempty" jsonschema:"Each tool Nexul runs on the computer, found or not; absent from runners older than this report."`
+	Shell         *ShellFacts  `json:"shell,omitempty" jsonschema:"Whether the computer lets its Nexul app run commands; absent from runners older than shell jobs."`
 }
 
 // DockerFacts is Docker on the computer as its runner found it.
@@ -231,6 +232,7 @@ func (c *Client) facts(ctx context.Context) *Facts {
 		GitHubSignIn: githubSignIn(ctx),
 		Docker:       c.dockerFacts(ctx),
 		Tools:        toolFacts(ctx),
+		Shell:        &ShellFacts{Enabled: c.cfg.ShellEnabled},
 	}
 	c.dockerAvailable.Store(f.Docker.Available)
 	if home, err := os.UserHomeDir(); err == nil {

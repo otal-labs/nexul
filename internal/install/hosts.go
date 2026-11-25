@@ -29,6 +29,8 @@ type HostOptions struct {
 	OnePasswordToken string
 	Version          string
 	Yes              bool
+	// NoShell installs a computer's runner with shell jobs off (`--no-shell`).
+	NoShell bool
 }
 
 func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) error {

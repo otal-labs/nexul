@@ -166,6 +166,16 @@ Nexul reads it live through the app and stores none of it. An agent acting for y
 
 **Remove**, in the **…** menu, asks first, then deletes the pairing and revokes the computer's MCP token. On a computer added with **Add a computer**, it also revokes the Nexul app's credential: the app removes its `nexul-computer` service and files within a heartbeat, or the next time the computer comes online, and on the way out ends every T3 Code session labelled `Nexul`, so Nexul keeps no way into T3 Code there. A command made for the computer and never run stops working too. On a computer paired before the Nexul app, Remove deletes its row; Nexul's session inside T3 Code there stays until it expires, or until you run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. Re-pair never ends a session.
 
+### Commands on the computer
+
+The computer's details have a **Commands** section: a box that runs a command there through the Nexul app, and the last 10 commands with how each ended, whether you or an agent ran it, and **Output**, which opens the log viewer on it from its first line, live while it runs. **Stop** ends a running one and everything it started. An agent acting for you runs one with [`command_run`](/docs/guide/mcp-server/) and waits for it, which is how an agent on one computer tests on another, such as a Windows machine.
+
+A command runs as you, the person the app runs as, in `bash` (else `sh`) on Linux and macOS, or `pwsh` (else Windows PowerShell) on Windows, with no console window of its own; a window an app it starts opens shows on your desktop as usual. It starts in your home folder unless one is named, gets no input, and runs for 60 seconds unless given up to an hour (5 minutes from an agent), after which it and everything it started are killed. Four run at a time on a computer, and the rest wait their turn.
+
+Two switches must both be on. **Run commands from Nexul**, in the section, is yours in Nexul, and turning it off stops every command running or waiting there. The computer's own setting is on once you run the install command, unless you add `--no-shell` to it; `sudo nexul shell off` on the computer (no `sudo` on Windows) turns it off and Nexul can never turn it back on, which `nexul shell on` there does. While it is off the section says **Off on the computer** and every command is recorded as refused.
+
+Every command is kept with who ran it, from where, when and how it ended, even after the computer is removed. Its output, its last MiB, is deleted 30 days after it ends. Only you read them; anyone else, a workspace Owner included, gets not found.
+
 ### The computer's MCP token
 
 Setup gives the computer its own personal access token, "Nexul MCP on <computer>", for its providers to reach Nexul. It shows in the row's details. **Replace** mints a new one, shown once, and **Revoke MCP token** cuts it off. With none, press **Mint MCP token**.

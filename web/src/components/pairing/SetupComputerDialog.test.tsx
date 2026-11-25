@@ -34,6 +34,7 @@ const created = {
   running: 0,
   chat_project_id: "",
   skills_outdated: false,
+  shell_enabled: true,
   updated_at: "2026-09-24T00:00:00Z",
 };
 

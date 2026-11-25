@@ -224,6 +224,12 @@ else can see it or run on it, a workspace Owner included, unless its owner share
 it with them by name (Computer sharing).
 _Avoid_: Device, host, runner (a runner builds and deploys)
 
+**Command on a computer**:
+One command line a paired computer's personal runner runs as its person, asked from Nexul or by an agent's
+`command_run`, under two switches: the computer's own (`nexul shell on|off` there) and its owner's in Nexul (ADR 0209).
+Each is recorded with who ran it and how it ended, kept forever, its output for 30 days.
+_Avoid_: remote shell, terminal, exec
+
 **Computer sharing**:
 A paired computer's owner letting named people use it, through a rule on the
 computer naming each person (ADR 0148): See this computer, Run agents, Run

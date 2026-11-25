@@ -42,6 +42,8 @@ type RunnerConfig struct {
 	T3Home string
 	// T3Supervised is set by `nexul run computer` (NEXUL_T3_SUPERVISED), which restarts T3 Code itself.
 	T3Supervised bool
+	// Shell is "off" when the computer turned shell jobs off (NEXUL_SHELL, `nexul shell off` or `--no-shell`).
+	Shell string
 	// SecretCheckInterval is how often the runner re-reads the secrets of its stacks (NEXUL_SECRET_CHECK_INTERVAL); 0 is off.
 	SecretCheckInterval time.Duration
 }
@@ -69,6 +71,7 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		Mode:              os.Getenv("NEXUL_RUNNER_MODE"),
 		T3Home:            envOrDefault("T3CODE_HOME", defaultT3Home()),
 		T3Supervised:      os.Getenv("NEXUL_T3_SUPERVISED") != "",
+		Shell:             os.Getenv("NEXUL_SHELL"),
 	}
 	interval, err := ParseSecretCheckInterval(os.Getenv("NEXUL_SECRET_CHECK_INTERVAL"))
 	if err != nil {

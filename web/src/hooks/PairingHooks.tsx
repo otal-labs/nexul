@@ -302,9 +302,10 @@ const rank = (ids: string[], id: string) => {
 export interface ComputerSettingsInput {
   runs_at_once?: number;
   chat_project_id?: string;
+  shell_enabled?: boolean;
 }
 
-// A computer's runs at once and chat folder apply the moment they are picked, like the appearance settings.
+// A computer's runs at once, chat folder and commands switch apply the moment they are picked, like the appearance settings.
 export const useUpdateComputerSettings = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
@@ -318,7 +319,7 @@ export const useUpdateComputerSettings = (computerId: string) => {
   });
 };
 
-const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id });
+const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id, shell_enabled: c.shell_enabled });
 
 // Pairing frames name the computer they are about (internal/pairing/events.go).
 interface ComputerPayload {

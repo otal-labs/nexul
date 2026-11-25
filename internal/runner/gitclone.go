@@ -64,6 +64,8 @@ func (c *Client) answerForComputer(ctx context.Context, conn *websocket.Conn, f 
 		c.answerInstallTool(ctx, conn, f)
 	case FrameGitIdentity:
 		c.answerGitIdentity(ctx, conn, f)
+	case FrameShellRun, FrameShellCancel:
+		c.handleShell(ctx, conn, f)
 	default:
 		c.answerPairToken(ctx, conn, f.ID)
 	}

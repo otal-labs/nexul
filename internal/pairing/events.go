@@ -34,6 +34,8 @@ const (
 	TopicPlacementChanged = "computer.placement_changed"
 	// TopicPresenceChanged is ephemeral: Nexul's held connection to a computer's T3 Code connected, dropped or was refused.
 	TopicPresenceChanged = "computer.presence_changed"
+	// TopicShellJobChanged names a command on a computer that was queued, started or ended; its output is never in it.
+	TopicShellJobChanged = "computer.shell_job_changed"
 )
 
 // Topics returns every topic the pairing domain publishes.
@@ -55,6 +57,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicMoveRequested, Payload: MoveRequestedEvent{}},
 		{Name: TopicPlacementChanged, Payload: PlacementChangedEvent{}},
 		{Name: TopicPresenceChanged, Payload: PresenceChangedEvent{}},
+		{Name: TopicShellJobChanged, Payload: ShellJobChangedEvent{}},
 	}
 }
 
@@ -201,5 +204,16 @@ type PresenceChangedEvent struct {
 	ComputerID  string `json:"computer_id"`
 	UserID      string `json:"user_id" jsonschema:"The computer's owner."`
 	State       string `json:"state" jsonschema:"connecting, connected or rejected; empty once Nexul no longer holds a connection to it."`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// ShellJobChangedEvent names a command on a computer and its new status, for the computer's owner and the person who
+// ran it; it never carries the command line or the output.
+type ShellJobChangedEvent struct {
+	JobID       string `json:"job_id"`
+	ComputerID  string `json:"computer_id"`
+	OwnerID     string `json:"owner_id" jsonschema:"The computer's owner."`
+	UserID      string `json:"user_id" jsonschema:"The person who ran the command."`
+	Status      string `json:"status" jsonschema:"queued, running, succeeded, failed, timed_out, cancelled or refused."`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
