@@ -27,6 +27,9 @@ export const ComputerCommandRow = ({ command, onOutput }: ComputerCommandRowProp
           {commandLabel(command)}
         </SettingsStatus>
         <span className="min-w-0 flex-1 truncate font-mono text-foreground">{command.command}</span>
+        {command.requester_id !== command.owner_id && (
+          <span className="max-w-32 shrink-0 truncate text-xs text-muted-foreground">{command.requester_name}</span>
+        )}
         {command.adapter === "mcp" && <span className="shrink-0 text-xs text-muted-foreground">agent</span>}
         <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{formatAge(command.created_at)}</span>
       </button>

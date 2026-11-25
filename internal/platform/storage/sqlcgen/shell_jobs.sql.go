@@ -139,9 +139,10 @@ func (q *Queries) InsertShellJob(ctx context.Context, arg InsertShellJobParams) 
 }
 
 const listShellJobs = `-- name: ListShellJobs :many
-SELECT id, computer_id, owner_id, requester_id, adapter, shell, command, cwd, timeout_seconds, status, exit_code, error, output, output_truncated, output_purged, created_at, started_at, ended_at FROM runner_shell_jobs
-WHERE computer_id = ?1 AND (?2 = '' OR requester_id = ?2)
-ORDER BY created_at DESC, id DESC LIMIT ?4 OFFSET ?3
+SELECT j.id, j.computer_id, j.owner_id, j.requester_id, j.adapter, j.shell, j.command, j.cwd, j.timeout_seconds, j.status, j.exit_code, j.error, j.output, j.output_truncated, j.output_purged, j.created_at, j.started_at, j.ended_at, COALESCE(NULLIF(u.name, ''), u.login, '') AS requester_name
+FROM runner_shell_jobs j LEFT JOIN users u ON u.id = j.requester_id
+WHERE j.computer_id = ?1 AND (?2 = '' OR j.requester_id = ?2)
+ORDER BY j.created_at DESC, j.id DESC LIMIT ?4 OFFSET ?3
 `
 
 type ListShellJobsParams struct {
@@ -151,8 +152,13 @@ type ListShellJobsParams struct {
 	Lim         int64
 }
 
-// A computer's jobs newest first; a requester id narrows them to that person's own.
-func (q *Queries) ListShellJobs(ctx context.Context, arg ListShellJobsParams) ([]RunnerShellJob, error) {
+type ListShellJobsRow struct {
+	RunnerShellJob RunnerShellJob
+	RequesterName  string
+}
+
+// A computer's jobs newest first, each with the name of who ran it; a requester id narrows them to that person's own.
+func (q *Queries) ListShellJobs(ctx context.Context, arg ListShellJobsParams) ([]ListShellJobsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listShellJobs,
 		arg.ComputerID,
 		arg.RequesterID,
@@ -163,28 +169,29 @@ func (q *Queries) ListShellJobs(ctx context.Context, arg ListShellJobsParams) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var items []RunnerShellJob
+	var items []ListShellJobsRow
 	for rows.Next() {
-		var i RunnerShellJob
+		var i ListShellJobsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.ComputerID,
-			&i.OwnerID,
-			&i.RequesterID,
-			&i.Adapter,
-			&i.Shell,
-			&i.Command,
-			&i.Cwd,
-			&i.TimeoutSeconds,
-			&i.Status,
-			&i.ExitCode,
-			&i.Error,
-			&i.Output,
-			&i.OutputTruncated,
-			&i.OutputPurged,
-			&i.CreatedAt,
-			&i.StartedAt,
-			&i.EndedAt,
+			&i.RunnerShellJob.ID,
+			&i.RunnerShellJob.ComputerID,
+			&i.RunnerShellJob.OwnerID,
+			&i.RunnerShellJob.RequesterID,
+			&i.RunnerShellJob.Adapter,
+			&i.RunnerShellJob.Shell,
+			&i.RunnerShellJob.Command,
+			&i.RunnerShellJob.Cwd,
+			&i.RunnerShellJob.TimeoutSeconds,
+			&i.RunnerShellJob.Status,
+			&i.RunnerShellJob.ExitCode,
+			&i.RunnerShellJob.Error,
+			&i.RunnerShellJob.Output,
+			&i.RunnerShellJob.OutputTruncated,
+			&i.RunnerShellJob.OutputPurged,
+			&i.RunnerShellJob.CreatedAt,
+			&i.RunnerShellJob.StartedAt,
+			&i.RunnerShellJob.EndedAt,
+			&i.RequesterName,
 		); err != nil {
 			return nil, err
 		}

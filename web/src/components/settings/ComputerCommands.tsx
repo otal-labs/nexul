@@ -19,12 +19,14 @@ interface ComputerCommandsProps {
   computer: Computer;
 }
 
-// Commands run on the computer through its Nexul app, from here or by an agent's command_run, with its owner's switch.
+// Commands run on the computer through its Nexul app, from here or by an agent's command_run. Its owner has the switch
+// and every command; a person it is shared with by Run commands sees only their own.
 export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
   const { data: commands, isPending, error } = useFetchComputerCommands(computer.id);
   const settings = useUpdateComputerSettings(computer.id);
   const run = useRunComputerCommand(computer.id);
   const [shown, setShown] = useState<{ command: ComputerCommand | null; open: boolean }>({ command: null, open: false });
+  const owner = !computer.shared;
   const offThere = computer.facts?.shell?.enabled === false;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -38,21 +40,23 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
   return (
     <ComputerFact label="Commands">
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-xs">
-          <Switch
-            size="sm"
-            checked={computer.shell_enabled}
-            disabled={settings.isPending}
-            onCheckedChange={(on) => settings.mutate({ shell_enabled: on })}
-          />
-          <span className="text-foreground">Run commands from Nexul</span>
-        </label>
+        {owner && (
+          <label className="flex items-center gap-2 text-xs">
+            <Switch
+              size="sm"
+              checked={computer.shell_enabled}
+              disabled={settings.isPending}
+              onCheckedChange={(on) => settings.mutate({ shell_enabled: on })}
+            />
+            <span className="text-foreground">Run commands from Nexul</span>
+          </label>
+        )}
         {offThere && (
           <SettingsStatus tone="muted" detail={<span className="font-mono">nexul shell on</span>}>
             Off on the computer
           </SettingsStatus>
         )}
-        {computer.shell_enabled && (
+        {(computer.shell_enabled || !owner) && (
           <form className="flex items-center gap-2" onSubmit={submit}>
             <Input name="command" aria-label="Command" placeholder="Command" autoComplete="off" spellCheck={false} className="font-mono" />
             <Button type="submit" variant="outline" size="sm" disabled={run.isPending}>

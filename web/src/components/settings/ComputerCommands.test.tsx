@@ -27,6 +27,7 @@ const laptop = (overrides: Partial<Computer> = {}): Computer =>
 const command = (overrides: Partial<ComputerCommand>): ComputerCommand => ({
   id: "j1",
   computer_id: "c-laptop",
+  owner_id: "u-alice",
   requester_id: "u-alice",
   adapter: "mcp",
   shell: "",

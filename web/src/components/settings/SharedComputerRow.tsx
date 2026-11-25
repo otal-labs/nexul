@@ -1,13 +1,15 @@
+import { ComputerCommands } from "@/components/settings/ComputerCommands";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { runnerPresence } from "@/models/ComputerChecks";
 import type { Computer } from "@/models/Pairing";
-import { sharedComputerAbilities, sharedComputerName } from "@/models/SharedComputer";
+import { ComputerPermission, sharedComputerAbilities, sharedComputerName } from "@/models/SharedComputer";
 
 interface SharedComputerRowProps {
   computer: Computer;
 }
 
-// Someone else's computer shared with the viewer: its name and whether it is online, nothing of its owner's setup.
+// Someone else's computer shared with the viewer: its name and whether it is online, nothing of its owner's setup, and
+// with Run commands the commands they ran there.
 export const SharedComputerRow = ({ computer }: SharedComputerRowProps) => {
   const presence = runnerPresence(computer.runner);
   return (
@@ -18,6 +20,11 @@ export const SharedComputerRow = ({ computer }: SharedComputerRowProps) => {
           {presence.text}
         </SettingsStatus>
       </p>
+      {computer.shared?.permissions.includes(ComputerPermission.RunCommands) && (
+        <dl className="mt-2 rounded-md bg-surface-2 p-3">
+          <ComputerCommands computer={computer} />
+        </dl>
+      )}
     </li>
   );
 };

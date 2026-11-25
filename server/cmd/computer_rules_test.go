@@ -25,6 +25,8 @@ type sharingCast struct {
 	db         *sql.DB
 	dave, erin string
 	laptop     string
+	// laptopEnroll is the token its Add a computer command carries, for a test that starts its runner.
+	laptopEnroll string
 }
 
 func newSharingCast(t *testing.T) sharingCast {
@@ -40,8 +42,8 @@ func newSharingCast(t *testing.T) sharingCast {
 		require.NoError(t, err)
 	}
 	require.NoError(t, c.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "u-dave", WorkspaceID: "workspace-default", RoleID: "role-member", CreatedAt: now}))
-	laptop, _ := addComputer(t, c, c.alice, "Alice laptop")
-	return sharingCast{privacyCast: c, db: db, dave: tokens["u-dave"], erin: tokens["u-erin"], laptop: laptop}
+	laptop, enroll := addComputer(t, c, c.alice, "Alice laptop")
+	return sharingCast{privacyCast: c, db: db, dave: tokens["u-dave"], erin: tokens["u-erin"], laptop: laptop, laptopEnroll: enroll}
 }
 
 // share writes alice's rule on her laptop through the HTTP gateway, as token, and returns the response.

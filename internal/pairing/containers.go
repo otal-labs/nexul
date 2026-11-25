@@ -98,6 +98,12 @@ func (s *Service) containerLogOpener(userID, computerID, container string) conta
 
 // logsComputer is a computer the caller owns or may read the logs of; any other is not found, so a refusal says nothing.
 func (s *Service) logsComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
+	return s.computerWith(ctx, userID, computerID, permissions.ComputersLogs)
+}
+
+// computerWith is a computer the caller owns, or one its owner's rule shares with them with action; any other is not
+// found, so a refusal says nothing (ADR 0148).
+func (s *Service) computerWith(ctx context.Context, userID, computerID string, action permissions.Action) (*Computer, error) {
 	c, err := s.ownComputer(ctx, userID, computerID)
 	if err == nil || !errors.Is(err, apperrs.ErrNotFound) || s.computerAccess == nil {
 		return c, err
@@ -110,7 +116,7 @@ func (s *Service) logsComputer(ctx context.Context, userID, computerID string) (
 	if err != nil {
 		return nil, fmt.Errorf("read the share of computer %s: %w", computerID, err)
 	}
-	if !held.Has(permissions.ComputersLogs) {
+	if !held.Has(action) {
 		return nil, notFound
 	}
 	return s.repo.GetComputer(ctx, ownerID, computerID)
