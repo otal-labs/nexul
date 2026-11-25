@@ -26,8 +26,13 @@ type SAMLSettings struct {
 	SPKey string
 	// SPCertificate is the PEM certificate of SPKey that the service provider metadata publishes.
 	SPCertificate string
-	UpdatedBy     string
-	UpdatedAt     time.Time
+	// SPPreviousCertificate is the certificate a rotation replaced, published until it is retired; empty when none.
+	SPPreviousCertificate string
+	// RefreshedAt is when the metadata URL was last read, and RefreshError why that read failed; empty when it worked.
+	RefreshedAt  time.Time
+	RefreshError string
+	UpdatedBy    string
+	UpdatedAt    time.Time
 }
 
 // IdPMetadata is what Nexul reads from the identity provider's metadata.
@@ -67,6 +72,12 @@ type SAMLView struct {
 	Only            bool   `json:"only"`
 	// SP is what the identity provider registers for this instance.
 	SP SPValues `json:"sp"`
+	// Certificates are the expiries of Nexul's certificates and the provider's.
+	Certificates []CertificateView `json:"certificates"`
+	// MetadataRefreshedAt is when the metadata URL was last read; absent for uploaded metadata.
+	MetadataRefreshedAt *time.Time `json:"metadata_refreshed_at,omitempty"`
+	// MetadataRefreshError is why the last read failed, the certificates read before it still in use; empty when it worked.
+	MetadataRefreshError string `json:"metadata_refresh_error"`
 }
 
 // SPValues are the service provider metadata's values: what an IdP needs to know about Nexul.
@@ -76,6 +87,8 @@ type SPValues struct {
 	MetadataURL string `json:"metadata_url"`
 	// Certificate is the PEM certificate AuthnRequests are signed with; empty until the provider is first saved.
 	Certificate string `json:"certificate"`
+	// PreviousCertificate is the one a rotation replaced, still published until it is retired; empty when none.
+	PreviousCertificate string `json:"previous_certificate"`
 }
 
 // SAMLPatch changes the SAML settings; an omitted field keeps its value. A metadata URL replaces uploaded metadata and

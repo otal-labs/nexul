@@ -33,6 +33,8 @@ type SAMLSettings interface {
 	SAMLView(ctx context.Context) (sso.SAMLView, error)
 	UpdateSAML(ctx context.Context, p sso.SAMLPatch) (sso.SAMLView, error)
 	RemoveSAML(ctx context.Context) (sso.SAMLView, error)
+	RotateSAMLCertificate(ctx context.Context) (sso.SAMLView, error)
+	RetireSAMLCertificate(ctx context.Context) (sso.SAMLView, error)
 }
 
 // BrandingSettings is the slice of the branding use-cases instance_update calls.
@@ -103,7 +105,7 @@ type ssoIn struct {
 }
 
 type samlIn struct {
-	MetadataURL    *string `json:"metadata_url,omitempty" jsonschema:"The provider's https metadata URL, fetched now and daily."`
+	MetadataURL    *string `json:"metadata_url,omitempty" jsonschema:"The provider's https metadata URL, read now and daily; resend it to refresh."`
 	MetadataXML    *string `json:"metadata_xml,omitempty" jsonschema:"The provider's metadata XML, instead of a URL."`
 	EmailAttribute *string `json:"email_attribute,omitempty" jsonschema:"The attribute the email is read from; email when empty."`
 	NameAttribute  *string `json:"name_attribute,omitempty" jsonschema:"The attribute the display name is read from; empty reads none."`
@@ -111,6 +113,8 @@ type samlIn struct {
 	JoinRoleID     *string `json:"join_role_id,omitempty" jsonschema:"The default workspace's role a first sign-in gives, any but Owner."`
 	Only           *bool   `json:"only,omitempty" jsonschema:"As sso's only."`
 	Remove         *bool   `json:"remove,omitempty" jsonschema:"True deletes the SAML provider."`
+	Rotate         bool    `json:"rotate,omitempty" jsonschema:"True makes a new Nexul certificate; the old stays until retire."`
+	Retire         bool    `json:"retire,omitempty" jsonschema:"True drops the certificate rotate replaced."`
 }
 
 // instanceSettings is instance_update's answer, keyed so later instance settings sit beside these.
@@ -227,10 +231,16 @@ func changeAudit(ctx context.Context, a AuditSettings, in *auditIn) (auditlog.Vi
 	return saved.View, err
 }
 
-// changeSAML removes the SAML provider or saves the patch.
+// changeSAML removes the SAML provider, rotates or retires Nexul's certificate, or saves the patch.
 func changeSAML(ctx context.Context, m SAMLSettings, in *samlIn) (sso.SAMLView, error) {
 	if in.Remove != nil && *in.Remove {
 		return m.RemoveSAML(ctx)
+	}
+	if in.Rotate {
+		return m.RotateSAMLCertificate(ctx)
+	}
+	if in.Retire {
+		return m.RetireSAMLCertificate(ctx)
 	}
 	return m.UpdateSAML(ctx, sso.SAMLPatch{
 		MetadataURL: in.MetadataURL, MetadataXML: in.MetadataXML, EmailAttribute: in.EmailAttribute, NameAttribute: in.NameAttribute,

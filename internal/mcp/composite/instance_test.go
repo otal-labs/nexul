@@ -74,6 +74,14 @@ func (f *fakeSSOSettings) RemoveSAML(context.Context) (sso.SAMLView, error) {
 	f.saml.Configured = false
 	return f.saml, nil
 }
+func (f *fakeSSOSettings) RotateSAMLCertificate(context.Context) (sso.SAMLView, error) {
+	f.saml.SP.PreviousCertificate, f.saml.SP.Certificate = f.saml.SP.Certificate, "new"
+	return f.saml, nil
+}
+func (f *fakeSSOSettings) RetireSAMLCertificate(context.Context) (sso.SAMLView, error) {
+	f.saml.SP.PreviousCertificate = ""
+	return f.saml, nil
+}
 
 type fakeBrandingSettings struct {
 	calls []string
@@ -196,6 +204,20 @@ func TestInstanceUpdate_SAMLFieldsPassThroughAsAPatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, got.SAML.Configured)
 	assert.Len(t, s.samlPatches, 1, "remove ignores the other fields")
+}
+
+func TestInstanceUpdate_SAMLRotateAndRetireReachTheirUseCases(t *testing.T) {
+	t.Parallel()
+	s := &fakeSSOSettings{saml: sso.SAMLView{SP: sso.SPValues{Certificate: "old"}}}
+
+	got, err := instanceCall(t, &fakeLicenseKeeper{}, s, `{"saml":{"rotate":true}}`)
+	require.NoError(t, err)
+	assert.Equal(t, "old", got.SAML.SP.PreviousCertificate)
+
+	got, err = instanceCall(t, &fakeLicenseKeeper{}, s, `{"saml":{"retire":true}}`)
+	require.NoError(t, err)
+	assert.Empty(t, got.SAML.SP.PreviousCertificate)
+	assert.Empty(t, s.samlPatches, "neither is a settings patch")
 }
 
 func TestInstanceUpdate_ASettingThatFailsAfterAnotherApplied_SaysWhatWasChanged(t *testing.T) {

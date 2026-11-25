@@ -1,6 +1,6 @@
 # SAML certificate rotation and metadata refresh
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 01 (settings), 02 (a signed response to test with)
 
 Neither side's certificate expiry locks anyone out.

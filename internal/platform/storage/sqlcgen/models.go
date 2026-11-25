@@ -1282,21 +1282,24 @@ type SamlRequest struct {
 }
 
 type SamlSetting struct {
-	ID              int64
-	MetadataUrl     string
-	MetadataXml     string
-	IdpEntityID     string
-	IdpSsoUrl       string
-	IdpCertificates string
-	EmailAttribute  string
-	NameAttribute   string
-	DisplayName     string
-	JoinRoleID      string
-	SamlOnly        int64
-	SpKey           string
-	SpCertificate   string
-	UpdatedBy       string
-	UpdatedAt       int64
+	ID                    int64
+	MetadataUrl           string
+	MetadataXml           string
+	IdpEntityID           string
+	IdpSsoUrl             string
+	IdpCertificates       string
+	EmailAttribute        string
+	NameAttribute         string
+	DisplayName           string
+	JoinRoleID            string
+	SamlOnly              int64
+	SpKey                 string
+	SpCertificate         string
+	UpdatedBy             string
+	UpdatedAt             int64
+	SpPreviousCertificate string
+	RefreshedAt           int64
+	RefreshError          string
 }
 
 type ScheduledMessage struct {

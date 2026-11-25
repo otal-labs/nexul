@@ -28,7 +28,7 @@ func (q *Queries) DeleteSAMLSettings(ctx context.Context) error {
 }
 
 const getSAMLSettings = `-- name: GetSAMLSettings :one
-SELECT id, metadata_url, metadata_xml, idp_entity_id, idp_sso_url, idp_certificates, email_attribute, name_attribute, display_name, join_role_id, saml_only, sp_key, sp_certificate, updated_by, updated_at FROM saml_settings WHERE id = 1
+SELECT id, metadata_url, metadata_xml, idp_entity_id, idp_sso_url, idp_certificates, email_attribute, name_attribute, display_name, join_role_id, saml_only, sp_key, sp_certificate, updated_by, updated_at, sp_previous_certificate, refreshed_at, refresh_error FROM saml_settings WHERE id = 1
 `
 
 func (q *Queries) GetSAMLSettings(ctx context.Context) (SamlSetting, error) {
@@ -50,6 +50,9 @@ func (q *Queries) GetSAMLSettings(ctx context.Context) (SamlSetting, error) {
 		&i.SpCertificate,
 		&i.UpdatedBy,
 		&i.UpdatedAt,
+		&i.SpPreviousCertificate,
+		&i.RefreshedAt,
+		&i.RefreshError,
 	)
 	return i, err
 }
@@ -68,32 +71,67 @@ func (q *Queries) InsertSAMLRequest(ctx context.Context, arg InsertSAMLRequestPa
 	return err
 }
 
+const refreshSAMLMetadata = `-- name: RefreshSAMLMetadata :execrows
+UPDATE saml_settings SET idp_sso_url = ?, idp_certificates = ?, refreshed_at = ?, refresh_error = ?
+WHERE id = 1 AND metadata_url = ? AND idp_entity_id = ?
+`
+
+type RefreshSAMLMetadataParams struct {
+	IdpSsoUrl       string
+	IdpCertificates string
+	RefreshedAt     int64
+	RefreshError    string
+	MetadataUrl     string
+	IdpEntityID     string
+}
+
+func (q *Queries) RefreshSAMLMetadata(ctx context.Context, arg RefreshSAMLMetadataParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, refreshSAMLMetadata,
+		arg.IdpSsoUrl,
+		arg.IdpCertificates,
+		arg.RefreshedAt,
+		arg.RefreshError,
+		arg.MetadataUrl,
+		arg.IdpEntityID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setSAMLSettings = `-- name: SetSAMLSettings :exec
 INSERT INTO saml_settings (id, metadata_url, metadata_xml, idp_entity_id, idp_sso_url, idp_certificates, email_attribute,
-    name_attribute, display_name, join_role_id, saml_only, sp_key, sp_certificate, updated_by, updated_at)
-VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    name_attribute, display_name, join_role_id, saml_only, sp_key, sp_certificate, sp_previous_certificate, refreshed_at,
+    refresh_error, updated_by, updated_at)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET metadata_url = excluded.metadata_url, metadata_xml = excluded.metadata_xml,
     idp_entity_id = excluded.idp_entity_id, idp_sso_url = excluded.idp_sso_url, idp_certificates = excluded.idp_certificates,
     email_attribute = excluded.email_attribute, name_attribute = excluded.name_attribute, display_name = excluded.display_name,
     join_role_id = excluded.join_role_id, saml_only = excluded.saml_only, sp_key = excluded.sp_key,
-    sp_certificate = excluded.sp_certificate, updated_by = excluded.updated_by, updated_at = excluded.updated_at
+    sp_certificate = excluded.sp_certificate, sp_previous_certificate = excluded.sp_previous_certificate,
+    refreshed_at = excluded.refreshed_at, refresh_error = excluded.refresh_error, updated_by = excluded.updated_by,
+    updated_at = excluded.updated_at
 `
 
 type SetSAMLSettingsParams struct {
-	MetadataUrl     string
-	MetadataXml     string
-	IdpEntityID     string
-	IdpSsoUrl       string
-	IdpCertificates string
-	EmailAttribute  string
-	NameAttribute   string
-	DisplayName     string
-	JoinRoleID      string
-	SamlOnly        int64
-	SpKey           string
-	SpCertificate   string
-	UpdatedBy       string
-	UpdatedAt       int64
+	MetadataUrl           string
+	MetadataXml           string
+	IdpEntityID           string
+	IdpSsoUrl             string
+	IdpCertificates       string
+	EmailAttribute        string
+	NameAttribute         string
+	DisplayName           string
+	JoinRoleID            string
+	SamlOnly              int64
+	SpKey                 string
+	SpCertificate         string
+	SpPreviousCertificate string
+	RefreshedAt           int64
+	RefreshError          string
+	UpdatedBy             string
+	UpdatedAt             int64
 }
 
 func (q *Queries) SetSAMLSettings(ctx context.Context, arg SetSAMLSettingsParams) error {
@@ -110,6 +148,9 @@ func (q *Queries) SetSAMLSettings(ctx context.Context, arg SetSAMLSettingsParams
 		arg.SamlOnly,
 		arg.SpKey,
 		arg.SpCertificate,
+		arg.SpPreviousCertificate,
+		arg.RefreshedAt,
+		arg.RefreshError,
 		arg.UpdatedBy,
 		arg.UpdatedAt,
 	)

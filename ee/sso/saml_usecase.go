@@ -28,6 +28,9 @@ type SAMLRepo interface {
 	SaveSAMLRequest(ctx context.Context, id string, at, dropBefore time.Time) error
 	// TakeSAMLRequest deletes the request and reports whether it was waiting and was sent at since or later.
 	TakeSAMLRequest(ctx context.Context, id string, since time.Time) (bool, error)
+	// RefreshSAML stores what a read of metadataURL found, with its events, only while that URL and the entity id in
+	// idp are still the saved ones, so a refresh never overwrites a provider saved meanwhile.
+	RefreshSAML(ctx context.Context, metadataURL string, idp IdPMetadata, at time.Time, refreshErr string, evts ...eventbus.OutboxEvent) error
 }
 
 const (
@@ -62,14 +65,20 @@ func (s *Service) samlView(ctx context.Context, st SAMLSettings) (SAMLView, erro
 	if err != nil {
 		return SAMLView{}, err
 	}
-	sp.Certificate = st.SPCertificate
+	sp.Certificate, sp.PreviousCertificate = st.SPCertificate, st.SPPreviousCertificate
 	unlocked := s.unlocked(ctx)
-	return SAMLView{
+	v := SAMLView{
 		Unlocked: unlocked, Configured: st.Configured(), Active: unlocked && st.Configured(),
 		MetadataURL: st.MetadataURL, MetadataXMLSet: st.MetadataXML != "", IdPEntityID: st.IdP.EntityID, IdPSSOURL: st.IdP.SSOURL,
 		IdPCertificates: len(st.IdP.Certificates), EmailAttribute: st.EmailAttribute, NameAttribute: st.NameAttribute,
 		DisplayName: st.DisplayName, JoinRoleID: st.JoinRoleID, Only: st.Only, SP: sp,
-	}, nil
+		Certificates: certificates(st, s.cfg.Now()), MetadataRefreshError: st.RefreshError,
+	}
+	if st.MetadataURL != "" && !st.RefreshedAt.IsZero() {
+		at := st.RefreshedAt.UTC()
+		v.MetadataRefreshedAt = &at
+	}
+	return v, nil
 }
 
 // UpdateSAML saves the SAML provider; it needs instance:write and a key that unlocks sso, and refuses it while an OpenID
@@ -146,21 +155,29 @@ func (s *Service) applySAML(ctx context.Context, cur SAMLSettings, p SAMLPatch) 
 	if rawURL != "" && strings.TrimSpace(xmlText) != "" {
 		return SAMLSettings{}, fmt.Errorf("%w: give metadata_url or metadata_xml, not both", apperrs.ErrInvalid)
 	}
-	if rawURL != "" && rawURL != cur.MetadataURL {
+	if rawURL != "" {
 		idp, err := s.fetchIdP(ctx, rawURL)
 		if err != nil {
 			return SAMLSettings{}, err
 		}
-		next.MetadataURL, next.MetadataXML, next.IdP = rawURL, "", idp
+		if rawURL == cur.MetadataURL && idp.EntityID != cur.IdP.EntityID {
+			return SAMLSettings{}, errAnotherProvider(idp.EntityID)
+		}
+		next.MetadataURL, next.MetadataXML, next.IdP, next.RefreshedAt, next.RefreshError = rawURL, "", idp, s.cfg.Now(), ""
 	}
 	if strings.TrimSpace(xmlText) != "" && xmlText != cur.MetadataXML {
 		idp, err := parseIdPMetadata([]byte(xmlText))
 		if err != nil {
 			return SAMLSettings{}, err
 		}
-		next.MetadataURL, next.MetadataXML, next.IdP = "", xmlText, idp
+		next.MetadataURL, next.MetadataXML, next.IdP, next.RefreshedAt, next.RefreshError = "", xmlText, idp, time.Time{}, ""
 	}
 	return next, nil
+}
+
+// errAnotherProvider refuses saved metadata whose URL now names another entity: refreshing it would swap providers.
+func errAnotherProvider(entityID string) error {
+	return fmt.Errorf("%w: the metadata URL now names %s, another provider; remove this one and save that one to switch", apperrs.ErrInvalid, entityID)
 }
 
 func (s *Service) fetchIdP(ctx context.Context, rawURL string) (IdPMetadata, error) {
@@ -297,7 +314,7 @@ func (s *Service) SPMetadata(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return spMetadataXML(sp)
+	return spMetadataXML(sp, st.SPPreviousCertificate)
 }
 
 func (s *Service) samlChanged(e SAMLChangedEvent, at time.Time) eventbus.OutboxEvent {
