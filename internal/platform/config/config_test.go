@@ -149,3 +149,21 @@ func TestLoad_LogsLogin(t *testing.T) {
 	assert.Equal(t, "nexul@example.com", cfg.LogsEmail)
 	assert.Equal(t, "pw", cfg.LogsPassword)
 }
+
+func TestLoad_TrustedProxies(t *testing.T) {
+	t.Setenv("NEXUL_DB_PATH", filepath.Join(t.TempDir(), "d.db"))
+	t.Setenv("NEXUL_AUTH_SECRET", "s")
+	t.Setenv("NEXUL_TRUSTED_PROXIES", "")
+	cfg, err := Load()
+	require.NoError(t, err)
+	assert.Empty(t, cfg.TrustedProxies, "unset trusts no proxy")
+
+	t.Setenv("NEXUL_TRUSTED_PROXIES", "127.0.0.1,172.17.0.0/16")
+	cfg, err = Load()
+	require.NoError(t, err)
+	assert.Len(t, cfg.TrustedProxies, 2)
+
+	t.Setenv("NEXUL_TRUSTED_PROXIES", "my-proxy")
+	_, err = Load()
+	require.ErrorContains(t, err, "NEXUL_TRUSTED_PROXIES")
+}

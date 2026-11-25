@@ -30,6 +30,17 @@ func (q *Queries) CreateOAuthClient(ctx context.Context, arg CreateOAuthClientPa
 	return err
 }
 
+const deleteUngrantedOAuthClients = `-- name: DeleteUngrantedOAuthClients :exec
+DELETE FROM oauth_clients
+WHERE oauth_clients.created_at < ?
+  AND NOT EXISTS (SELECT 1 FROM personal_access_tokens p WHERE p.oauth_client_id = oauth_clients.id)
+`
+
+func (q *Queries) DeleteUngrantedOAuthClients(ctx context.Context, createdAt int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUngrantedOAuthClients, createdAt)
+	return err
+}
+
 const getOAuthClient = `-- name: GetOAuthClient :one
 SELECT id, name, redirect_uris, created_at FROM oauth_clients WHERE id = ?
 `

@@ -118,6 +118,8 @@ type PATStore interface {
 type OAuthClientStore interface {
 	CreateOAuthClient(ctx context.Context, c OAuthClient) error
 	GetOAuthClient(ctx context.Context, id string) (*OAuthClient, error)
+	// DeleteUngrantedOAuthClients drops the clients registered before the cutoff that no grant names.
+	DeleteUngrantedOAuthClients(ctx context.Context, before time.Time) error
 }
 
 // SessionStore persists sessions; only the hash reaches the store; deletes are user-scoped so nobody signs out another's device.

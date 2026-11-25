@@ -90,6 +90,8 @@ MCP sign-in needs these paths to reach the instance without a login in front of 
 
 With Cloudflare Access, add a Bypass policy for them. A proxy must pass the `Authorization` header and the request body through unchanged. The sign-in page itself, `/oauth/authorize`, is part of the web app and can stay behind Access.
 
+Each address may register 60 apps an hour, and an app that registers but is never approved is dropped after a day. Behind a proxy or tunnel every request arrives from the proxy's address, so set `NEXUL_TRUSTED_PROXIES` in the server's environment to the proxy's IPs or CIDR ranges, comma-separated (for example `127.0.0.1,172.17.0.0/16` for a tunnel running on the same machine or in Docker). Nexul then reads the client's address from the `X-Forwarded-For` header those peers send, and ignores it from anyone else.
+
 ## What an agent can do
 
 114 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
