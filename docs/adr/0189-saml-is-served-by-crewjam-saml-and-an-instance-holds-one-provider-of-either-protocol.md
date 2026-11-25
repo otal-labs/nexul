@@ -35,4 +35,4 @@ escape (ADR 0184, ADR 0186).
 - **Settings over MCP.** `instance_update` gains a `saml` object beside `sso`, and `instance_get` reads it back without
   the private key. The advertised size budget rises by 1,000 characters for it.
 
-Decided: 2026-11-14.
+Decided: 2026-11-14. Accepted 2026-11-25.
