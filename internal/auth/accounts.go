@@ -11,6 +11,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/still"
 )
 
 // maxAvatarOverrideBytes caps a decoded avatar override data URI at ~10MB; there's no file-upload/object-storage here.
@@ -19,14 +20,18 @@ const maxAvatarOverrideBytes = 10 * 1024 * 1024
 // UpdateProfileOverride sets the caller's display name/avatar override; empty clears back to provider-sourced.
 func (s *Service) UpdateProfileOverride(ctx context.Context, userID, displayName, avatarOverrideURL string) (*User, error) {
 	displayName = strings.TrimSpace(displayName)
+	current, err := s.cfg.Users.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user %s: %w", userID, err)
+	}
+	// A client sends back the link it was given for a picture it kept.
+	if kept := deref(current.AvatarOverrideURL); kept != "" && avatarOverrideURL == still.PersonLink(userID, kept) {
+		avatarOverrideURL = kept
+	}
 	if avatarOverrideURL != "" {
 		if err := validateAvatarOverrideURL(avatarOverrideURL); err != nil {
 			return nil, err
 		}
-	}
-	current, err := s.cfg.Users.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get user %s: %w", userID, err)
 	}
 	if deref(current.DisplayName) == displayName && deref(current.AvatarOverrideURL) == avatarOverrideURL {
 		return current, nil

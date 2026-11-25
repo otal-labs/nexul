@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/still"
 )
 
 // ListPeople needs only membership of workspaceID, never members:write: seeing who you work with is not managing them (ADR 0086).
@@ -148,9 +148,7 @@ func effectiveAvatarURL(a *TeamAccount) string {
 	if a.AvatarOverride == "" {
 		return a.AvatarURL
 	}
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(a.AvatarOverride)) // a hash.Hash never returns a write error
-	return fmt.Sprintf("/api/people/%s/avatar?v=%x", a.ID, h.Sum64())
+	return still.PersonLink(a.ID, a.AvatarOverride)
 }
 
 // Avatar returns a person's uploaded picture to themselves, to anyone sharing a workspace with them, and to a holder of accounts:read.
