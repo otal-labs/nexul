@@ -29,9 +29,9 @@ ambiguous on every computer.
 3. **Run as a person.** Run on a chosen computer becomes **Run as \<person\>**: the run takes that person's identity and
    their order, narrowed by the project and the play's needs. The person is the one picked on the auto play, checked as
    ADR 0156 checks the picker today.
-4. **No shared computers for auto plays** in this effort. A computer shared with someone is not in their order (ADR 0165),
-   and with the computer list gone an auto play has no way to name one. Adding a shared computer to your own order is a
-   later effort.
+4. **A shared computer joins your order.** (Replaced 2026-11-25, see decision 10.) A computer shared with you, with Run
+   agents, can be added to your own order, and then takes your runs like one of yours. It is how an auto play still
+   reaches a computer shared with its person once the computer list is gone.
 5. **The app repository wins a checkout tie.** When a computer has clones of several of the project's repositories, the
    run uses the clone of the repository whose role is `app`. It asks only when two folders hold the same repository.
 6. **Ask where the run waits.** A waiting run's fix (pick a checkout, add the project) is done on the waiting run, for
@@ -39,8 +39,26 @@ ambiguous on every computer.
 7. **The project row shows the whole answer.** For each project: the computers in effective order, the checkout each would
    use, and for each play with needs, the computer that would take it now.
 
+## Decisions (owner, 2026-11-25)
+
+8. **One Agent page.** Plays, their auto plays, your computers, the computers shared with you, and which computer and
+   checkout each project uses all live on one workspace page, **Agent**, in the sidebar where Plays was. It is one list in
+   groups (Plays, Your computers, Shared with you, Projects) beside a detail pane: a play shows where it lands now, a
+   computer shows what lands on it, its commands and its setup. Settings → Computers moves there whole and leaves a link.
+   The name is the `CONTEXT.md` Agent's: everything the Agent does by itself and where it runs.
+9. **Takes plays.** A computer you own has a **Takes plays** switch, on by default. Off, it leaves your order for plays,
+   auto plays and @Agent turns, and keeps commands, logs and setup: a machine you only want a shell on.
+10. **A shared computer joins your order.** In Shared with you, a computer whose owner gave you Run agents can be added
+    to Your computers at any position. It then takes your runs as a guest run (ADR 0210), and leaves your order by itself
+    when its owner takes Run agents away or switches off Takes plays. Commands-only sharing never puts a computer in your
+    order.
+11. **Moving over keeps shared auto plays running.** An auto play whose computer list named shared computers becomes Run
+    as its picker, and those computers are added to the picker's order after their own ones, instead of the auto play
+    being switched off.
+
 ADR 0197 records decisions 1 to 5. It amends ADR 0156 (the chosen-computer list goes) and ADR 0165 (needs, the app-repo
-tie-break, the end of the auto play's own list).
+tie-break, the end of the auto play's own list). ADR 0211 records decisions 8 to 11 and replaces ADR 0197's "no shared
+computers for auto plays".
 
 ## Placement after this effort
 
@@ -86,9 +104,10 @@ A migration, then `make sqlc`, run against a seeded copy in the migration test.
 - `auto_plays.run_on` value `computer` becomes `person`. `computer_ids` and `computer_id` are dropped after the move;
   `run_as` stays and is the person.
 - `play_queue.computer_ids` and `computer_id` are dropped after the move. A queued item keeps its person.
-- Each auto play that named computers: `run_on = person`, `run_as` kept. An auto play whose list named only computers
-  shared with its picker is switched off, with "it ran on a shared computer, which auto plays no longer use" in its
-  history, so it is not silently moved onto the picker's own machines.
+- Each auto play that named computers: `run_on = person`, `run_as` kept. Shared computers it named, which its picker
+  still holds Run agents on, join the picker's order after their own computers (decision 11); one they lost is dropped.
+- `pairing_computers.takes_plays INTEGER NOT NULL DEFAULT 1`, and a `pairing_order_shares` row per shared computer a
+  person added to their order, with its position in the same sequence as their own computers.
 - Fix with AI's auto play on mini becomes Run as its picker, which lands on mini first, since it heads the order.
 
 ## Surfaces
@@ -104,10 +123,12 @@ A migration, then `make sqlc`, run against a seeded copy in the migration test.
   `deprecated`, always `[]`. A pass-over's `why` gains `missing_need`. `make event-schemas`.
 - **Waking.** A change to a computer's labels, or to a play's needs, publishes `computer.placement_changed` or wakes the
   queue the way a play update does, so a run waiting on a need tries again.
-- **Web.** The Computers tab edits a computer's labels and shows the derived ones. The play form gets **Needs**. The auto
-  play's Run on section offers Run as \<person\> in place of picked computers. A waiting run's fix is an inline picker
-  for the computer it waits on (ticket 02). The Projects tab row shows the full answer (ticket 06). 768, 1024 and 1440px.
-- **Phone.** Nothing: the phone app has no computer settings or queue.
+- **Web.** Everything below lives on the Agent page (ticket 07). A computer's detail edits its labels, shows the derived
+  ones, and has Takes plays. The play form gets **Needs**. The auto play's Run on section offers Run as \<person\> in
+  place of picked computers. A shared computer's detail has Add to your order. A waiting run's fix is an inline picker
+  for the computer it waits on (ticket 02). A project's detail shows the full answer (ticket 06). 768, 1024 and 1440px.
+- **Phone.** Nothing: the phone app has no computer settings or queue, and its Plays screen only lists plays, so it keeps
+  its name.
 - **Docs.** `paired-computers.md` (choosing where runs go, the reasons table, labels), `plays.md` (Run on, Needs, Run on
   a chosen computer becomes Run as a person), `mcp-server.md`, `CONTEXT.md` (need, label, run as), and the amendment
   lines on ADRs 0156 and 0165. Each ticket updates the pages its change makes wrong.
@@ -115,6 +136,7 @@ A migration, then `make sqlc`, run against a seeded copy in the migration test.
 ## Rules that always hold
 
 - A run goes to a computer in its person's order, or one they picked for that one press, and nowhere else.
+- A computer with Takes plays off, or a shared computer whose owner took Run agents away, never takes a run.
 - A computer missing a need of the play never takes its run.
 - A waiting run names every computer it passed over and why, and each reason that a person can fix has its fix on the
   waiting run.
@@ -122,7 +144,6 @@ A migration, then `make sqlc`, run against a seeded copy in the migration test.
 
 ## Out of scope
 
-- Shared computers in a person's order, or in an auto play (decision 4).
 - Load balancing beyond today's runs at once and spread.
 - Moving a run that is already going (ADR 0165).
 - The clone and Add flow itself, which computer-failover ticket 04 owns.
