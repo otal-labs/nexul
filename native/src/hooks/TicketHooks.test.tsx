@@ -19,7 +19,9 @@ const withClient = (client: QueryClient) => {
 
 // The ticket screen caches a ticket by its id, or by its key when a chat link opened it; a change must reach both.
 describe("ticket mutations", () => {
-  beforeEach(() => patch.mockReset().mockResolvedValue({ id: "t-1" }));
+  const listed = (over: object) => ({ id: "t-1", project_id: "p-1", title: "Fix", body: "", status: "st-1", updated_at: "2026-11-25T10:00:00Z", ...over });
+  const answer = { ...listed({ status: "st-2", developer: "lena", updated_at: "2026-11-25T10:01:00Z" }), body: "full body" };
+  beforeEach(() => patch.mockReset().mockResolvedValue(answer));
 
   test.each([
     [
@@ -40,23 +42,25 @@ describe("ticket mutations", () => {
         return () => mutateAsync({ id: "t-1", role: TicketRole.Developer, login: "lena" });
       },
     ],
-  ] as const)("%s refreshes the board and that ticket however it was opened, and no other ticket", async (_, path, deadline, useRun) => {
+  ] as const)("%s writes the server's copy into the board and that ticket however it was opened, refetching nothing", async (_, path, deadline, useRun) => {
     const client = new QueryClient();
-    client.setQueryData([getTicketsByProjectKey, "p-1"], []);
-    client.setQueryData([getTicketKey, "t-1", ""], { id: "t-1" });
-    client.setQueryData([getTicketKey, "WEB-12", "acme"], { id: "t-1" });
-    client.setQueryData([getTicketKey, "t-2", ""], { id: "t-2" });
+    const other = listed({ id: "t-2" });
+    client.setQueryData([getTicketsByProjectKey, "p-1"], [listed({}), other]);
+    client.setQueryData([getTicketKey, "t-1", ""], listed({ body: "old body" }));
+    client.setQueryData([getTicketKey, "WEB-12", "acme"], listed({ body: "old body" }));
+    client.setQueryData([getTicketKey, "t-2", ""], other);
+    const invalidate = jest.spyOn(client, "invalidateQueries");
     const { result } = await renderHook(useRun, { wrapper: withClient(client) });
 
     await act(async () => {
       await result.current();
     });
 
-    const invalidated = (key: string[]) => client.getQueryState(key)?.isInvalidated;
     expect(patch).toHaveBeenCalledWith(path, expect.any(Object), ...deadline);
-    expect(invalidated([getTicketsByProjectKey, "p-1"])).toBe(true);
-    expect(invalidated([getTicketKey, "t-1", ""])).toBe(true);
-    expect(invalidated([getTicketKey, "WEB-12", "acme"])).toBe(true);
-    expect(invalidated([getTicketKey, "t-2", ""])).toBe(false);
+    expect(client.getQueryData([getTicketsByProjectKey, "p-1"])).toEqual([{ ...answer, body: "" }, other]);
+    expect(client.getQueryData([getTicketKey, "t-1", ""])).toEqual(answer);
+    expect(client.getQueryData([getTicketKey, "WEB-12", "acme"])).toEqual(answer);
+    expect(client.getQueryData([getTicketKey, "t-2", ""])).toBe(other);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });

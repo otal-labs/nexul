@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { requires } from "@nexul/client-core/requires";
 
@@ -10,6 +10,42 @@ import type { Ticket, TicketRole } from "@/models/Ticket";
 export const getTicketsByProjectKey = "getTicketsByProject";
 export const getTicketKey = "getTicket";
 
+const isOlder = (incoming: Ticket, held: Ticket) => Date.parse(incoming.updated_at) < Date.parse(held.updated_at);
+
+// A frame or a write's answer carries the whole ticket; a payload without one refetches the entries it names, else all.
+const whole = (ticket: Partial<Ticket> | undefined): ticket is Ticket => !!ticket?.id && !!ticket.updated_at;
+
+// The project's list takes the ticket in place and any other project's list drops it; a list that doesn't hold it yet
+// refetches for the server's order. A copy older than the one shown (a frame trailing a save) is ignored.
+const takeIntoLists = (client: QueryClient, ticket: Partial<Ticket> | undefined) => {
+  if (!whole(ticket)) return void client.invalidateQueries({ queryKey: ticket?.project_id ? [getTicketsByProjectKey, ticket.project_id] : [getTicketsByProjectKey] });
+  const own = client.getQueryData<Ticket[]>([getTicketsByProjectKey, ticket.project_id]);
+  if (own && !own.some((t) => t.id === ticket.id)) void client.invalidateQueries({ queryKey: [getTicketsByProjectKey, ticket.project_id], exact: true });
+  const listed = { ...ticket, body: "" };
+  client.setQueriesData<Ticket[]>({ queryKey: [getTicketsByProjectKey, ticket.project_id], exact: true }, (list) => {
+    const held = list?.find((t) => t.id === ticket.id);
+    if (!list || !held || isOlder(ticket, held)) return list;
+    return list.map((t) => (t.id === ticket.id ? listed : t));
+  });
+  client.setQueriesData<Ticket[]>({ queryKey: [getTicketsByProjectKey], predicate: (q) => q.queryKey[1] !== ticket.project_id }, (list) =>
+    list?.some((t) => t.id === ticket.id) ? list.filter((t) => t.id !== ticket.id) : list,
+  );
+};
+
+const takeIntoRecord = (client: QueryClient, ticket: Partial<Ticket> | undefined) => {
+  if (!whole(ticket)) return void client.invalidateQueries(ticket?.id ? recordQueries(getTicketKey, ticket.id) : { queryKey: [getTicketKey] });
+  client.setQueriesData<Ticket>(recordQueries(getTicketKey, ticket.id), (old) => (old && !isOlder(ticket, old) ? { ...old, ...ticket } : old));
+};
+
+// Every view holding the ticket takes the copy a write answered with, so a move or an assignment refetches nothing.
+export const takeTicket = (client: QueryClient, ticket: Ticket) => {
+  takeIntoLists(client, ticket);
+  takeIntoRecord(client, ticket);
+};
+
+const intoLists = { patch: (client: QueryClient, p: { ticket?: unknown }) => takeIntoLists(client, p.ticket as Partial<Ticket> | undefined) };
+const intoRecord = { patch: (client: QueryClient, p: { ticket?: unknown }) => takeIntoRecord(client, p.ticket as Partial<Ticket> | undefined) };
+
 // The board shows titles only, so its list leaves bodies out; a ticket's screen reads its own.
 // ticket.assignee_changed is left out: it is published beside ticket.developer_changed, so following both refetched twice.
 const ticketsByProjectQuery = defineQuery({
@@ -17,13 +53,15 @@ const ticketsByProjectQuery = defineQuery({
   fetch: (projectId: string | undefined) => api.get<Ticket[]>(`/api/tickets?project_id=${encodeURIComponent(projectId ?? "")}&without=body`),
   refreshes: {
     "ticket.created": { key: (p) => p.ticket.project_id },
-    "ticket.updated": { key: (p) => p.ticket.project_id },
-    "ticket.status_changed": { key: (p) => p.ticket.project_id },
-    "ticket.developer_changed": { key: (p) => p.ticket.project_id },
-    "ticket.tester_changed": { key: (p) => p.ticket.project_id },
-    "ticket.due_date_changed": { key: (p) => p.ticket.project_id },
-    "ticket.finished": { key: (p) => p.ticket.project_id },
-    "ticket.deleted": { key: (p) => p.project_id },
+    "ticket.updated": intoLists,
+    "ticket.status_changed": intoLists,
+    "ticket.developer_changed": intoLists,
+    "ticket.tester_changed": intoLists,
+    "ticket.due_date_changed": intoLists,
+    "ticket.finished": intoLists,
+    "ticket.deleted": {
+      patch: (client, p) => client.setQueriesData<Ticket[]>({ queryKey: [getTicketsByProjectKey] }, (list) => list?.filter((t) => t.id !== p.id)),
+    },
     "ticket.project_changed": {
       patch: (client, p) => {
         void client.invalidateQueries({ queryKey: [getTicketsByProjectKey, p.project_id] });
@@ -41,13 +79,14 @@ const ticketQuery = defineQuery({
   key: getTicketKey,
   fetch: (id: string | undefined, workspace: string) =>
     api.get<Ticket>(`/api/tickets/${encodeURIComponent(id ?? "")}${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`),
+  // A deleted ticket refetches into its not-found state; a moved one, under its new project.
   refreshes: {
-    "ticket.updated": { record: (p) => p.ticket.id },
-    "ticket.status_changed": { record: (p) => p.ticket.id },
-    "ticket.developer_changed": { record: (p) => p.ticket.id },
-    "ticket.tester_changed": { record: (p) => p.ticket.id },
-    "ticket.due_date_changed": { record: (p) => p.ticket.id },
-    "ticket.finished": { record: (p) => p.ticket.id },
+    "ticket.updated": intoRecord,
+    "ticket.status_changed": intoRecord,
+    "ticket.developer_changed": intoRecord,
+    "ticket.tester_changed": intoRecord,
+    "ticket.due_date_changed": intoRecord,
+    "ticket.finished": intoRecord,
     "ticket.deleted": { record: (p) => p.id },
     "ticket.project_changed": { record: (p) => p.ticket_id },
   },
@@ -72,10 +111,7 @@ export const useUpdateTicketStatus = () => {
       );
     },
     onError: () => client.invalidateQueries({ queryKey: [getTicketsByProjectKey] }),
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
-      await client.invalidateQueries(recordQueries(getTicketKey, vars.id));
-    },
+    onSuccess: (ticket) => takeTicket(client, ticket),
   });
 };
 
@@ -84,10 +120,7 @@ export const useSetTicketPerson = () => {
   return useMutation({
     mutationFn: requires("tickets:write", ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
       api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })),
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
-      await client.invalidateQueries(recordQueries(getTicketKey, vars.id));
-    },
+    onSuccess: (ticket) => takeTicket(client, ticket),
   });
 };
 
