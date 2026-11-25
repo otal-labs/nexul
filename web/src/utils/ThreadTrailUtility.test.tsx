@@ -74,6 +74,21 @@ describe("threadTrailBlocks", () => {
   });
 });
 
+describe("threadTrailBlocks across runs", () => {
+  it("a later run's trailing turns join an earlier run's block for the same reply, and a frame for the running run keeps the finished run's block", () => {
+    const first = trail({ id: "tr-1", activity: [read, reply] });
+    const second = trail({ id: "tr-2", activity: [edit] });
+    const blocks = threadTrailBlocks([run(first), run(second)]);
+    expect(blocks.byReplyMessageId["reply-1"]?.turns.map((turn) => turn.entries)).toEqual([[read], [edit]]);
+
+    const live = trail({ id: "tr-3", state: "running", ended_at: null, reply_message_id: "", activity: [read] });
+    const before = threadTrailBlocks([run(first), run(live)]);
+    const after = threadTrailBlocks([run(first), run(live, { steps: [read, edit] })]);
+    expect(after.byReplyMessageId["reply-1"]).toBe(before.byReplyMessageId["reply-1"]);
+    expect(after.live).not.toBe(before.live);
+  });
+});
+
 describe("trailBlockFor", () => {
   const t = trail({ activity: [read, asked, edit, reply, note], question });
   const blocks = threadTrailBlocks([run(t)]);

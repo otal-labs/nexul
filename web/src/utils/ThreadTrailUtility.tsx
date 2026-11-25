@@ -28,7 +28,15 @@ export interface ThreadTrailBlocks {
   live: TrailBlock | null;
 }
 
-const placeRun = (run: ThreadRun, out: ThreadTrailBlocks) => {
+// One run's own placements, before any other run of the thread is merged in; appendedReply marks a reply block made only
+// from the turns after its last segment, which joins an earlier run's block for the same reply instead of replacing it.
+interface Placed {
+  blocks: ThreadTrailBlocks;
+  appendedReply: boolean;
+}
+
+const placeRun = (run: ThreadRun): Placed => {
+  const out: ThreadTrailBlocks = { byReplyMessageId: {}, byQuestionRequestId: {}, bySystemBody: {}, live: null };
   const { trail } = run;
   let turns: TrailTurn[] = [];
   const take = (): TrailTurn[] => {
@@ -48,18 +56,38 @@ const placeRun = (run: ThreadRun, out: ThreadTrailBlocks) => {
   }
   if (isTrailActive(run.state) && run.state !== "waiting") {
     out.live = { trail, turns };
-    return;
+    return { blocks: out, appendedReply: false };
   }
   // A transcript that ends on a turn (legacy rows, or a reply the harness never echoed as a step) still led to the reply.
-  if (turns.length > 0 && trail.reply_message_id !== "") {
-    const placed = out.byReplyMessageId[trail.reply_message_id];
-    out.byReplyMessageId[trail.reply_message_id] = { trail, turns: [...(placed?.turns ?? []), ...turns] };
-  }
+  if (turns.length === 0 || trail.reply_message_id === "") return { blocks: out, appendedReply: false };
+  const placed = out.byReplyMessageId[trail.reply_message_id];
+  out.byReplyMessageId[trail.reply_message_id] = { trail, turns: [...(placed?.turns ?? []), ...turns] };
+  return { blocks: out, appendedReply: placed === undefined };
+};
+
+// The last placement of each fetched trail, so a frame for one run hands every other run's message the block it had.
+const placements = new WeakMap<Trail, { run: ThreadRun; placed: Placed }>();
+
+const placeRunOnce = (run: ThreadRun): Placed => {
+  const last = placements.get(run.trail);
+  if (last && last.run.steps === run.steps && last.run.state === run.state && last.run.question === run.question) return last.placed;
+  const placed = placeRun(run);
+  placements.set(run.trail, { run, placed });
+  return placed;
 };
 
 export const threadTrailBlocks = (runs: ThreadRun[]): ThreadTrailBlocks => {
   const out: ThreadTrailBlocks = { byReplyMessageId: {}, byQuestionRequestId: {}, bySystemBody: {}, live: null };
-  runs.forEach((run) => placeRun(run, out));
+  for (const run of runs) {
+    const { blocks, appendedReply } = placeRunOnce(run);
+    Object.assign(out.byQuestionRequestId, blocks.byQuestionRequestId);
+    Object.assign(out.bySystemBody, blocks.bySystemBody);
+    for (const [id, block] of Object.entries(blocks.byReplyMessageId)) {
+      const earlier = out.byReplyMessageId[id];
+      out.byReplyMessageId[id] = appendedReply && earlier ? { trail: block.trail, turns: [...earlier.turns, ...block.turns] } : block;
+    }
+    if (blocks.live) out.live = blocks.live;
+  }
   return out;
 };
 
