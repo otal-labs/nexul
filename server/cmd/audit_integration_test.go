@@ -57,6 +57,12 @@ func newRouter(t *testing.T) (http.Handler, *storage.Store, *coreServices) {
 // routerOver is newRouter over db, for a test that writes rows no use-case writes yet.
 func routerOver(t *testing.T, db *sql.DB) (http.Handler, *storage.Store, *coreServices) {
 	t.Helper()
+	return routerWith(t, db, func(*config.Config) {})
+}
+
+// routerWith is routerOver with the config adjusted first, for a test of a setting.
+func routerWith(t *testing.T, db *sql.DB, adjust func(*config.Config)) (http.Handler, *storage.Store, *coreServices) {
+	t.Helper()
 	ctx := t.Context()
 	key := []byte("0123456789abcdef0123456789abcdef")
 	store := storage.New(db, key)
@@ -64,6 +70,7 @@ func routerOver(t *testing.T, db *sql.DB) (http.Handler, *storage.Store, *coreSe
 	bus := inprocess.New(inprocess.Options{Logger: logger, DedupeStore: store.ProcessedEvents, DeadLetterStore: store.DeadLetters})
 	t.Cleanup(func() { _ = bus.Close() })
 	cfg := &config.Config{DBPath: filepath.Join(t.TempDir(), "nexul.db"), HTTPAddr: "127.0.0.1:0", AuthSecret: string(key)}
+	adjust(cfg)
 	svc := wireCoreServices(cfg, store, key, bus, logger)
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
 	wireIntegrationFanout(ctx, bus, store, svc, logger)

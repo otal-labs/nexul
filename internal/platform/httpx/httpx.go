@@ -102,8 +102,7 @@ func mapSentinel(err error) (status int, code, message string) {
 	}
 }
 
-// ClientAddr is the peer's IP, the one client address the server trusts.
-// ponytail: callers behind the instance's own proxy share one address; trust a forwarded header if that bites.
+// ClientAddr is the client's IP: the peer's, or the one TrustProxies read from a trusted proxy's header.
 func ClientAddr(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

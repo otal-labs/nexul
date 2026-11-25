@@ -47,3 +47,12 @@ func (r *OAuthClientsRepo) GetOAuthClient(ctx context.Context, id string) (*auth
 	}
 	return &auth.OAuthClient{ID: row.ID, Name: row.Name, RedirectURIs: uris, CreatedAt: time.Unix(row.CreatedAt, 0).UTC()}, nil
 }
+
+func (r *OAuthClientsRepo) DeleteUngrantedOAuthClients(ctx context.Context, before time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteUngrantedOAuthClients(ctx, before.Unix()); err != nil {
+			return fmt.Errorf("delete ungranted oauth clients: %w", err)
+		}
+		return nil
+	})
+}

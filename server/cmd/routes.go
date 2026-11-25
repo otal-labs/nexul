@@ -309,7 +309,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/openapi.json", spec.Handler())
 	httpMux.Handle("/swagger", spec.Handler())
 	httpMux.Handle("/", webui.Handler(webui.Assets(), svc.brandingSvc.Index))
-	return &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux, ReadHeaderTimeout: 10 * time.Second}
+	return &http.Server{Addr: cfg.HTTPAddr, Handler: httpx.TrustProxies(cfg.TrustedProxies, httpMux), ReadHeaderTimeout: 10 * time.Second}
 }
 
 // shutdownServer gives the HTTP server a bounded window to drain (graceful shutdown).

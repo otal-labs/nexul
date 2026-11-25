@@ -27,6 +27,7 @@ const (
 	oauthRedirectURIMax   = 2000
 	oauthRegistrations    = 60
 	oauthRegistrationSpan = time.Hour
+	oauthUngrantedTTL     = 24 * time.Hour
 	oauthDefaultName      = "MCP client"
 )
 
@@ -144,6 +145,10 @@ func (s *Service) RegisterOAuthClient(ctx context.Context, addr, name string, re
 		}
 	}
 	s.registrations.fail(addr, now)
+	// Registering is the only way rows arrive, so it sweeps the ones a day old that never got a grant.
+	if err := s.cfg.OAuthClients.DeleteUngrantedOAuthClients(ctx, now.Add(-oauthUngrantedTTL)); err != nil {
+		return nil, fmt.Errorf("sweep ungranted oauth clients: %w", err)
+	}
 	client := OAuthClient{ID: ids.New(), Name: clientName(name), RedirectURIs: redirectURIs, CreatedAt: now.UTC()}
 	if err := s.cfg.OAuthClients.CreateOAuthClient(ctx, client); err != nil {
 		return nil, fmt.Errorf("register oauth client: %w", err)

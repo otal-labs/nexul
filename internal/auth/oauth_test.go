@@ -21,9 +21,18 @@ import (
 )
 
 type fakeOAuthClients struct {
-	mu     sync.Mutex
-	byID   map[string]OAuthClient
-	getErr error
+	mu       sync.Mutex
+	byID     map[string]OAuthClient
+	getErr   error
+	sweepErr error
+	sweptTo  []time.Time
+}
+
+func (f *fakeOAuthClients) DeleteUngrantedOAuthClients(_ context.Context, before time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sweptTo = append(f.sweptTo, before)
+	return f.sweepErr
 }
 
 func (f *fakeOAuthClients) CreateOAuthClient(_ context.Context, c OAuthClient) error {
@@ -134,6 +143,19 @@ func TestRegisterOAuthClient_NamesAndLimits(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrRateLimited, "registrations are throttled per address")
 	_, err = s.RegisterOAuthClient(ctx, "10.9.9.10", "x", []string{testRedirect})
 	require.NoError(t, err, "another address is not")
+}
+
+func TestRegisterOAuthClient_SweepsUngrantedClientsADayOld(t *testing.T) {
+	s, _, clients, _ := newOAuthHarness(t)
+	now := time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
+	s.cfg.Now = func() time.Time { return now }
+
+	mustClient(t, s)
+	assert.Equal(t, []time.Time{now.Add(-24 * time.Hour)}, clients.sweptTo)
+
+	clients.sweepErr = errors.New("disk full")
+	_, err := s.RegisterOAuthClient(t.Context(), "10.0.0.1", "Acme", []string{testRedirect})
+	require.ErrorContains(t, err, "sweep ungranted oauth clients")
 }
 
 func oauthCode0(err error) string {

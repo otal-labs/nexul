@@ -5,12 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/secretref"
 )
 
@@ -42,6 +44,9 @@ type Config struct {
 	// OnePasswordToken (OP_SERVICE_ACCOUNT_TOKEN) is the service account token the server resolves its own connector and sign-in
 	// secrets with; empty means no secrets manager is configured.
 	OnePasswordToken string
+	// TrustedProxies (NEXUL_TRUSTED_PROXIES) are the IPs and CIDR ranges of the instance's own proxies, whose
+	// X-Forwarded-For names the client; empty trusts no header.
+	TrustedProxies []netip.Prefix
 }
 
 func Load() (*Config, error) {
@@ -75,6 +80,9 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	cfg.LogsURL = logsURL
+	if cfg.TrustedProxies, err = httpx.ParseTrustedProxies(os.Getenv("NEXUL_TRUSTED_PROXIES")); err != nil {
+		return nil, fmt.Errorf("NEXUL_TRUSTED_PROXIES: %w", err)
+	}
 	if cfg.Local, err = parseOptionalBool("NEXUL_LOCAL"); err != nil {
 		return nil, err
 	}
