@@ -1509,8 +1509,13 @@ leaves the Owner out (it holds everything), takes the list pane's place too, ful
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
 
-Role matrix. Compare roles, on the Access page's Roles and people tab, compares every role at once,
-read-only, in the access grid's frame: one column per role, the columns sharing the
+Role matrix. Compare roles, on the Access page's Roles and people tab, compares the roles ticked in its Roles shown menu,
+read-only, in the access grid's frame. That menu sits in the matrix head on the Area line, at its right: a ghost trigger
+in muted 12px that says how many it shows ("All roles", "2 of 7 roles", so a narrowed matrix never reads as every role),
+opening one tick per role in the editor's order, every one on until unticked. It stays open so several change in one
+visit, the last role ticked can't be unticked and says "Last one shown" beside its name, and the choice is kept per
+browser, never on the server; a ticked role's column comes back in the editor's order, and the "+5" control and the end
+fade count only the columns shown. The matrix itself: one column per role, the columns sharing the
 width the area column leaves in equal shares, never under 96px (no filler) and ending in a 48px fade while more
 lie to the right (the heads fade under it like the cells; Compare roles leaves the Owner out, the Settings matrix keeps it), and a "+5" control, a 28px hairline button in `foreground` ink, at the top of that fade while columns are hidden that scrolls
 them into view, clear of the counts and menus; the Owner first where it is shown
