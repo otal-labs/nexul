@@ -55,4 +55,4 @@ A grantee's shell jobs use the shipped computer rules and ticket 18.
       stay at 31 days and at a year, the output is empty, and the 45-day audit purge does not remove the job.
 - [ ] The computer page shows the sentence about Read computer activity verbatim.
 - [ ] A disconnect fails the running job; a timeout kills the process tree.
-- [ ] The tool count stays inside `toolBudget`, or the PR carries the ADR the budget rule asks for.
+- [ ] `tools/list` stays inside `advertisedBudget`, or the PR carries the ADR that raises it.
