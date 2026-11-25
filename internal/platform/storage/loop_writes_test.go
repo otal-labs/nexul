@@ -92,6 +92,7 @@ func TestLoopWrites_CoverEveryTableTheLoopsPassReads(t *testing.T) {
 		{"automation dial-in", DialinWrites, []string{"automation_cursors"}, func(ctx context.Context, s *Store) {
 			_, _ = s.Automations.Get(ctx, "auto-acme")
 			_, _, _ = s.AutomationCursors.Get(ctx, "auto-acme")
+			_, _, _ = s.AutomationEventLog.Settled(ctx)
 			_, _ = s.AutomationEventLog.After(ctx, []string{"ticket.created"}, automations.Cursor{}, 50)
 		}},
 		{"doc settle", SettleWrites, nil, func(ctx context.Context, s *Store) {
