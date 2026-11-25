@@ -63,12 +63,13 @@ type AuditRepo struct {
 func (r *AuditRepo) Append(ctx context.Context, entry integrations.AuditEntry) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).AppendAudit(ctx, sqlcgen.AppendAuditParams{
-			ID:        entry.ID,
-			ActorType: entry.ActorType,
-			ActorID:   entry.ActorID,
-			TokenID:   sql.NullString{String: entry.TokenID, Valid: entry.TokenID != ""},
-			Action:    entry.Action,
-			CreatedAt: entry.CreatedAt.Unix(),
+			ID:         entry.ID,
+			ActorType:  entry.ActorType,
+			ActorID:    entry.ActorID,
+			TokenID:    sql.NullString{String: entry.TokenID, Valid: entry.TokenID != ""},
+			Action:     entry.Action,
+			CreatedAt:  entry.CreatedAt.Unix(),
+			ComputerID: entry.ComputerID, ComputerOwnerID: entry.ComputerOwnerID, JobID: entry.JobID,
 		})
 		if err != nil {
 			return fmt.Errorf("append audit: %w", err)
@@ -85,6 +86,28 @@ func (r *AuditRepo) List(ctx context.Context, limit int) ([]integrations.AuditEn
 	var out []integrations.AuditEntry
 	for _, row := range rows {
 		out = append(out, toAuditEntry(row))
+	}
+	return out, nil
+}
+
+func (r *AuditRepo) ListComputerActivity(ctx context.Context, limit int) ([]integrations.ComputerActivity, error) {
+	rows, err := r.q.ListComputerActivity(ctx, int64(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list computer activity: %w", err)
+	}
+	out := make([]integrations.ComputerActivity, 0, len(rows))
+	for _, row := range rows {
+		a := integrations.ComputerActivity{
+			ID: row.AuditLog.ID, ActorType: row.AuditLog.ActorType, ActorID: row.AuditLog.ActorID, Action: row.AuditLog.Action,
+			CreatedAt: time.Unix(row.AuditLog.CreatedAt, 0).UTC(), ComputerID: row.AuditLog.ComputerID, ComputerName: row.ComputerName,
+			OwnerID: row.AuditLog.ComputerOwnerID, OwnerName: row.OwnerName, JobID: row.AuditLog.JobID, Command: row.Command,
+			JobStatus: row.JobStatus, Output: row.Output,
+		}
+		if row.ExitCode.Valid {
+			code := int(row.ExitCode.Int64)
+			a.ExitCode = &code
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }

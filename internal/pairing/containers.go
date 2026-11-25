@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -119,6 +120,7 @@ func (s *Service) computerWith(ctx context.Context, userID, computerID string, a
 	if !held.Has(action) {
 		return nil, notFound
 	}
+	auditnote.Computer(ctx, computerID, ownerID)
 	return s.repo.GetComputer(ctx, ownerID, computerID)
 }
 

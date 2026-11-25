@@ -50,6 +50,8 @@ type SchemaStore interface {
 type AuditStore interface {
 	Append(ctx context.Context, entry AuditEntry) error
 	List(ctx context.Context, limit int) ([]AuditEntry, error)
+	// ListComputerActivity returns the newest limit actions on people's computers.
+	ListComputerActivity(ctx context.Context, limit int) ([]ComputerActivity, error)
 	// DeleteBefore deletes at most limit rows created before before, returning how many it deleted.
 	DeleteBefore(ctx context.Context, before time.Time, limit int) (int64, error)
 }

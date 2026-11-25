@@ -254,6 +254,22 @@ func (s *Service) ListAudit(ctx context.Context, actorID string, limit int) ([]A
 	return entries, nil
 }
 
+// ListComputerActivity returns recent actions on people's computers (computer_activity:read): the record only, never a
+// computer's facts or the computers themselves.
+func (s *Service) ListComputerActivity(ctx context.Context, actorID string, limit int) ([]ComputerActivity, error) {
+	if err := s.require(ctx, actorID, permissions.ComputerActivityRead); err != nil {
+		return nil, err
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	rows, err := s.cfg.Audit.ListComputerActivity(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list computer activity: %w", err)
+	}
+	return rows, nil
+}
+
 // require checks actorID holds action in any workspace they belong to; installs belong to the whole instance.
 func (s *Service) require(ctx context.Context, actorID string, action permissions.Action) error {
 	if s.cfg.Perms == nil {

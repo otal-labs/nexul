@@ -17,7 +17,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 type accessGrantListIn struct {
 	ResourceType string `json:"resource_type" jsonschema:"doc, folder, play, project, channel, stack, computer, machine, or instance_area."`
-	ResourceID   string `json:"resource_id" jsonschema:"The resource id, or an instance area's key: instance, sign_in_providers, dns, templates, accounts, machines, topology, integrations, audit, logs, or connector:<id> such as connector:github. A project's folders are project_get's doc_folders, its stacks stack_list's."`
+	ResourceID   string `json:"resource_id" jsonschema:"The resource id, or an instance area's key: instance, sign_in_providers, dns, templates, accounts, machines, topology, integrations, audit, computer_activity, logs, or connector:<id> such as connector:github. A project's folders are project_get's doc_folders, its stacks stack_list's."`
 	UserID       string `json:"user_id,omitempty" jsonschema:"An account id from account_list, to return that person's effective answers instead of the rules."`
 	mcptool.PageArgs
 }

@@ -94,6 +94,7 @@ describe("ComputerCommands", () => {
     renderCommands(laptop({ facts: { t3: { state: "answering" }, providers: [], projects: [], shell: { enabled: false } } }));
 
     expect(screen.getByText("Off on the computer")).toBeInTheDocument();
+    expect(screen.getByText("Commands run here are recorded and can be read by people with Read computer activity.")).toBeInTheDocument();
     await user.click(screen.getByRole("switch"));
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { shell_enabled: false });
   });

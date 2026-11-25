@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/platform/auditnote"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -194,6 +195,7 @@ func (s *Service) RunCommand(ctx context.Context, userID, computerID string, in 
 	if err := s.repo.InsertShellJob(ctx, job, shellJobEvent(job)); err != nil {
 		return nil, fmt.Errorf("record command on %s: %w", c.Name, err)
 	}
+	auditnote.Job(ctx, c.ID, c.UserID, job.ID)
 	live := &liveJob{job: job, svc: s, requester: userID, done: make(chan struct{}), watchers: map[*jobFeed]struct{}{}}
 	s.shellQueue.mu.Lock()
 	s.shellQueue.jobs[job.ID] = live
