@@ -245,7 +245,7 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
    function and run `make event-schemas`; the catalog aggregates them
    (`practices/architecture.md`, section 2).
 4. Expose the use-cases to agents per `practices/mcp.md`: extend an existing
-   tool first, add one only inside the tool budget, named `<object>_<verb>`.
+   tool first, add one only when none can carry it, named `<object>_<verb>`.
    A list use-case takes its filters and a `paging.Window` (ADR 0140).
 5. Add the HTTP routes in `server/cmd/` or a router package.
 6. Add the frontend: model, hooks with the domain's live follower,

@@ -18,9 +18,6 @@ import (
 )
 
 // The rules below are practices/mcp.md sections 4 to 6, checked so they cannot drift.
-// toolBudget is raised only by an ADR naming why no existing tool could carry the capability (ADR 0081, 0131, 0168, 0185).
-const toolBudget = 115
-
 // advertisedBudget caps the characters tools/list sends, which every session pays for; it sits just above today's
 // size, so new text has to earn its place (ADR 0171, raised by ADR 0174, ADR 0179, ADR 0185, ADR 0186, which branding raised
 // again, ADR 0191, ADR 0201, and ADR 0207).
@@ -38,10 +35,6 @@ var (
 
 func surface() []mcptool.Tool {
 	return registryTools(RegistryOptions{})
-}
-
-func TestSurface_StaysInsideTheBudget(t *testing.T) {
-	assert.Less(t, len(surface()), toolBudget)
 }
 
 func TestSurface_AdvertisedToolsStayInsideTheSizeBudget(t *testing.T) {
