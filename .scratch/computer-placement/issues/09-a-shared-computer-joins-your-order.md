@@ -1,7 +1,7 @@
 # 09 — A shared computer joins your order
 
 **Status:** ready-for-agent
-**Blocked by:** 07, 08
+**Blocked by:** 08
 
 Spec: `../spec.md`, decision 10; Moving over. ADR 0211, amending ADR 0210.
 

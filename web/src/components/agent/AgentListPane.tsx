@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 
-// One list for what the Agent runs and where: plays by type, your computers in run order, the ones shared with you, and
-// each project's run settings. The search narrows every group by name.
+// What the Agent runs and where, one group each: plays, your computers, shared ones, and project run settings.
 export const AgentListPane = () => {
   const [search, setSearch] = useState("");
   const can = useAreaAccess();

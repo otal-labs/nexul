@@ -15,8 +15,7 @@ interface AgentComputersGroupProps {
   query: string;
 }
 
-// Your computers in run order: runs go to the first that can take them, so a row is dragged to change it (ADR 0165).
-// A search shows the matches in place and stops the dragging, since a filtered list can't say where a row lands.
+// Your computers in run order (ADR 0165); a filtered list can't say where a dropped row lands, so a search stops dragging.
 export const AgentComputersGroup = ({ query }: AgentComputersGroupProps) => {
   const { kind, id } = useParams();
   const { data: computers, isPending, error } = useListComputers();

@@ -1,5 +1,4 @@
-// The Agent page's open record: a play, a computer (yours or shared), or a project's run settings ("defaults" for every
-// project's), each a workspace-relative path (ADR 0211).
+// The Agent page's open record, as a workspace-relative path (ADR 0211); "defaults" is every project's run settings.
 export type AgentKind = "plays" | "computers" | "projects";
 
 export const AGENT_PATH = "/agent";

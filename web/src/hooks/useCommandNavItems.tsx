@@ -39,8 +39,8 @@ export const useCommandNavItems = (): CommandGroup[] => {
   const showRunners = useShowRunnersLink();
   const go = (path: string) => () => void navigate(wsPath(path));
 
-  const page = (id: string, label: string, icon: CommandItem["icon"], path: string, shown = true): CommandItem[] =>
-    shown ? [{ id: `page:${id}`, label, icon, run: go(path), keywords: "go to page" }] : [];
+  const page = (id: string, label: string, icon: CommandItem["icon"], path: string, shown = true, keywords = ""): CommandItem[] =>
+    shown ? [{ id: `page:${id}`, label, icon, run: go(path), keywords: `go to page ${keywords}`.trim() }] : [];
 
   const token = current ? projectToken(current) : "";
   const pages: CommandItem[] = [
@@ -54,7 +54,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("project-settings", "Project settings", SettingsIcon, projectSettingsPath(token), !!current && !!can?.("projects")),
     ...page("runners", "Runners", CpuIcon, "/runners", showRunners),
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
-    ...page("agent", "Agent", SparklesIcon, "/agent"),
+    ...page("agent", "Agent", SparklesIcon, "/agent", true, "plays auto plays computers pair t3"),
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
     ...page("access", "Access", ShieldCheck, "/access", canOpen("access") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),

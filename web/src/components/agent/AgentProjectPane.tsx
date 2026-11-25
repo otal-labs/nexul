@@ -15,8 +15,7 @@ interface AgentProjectPaneProps {
   projectId: string;
 }
 
-// Which of your computers a project's runs use, in order, and the checkout on each. Waits for the links too, so the
-// form never seeds "Uses your defaults" before the project's own link has loaded.
+// Waits for the links too, so the form never seeds "Uses your defaults" before the project's own link has loaded.
 export const AgentProjectPane = ({ projectId }: AgentProjectPaneProps) => {
   const wsPath = useWorkspacePath();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);

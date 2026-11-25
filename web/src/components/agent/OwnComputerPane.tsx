@@ -12,8 +12,7 @@ interface OwnComputerPaneProps {
   computer: Computer;
 }
 
-// A computer added with its app reads by its lanes; one paired before the app keeps its old pane until it moves. The
-// move dialog lives here, so the pane turning into the app's pane as the move lands never closes it.
+// The move dialog lives here, so the pane turning into the app's pane as a move lands never closes it.
 export const OwnComputerPane = ({ computer }: OwnComputerPaneProps) => {
   const presence = useFetchPresence();
   const [moving, setMoving] = useState(false);

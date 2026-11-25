@@ -12,8 +12,7 @@ interface SharedComputerPaneProps {
   computer: Computer;
 }
 
-// Someone else's computer shared with you: whether it is online and what its owner lets you do, nothing of their setup,
-// and with Run commands the commands you ran there.
+// Someone else's computer: whether it is online and what its owner allows, never their setup.
 export const SharedComputerPane = ({ computer }: SharedComputerPaneProps) => {
   const wsPath = useWorkspacePath();
   const presence = runnerPresence(computer.runner);

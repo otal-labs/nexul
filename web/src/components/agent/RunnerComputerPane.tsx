@@ -37,8 +37,7 @@ interface RunnerComputerPaneProps {
   presence?: string | undefined;
 }
 
-// A computer added with its app: each lane's health on its own, at most one action for what needs doing, the rest in its
-// menu, then everything it reports.
+// A computer added with its app: each lane on its own, at most one action for what needs doing, the rest in its menu.
 export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPaneProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pairing = stillPairing(computer);
