@@ -1,15 +1,15 @@
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Switch } from "@/components/ui/switch";
 import { useActionState } from "@/hooks/useActionState";
-import { useSetSsoOnly } from "@/ee/hooks/SsoHooks";
 
 interface SsoOnlyRowProps {
   only: boolean;
+  // The provider's own save of the switch: OpenID Connect's or SAML's.
+  setOnly: { mutate: (only: boolean) => void; isPending: boolean };
 }
 
 // Saved on the flip; the server turns it down until an instance Owner holds a passkey, and the toast says so.
-export const SsoOnlyRow = ({ only }: SsoOnlyRowProps) => {
-  const setOnly = useSetSsoOnly();
+export const SsoOnlyRow = ({ only, setOnly }: SsoOnlyRowProps) => {
   const writable = useActionState({ permission: "instance:write" }).state === "live";
   return (
     <SettingsRow

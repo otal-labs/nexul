@@ -66,7 +66,7 @@ export const SsoProviderDialog = ({ saved }: SsoProviderDialogProps) => {
     <Dialog open={open} onOpenChange={close}>
       <DialogTrigger asChild>
         <ActionButton permission="instance:write" verb="change single sign-on" size="sm" variant={editing ? "outline" : "default"}>
-          {editing ? "Edit provider" : "Set up provider"}
+          {editing ? "Edit provider" : "Set up OpenID Connect"}
         </ActionButton>
       </DialogTrigger>
       <DialogContent>

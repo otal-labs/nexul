@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
+import { samlBody, type SamlSettings } from "@/ee/models/Saml";
 import type { SsoFormData, SsoPublic, SsoSettings } from "@/ee/models/Sso";
 import type { LiveFollower } from "@/lib/live";
 
@@ -66,6 +67,71 @@ export const useRemoveSso = () => {
 export const useVerifySsoCheck = () =>
   requires("instance:write", (check: string, data: Record<string, string>) =>
     api.post<{ detail?: string } | undefined>("/api/instance/sso/verify", data, { params: { check } }).then((r) => r.data?.detail),
+  );
+
+export const useSamlSettings = () =>
+  useQuery({
+    queryKey: [getSamlKey],
+    queryFn: async () => (await api.get<SamlSettings>("/api/instance/saml")).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+const keepSaml = (client: QueryClient, data: SamlSettings) => {
+  client.setQueryData([getSamlKey], data);
+  return client.invalidateQueries({ queryKey: [getSsoPublicKey] });
+};
+
+// Saving the saved metadata URL again reads it again, which is how Refresh works.
+export const useSaveSaml = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("instance:write", async (data: Record<string, string>) => (await api.put<SamlSettings>("/api/instance/saml", samlBody(data))).data),
+    onSuccess: (data) => keepSaml(client, data),
+  });
+};
+
+export const useSetSamlOnly = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("instance:write", async (only: boolean) => (await api.put<SamlSettings>("/api/instance/saml", { only })).data),
+    onSuccess: (data) => keepSaml(client, data),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRemoveSaml = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("instance:write", async () => (await api.delete<SamlSettings>("/api/instance/saml")).data),
+    onSuccess: (data) => {
+      toast.success("Single sign-on removed");
+      return keepSaml(client, data);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRotateSamlCertificate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("instance:write", async () => (await api.post<SamlSettings>("/api/instance/saml/rotate")).data),
+    onSuccess: (data) => keepSaml(client, data),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRetireSamlCertificate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("instance:write", async () => (await api.post<SamlSettings>("/api/instance/saml/retire")).data),
+    onSuccess: (data) => keepSaml(client, data),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useVerifySamlCheck = () =>
+  requires("instance:write", (check: string, data: Record<string, string>) =>
+    api.post<{ detail?: string } | undefined>("/api/instance/saml/verify", samlBody(data), { params: { check } }).then((r) => r.data?.detail),
   );
 
 export const ssoFollower: LiveFollower = {

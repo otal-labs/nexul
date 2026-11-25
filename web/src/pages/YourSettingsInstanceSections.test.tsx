@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { YourSettingsPage } from "@/pages/YourSettingsPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { unsetSaml } from "@/test/samlSettings";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), toastSuccess: vi.fn() }));
 
@@ -35,6 +36,7 @@ const routeGet = (anywhere: string[], permissions: string[] = []) => (url: strin
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions } });
   if (url === "/api/team") return Promise.reject(new Error("403"));
   if (url === "/api/instance/license") return Promise.resolve({ data: { state: "none", licensee: "", instance_url: "", features: [] } });
+  if (url === "/api/instance/saml") return Promise.resolve({ data: unsetSaml() });
   if (url === "/api/connectors") {
     return Promise.resolve({ data: [{ connector: { id: "github", name: "GitHub" }, status: { configured: true } }] });
   }
