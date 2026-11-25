@@ -422,6 +422,16 @@ instance Owner's passkey outlasts, and branding: the instance's own name,
 logo, accent and an imported VS Code theme. When a key expires the features
 stop and their data stays. ADRs 0184 to 0187.
 
+### SAML and a longer audit log
+
+Single sign-on also takes a SAML 2.0 provider, for companies whose identity
+provider offers nothing else: one provider per instance, OIDC or SAML, with
+Nexul's own certificate rotated from the Single sign-on card and the
+provider's metadata refreshed daily. The audit log can be kept up to three
+years instead of 45 days and streamed, row by row, to one signed HTTPS
+destination from a queue written with the row. Both sit behind the license
+key. ADRs 0189 and 0190.
+
 ---
 
 ## Now — improving what's built
@@ -493,8 +503,7 @@ without changing the core architecture.
   a call, and recordings for standups.
 - **Enterprise depth** — keys issued automatically after payment once
   there is a second buyer; one console for a partner to see and upgrade every
-  instance they host; a longer audit-log retention and streaming the log
-  out; SAML beside OIDC; and a managed control plane, once the first
+  instance they host; and a managed control plane, once the first
   partners show what they would hand over.
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list

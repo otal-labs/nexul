@@ -70,10 +70,6 @@ git history, and anything durable it decided is an ADR.
 - `.scratch/computer-placement/` — one order decides every run: plays name the labels they need instead of computers,
   Run on a chosen computer becomes Run as a person, the app repository wins a checkout tie, and a waiting run's fix is
   done on the run (ADR 0197). Spec and tickets 01–06 written 2026-11-18.
-- `.scratch/enterprise-depth/` — SAML beside OIDC (ADR 0189) and audit log
-  retention and streaming (ADR 0190), the two items left under Enterprise depth
-  in `ROADMAP.md` that a security review asks for first. Spec and tickets 01–07
-  written 2026-11-14, `needs-triage`; both ADRs are pending the owner's approval.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
