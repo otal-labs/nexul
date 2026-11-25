@@ -31,8 +31,7 @@ const (
 	oauthUngrantedTTL     = 24 * time.Hour
 	oauthDefaultName      = "MCP client"
 	oauthRefreshIdle      = 30 * 24 * time.Hour
-	// shortcut: a spent code is remembered in memory for the access token's hour, so a later replay or a restart only
-	// refuses it; keep spent codes in the database if a replay after that must revoke too.
+	// shortcut: spent codes live in memory for an hour, so a later replay only refuses; store them if that must revoke.
 	oauthSpentKeep = oauthAccessTTL
 )
 

@@ -11,8 +11,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// TestMigration0169_AGrantFromBeforeRotatesAndThenKnowsItsPreviousRefresh upgrades a sign-in grant minted before
-// 0169: it holds no previous refresh hash, rotates as before, and afterwards the hash it rotated away from finds it.
+// TestMigration0169_AGrantFromBeforeRotatesAndThenKnowsItsPreviousRefresh upgrades a grant minted before 0169.
 func TestMigration0169_AGrantFromBeforeRotatesAndThenKnowsItsPreviousRefresh(t *testing.T) {
 	db := migrateBefore(t, "0169")
 	_, err := db.Exec(`
