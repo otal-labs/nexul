@@ -16,7 +16,8 @@ Decision: a run whose starter is not the computer's owner runs on a provider ins
   stops first leaves the instance until its token expires.
 - Nexul's T3 session needs `providers:manage`, which pairing now asks for; a computer paired before it is told to pair
   again. Only protocol-2 T3 Code, and only Claude and Codex, run someone else's agent; others refuse with the reason.
-- The run is placed only on a computer picked for it; shared computers stay out of a person's order. Revoking Run
+- The run is placed only on a computer picked for it; shared computers stay out of a person's order (amended by ADR
+  0211: one may join it). Revoking Run
   agents interrupts the starter's running turns there, and the next placement is refused.
 - Everywhere the run appears it says "Run by <starter> using <owner>'s <computer>". The owner's computer lists the
   runs others ran on it, who, which play and how it ended, never what they did.
