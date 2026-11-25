@@ -63,6 +63,7 @@ func TestRefreshMetadata_AReadThatFails_KeepsTheLastGoodCertificatesAndSaysWhy(t
 
 			assert.Equal(t, idp.metadata(), h.saml.st.IdP, "the last good certificates stay")
 			assert.Contains(t, h.saml.st.RefreshError, c.want)
+			assert.NotRegexp(t, "^invalid: ", h.saml.st.RefreshError, "the card shows the reason, not the error kind")
 			require.Len(t, h.saml.events, 1, "the card learns the refresh is failing")
 			v, err := h.svc.SAMLView(asActor(t))
 			require.NoError(t, err)

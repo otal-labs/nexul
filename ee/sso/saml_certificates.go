@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -138,7 +139,7 @@ func (s *Service) refreshMetadata(ctx context.Context) error {
 		err = errAnotherProvider(idp.EntityID)
 	}
 	if err != nil {
-		next.RefreshError = err.Error()
+		next.RefreshError = strings.TrimPrefix(err.Error(), apperrs.ErrInvalid.Error()+": ")
 	}
 	if err == nil {
 		next.IdP = idp

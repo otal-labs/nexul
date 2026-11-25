@@ -3,7 +3,8 @@
 Single sign-on is an enterprise feature (ADR 0184): the instance Owner sets one OpenID Connect provider for the whole
 instance, with its issuer URL, client id, client secret (a secret reference is allowed) and the name its button shows.
 Without a key that unlocks `sso` the settings say so, the button is off, and the saved settings stay for a renewed key.
-SAML, provisioning people from the provider and several providers at once are out.
+Provisioning people from the provider and several providers at once are out; SAML, left out here, came later beside OIDC
+(ADR 0189).
 
 - **The provider is checked, not trusted.** The issuer's discovery document gives the endpoints; the authorization code
   flow runs with PKCE and a nonce, both derived from the state under the server's secret so only the state cookie crosses the

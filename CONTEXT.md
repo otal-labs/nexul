@@ -1455,7 +1455,7 @@ holds one too, a sign-in grant named after the client, whose access token
 lasts an hour and is renewed by its refresh token (ADR 0204).
 
 **Sign-in identity**:
-One provider account attached to a user: GitHub, Google, Discord or the instance's Single sign-on provider, keyed by
+One provider account attached to a user: GitHub, Google, Discord or the instance's Single sign-on provider (stored as `oidc` or `saml`), keyed by
 the provider's own id, with the login it yields. A user holds one per
 provider at most and signs in through any of them; the first one created is
 the one their login, name and picture follow. Linked from Profile while
@@ -1464,11 +1464,19 @@ _Avoid_: Account (that is the user), login method, connected account (a
 Connector is the instance's credential, not a person's)
 
 **Single sign-on**:
-An Enterprise feature: the instance's one OpenID Connect provider (Okta, Entra, Google Workspace, Keycloak), set by the
-instance Owner, that people sign in through from the button "Sign in with <name>". A verified email links to the account
-that has it from a Google or Discord sign-in; otherwise the first sign-in makes an account in the default workspace with
-the role the Owner chose. Without a License key that unlocks it the button is off and the saved settings stay.
-_Avoid_: SSO provider, SAML, IdP login
+An Enterprise feature: the instance's one identity provider (Okta, Entra, Google Workspace, Keycloak), over OpenID
+Connect or SAML, never both at once, set by the instance Owner, that people sign in through from the button "Sign in with
+<name>". The email the provider vouches for links to the account that has it from a Google or Discord sign-in;
+otherwise the first sign-in makes an account in the default workspace with the role the Owner chose. Without a License
+key that unlocks it the button is off and the saved settings stay.
+_Avoid_: SSO provider, IdP login
+
+**Service provider metadata**:
+The XML a SAML identity provider registers Nexul from, served at `/auth/saml/metadata` once a SAML provider is saved:
+Nexul's entity id, its assertion consumer service URL and the certificate it signs sign-in requests with (two while a
+rotated one is still published). The provider's own metadata, read by URL or uploaded, is the identity provider
+metadata.
+_Avoid_: SP config, SAML settings (those are the whole provider)
 
 **SSO-only**:
 Single sign-on's switch that hides every other sign-in method and refuses it on the server. The instance Owner's

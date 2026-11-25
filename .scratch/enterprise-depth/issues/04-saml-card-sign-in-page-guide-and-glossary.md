@@ -1,6 +1,6 @@
 # SAML in the Settings card, the sign-in page, the guide and the glossary
 
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 01, 02 (03 for the rotation controls)
 
 ## Done looks like

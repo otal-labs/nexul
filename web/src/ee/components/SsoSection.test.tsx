@@ -6,7 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SsoSection } from "@/ee/components/SsoSection";
 import { getSamlKey, getSsoKey, getSsoPublicKey, ssoFollower } from "@/ee/hooks/SsoHooks";
+import type { SamlSettings } from "@/ee/models/Saml";
 import type { SsoSettings } from "@/ee/models/Sso";
+import { unsetSaml } from "@/test/samlSettings";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 import { pickOption } from "@/test/pickOption";
 
@@ -50,8 +52,8 @@ const sso = (over: Partial<SsoSettings> = {}): SsoSettings => ({
 const unset = (over: Partial<SsoSettings> = {}) =>
   sso({ configured: false, issuer_url: "", client_id: "", client_secret_set: false, display_name: "", join_role_id: "", active: false, ...over });
 
-const serve = (settings: SsoSettings) =>
-  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/instance/sso" ? settings : roles }));
+const serve = (settings: SsoSettings, saml: SamlSettings = unsetSaml()) =>
+  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: ({ "/api/instance/sso": settings, "/api/instance/saml": saml } as Record<string, unknown>)[url] ?? roles }));
 
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -77,7 +79,7 @@ describe("SsoSection", () => {
     expect(screen.getByText(/saved settings stay/)).toBeInTheDocument();
     expect(screen.getByText("Needs a license")).toBeInTheDocument();
     expect(screen.getByText("Acme SSO")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^(Set up|Edit) provider$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^(Set up OpenID Connect|Set up SAML|Edit provider)$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove provider" }), "a lapsed key never traps a provider in place").toBeInTheDocument();
   });
@@ -86,7 +88,7 @@ describe("SsoSection", () => {
     serve(unset());
     renderSection();
 
-    expect(await screen.findByRole("button", { name: "Set up provider" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Set up OpenID Connect" })).toBeInTheDocument();
     expect(screen.getByText("Off")).toBeInTheDocument();
     expect(screen.getByText("https://nexul.example.com/auth/oidc/callback")).toBeInTheDocument();
   });
@@ -100,7 +102,7 @@ describe("SsoSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Set up provider" }));
+    await user.click(await screen.findByRole("button", { name: "Set up OpenID Connect" }));
     await user.type(screen.getByLabelText("Issuer URL"), "https://login.example.com");
     await user.type(screen.getByLabelText("Client ID"), "client-1");
     await user.type(screen.getByLabelText("Client secret"), "s3cret");
@@ -136,7 +138,7 @@ describe("SsoSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Set up provider" }));
+    await user.click(await screen.findByRole("button", { name: "Set up OpenID Connect" }));
     await user.type(screen.getByLabelText("Issuer URL"), "https://nope.example.com");
     await user.type(screen.getByLabelText("Client ID"), "client-1");
     await user.type(screen.getByLabelText("Client secret"), "s3cret");
@@ -191,7 +193,7 @@ describe("SsoSection", () => {
     await user.click(await screen.findByRole("button", { name: "Remove provider" }));
     await user.click(screen.getByRole("button", { name: "Remove" }));
 
-    expect(await screen.findByRole("button", { name: "Set up provider" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Set up OpenID Connect" })).toBeInTheDocument();
     expect(mocks.delete).toHaveBeenCalledWith("/api/instance/sso");
   });
 });
