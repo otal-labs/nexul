@@ -14,6 +14,7 @@ export default function BoardLayout() {
       >
         <Stack.Screen name="index" options={{ ...tabRootOptions, title: "Board" }} />
         <Stack.Screen name="ticket/[id]" options={{ title: "" }} />
+        <Stack.Screen name="run/[id]" options={{ title: "" }} />
       </Stack>
     </AreaGate>
   );

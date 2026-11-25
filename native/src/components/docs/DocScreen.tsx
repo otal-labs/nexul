@@ -4,6 +4,7 @@ import { ScrollView, View } from "react-native";
 
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { DocBody } from "@/components/docs/DocBody";
+import { TargetPlaysSection } from "@/components/plays/TargetPlaysSection";
 import { DocQuestionsPanel } from "@/components/docs/clarification/DocQuestionsPanel";
 import { DocViewSwitch } from "@/components/docs/clarification/DocViewSwitch";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -48,6 +49,11 @@ const DocSides = ({ doc, openedOn }: { doc: Doc; openedOn: DocView }) => {
           <CalendarTitleContext value={doc.title}>
             <DocBody body={doc.body} />
           </CalendarTitleContext>
+        </View>
+      )}
+      {view === "doc" && (
+        <View className="mt-5 px-4">
+          <TargetPlaysSection targetType="doc" targetId={doc.id} projectId={doc.project_id} tab="more" />
         </View>
       )}
       {view === "questions" && <DocQuestionsPanel doc={doc} />}

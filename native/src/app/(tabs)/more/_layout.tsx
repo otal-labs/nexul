@@ -13,6 +13,9 @@ export default function MoreLayout() {
       <Stack.Screen name="index" options={{ ...tabRootOptions, title: "More" }} />
       <Stack.Screen name="search" options={{ title: "Search" }} />
       <Stack.Screen name="runners/index" options={{ title: "" }} />
+      <Stack.Screen name="plays/index" options={{ title: "" }} />
+      <Stack.Screen name="plays/[id]" options={{ title: "" }} />
+      <Stack.Screen name="runs/[id]" options={{ title: "" }} />
       <Stack.Screen name="calendar" options={{ headerShown: false }} />
       <Stack.Screen name="docs" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />

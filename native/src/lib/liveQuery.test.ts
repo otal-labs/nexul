@@ -16,4 +16,6 @@ export const misdeclared = () => [
   defineQuery({ key: "misspelledTopic", fetch, refreshes: { "tickets.updated": "all" } }),
   // @ts-expect-error a field the topic's payload does not carry
   defineQuery({ key: "missingField", fetch, refreshes: { "ticket.deleted": { record: (p) => p.ticket_id } } }),
+  // @ts-expect-error a field the run frame the server pushes directly does not carry
+  defineQuery({ key: "missingRunField", fetch, refreshes: { "play.run": { record: (p) => p.run_id } } }),
 ];

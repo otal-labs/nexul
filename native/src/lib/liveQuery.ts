@@ -1,15 +1,24 @@
-import type { EventPayloads, Topic } from "@otal-labs/nexul-sdk/events";
+import type { EventPayloads } from "@otal-labs/nexul-sdk/events";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { recordQueries } from "@/lib/queryClient";
+import type { RunFrame } from "@/models/Trail";
+
+// Frames the server pushes to the socket itself, outside the event catalog (directLiveTopics in server/cmd).
+interface DirectPayloads {
+  "play.run": RunFrame;
+}
+
+type Payloads = EventPayloads & DirectPayloads;
+type Topic = keyof Payloads;
 
 // How a frame reaches a query's cache: every entry, the entry its first argument names, the record it names (by id,
 // or by the key a link opened it with), or a patch written from the payload with no request.
 type Refresh<T extends Topic> =
   | "all"
-  | { key: (payload: EventPayloads[T]) => unknown }
-  | { record: (payload: EventPayloads[T]) => unknown }
-  | { patch: (client: QueryClient, payload: EventPayloads[T]) => void };
+  | { key: (payload: Payloads[T]) => unknown }
+  | { record: (payload: Payloads[T]) => unknown }
+  | { patch: (client: QueryClient, payload: Payloads[T]) => void };
 
 type Refreshes = { [T in Topic]?: Refresh<T> };
 

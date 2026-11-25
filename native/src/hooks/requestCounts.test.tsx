@@ -93,6 +93,11 @@ const ticket = (id: string, number: number) => ({
   created_at: "2026-11-25T10:00:00Z", updated_at: "2026-11-25T10:00:00Z",
 });
 
+const run = (id: string) => ({
+  id, workspace_id: "ws-1", play_id: "pl-1", play_label: "Fix with AI", target_type: "ticket", target_id: "t-1", project_id: "p-1", starter_id: "me",
+  custom_instructions: "", state: "running", started_at: "2026-09-28T10:00:00Z", ended_at: null, last_error: "", activity: [],
+});
+
 const responses: Record<string, unknown> = {
   "/api/auth/me": { user: { id: "me", login: "onik97", name: "Onik" } },
   "/api/workspaces": [{ id: "ws-1", name: "Acme", slug: "acme" }],
@@ -135,6 +140,9 @@ const responses: Record<string, unknown> = {
     { id: "s-1", project_id: "p-1", name: "api", machine: "box-1", strategy: "run", managed: true },
     { id: "s-2", project_id: "p-1", name: "worker", machine: "box-1", strategy: "run", managed: true },
   ],
+  "/api/plays/queue?target_type=ticket&target_id=t-1": { items: [], paused: false, auto_runs: 0, daily_cap: 5, paused_until: null },
+  "/api/plays/runs?target_type=ticket&target_id=t-1&steps=last": [run("r-1")],
+  "/api/workspaces/ws-1/plays/applicable?project_id=p-1&type=ticket&stage=backlog": [],
   "/api/stacks/s-1/deploys": [],
   "/api/stacks/s-2/deploys": [],
 };
@@ -230,7 +238,7 @@ describe("requests a session sends", () => {
     });
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(21);
+    expect(gets).toHaveLength(24);
     expect(jest.mocked(fetchAbout).mock.calls.length - aboutBefore).toBe(1);
   });
 
@@ -269,6 +277,34 @@ describe("requests a session sends", () => {
     expect(gets).toEqual(["/api/tickets?project_id=p-1&without=body"]);
   });
 
+  const runFrame = (trailId: string) => ({
+    topic: "play.run",
+    type: "direct",
+    payload: {
+      trail_id: trailId, play_id: "pl-1", target_type: "ticket", target_id: "t-1", state: "running", question: null, ended_at: null, last_error: "",
+      activity: { kind: "tool_call", call_id: "call-1", tool: "Bash", summary: "go test ./...", at: "2026-09-28T10:01:00Z" },
+      starter_id: "me", project_id: "p-1", workspace_id: "ws-1",
+    },
+  });
+
+  // A run sends a frame per step; the open ticket's list writes the step into the run's row instead of downloading the list.
+  test("a step of a run on the open ticket patches its row without a request", async () => {
+    const client = await renderSession();
+
+    const gets = await requestsDuring(client, () => dispatch(client)(runFrame("r-1")));
+
+    expect(gets).toEqual([]);
+    expect(screen.getByText("go test ./...")).toBeTruthy();
+  });
+
+  test("a run the open ticket doesn't list yet refetches that ticket's runs, nothing else", async () => {
+    const client = await renderSession();
+
+    const gets = await requestsDuring(client, () => dispatch(client)(runFrame("r-2")));
+
+    expect(gets).toEqual(["/api/plays/runs?target_type=ticket&target_id=t-1&steps=last"]);
+  });
+
   const roleFrame = (roleID: string) => ({
     topic: "access.grant.changed",
     type: "event",
@@ -291,7 +327,7 @@ describe("requests a session sends", () => {
     const gets = await requestsDuring(client, () => dispatch(client)(roleFrame("r-member")));
 
     expect(new Set(gets).size).toBe(gets.length);
-    expect(gets).toHaveLength(21);
+    expect(gets).toHaveLength(24);
   });
 
   const unreadPath = "/api/chat/unread?workspace_id=ws-1";

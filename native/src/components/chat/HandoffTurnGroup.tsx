@@ -7,17 +7,16 @@ import { Pressable, View } from "react-native";
 import Animated, { interpolate, useAnimatedStyle } from "react-native-reanimated";
 import { useCSSVariable } from "uniwind";
 
-import { formatElapsed, groupSteps, listedAct, liveStepLabel, runDirectory, turnOutcome, turnPhrase, turnSpanSeconds, type TurnOutcome } from "@nexul/client-core/agentSteps";
+import { formatElapsed, groupSteps, listedAct, liveStepLabel, runDirectory, turnOutcome, turnPhrase, turnSpanSeconds, type TurnOutcome, type AgentStep } from "@nexul/client-core/agentSteps";
 
 import { HandoffStepGroup } from "@/components/chat/HandoffStepGroup";
 import { Orbit } from "@/components/LoadingDisplay";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useEntrance, useReducedMotion } from "@/lib/motion";
-import type { HandoffStep } from "@/models/Chat";
 
 interface HandoffTurnGroupProps {
-  entries: HandoffStep[];
+  entries: AgentStep[];
   running: boolean;
   from: string | null;
   until: string | null;

@@ -50,3 +50,8 @@ switch into a remount and refetches each stale-time-zero query on it, so it
 waits until more of the tabs' queries are cached until pushed.
 
 Decided 2026-10-09.
+
+Amended: a topic the server pushes to the socket itself and never publishes to the catalog (`play.run`, the running
+play's newest step, one of `directLiveTopics`) is declared beside the catalog's in `liveQuery.ts`'s `DirectPayloads`,
+its payload typed by hand from the Go frame, so a query follows it the same way and the per-topic catalog test leaves
+it to the tests of the queries that declare it.

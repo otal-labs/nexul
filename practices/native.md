@@ -51,7 +51,7 @@ as written. In particular:
   for types, no barrels, no `index.ts`. A module the web runs too is imported
   from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:
   the permission table, chat, embed and time code rules, mention text, people, the live
-  socket, the query retry rule, a doc's questions with their rules, an agent's steps, its hand-offs' counts and the provider marks. tsconfig's `paths` name it for Metro, which watches the
+  socket, the query retry rule, a doc's questions with their rules, an agent's steps, its hand-offs' counts and the provider marks, and a play run's transcript, health line, queue wording and auto-play sentences. tsconfig's `paths` name it for Metro, which watches the
   folder, and `jest.config.js` maps it; its tests run once, in the web's job.
 - Naming: `XxxScreen`, `XxxFeed`, `XxxRow`, `XxxHooks.tsx`, `xxxStore.tsx`,
   `src/models/Xxx.tsx` with the interface and its Zod schema together.
@@ -73,7 +73,7 @@ as written. In particular:
   workspace as a mono eyebrow, the title in the display face, one meta line),
   which scrolls with the list. A pushed screen keeps the native bar with the
   back arrow and a short Inter title, and puts the record's own title in a
-  `ScreenHeader` in its content, on the plain canvas. Board, Deploys and More's Runners follow the viewer's read
+  `ScreenHeader` in its content, on the plain canvas. Board, Deploys, More's Runners and More's Plays follow the viewer's read
   permission through `@nexul/client-core/permissions`, the web's own table; a
   deep link into one the viewer can't read renders the plain not-found state.
   More's Search reads the web palette's `/api/search` and groups it with
@@ -201,7 +201,8 @@ as written. In particular:
   frame reaches exactly the queries that list its topic, and nothing else does
   except the viewer's own access change, which refetches every open read: a
   frame naming them, or a grant frame naming a role their cached `/me` holds.
-  Following a new topic is one line in the query's `refreshes`. A topic the
+  Following a new topic is one line in the query's `refreshes`. A topic the server pushes to the socket itself,
+  outside the catalog (`play.run`, a running play's newest step), is typed in `DirectPayloads` in `liveQuery.ts`. A topic the
   server publishes twice for one change (`ticket.assignee_changed` beside
   `ticket.developer_changed`) is followed once.
 - A reference query (the viewer, their workspaces and role, a workspace's
