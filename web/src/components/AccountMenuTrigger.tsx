@@ -2,22 +2,14 @@ import { ChevronsUpDownIcon } from "lucide-react";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { UpdateDot } from "@/components/UpdateDot";
 import { useWelcomeProgress } from "@/hooks/WelcomeHooks";
-import { avatarFill } from "@nexul/client-core/avatarFill";
 import { effectiveAvatar, userLabel, loginHandle } from "@/models/User";
 import type { User } from "@/models/User";
 import { welcomeMenuSummary } from "@/utils/WelcomeMenuUtility";
-
-const initials = (name: string) =>
-  name
-    .split(/[\s@-]/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 
 // Every role held, joined; the line truncates with the rest of the row.
 const rolesLine = (role: MyWorkspaceInfo): string => (role.roles ?? []).map((held) => held.name).join(", ") || "No roles";
@@ -43,22 +35,7 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
         className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
         <span className="relative shrink-0">
-          {effectiveAvatar(user) !== "" && (
-            <img
-              src={effectiveAvatar(user)}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="size-8 rounded-lg object-cover"
-            />
-          )}
-          {effectiveAvatar(user) === "" && (
-            <span
-              className="flex size-8 items-center justify-center rounded-lg text-xs font-semibold text-white"
-              style={{ backgroundColor: avatarFill(user.login) }}
-            >
-              {initials(userLabel(user))}
-            </span>
-          )}
+          <PersonAvatar login={user.login} name={userLabel(user)} src={effectiveAvatar(user)} label="" className="size-8 rounded-lg" />
           {left > 0 && <UpdateDot className="-top-0.5 -right-0.5 bg-destructive" label={collapsed ? undefined : welcomeLabel} />}
         </span>
         {!collapsed && (

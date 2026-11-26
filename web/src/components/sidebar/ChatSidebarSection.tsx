@@ -54,6 +54,8 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const { channels, voiceChannels, dms, docThreads } = groupConversations(conversations ?? []);
   // A removed thread comes back while it is open or has unread messages, so nothing new is missed.
   const shownThreads = docThreads.filter((c) => !hiddenIds.includes(c.id) || c.id === openId || (unread?.[c.id] ?? 0) > 0);
+  // Folded, Threads keeps the open thread and any with unread messages, as the Workspace fold keeps the page you're on.
+  const foldedThreads = threadsOpen ? shownThreads : shownThreads.filter((c) => c.id === openId || (unread?.[c.id] ?? 0) > 0);
 
   // A section with no rows and nothing the viewer may start there is left out, so someone with no role sees none.
   return (
@@ -114,9 +116,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
       {shownThreads.length > 0 && (
         <div className="flex flex-col gap-0.5">
           <SidebarFoldHeader label="Threads" open={threadsOpen} onToggle={toggleThreads} />
-          {threadsOpen && (
+          {foldedThreads.length > 0 && (
             <div data-fold className="flex flex-col gap-0.5">
-              {shownThreads.map((conversation) => (
+              {foldedThreads.map((conversation) => (
                 <DocThreadSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
               ))}
             </div>

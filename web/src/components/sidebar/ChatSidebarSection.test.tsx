@@ -256,6 +256,23 @@ describe("ChatSidebarSection", () => {
     expect(screen.getByText("Runbook")).toBeInTheDocument();
   });
 
+  it("keeps a thread with unread messages under the folded Threads header", async () => {
+    useSidebarStore.setState({ threadsNavOpen: false });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") {
+        return {
+          data: ["c4", "c5"].map((id) => ({ id, workspace_id: "ws-1", kind: "doc_thread", doc_id: `doc-${id}`, doc_title: `Runbook ${id}`, created_by: "u1", created_at: "", updated_at: "" })),
+        };
+      }
+      if (url === "/api/chat/unread") return { data: { c5: 2 } };
+      if (url === "/api/auth/me") return { data: meResponse };
+      return { data: {} };
+    });
+    renderSection();
+    expect(await screen.findByText("Runbook c5")).toBeInTheDocument();
+    expect(screen.queryByText("Runbook c4")).not.toBeInTheDocument();
+  });
+
   it("marks the open conversation's row as the current page", async () => {
     renderSection(false, "/acme/chat/c1");
     expect(await screen.findByRole("link", { name: /general/ })).toHaveAttribute("aria-current", "page");

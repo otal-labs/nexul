@@ -25,7 +25,7 @@ export const AutomationPage = () => {
   const { data: automation, error, isPending } = useFetchAutomation(id);
 
   return (
-    <Container size="page" className="py-8">
+    <Container className="py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {automation && (

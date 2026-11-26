@@ -950,9 +950,9 @@ ends where its text does; the gutter `+` shows only while the body has focus. A
 blockquote is a 2px rule in `foreground` at 25%.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Runners,
-Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
-single-record pages (Configuration, Your settings, Project settings, Stack,
-Deploy, Automation); every page pads `py-8` inside its panel. A page taller than its
+Automations, Topology) and the records they open (Stack, Deploy, Automation),
+so the content's edge holds from a list to its record, and `size="page"`
+(`max-w-5xl`) for settings (Configuration, Your settings, Project settings); every page pads `py-8` inside its panel. A page taller than its
 panel fades over its last 40px at the panel's bottom edge rather than stopping
 on a flat line. Pages built
 from panes (Docs, Memories, Agent, Inbox, Ticket) run the full width with no
@@ -1052,7 +1052,8 @@ name, one `⦸ KEY` per blocker still open, one pull request mark per linked PR,
 then the presence bar; it is read only, and the rail edits. Under the header a
 line tab row holds Ticket and Thread, each tab past the first at its own path
 segment, and Notes once the ticket has a note. From a 52rem panel the 21rem
-rail sits beside the tabs behind a hairline rule that runs down from the
+rail (24rem from 68rem, which takes the gutter the body's measure leaves and
+gives linked titles room) sits beside the tabs behind a hairline rule that runs down from the
 header's rule, so it never floats, on Ticket and Thread alike;
 narrower, the rail folds behind a Details row above the tab row, closed by
 default, so the body starts under the header. On Ticket and Notes everything
@@ -1075,7 +1076,8 @@ tabs. The rail is a run of sections, each a mono uppercase microheader with its
 one action trailing as a ghost `+`, compact rows, and a muted one-line sentence
 when empty ("No bugs reported."), ordered by what decides where the ticket
 stands: Properties (Status, Developer, Tester, Due, Labels wrapping inline,
-Category, Type), Links, Development, Reviews, Testing, Plays, then
+Category, Type), Links (each group shows five rows and the rest behind a
+muted "Show N more"), Development, Reviews, Testing, Plays, then
 Attachments, Bugs and Trail, and a muted mono foot line, "created 17 Aug by
 <reporter>". A play is one line, its full prompt in the tooltip, ending in its
 latest run's state icon and mono time. Plays is stage-bound, so it is
@@ -2064,8 +2066,8 @@ row with a small `warning` dot trailing the label (on the rail, on the
 icon's corner), and a muted Being set up line for whoever cannot change the
 project; while the workspace's access setup is open, an Owner keeps the
 project and its pages with a Set up access row trailing them, and a member,
-who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section (folded until a browser first opens it, so the conversations start above the fold), and last the conversations:
-Channels, Voice channels, Direct messages and Threads. Places come before
+who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section (open until a browser folds it, so the sidebar lists the same pages the rail shows), and last the conversations:
+Channels, Voice channels, Direct messages and Threads, which starts folded and, folded, keeps only the open thread and any with unread messages. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are 12px medium sans in
 sentence case at 80% of `muted-foreground`, with their create `+` trailing; a direct message with one other person leads with
@@ -2194,7 +2196,7 @@ The web app's pattern decisions, each with what it was picked over.
 | The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |
 | Sidebar rows at 13px, about 28px tall, in a 224px sidebar, with sentence-case labels (2026-10-28) | Against 14px rows near 34px tall in 240px under mono uppercase labels: the labels were the most tracked-out, most technical-looking text in the chrome for the least important words, and the tall rows pushed Voice channels to the fold at 900px; the compact rows sit level with the board's 13px card titles and give the panel 16px |
 | Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |
-| Sidebar: the Workspace section starts folded (2026-10-28) | Against it starting open: with the project's pages listed, the seven workspace pages (Calendar to Configuration, visited a few times a week) pushed every channel under the account row at 900px, where the last one faded half-drawn into the footer; folded, the project and the conversations fit, and a browser that opens it keeps it open |
+| Sidebar: the Workspace section starts folded (2026-10-28) — reversed 2026-11-26: Workspace starts open and Threads starts folded | Folded, the workspace's seven pages hid behind a chevron while the rail showed all of them, and the current one hung under the header as an orphan row; the long Threads list of truncated doc titles was what filled the fold. Before that, against it starting open: with the project's pages listed, the seven workspace pages (Calendar to Configuration, visited a few times a week) pushed every channel under the account row at 900px, where the last one faded half-drawn into the footer; folded, the project and the conversations fit, and a browser that opens it keeps it open |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |

@@ -16,13 +16,13 @@ describe("VoiceRoomAvatars", () => {
   it("rings only the people who are speaking", () => {
     render(<VoiceRoomAvatars occupants={occupants} speaking={new Set(["u3"])} />);
 
-    expect(screen.getByTitle("Sam Okafor")).toHaveClass("ring-success");
-    expect(screen.getByTitle("Lena Kowalski")).not.toHaveClass("ring-success");
+    expect(screen.getByTitle("Sam Okafor").closest("span")).toHaveClass("ring-success");
+    expect(screen.getByTitle("Lena Kowalski").closest("span")).not.toHaveClass("ring-success");
   });
 
   it("rings nobody when no one is speaking", () => {
     render(<VoiceRoomAvatars occupants={occupants} />);
 
-    expect(screen.getByTitle("Sam Okafor")).not.toHaveClass("ring-success");
+    expect(screen.getByTitle("Sam Okafor").closest("span")).not.toHaveClass("ring-success");
   });
 });

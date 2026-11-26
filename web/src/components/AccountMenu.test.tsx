@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -155,7 +155,9 @@ describe("AccountMenu", () => {
     });
     renderMenu();
     expect(await screen.findByText("Bob Marsh")).toBeInTheDocument();
-    expect(screen.getByText("BM")).toBeInTheDocument();
+    const button = screen.getByText("Bob Marsh").closest("button")!;
+    fireEvent.error(button.querySelector("img")!);
+    expect(button).toHaveTextContent(/^BMBob Marsh/);
     expect(screen.queryByText("@onik97")).not.toBeInTheDocument();
   });
 
@@ -166,6 +168,7 @@ describe("AccountMenu", () => {
       const trigger = await screen.findByText("Onik");
       const img = trigger.closest("button")?.querySelector("img");
       expect(img).toHaveAttribute("src", "https://avatars.example/onik.png");
+      fireEvent.load(img!);
       expect(screen.queryByText("O")).not.toBeInTheDocument();
     } finally {
       ownerUser.avatar_url = "";
