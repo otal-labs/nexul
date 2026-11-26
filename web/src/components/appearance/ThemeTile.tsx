@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -12,7 +11,10 @@ interface ThemeTileProps {
   children: ReactNode;
 }
 
-// A radio drawn as the thing it picks: the miniature above its name, the selected one ringed in the accent with a check.
+// Mode and Theme share one column grid, so a mode tile is the size of a theme tile and the two read as one picker.
+export const pickerGridClass = "grid grid-cols-3 gap-3 @lg:grid-cols-4";
+
+// A radio drawn as the thing it picks: the miniature above its name, the selected one ringed in the accent and named in ink.
 export const ThemeTile = ({ value, label, selected, children }: ThemeTileProps) => (
   <RadioGroupPrimitive.Item
     value={value}
@@ -25,12 +27,7 @@ export const ThemeTile = ({ value, label, selected, children }: ThemeTileProps) 
       )}
     >
       {children}
-      {selected && (
-        <span className="pop-in absolute top-1.5 right-1.5 flex size-4 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-card">
-          <Check className="size-2.5" strokeWidth={3} aria-hidden />
-        </span>
-      )}
     </span>
-    <span className={cn("truncate px-0.5 text-xs", selected ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+    <span className={cn("truncate px-0.5 text-xs", selected ? "font-medium text-foreground" : "text-muted-foreground")}>{label}</span>
   </RadioGroupPrimitive.Item>
 );

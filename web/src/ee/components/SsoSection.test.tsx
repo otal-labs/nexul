@@ -75,8 +75,7 @@ describe("SsoSection", () => {
     serve(sso({ unlocked: false, active: false, only: true }));
     renderSection();
 
-    expect(await screen.findByText("Single sign-on needs a license key")).toBeInTheDocument();
-    expect(screen.getByText(/saved settings stay/)).toBeInTheDocument();
+    expect(await screen.findByText(/saved settings stay/)).toBeInTheDocument();
     expect(screen.getByText("Needs a license")).toBeInTheDocument();
     expect(screen.getByText("Acme SSO")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^(Set up OpenID Connect|Set up SAML|Edit provider)$/ })).not.toBeInTheDocument();

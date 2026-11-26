@@ -1,19 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { EmptyRow } from "@/components/EmptyRow";
-import { ConnectorCard } from "@/components/settings/ConnectorCard";
-import { settingsListClass } from "@/components/settings/SettingsRow";
+import { ConnectorGroup } from "@/components/settings/ConnectorGroup";
 import { SecretManagersStatus } from "@/components/settings/SecretManagersStatus";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
-
-type Tab = "connected" | "not-connected";
 
 interface ConnectorsSectionProps {
   // Skips the SettingsCard wrapper here — the owner wizard already frames this step (T17).
@@ -23,9 +17,6 @@ interface ConnectorsSectionProps {
 // Self-contained (own fetch, no required props) so the owner wizard can drop it in directly.
 export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {}) => {
   const { data, isPending, error } = useFetchConnectors();
-  // Defaults to "Not connected" so Connect is visible before the owner wizard connects anything.
-  const [pickedTab, setPickedTab] = useState<Tab | null>(null);
-  const tab: Tab = pickedTab ?? (data?.some((entry) => entry.status.configured) ? "connected" : "not-connected");
   const [searchParams, setSearchParams] = useSearchParams();
   const toasted = useRef(false);
 
@@ -47,37 +38,18 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
     setSearchParams(next, { replace: true });
   }, [data, searchParams, setSearchParams]);
 
-  const filtered = useMemo(
-    () => data?.filter((entry) => (tab === "connected" ? entry.status.configured : !entry.status.configured)) ?? [],
-    [data, tab],
-  );
+  const connected = data?.filter((entry) => entry.status.configured) ?? [];
+  const rest = data?.filter((entry) => !entry.status.configured) ?? [];
 
   const content = (
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {data && (
-        <div className="space-y-4">
-          <ToggleGroup
-            type="single"
-            variant="segmented"
-            size="xs"
-            aria-label="Show connectors"
-            value={tab}
-            onValueChange={(next) => next && setPickedTab(next as Tab)}
-          >
-            <ToggleGroupItem value="connected">Connected</ToggleGroupItem>
-            <ToggleGroupItem value="not-connected">Not connected</ToggleGroupItem>
-          </ToggleGroup>
-
-          {filtered.length === 0 && <EmptyRow>No connectors here</EmptyRow>}
-          {filtered.length > 0 && (
-            <EnterList className={settingsListClass}>
-              {filtered.map((entry) => (
-                <ConnectorCard key={entry.connector.id} entry={entry} />
-              ))}
-            </EnterList>
-          )}
+        // Connected first, the rest under their own label with Connect, so one list shows both without a filter.
+        <div className="space-y-6">
+          {connected.length > 0 && <ConnectorGroup entries={connected} />}
+          {rest.length > 0 && <ConnectorGroup entries={rest} label={connected.length > 0 ? "Not connected" : undefined} />}
         </div>
       )}
     </>

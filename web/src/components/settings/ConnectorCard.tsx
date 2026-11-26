@@ -7,7 +7,6 @@ import { secretManagerName } from "@nexul/client-core/secretReference";
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
-import { SettingsHint } from "@/components/settings/SettingsHint";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
@@ -45,8 +44,10 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
 
   const { open: confirm } = useConfirmationDialog();
   const connectedBy = usePerson(status.connected_by ?? "");
+  const connectorBy = status.connected_by && personLabel(connectedBy);
   const connectedDetail = [
-    status.connected_by && `by ${personLabel(connectedBy)}`,
+    // The owner wizard connects as "setup", which reads as a person's name after "by".
+    connectorBy && (connectorBy === "setup" ? "during setup" : `by ${connectorBy}`),
     status.connected_at && formatRelativeTime(status.connected_at),
   ]
     .filter(Boolean)
@@ -62,21 +63,27 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   };
 
   return (
-    <li className="flex items-center gap-3 py-3.5">
+    <li className="flex min-h-14 items-center gap-3 py-2.5">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <Icon className="size-4" />
       </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-medium">{connector.name}</p>
-        {/* The tab already says connected or not, so line two keeps only who connected it and the one state the tab does not. */}
-        {status.configured && connectedDetail && <p className="truncate text-xs text-muted-foreground">{connectedDetail}</p>}
+      {/* The name with what it is for, then its state; under the Not connected label that state goes without saying. */}
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 text-sm font-medium">{connector.name}</span>
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{connector.description}</span>
+        </p>
+        {status.configured && !status.secret && (
+          <SettingsStatus tone="success" detail={connectedDetail || undefined}>
+            Connected
+          </SettingsStatus>
+        )}
         {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
         {status.secret && (
           <SettingsStatus tone={status.secret.state === "unreachable" ? "warning" : "destructive"} detail={status.secret.error}>
             {status.secret.state ? `${secretManagerName(status.secret.manager)} ${status.secret.state}` : "Secret not resolved"}
           </SettingsStatus>
         )}
-        <SettingsHint className="line-clamp-2">{connector.description}</SettingsHint>
       </div>
       {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
       {needsApp && <ConnectorAppConfigDialog connector={connector} />}
@@ -90,8 +97,7 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           permission="connectors:write"
           verb="disconnect connectors"
           size="sm"
-          variant="ghost"
-          className="-mr-3 text-muted-foreground"
+          variant="outline"
           liveClassName="hover:text-destructive"
           onClick={() => void onDisconnect()}
           loading={disconnect.isPending}

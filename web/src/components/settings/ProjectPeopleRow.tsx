@@ -44,7 +44,7 @@ export const ProjectPeopleRow = ({ project, grant, keptOut = false }: ProjectPeo
   const open = () => void openPanel(projectEntity(project), target.key);
 
   return (
-    <li className="group/row relative flex min-h-14 items-center gap-2 px-2 before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40">
+    <li className="group/row relative flex min-h-14 items-center gap-2 before:pointer-events-none before:absolute before:-inset-x-2 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40">
       <button type="button" onClick={open} className="relative flex min-w-0 flex-1 items-center gap-3 self-stretch text-left">
         <TargetMark target={target} />
         <span className="min-w-0 flex-1">

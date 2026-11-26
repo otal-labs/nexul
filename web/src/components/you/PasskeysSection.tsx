@@ -23,9 +23,9 @@ export const PasskeysSection = () => {
       id="passkeys"
       title="Passkeys"
       description="Sign in with your fingerprint, face, or security key. Your linked accounts keep working."
-      footer={
+      aside={
         canAdd && (
-          <Button variant="outline" loading={add.isPending} onClick={() => add.mutate()}>
+          <Button variant="outline" size="sm" loading={add.isPending} onClick={() => add.mutate()}>
             <KeyRound className="size-4" />
             Add a passkey
           </Button>

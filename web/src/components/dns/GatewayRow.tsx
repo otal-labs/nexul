@@ -11,6 +11,21 @@ interface GatewayRowProps {
 
 const kindLabel = { tunnel: "Cloudflare tunnel", proxy: "Reverse proxy" } as const;
 
+// Mono for the names only; the words between them read as prose.
+const GatewayWhere = ({ gateway }: GatewayRowProps) => (
+  <>
+    {gateway.service_name && <span className="font-mono">{gateway.service_name}</span>}
+    {gateway.machine && (
+      <>
+        {" "}
+        on <span className="font-mono">{gateway.machine}</span>
+      </>
+    )}
+    {(gateway.service_name || gateway.machine) && " · "}
+    zone <span className="font-mono">{gateway.zone}</span>
+  </>
+);
+
 // What the gateway routes is its state: the hostnames on it, or none yet. Delete is refused by the backend while
 // hostnames remain; that rejection surfaces through the mutation's toast.
 export const GatewayRow = ({ gateway }: GatewayRowProps) => {
@@ -31,24 +46,16 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
           <span className="text-xs text-muted-foreground">{kindLabel[gateway.kind]}</span>
         </p>
         {hostnames && hostnames.length > 0 && (
-          <>
-            <SettingsStatus tone="success">{hostnames.length === 1 ? "Routes 1 hostname" : `Routes ${hostnames.length} hostnames`}</SettingsStatus>
-            <p className="font-mono text-xs break-all text-foreground/80">{hostnames.join(" · ")}</p>
-          </>
+          <SettingsStatus tone="success" detail={<GatewayWhere gateway={gateway} />}>
+            {hostnames.length === 1 ? "Routes 1 hostname" : `Routes ${hostnames.length} hostnames`}
+          </SettingsStatus>
         )}
-        {hostnames && hostnames.length === 0 && <SettingsStatus tone="muted">No hostnames yet</SettingsStatus>}
-        {/* Mono for the names only; the words between them read as prose. */}
-        <p className="truncate text-xs text-muted-foreground">
-          {gateway.service_name && <span className="font-mono">{gateway.service_name}</span>}
-          {gateway.machine && (
-            <>
-              {" "}
-              on <span className="font-mono">{gateway.machine}</span>
-            </>
-          )}
-          {(gateway.service_name || gateway.machine) && " · "}
-          zone <span className="font-mono">{gateway.zone}</span>
-        </p>
+        {hostnames && hostnames.length === 0 && (
+          <SettingsStatus tone="muted" detail={<GatewayWhere gateway={gateway} />}>
+            No hostnames yet
+          </SettingsStatus>
+        )}
+        {hostnames && hostnames.length > 0 && <p className="font-mono text-xs break-all text-foreground/80">{hostnames.join(" · ")}</p>}
       </div>
       <span className="-mt-1.5">
         <ConfirmDestroyButton

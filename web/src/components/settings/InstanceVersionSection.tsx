@@ -98,7 +98,7 @@ const CheckAgainButton = () => {
   const refresh = useRefreshInstanceUpgrade();
 
   return (
-    <Button variant="ghost" size="sm" loading={refresh.isPending} onClick={() => refresh.mutate()}>
+    <Button variant="ghost" size="sm" className="-my-1.5 -mr-2.5" loading={refresh.isPending} onClick={() => refresh.mutate()}>
       <RefreshCw className="size-3.5" aria-hidden />
       Check again
     </Button>
@@ -132,12 +132,16 @@ const UpgradeButton = ({ latest, retry }: { latest: InstanceUpgrade["latest"]; r
   );
 };
 
-const InstanceVersionFooter = ({ data }: { data: InstanceUpgrade }) => (
-  <>
-    <CheckAgainButton />
-    {data.can_upgrade && <UpgradeButton latest={data.latest} retry={isUnresolvedFailure(data)} />}
-  </>
-);
+// The check sits beside the state it refreshes, so the footer strip is only there when there is an upgrade to start.
+const InstanceVersionAside = () => {
+  const { data } = useInstanceUpgrade();
+  return (
+    <>
+      <InstanceVersionStatus />
+      {data && !isUpgradeInProgress(data.upgrade) && <CheckAgainButton />}
+    </>
+  );
+};
 
 export const InstanceVersionSection = () => {
   const { data, isPending, error } = useInstanceUpgrade();
@@ -146,8 +150,8 @@ export const InstanceVersionSection = () => {
     <SettingsCard
       id="instance-version"
       title="Instance version"
-      aside={<InstanceVersionStatus />}
-      footer={data && !isUpgradeInProgress(data.upgrade) && <InstanceVersionFooter data={data} />}
+      aside={<InstanceVersionAside />}
+      footer={data && !isUpgradeInProgress(data.upgrade) && data.can_upgrade && <UpgradeButton latest={data.latest} retry={isUnresolvedFailure(data)} />}
     >
       {isPending && <LoadingDisplay />}
       {error && !isUpgradeInProgress(data?.upgrade ?? null) && <ErrorDisplay error={error} />}

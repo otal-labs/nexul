@@ -139,7 +139,7 @@ describe("OwnerWizardPage", () => {
     // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
     expect(screen.getByText("GitHub")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /not connected/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^connect$/i })).toBeInTheDocument();
   });
 
   it("returns to the previous step (not away from the page) on back from steps 2 and 3", async () => {

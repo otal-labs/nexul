@@ -73,7 +73,8 @@ export const SettingsCard = ({
       {footer && (
         <footer
           className={cn(
-            "flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-b-lg border-t border-border bg-muted/30 px-6 py-3 empty:hidden",
+            // A lone action sits right, where the actions of every other footer end.
+            "flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-b-lg border-t border-border bg-muted/30 px-6 py-3 empty:hidden [&>:last-child]:ml-auto",
             stickyFooter &&
               "sticky bottom-0 z-10 rounded-b-none bg-[color-mix(in_oklab,var(--muted)_30%,var(--card))] before:pointer-events-none before:absolute before:inset-x-0 before:-top-[calc(1.5rem+1px)] before:h-6 before:bg-linear-to-b before:from-transparent before:to-card",
           )}

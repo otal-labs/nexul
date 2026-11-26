@@ -101,13 +101,12 @@ describe("ConnectorsSection", () => {
     toastMocks.error.mockClear();
   });
 
-  it("lands on Not connected when nothing is connected, showing every registry connector and marking a not-yet-available one Coming soon without Connect", async () => {
+  it("lists every registry connector when nothing is connected, marking a not-yet-available one Coming soon without Connect", async () => {
     serve({ data: registryConnectors() });
     renderSection();
 
     expect(await screen.findByText("GitHub")).toBeInTheDocument();
     expect(screen.getByText("Cloudflare")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /not connected/i })).toHaveAttribute("aria-checked", "true");
     expect(await screen.findByRole("button", { name: /^connect$/i })).toBeInTheDocument();
 
     const row = screen.getByText("Cloudflare").closest("li") as HTMLElement;
@@ -115,14 +114,13 @@ describe("ConnectorsSection", () => {
     expect(within(row).queryByRole("button", { name: /connect/i })).not.toBeInTheDocument();
   });
 
-  it("lands on Connected and shows who connected it and the Disconnect button for a configured connector", async () => {
+  it("shows who connected a configured connector and its Disconnect button", async () => {
     serve({
       data: [connectorEntry({ status: { configured: true, connected_by: "u1" } })],
     });
     renderSection();
 
     expect(await screen.findByText(/^by /)).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /^connected$/i })).toHaveAttribute("aria-checked", "true");
     expect(await screen.findByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();
   });
@@ -137,22 +135,14 @@ describe("ConnectorsSection", () => {
     expect(row).toHaveTextContent("1Password unreachable");
   });
 
-  it("filters the list with the Connected / Not connected switch", async () => {
+  it("lists the connected tools first and the rest under Not connected", async () => {
     serve({
-      data: [
-        connectorEntry({ status: { configured: true } }),
-        ...registryConnectors().slice(1),
-      ],
+      data: [...registryConnectors().slice(1), connectorEntry({ status: { configured: true } })],
     });
-    const user = userEvent.setup();
     renderSection();
 
-    await screen.findByText("GitHub");
-    expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("radio", { name: /not connected/i }));
-    expect(await screen.findByText("Cloudflare")).toBeInTheDocument();
-    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+    expect(within(await screen.findByRole("region", { name: "Connected" })).getByText("GitHub")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Not connected" })).getByText("Cloudflare")).toBeInTheDocument();
   });
 
   it("calls the start-oauth mutation and navigates on Connect", async () => {

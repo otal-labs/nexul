@@ -36,14 +36,14 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
     if (ok) update.mutate({ client_id: "", client_secret: "" });
   };
 
+  // Peers, so one shape and one side: both outline, Disable turning red only on hover.
   return (
-    <>
+    <span className="flex items-center gap-2">
       <ActionButton
         permission="instance:write"
         verb="change sign-in providers"
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="text-muted-foreground"
         liveClassName="hover:text-destructive"
         loading={update.isPending}
         onClick={() => void disable()}
@@ -64,6 +64,6 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
           <OAuthProviderForm provider={provider} clientId={clientId} onSaved={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
-    </>
+    </span>
   );
 };

@@ -21,7 +21,7 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
   return (
     <li
       className={cn(
-        "relative isolate flex min-h-14 items-center gap-3 py-2.5",
+        "group/row relative isolate flex min-h-14 items-center gap-3 py-2.5",
         leavingRowClass,
         arrived && "animate-in fade-in-0 slide-in-from-top-1 duration-800 ease-out",
       )}
@@ -37,13 +37,15 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{name}</p>
         <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          {session.current && <SettingsStatus tone="success">This device</SettingsStatus>}
-          {!session.current && <span>Last active {formatRelativeTime(session.last_active_at)}</span>}
-          <span aria-hidden>·</span>
-          <span className="truncate font-mono tabular-nums">{session.ip}</span>
+          {session.current && <SettingsStatus tone="success">Active now</SettingsStatus>}
+          {!session.current && <span className="tabular-nums">Last active {formatRelativeTime(session.last_active_at)}</span>}
+          <span className="ml-2.5 truncate font-mono tabular-nums">{session.ip}</span>
         </p>
       </div>
+      {session.current && <span className="text-xs text-muted-foreground">This device</span>}
+      {/* Quiet until the row is pointed at, so seven rows don't stack seven buttons; always shown where nothing hovers. */}
       {!session.current && onSignOut && (
+        <span className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity [@media(hover:hover)]:duration-150 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[variant=destructive]:opacity-100">
         <ConfirmDestroyButton
           icon={XIcon}
           idleLabel="Sign out"
@@ -53,6 +55,7 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
           onConfirm={onSignOut}
           loading={leaving}
         />
+        </span>
       )}
     </li>
   );

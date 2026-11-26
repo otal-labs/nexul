@@ -139,11 +139,12 @@ describe("Settings page instance sections", () => {
     expect(await screen.findByText("Settings failed")).toBeInTheDocument();
   });
 
-  it("gives sign-in providers their own section, one tab each with Discord first", async () => {
+  it("gives sign-in providers their own section, one card each with Discord first", async () => {
     renderPage("/settings/sign-in");
 
-    await selectedTab("Discord");
-    expect(screen.getByText("discord card")).toBeInTheDocument();
+    expect(await screen.findByText("discord card")).toBeInTheDocument();
+    expect(screen.getByText("google card")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Discord" })).not.toBeInTheDocument();
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
   });
 
@@ -164,11 +165,10 @@ describe("Settings page instance sections", () => {
     expect(screen.queryByText("discord card")).not.toBeInTheDocument();
   });
 
-  it("opens the Google sign-in tab from its path", async () => {
+  it("still opens the providers from the old Google tab path", async () => {
     renderPage("/settings/sign-in/google");
 
-    await selectedTab("Google");
-    expect(screen.getByText("google card")).toBeInTheDocument();
+    expect(await screen.findByText("google card")).toBeInTheDocument();
   });
 
   it("lands the connector OAuth callback on the Connectors tab, which toasts and strips it", async () => {

@@ -17,10 +17,10 @@ export const GatewaysSection = () => {
     <SettingsCard
       id="gateways"
       title="Gateways"
-      description="Each gateway makes one Docker network reachable from the internet. Set up DNS puts a hostname on a service."
+      description="Each gateway makes one Docker network reachable from the internet."
       footer={
         <>
-          <ActionButton permission="dns:write" verb="set up DNS" variant="outline" size="sm" to="/wizard/onboarding/dns">
+          <ActionButton permission="dns:write" verb="set up DNS" variant="ghost" size="sm" to="/wizard/onboarding/dns">
             Set up DNS
           </ActionButton>
           <CreateGatewayDialog />

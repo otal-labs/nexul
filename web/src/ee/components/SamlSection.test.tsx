@@ -72,8 +72,7 @@ describe("SsoSection with SAML", () => {
     serve(savedSaml({ unlocked: false, active: false }), noOidc({ unlocked: false }));
     renderSection();
 
-    expect(await screen.findByText("Single sign-on needs a license key")).toBeInTheDocument();
-    expect(screen.getByText(/saved settings stay/)).toBeInTheDocument();
+    expect(await screen.findByText(/saved settings stay/)).toBeInTheDocument();
     expect(screen.getByText("https://idp.example.com")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^(Set up SAML|Set up OpenID Connect|Edit provider)$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();

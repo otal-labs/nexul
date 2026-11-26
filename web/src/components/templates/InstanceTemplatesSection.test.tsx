@@ -92,7 +92,7 @@ describe("InstanceTemplatesSection", () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
-  it("lists each template under its group with who edited it, or Default", async () => {
+  it("lists each template under its group, marking only the edited ones", async () => {
     renderSection();
 
     const interview = within(await screen.findByRole("region", { name: "Interview" }));
@@ -100,7 +100,7 @@ describe("InstanceTemplatesSection", () => {
     expect(interview.getByText(/by Sam /)).toBeInTheDocument();
     const plays = within(screen.getByRole("region", { name: "Play instructions" }));
     expect(plays.getByText("Fix with AI")).toBeInTheDocument();
-    expect(plays.getByText("Default")).toBeInTheDocument();
+    expect(plays.queryByText("Default")).not.toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Ticket bodies" })).getByText("bug body")).toBeInTheDocument();
     const prompt = within(screen.getByRole("region", { name: "Agent prompt" }));
     expect(prompt.getByText("Intro")).toBeInTheDocument();
