@@ -29,7 +29,8 @@ const DeployLogRow = ({ line, startsPhase }: DeployLogRowProps) => (
       </span>
     )}
     <span className="select-none text-muted-foreground tabular-nums">{formatLogTimestamp(line.ts)}</span>
-    <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">{line.text}</span>
+    {/* Compose pads its status lines with one space; deeper indentation is the output's own and stays. */}
+    <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">{line.text.replace(/^ (?=\S)/, "")}</span>
   </li>
 );
 
@@ -38,6 +39,8 @@ const DeployLogRow = ({ line, startsPhase }: DeployLogRowProps) => (
 // bottom; scrolling up pins the view until they return.
 export const DeployLogPanel = ({ deployId, lines, emptyMessage }: DeployLogPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // A line with only its timestamp says nothing; Copy and Download still carry every line.
+  const shown = lines.filter((line) => line.text.trim() !== "");
   const followRef = useRef(true);
 
   const onScroll = () => {
@@ -57,7 +60,7 @@ export const DeployLogPanel = ({ deployId, lines, emptyMessage }: DeployLogPanel
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border py-1 pr-1 pl-3">
         <p className={microheaderClass}>
           Log
-          {lines.length > 0 && <span className="ml-2 tabular-nums">{lines.length.toLocaleString()}</span>}
+          {shown.length > 0 && <span className="ml-2 tabular-nums">{shown.length.toLocaleString()}</span>}
         </p>
         <DeployLogActions deployId={deployId} lines={lines} />
       </div>
@@ -70,11 +73,11 @@ export const DeployLogPanel = ({ deployId, lines, emptyMessage }: DeployLogPanel
         tabIndex={0}
         className="scroll-edge min-h-0 flex-1 overflow-auto font-mono text-xs leading-6"
       >
-        {lines.length === 0 && <EmptyRow className="border-0 font-sans">{emptyMessage}</EmptyRow>}
-        {lines.length > 0 && (
+        {shown.length === 0 && <EmptyRow className="border-0 font-sans">{emptyMessage}</EmptyRow>}
+        {shown.length > 0 && (
           <ol className="px-3 py-2">
-            {lines.map((line, i) => (
-              <DeployLogRow key={line.seq} line={line} startsPhase={line.phase !== "" && line.phase !== lines[i - 1]?.phase} />
+            {shown.map((line, i) => (
+              <DeployLogRow key={line.seq} line={line} startsPhase={line.phase !== "" && line.phase !== shown[i - 1]?.phase} />
             ))}
           </ol>
         )}

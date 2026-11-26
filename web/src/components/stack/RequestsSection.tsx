@@ -34,7 +34,7 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
           </p>
         </div>
       )}
-      <div className="rounded-lg bg-surface-2 p-3 ring-1 ring-border">
+      <div>
         {total > 0 && <RequestBars requests={requests} />}
         {/* A quiet hour is a flat floor with words, not sixty floor marks and the uncounted minutes towering over them. */}
         {total === 0 && (

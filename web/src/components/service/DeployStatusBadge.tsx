@@ -2,6 +2,7 @@ import { deployOutcome } from "@nexul/client-core/deployOutcome";
 import { CheckCircle2, Clock, Loader2, XCircle, type LucideIcon } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { DeployStatus, type DeployStatus as DeployStatusType } from "@/models/Service";
 
 // Colored icon beside the outcome word in plain text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
@@ -14,12 +15,13 @@ const config: Record<DeployStatusType, { icon: LucideIcon; color: string; iconCl
 
 interface DeployStatusBadgeProps {
   status: DeployStatusType;
+  className?: string;
 }
 
-export const DeployStatusBadge = ({ status }: DeployStatusBadgeProps) => {
+export const DeployStatusBadge = ({ status, className }: DeployStatusBadgeProps) => {
   const { icon, color, iconClassName, textClassName } = config[status];
   return (
-    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName} className={textClassName}>
+    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName} className={cn(textClassName, className)}>
       {deployOutcome(status)}
     </NoFillBadge>
   );

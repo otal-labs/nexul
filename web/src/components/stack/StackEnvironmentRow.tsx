@@ -14,9 +14,10 @@ interface StackEnvironmentRowProps {
   onRemove: () => void;
 }
 
-// The name reads as a mono label until hovered or focused; the value is one quiet well with no outline of its own.
+// Name and value read as mono text in a row until hovered or focused, when the value's well appears to type into.
 const keyFieldClass = "border-transparent bg-transparent px-2 font-mono shadow-none dark:bg-transparent";
-const valueFieldClass = "border-transparent bg-surface-2 font-mono shadow-none dark:bg-surface-2";
+const valueFieldClass =
+  "border-transparent bg-transparent font-mono shadow-none transition-colors duration-150 ease-standard dark:bg-transparent hover:bg-surface-2 focus-visible:bg-surface-2 dark:hover:bg-surface-2 dark:focus-visible:bg-surface-2";
 
 export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironmentRowProps) => {
   const { register, control, formState } = useFormContext<StackEnvFormData>();

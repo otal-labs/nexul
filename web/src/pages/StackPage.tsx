@@ -15,6 +15,7 @@ import { StackEnvironmentSection } from "@/components/stack/StackEnvironmentSect
 import { StackSecretsChangedNotice } from "@/components/stack/StackSecretsChangedNotice";
 import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
+import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
 import { StackTabs, type StackTab } from "@/components/stack/StackTabs";
 import { SettingsShell } from "@/components/settings/SettingsShell";
@@ -67,14 +68,7 @@ export const StackPage = ({ tab = "overview" }: StackPageProps) => {
       {error && <DetailErrorDisplay error={error} />}
       {stack && (
         <div className="space-y-6">
-          <StackHeaderSection
-            stack={stack}
-            latest={latest}
-            lastHealthy={lastHealthy}
-            image={image}
-            hostnames={hostnames}
-            showStatus={tab !== "settings"}
-          />
+          <StackHeaderSection stack={stack} lastHealthy={lastHealthy} image={image} />
           <StackSecretsChangedNotice stack={stack} image={image} />
           <StackTabs
             stackId={stack.id}
@@ -83,6 +77,8 @@ export const StackPage = ({ tab = "overview" }: StackPageProps) => {
             deployCount={deploys?.length}
             trailing={tab === "deploys" && !!deploys?.length && <DeployFilterToggle />}
           />
+          {/* Under the tabs, so switching to Settings, which leaves the strip out, never moves the tab row. */}
+          {tab !== "settings" && <StackLiveHero stack={stack} latest={latest} lastHealthy={lastHealthy} hostnames={hostnames} />}
           {tab === "overview" && <ServicesSection stackId={stack.id} />}
           {tab === "overview" && <RequestsSection stack={stack} />}
           {tab === "deploys" && <DeployHistorySection deploys={deploys} lastHealthy={lastHealthy} isLoading={deploysPending} error={deploysError} />}

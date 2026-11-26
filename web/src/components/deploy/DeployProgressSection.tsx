@@ -7,7 +7,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useNow } from "@/hooks/useNow";
 import type { Deploy } from "@/models/Stack";
-import { deriveDeployProgress, isTerminal } from "@/utils/DeployLogUtility";
+import { deriveDeployProgress, formatStepDuration, isTerminal } from "@/utils/DeployLogUtility";
 
 interface DeployProgressSectionProps {
   deploy: Deploy;
@@ -28,6 +28,12 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
     >
       <div className="@3xl:sticky @3xl:top-6 @3xl:self-start @3xl:pt-10">
         <DeployStepList title={progress.title} steps={progress.steps} />
+        {terminal && (
+          <p className="mt-5 flex items-baseline justify-between gap-3 border-t border-border pt-3 text-sm text-muted-foreground">
+            Total
+            <span className="font-mono text-xs text-foreground tabular-nums">{formatStepDuration(Date.parse(deploy.updated_at) - Date.parse(deploy.created_at))}</span>
+          </p>
+        )}
       </div>
       <div className="min-w-0">
         {isPending && <LoadingDisplay label="Loading log" />}

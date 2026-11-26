@@ -38,11 +38,14 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
   const observed = services ? newestObservation(services) : "";
   const now = useNow(false);
   const stale = !!observed && now - Date.parse(observed) > STALE_MS;
+  const seen = stale ? `observed ${formatRelativeTime(observed)}` : "";
+  const clear = !!services && names.length === 0 && !rate;
   return (
     <HeroCell label="Health">
       {!services && <HeroDetail>—</HeroDetail>}
-      {services && names.length === 0 && !rate && <HeroLine dot="bg-success">No issues</HeroLine>}
-      {services && names.length === 0 && !rate && <HeroDetail indent>{`${total} up`}</HeroDetail>}
+      {clear && <HeroLine dot="bg-success">No issues</HeroLine>}
+      {/* One line, so the count and its age read as one sentence. */}
+      {clear && <HeroDetail indent>{[`${total} of ${total} up`, seen].filter(Boolean).join(" · ")}</HeroDetail>}
       {names.length > 0 && (
         <HeroLine dot="bg-destructive">
           {names.length === 1 && `${names[0]} down`}
@@ -60,7 +63,7 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
         </HeroLine>
       )}
       {rate && <HeroDetail indent>{`${rate.tone === "warning" ? "since" : "at"} ${formatClockTime(rate.at)}`}</HeroDetail>}
-      {stale && <HeroDetail indent>{`services seen ${formatRelativeTime(observed)}`}</HeroDetail>}
+      {!clear && seen && <HeroDetail indent>{`last ${seen}`}</HeroDetail>}
     </HeroCell>
   );
 };

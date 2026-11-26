@@ -11,7 +11,7 @@ const BAR = 7;
 const HEIGHT = 64;
 const FLOOR = 2;
 
-// One bar a minute: the answered part in a neutral tone, the 5xx part on top in `warning`; a minute nobody counted is a faint full-height track.
+// One bar a minute on a hairline floor: the answered part in a neutral tone, the 5xx part on top in `warning`; a quiet minute leaves the floor bare, and one nobody counted is a faint full-height track.
 export const RequestBars = ({ requests }: RequestBarsProps) => {
   const peak = Math.max(1, ...requests.requests.map((r) => r ?? 0));
   const width = requests.requests.length * SLOT;
@@ -23,6 +23,7 @@ export const RequestBars = ({ requests }: RequestBarsProps) => {
       preserveAspectRatio="none"
       className="h-16 w-full"
     >
+      <rect x={0} y={HEIGHT - 1} width={width} height={1} className="fill-border" />
       {requests.requests.map((count, i) => {
         const x = i * SLOT + (SLOT - BAR) / 2;
         const time = formatClockTime(minuteAt(requests, i));
@@ -33,6 +34,7 @@ export const RequestBars = ({ requests }: RequestBarsProps) => {
             </rect>
           );
         }
+        if (count === 0) return null;
         const errors = requests.errors_5xx[i] ?? 0;
         const total = Math.max(FLOOR, (count / peak) * HEIGHT);
         const bad = errors > 0 ? Math.max(2, (errors / peak) * HEIGHT) : 0;
