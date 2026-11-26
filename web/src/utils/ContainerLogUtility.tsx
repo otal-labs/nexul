@@ -13,6 +13,34 @@ const STACK_TRACE_START = /^\s+at\s|goroutine \d+ \[|Traceback|Exception/;
 
 export const looksLikeError = (text: string): boolean => ERROR_WORDS.test(text) || STACK_TRACE_START.test(text);
 
+export type LogLevelTone = "warning" | "error";
+
+export interface LogLineParts {
+  // Leading spaces, as columns: the row indents by them so a wrapped continuation hangs under the message, not the margin.
+  indent: number;
+  level: string;
+  tone: LogLevelTone | undefined;
+  rest: string;
+}
+
+// A leading level word: .NET's "warn:" and "fail:", "WARN", "[ERROR]".
+const LEADING_LEVEL = /^(\[?(?:warn(?:ing)?|err(?:or)?|fail|crit(?:ical)?|fatal|panic|info|dbug|debug|trce|trace)\]?:?)(?=\s|$)/i;
+const WARNING_LEVEL = /^\[?warn/i;
+const QUIET_LEVEL = /^\[?(?:info|dbug|debug|trce|trace)/i;
+
+export const logLineParts = (text: string): LogLineParts => {
+  const body = text.trimStart();
+  const indent = text.slice(0, text.length - body.length).replace(/\t/g, "    ").length;
+  const level = LEADING_LEVEL.exec(body)?.[1] ?? "";
+  const rest = body.slice(level.length);
+  if (!level || QUIET_LEVEL.test(level)) return { indent, level, tone: undefined, rest };
+  return { indent, level, tone: WARNING_LEVEL.test(level) ? "warning" : "error", rest };
+};
+
+// A token too long for its line (a dotted type name, a URL) may break after a dot or slash rather than mid-word.
+const LONG_TOKEN = /\S{32,}/;
+export const breakableParts = (text: string): string[] => (LONG_TOKEN.test(text) ? text.split(/(?<=[./\\])/) : [text]);
+
 export const filterLogLines = (lines: ContainerLogLine[], filter: LogFilter): ContainerLogLine[] =>
   filter === "errors" ? lines.filter((line) => looksLikeError(line.text)) : lines;
 

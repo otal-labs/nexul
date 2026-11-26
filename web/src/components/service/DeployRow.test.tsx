@@ -7,6 +7,7 @@ import { DeployStatus, DeployStrategy, type Deploy } from "@/models/Stack";
 
 const access = vi.hoisted(() => ({ areas: ["deploys"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+vi.mock("@/hooks/usePersonNamer", () => ({ useActorNamer: () => (by?: string) => by }));
 
 beforeEach(() => {
   access.areas = ["deploys"];

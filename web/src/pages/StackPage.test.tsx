@@ -484,7 +484,8 @@ describe("StackPage", () => {
       return Promise.resolve({ data: [] });
     });
     renderPage("/acme/stacks/stack-1/deploys");
-    expect(await screen.findByRole("heading", { name: "Deploys" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Deploys" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Show" })).toBeInTheDocument();
     expect(screen.getAllByTitle("ghcr.io/onik/api:v1").length).toBeGreaterThan(0);
     expect(within(screen.getByRole("region", { name: "Live status" })).getByText("3h ago")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Deploys/ })).toHaveAttribute("aria-selected", "true");

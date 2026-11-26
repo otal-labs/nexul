@@ -3,11 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DeployFilterToggle } from "@/components/service/DeployFilterToggle";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
 import { DeployStatus, DeployStrategy, type Deploy } from "@/models/Stack";
 
 const access = vi.hoisted(() => ({ areas: ["deploys"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+vi.mock("@/hooks/usePersonNamer", () => ({ useActorNamer: () => (by?: string) => by }));
 
 const deploys: Deploy[] = [
   {
@@ -72,13 +74,18 @@ describe("DeployHistorySection", () => {
     expect(list.getByText("Failed")).toBeInTheDocument();
     expect(screen.queryByText("healthy")).not.toBeInTheDocument();
     expect(screen.getAllByText(/^12 Aug \d\d:\d\d$/)).toHaveLength(2);
-    expect(screen.getAllByText(/^current/).length).toBeGreaterThan(0);
+    expect(screen.getByText("live")).toBeInTheDocument();
   });
 
   it("narrows to the failed deploys and back", async () => {
     vi.useRealTimers();
     const user = userEvent.setup();
-    renderSection(<DeployHistorySection deploys={deploys} lastHealthy={deploys[0]} isLoading={false} />);
+    renderSection(
+      <>
+        <DeployFilterToggle />
+        <DeployHistorySection deploys={deploys} lastHealthy={deploys[0]} isLoading={false} />
+      </>,
+    );
     await user.click(screen.getByRole("radio", { name: "Failed" }));
     expect(within(screen.getByRole("list")).queryByText("Succeeded")).not.toBeInTheDocument();
     expect(within(screen.getByRole("list")).getByText("Failed")).toBeInTheDocument();

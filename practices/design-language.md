@@ -1300,9 +1300,10 @@ under a hairline, the last healthy image with Rollback; a stack with no way to
 deploy and nothing to roll back to shows Deploy in its disabled look with the
 reason in its tooltip, still reachable by keyboard.
 
-Under the header is one live status strip (`StackLiveHero`), a `surface-2`
+Under the header on Overview, Deploys and Logs is one live status strip
+(`StackLiveHero`; Settings leaves it out, so its forms start under the tabs), a `surface-2`
 well with a microheader over each value: Health, Last deploy, Requests and
-Hostnames, four columns from a 48rem strip and two by two below. Health is "No
+Hostnames, four equal columns from a 48rem strip and two by two below. Health is "No
 issues" behind a `success` dot over the mono "N up", or one line per problem
 behind a dot in its status hue: an open outage is `destructive` ("api down",
 or "3 of 8 down", which lists the names when pressed), an error rate over its rule is
@@ -1313,7 +1314,8 @@ old, Health closes with a muted "last observed 17d ago". Last deploy is the
 newest attempt's `HealthDot` and outcome in deploy words (Succeeded, Failed,
 Running or Pending; never "Healthy", which is how a service is doing), a
 running one with its elapsed time ("Running · 27m"), over that attempt's own
-facts in muted mono (its age and who started it; a running one only who), then
+facts in muted mono on one line (its age and who started it, by name, "Onik via MCP" when an agent
+acted for them, never an account id; a running one only who), then
 the image that runs now, always marked "live" so it never reads as the
 attempt's: the tag by its last path segment, cut in the middle so the tag stays
 whole, the full reference in its tooltip. Requests is the hour's mono total
@@ -1335,21 +1337,25 @@ service, rows sorted down first, then on their way, healthy, then stopped: the
 name, the image by its last segment cut in the middle, how it is reached (the
 first public hostname as a link, else `service:port`, then a "+N" that lists the other
 addresses when pressed; dropped below a 48rem card, where the strip carries the
-hostnames), the status (an icon in its hue and the word) in a fixed column, and
+hostnames), the status (an icon in its hue and the word; running, a steady state with no
+healthcheck, is a still `success` dot, never a spinner) in a fixed column, and
 a ghost Logs icon at the end. The name's tooltip holds the container name and
 every address. The 14px name sits 1px higher than its box centre so the row's
 texts share one baseline. A service's open outage replaces its status and is
 one line under the row: a `destructive` icon and "Down since 10:42" in plain
 text, then the exit code, "out of memory" and the restart count. One muted line
-under the rows names the count and the networks; it is information, so it is
-not a footer strip. Deploys is one card titled Deploys with All / Failed in its
-`aside`, then one hairline row per deploy straight on the card: the outcome (a
-running one with its elapsed time) in a fixed column, what was deployed (the
+under the rows names the count, the networks and how the next deploy treats each
+service (swapped, or restarted in place and why); it is information, so it is
+not a footer strip. A quiet hour draws no bars: the well holds one muted
+sentence over its floor hairline, and the totals line above it is left out.
+Deploys is one untitled card (the tab names it) with All / Failed on the
+tab row's right, then one hairline row per deploy straight on the card: the outcome (a
+running one with its elapsed time) in a 7.5rem column, what was deployed (the
 image by its last segment, or a branch icon with the ref and the short commit
-for a build) with who and why under it in muted mono ("current" on the deploy
-whose image runs now, then actor, pull request, rule; nothing, not a dash, when
-there is none), and the time ("29 Oct 14:02") right, with the relative age in
-its tooltip. The newest 25 show,
+for a build), a neutral `live` chip with a `success` dot on the deploy whose
+image runs now, with who and why under it in muted mono (the actor by name,
+pull request, rule; nothing, not a dash, when there is none), and the time
+("29 Oct 14:02") right, with the relative age in its tooltip. The newest 25 show,
 the rest behind "Show 11 older". Logs is the Logs view below.
 
 Settings is the settings shell: `SettingsSectionNav` driving a `/:section`
@@ -1373,7 +1379,9 @@ current item turning medium never moves the others, and focus draws inside
 the item, clear of its neighbours. A sideways row (this nav's top
 row, a tab row) never draws a scrollbar under its labels (`scrollbar-none`);
 its fade says there is more. Environment is one card of mono name and
-value rows, values dots until the card's Reveal toggle, with Deploy now in the footer beside Save; someone who can't change
+value rows under Name and Value microheads: the name a borderless mono field that reads as a label until hovered or
+focused, the value one quiet `surface-2` field, dots until the eye toggle that heads the value column, hairline rows
+straight on the card, its footer stuck to the bottom, with Deploy now in the footer beside Save; someone who can't change
 the stack sees the names over dots and nothing to edit. A card's action lives in its footer strip (`footer` prop: Save,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
@@ -1905,10 +1913,15 @@ Paired computers. They live on the Agent page (ADR 0211): one dense list row per
 
 Run settings. The Agent page's Projects group lists Defaults first (a muted sliders mark), then the workspace's projects (each `ProjectMark` at 24px), each row the name over one muted line of what its runs use ("Uses defaults" until it changes something). Opening one shows its editor beside the list, capped at 42rem: muted labels in an 8rem column beside full-width controls, Computers as a Your order | Custom segmented control over the ranked list, and Save at the end, outline until something changes. With no computer online the model shows what is saved, never a text field. `AgentDefaultsPane`, `AgentProjectPane` and `RunSettingField` are the reference.
 
-Deploy page. The header names the outcome ("Deployed", "Deploy failed")
-with the status, id, image and time in its meta line. From a 48rem page the
+Deploy page. The header names the record, what was deployed (the image's
+tag, else the ref or the short commit), with the outcome as the meta line's
+status, then the image, branch, commit, who started it by name and the time,
+all in mono; Cancel deploy sits with the header's actions while it runs. From a 48rem page the
 steps run down a 15rem column beside the log and stay in view while it
-scrolls; narrower, they sit above it. Each step is a node on a rail: a filled
+scrolls; narrower, they sit above it. The log is one `surface-2` well down
+to the panel's bottom (never under 20rem) with its own header bar: a "Log"
+microhead with the line count, and Download and Copy as small ghost buttons
+at its right; the lines scroll under that bar behind the `scroll-edge` fade. Each step is a node on a rail: a filled
 `success` check once done (the rail below it in `success` at 50%), a spinner
 ringed in `info` while active, a filled `destructive` cross on failure, a
 hollow ring while pending and a dashed one when skipped, the label, and the
@@ -1917,21 +1930,28 @@ mono duration trailing. The log names each phase above its first line
 rail-led (Motion baseline). `DeployProgressSection` is the reference; the instance upgrade uses the
 same step list.
 
-Logs view. The stack page's Logs tab is a line tab row of the stack's
-services, each label led by its 6px status dot so a service that is down is
-found without opening every tab, over one terminal-style block per service: a
-mono timestamp column and the raw line, wrapped lines indented under the text,
+Logs view. The stack page's Logs tab keeps one tab row: the stack's
+services are a segmented control at the head of the log toolbar (a select past
+five), each label led by its 6px status dot in the hue the Services card gives
+it (running and healthy both `success`), so a service that is down is
+found without opening every log, over one terminal-style block per service: a
+mono timestamp column and the raw line, wrapped lines indented under the text
+and an indented line's wrap hung under its own first character, a long dotted
+or slashed token breaking after a dot or slash rather than mid-word,
 dense rows. The block reaches down to the panel's bottom, never shorter than
-30rem, and while it has no lines its one sentence (and a Details disclosure
-with the server's words) sits centred in it. Above it sit All / Errors, then
-Pause, Copy and Download as 32px icon buttons with tooltips (Pause is off
-while the stream is not live, Copy and Download while the block is empty, All /
-Errors while no line came and none is coming), on one row with one mono status marker at the
-end, always one word with the reason in its tooltip: Live while following,
+30rem, its lines fading at the top edge once scrolled (`scroll-edge`), and while it has no lines its one sentence (and a Details disclosure
+with the server's words) sits centred in it. The toolbar runs the service picker, then All / Errors, then
+one mono status marker pushed right, always one word with the reason in its tooltip: Live while following,
 Paused after the button, Scrolled up once scrolling released following, and
-the connection's own state (Offline, Ended) ahead of those. Errors means a
+the connection's own state (Offline, Ended) ahead of those; after a hairline,
+Pause, Copy and Download as 32px ghost icon buttons with tooltips (Pause is off
+while the stream is not live, Copy and Download while the block is empty, All /
+Errors while no line came and none is coming), so the filter is the row's one
+boxed control. Errors means a
 line that looks like one by its text, from either stream. A thin `destructive`
-gutter marks every stderr line and is the only color in the block. A solid
+gutter marks every stderr line, and a line's leading level word takes its
+status hue (warn in `warning`; error, fail, crit, fatal in `destructive`;
+info and debug muted); nothing else in the block is coloured. A solid
 Jump to live control, never a translucent one, resumes following.
 `LogsView` in `web/src/components/logs/` is the reference.
 

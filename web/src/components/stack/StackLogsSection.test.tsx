@@ -159,7 +159,7 @@ describe("StackLogsSection", () => {
 
     expect(screen.queryByText("listening on :8080")).not.toBeInTheDocument();
     expect(screen.queryByText("autovacuum launcher started")).not.toBeInTheDocument();
-    expect(screen.getByText("ERROR could not reach db")).toBeInTheDocument();
+    expect(screen.getByText("could not reach db", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("goroutine 7 [running]:")).toBeInTheDocument();
   });
 
@@ -284,14 +284,14 @@ describe("StackLogsSection", () => {
     expect(copied).not.toContain("listening");
   });
 
-  it("switching tabs closes the first socket and opens the next service's", async () => {
+  it("switching services closes the first socket and opens the next service's", async () => {
     const user = userEvent.setup({ delay: null });
     await renderSection();
     await openSocket();
     const web = last();
     await emit([line(1, "web line")]);
 
-    await user.click(screen.getByRole("tab", { name: "db" }));
+    await user.click(screen.getByRole("radio", { name: "db" }));
     await flush();
 
     expect(web.closed).toBe(true);

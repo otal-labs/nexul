@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 
-import { DeployCancelButton } from "@/components/deploy/DeployCancelButton";
-import { DeployLogActions } from "@/components/deploy/DeployLogActions";
 import { DeployLogPanel } from "@/components/deploy/DeployLogPanel";
 import { DeployStepList } from "@/components/deploy/DeployStepList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -28,20 +26,14 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
       // The steps run down beside the log from a 48rem page, held in view while the log scrolls.
       className="grid gap-6 pt-6 @3xl:grid-cols-[15rem_minmax(0,1fr)] @3xl:gap-10"
     >
-      <div className="@3xl:sticky @3xl:top-6 @3xl:self-start @3xl:pt-12">
+      <div className="@3xl:sticky @3xl:top-6 @3xl:self-start @3xl:pt-10">
         <DeployStepList title={progress.title} steps={progress.steps} />
       </div>
-      <div className="min-w-0 space-y-2">
-        <DeployLogActions deployId={deploy.id} lines={lines ?? []} />
+      <div className="min-w-0">
         {isPending && <LoadingDisplay label="Loading log" />}
         {error && <ErrorDisplay error={error} title="Couldn't load the log." />}
-        {lines && <DeployLogPanel lines={lines} emptyMessage={emptyMessage} />}
+        {lines && <DeployLogPanel deployId={deploy.id} lines={lines} emptyMessage={emptyMessage} />}
       </div>
-      {!terminal && (
-        <div className="flex justify-end @3xl:col-start-2">
-          <DeployCancelButton deploy={deploy} />
-        </div>
-      )}
     </section>
   );
 };

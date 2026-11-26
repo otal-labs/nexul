@@ -51,9 +51,13 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
           ))}
         </EnterList>
       )}
-      {services && services.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{summary(services)}</p>}
-      {/* Until the exposures load, or without dns:read, every service would read as having no hostname. */}
-      {exposures && services && services.length > 0 && <ServiceDeployModes services={services} hostnamesOf={hostnamesOf} />}
+      {services && services.length > 0 && (
+        <p className="mt-3 text-xs text-pretty text-muted-foreground">
+          {summary(services)}
+          {/* Until the exposures load, or without dns:read, every service would read as having no hostname. */}
+          {exposures && <ServiceDeployModes services={services} hostnamesOf={hostnamesOf} />}
+        </p>
+      )}
     </SettingsCard>
   );
 };

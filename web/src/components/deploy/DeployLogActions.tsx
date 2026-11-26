@@ -29,12 +29,12 @@ export const DeployLogActions = ({ deployId, lines }: DeployLogActionsProps) => 
   };
 
   return (
-    <div className="flex flex-wrap justify-end gap-1">
-      <Button type="button" variant="ghost" size="sm" onClick={download} disabled={empty}>
-        <DownloadIcon aria-hidden /> Download log
+    <div className="flex items-center gap-0.5">
+      <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" aria-label="Download log" onClick={download} disabled={empty}>
+        <DownloadIcon aria-hidden /> Download
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => void copy()} disabled={empty}>
-        <CopyIcon aria-hidden /> Copy log
+      <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground" aria-label="Copy log" onClick={() => void copy()} disabled={empty}>
+        <CopyIcon aria-hidden /> Copy
       </Button>
     </div>
   );
