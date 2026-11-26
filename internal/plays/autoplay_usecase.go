@@ -21,10 +21,10 @@ type AutoPlayInput struct {
 	OnceWithinMinutes int
 	RunOn             RunOn
 	// RunAsMe makes the caller the person a RunOnPerson auto play runs as; a new one runs as its creator without it.
-	RunAsMe bool
-	MemoryIDs   []string
-	OneAtATime  bool
-	Resource    string
+	RunAsMe    bool
+	MemoryIDs  []string
+	OneAtATime bool
+	Resource   string
 }
 
 // ListAutoPlays returns a play's auto plays, oldest first (autoplays:read).

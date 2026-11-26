@@ -76,7 +76,7 @@ INSERT INTO instance_templates (kind, key, body, updated_at) VALUES ('play_instr
 SELECT a.moment || '|' || coalesce(a.moment_stage, '') || '|' || a.conditions || '|' || a.priority || '|' || a.run_on || '|' || a.one_at_a_time
 FROM auto_plays a JOIN plays p ON p.id = a.play_id
 WHERE p.workspace_id = ? AND p.builtin_key = ? AND a.id != 'ap-own'
-  AND a.enabled = 0 AND a.schedule IS NULL AND a.once_within_minutes = 0 AND a.computer_id = '' AND a.computer_ids = '[]'
+  AND a.enabled = 0 AND a.schedule IS NULL AND a.once_within_minutes = 0
   AND a.run_as = '' AND a.memory_ids = '[]' AND a.resource = '' AND a.created_by = ''
 ORDER BY a.moment, coalesce(a.moment_stage, '')`, ws, key)
 		require.NoError(t, err)

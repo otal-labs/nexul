@@ -193,7 +193,7 @@ type AutoPlay struct {
 	OnceWithinMinutes int   `json:"once_within_minutes"`
 	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,person,computer"`
 	// RunAs is who a RunOnPerson auto play runs as, on their order; empty otherwise and while a seeded one awaits its pick.
-	RunAs string `json:"run_as"`
+	RunAs       string   `json:"run_as"`
 	ComputerIDs []string `json:"computer_ids" deprecated:"true" jsonschema:"Always []: an auto play runs as a person on their order now (ADR 0197)."`
 	ComputerID  string   `json:"computer_id" deprecated:"true" jsonschema:"Always empty: an auto play runs as a person on their order now (ADR 0197)."`
 	// MemoryIDs are read by each run beside the always-included ones; a run reads only those in its target's project.

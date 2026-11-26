@@ -60,8 +60,8 @@ func TestPlayQueueRepo_KeepsTheStackServiceAndOutageARunWasQueuedFor(t *testing.
 	seedPlays(t, s)
 	at := time.Date(2026, 10, 16, 9, 0, 0, 0, time.UTC)
 	it := newTestQueueItem("q-1", "ap-1", "st-1", "u-alice", plays.LevelNormal, at)
-	it.TargetType, it.RunOn, it.Moment = plays.TargetStack, plays.RunOnComputer, plays.MomentStackServiceCrashed
-	it.ComputerIDs, it.ComputerID, it.Service, it.OutageID = []string{"c-2", "c-1"}, "c-2", "api", "o-1"
+	it.TargetType, it.RunOn, it.Moment = plays.TargetStack, plays.RunOnPerson, plays.MomentStackServiceCrashed
+	it.ComputerIDs, it.Service, it.OutageID = []string{}, "api", "o-1"
 	_, err := s.PlayQueue.EnqueueRun(t.Context(), it)
 	require.NoError(t, err)
 

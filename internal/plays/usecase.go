@@ -620,4 +620,3 @@ func normalizeIDs(raw []string) []string {
 	slices.Sort(out)
 	return out
 }
-
