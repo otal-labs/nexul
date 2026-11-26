@@ -1318,7 +1318,7 @@ or "3 of 8 down", which lists the names when pressed), an error rate over its ru
 `warning` ("5xx 7.2% · last 5 min" in the line's own weight, then the time it
 began in muted mono), and a recovery within the hour reads `success` ("5xx
 recovered"). When the runner's newest observation of the stack is over an hour
-old, the count's line ends with it ("3 of 3 up · observed 14d ago"), or under a problem a muted "last observed 17d ago" closes Health. Last deploy is the
+old, a clean Health reads "No recent report" behind a `muted-foreground` dot instead of "No issues", over the count with its age ("3 of 3 up · observed 14d ago"), or under a problem a muted "last observed 17d ago" closes Health. Last deploy is the
 newest attempt's `HealthDot` and outcome in deploy words (Succeeded, Failed,
 Running or Pending; never "Healthy", which is how a service is doing), a
 running one with its elapsed time ("Running · 27m"), over that attempt's own
@@ -1339,7 +1339,7 @@ count), Logs (for whoever holds `stacks:logs`) and Settings, each its own path
 Overview is Services, then Requests (a stack with a hostname: the mono totals
 for the last hour with the 5xx share behind its hue, per-minute bars straight
 on the card over a hairline floor, the 5xx part in the status hue, a quiet minute leaving the
-floor bare and a minute nobody counted a faint full-height track, and the error-rate rule
+floor bare and a minute nobody counted a dash on the floor, never a bar, so an uncounted stretch never reads as traffic, and the error-rate rule
 in the footer). The Services card has no column headers and one line per
 service, rows sorted down first, then on their way, healthy, then stopped: the
 name, the image by its last segment cut in the middle, how it is reached (the
@@ -1347,28 +1347,28 @@ first public hostname as a link, else `service:port`, then a "+N" that lists the
 addresses when pressed; dropped below a 48rem card, where the strip carries the
 hostnames), the status (one still dot in its hue and the word, the same mark for every state, so
 running, a steady state with no healthcheck, and healthy are both a `success` dot, never a check or a spinner) in a fixed column, and
-a ghost Logs icon at the end. The name's tooltip holds the container name and
-every address. The 14px name sits 1px higher than its box centre so the row's
+a ghost Logs icon at the end. The name's tooltip holds the container name,
+every address and how the next deploy treats the service (swapped, or restarted
+in place and why). The 14px name sits 1px higher than its box centre so the row's
 texts share one baseline. A service's open outage replaces its status and is
 one line under the row: a `destructive` icon and "Down since 10:42" in plain
-text, then the exit code, "out of memory" and the restart count. One muted line
-under the rows names the count, the networks and how the next deploy treats each
-service (swapped, or restarted in place and why); it is information, so it is
-not a footer strip. A quiet hour draws no bars: the chart holds one muted
+text, then the exit code, "out of memory" and the restart count. The count and the
+networks sit in muted mono beside the card's title, not as a sentence under the
+rows. A quiet hour draws no bars: the chart holds one muted
 sentence over its floor hairline, and the totals line above it is left out.
 Deploys is one untitled card (the tab names it) with All / Failed on the
-tab row's right, then one hairline row per deploy straight on the card: the outcome in ink at row size (a
+tab row's right, then one hairline row per deploy straight on the card, each one line high: the outcome at row size, muted for a success and in ink otherwise (a
 running one with its elapsed time) in a 6.5rem column, what was deployed (the
 image by its last segment, or a branch icon with the ref and the short commit
 for a build), a neutral `live` chip with a `success` dot on the deploy whose
-image runs now, with who and why under it in muted mono (the actor by name,
-pull request, rule; nothing, not a dash, when there is none, and the actor only when the row above had another), how long a settled deploy took in mono ("1m 12s"), the time
+image runs now, then who and why in their own column in muted mono on every row (the actor by name,
+pull request, rule; nothing, not a dash, when there is none), how long a settled deploy took in mono ("1m 12s"), the time
 ("29 Oct 14:02") with the relative age in its tooltip, and a trailing chevron on a row that opens. The newest 25 show,
 the rest behind "Show 11 older". Logs is the Logs view below.
 
 Settings is the settings shell: `SettingsSectionNav` driving a `/:section`
 path segment (Environment, Alerts, Exposures, Branch deploys, Danger zone), one
-or two `SettingsCard`s per section. Alerts holds a Crash tickets card (one
+or two `SettingsCard`s per section. Environment shows a masked value as one fixed run of dots until it is focused, so the column never hints at a value's length, and a row's remove shows on hover or focus (always on a coarse pointer). Alerts holds a Crash tickets card (one
 switch row), a Crash notices card (a Channel select row, Off first, then a Post as select row of the channel's bots
 after System message while a channel is named, both applying on pick) and an Error rate card (one switch row stating the rule, its
 recovery in the footer, greyed with the reason when the stack has no hostname

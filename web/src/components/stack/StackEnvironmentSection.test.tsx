@@ -92,7 +92,7 @@ describe("StackEnvironmentSection", () => {
     await renderSection({ ...stack, env: { DATABASE_URL: "postgres://db.example.com/app", API_KEY: "op://acme/api/key", BAD: "op://acme" } });
 
     expect(screen.getAllByText("1Password")).toHaveLength(1);
-    expect(screen.getByLabelText("Value of API_KEY").nextElementSibling).toHaveTextContent("1Password");
+    expect(screen.getByLabelText("Value of API_KEY").parentElement).toHaveTextContent("1Password");
 
     mocks.patch.mockRejectedValue(new Error("BAD is not a valid secret reference; it must read op://vault/item/field"));
     await user.type(screen.getByLabelText("Value of DATABASE_URL"), "x");

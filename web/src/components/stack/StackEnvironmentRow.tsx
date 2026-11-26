@@ -6,6 +6,7 @@ import { TaggedInput } from "@/components/TaggedInput";
 import { envGridClass } from "@/components/stack/StackEnvironmentHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { StackEnvFormData } from "@/models/StackEnv";
 
 interface StackEnvironmentRowProps {
@@ -22,12 +23,15 @@ const valueFieldClass =
 export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironmentRowProps) => {
   const { register, control, formState } = useFormContext<StackEnvFormData>();
   const key = useWatch({ control, name: `rows.${index}.key` });
+  const value = useWatch({ control, name: `rows.${index}.value` });
+  // A masked value shows one fixed run of dots until focused, so the column never hints at a secret's length.
+  const masked = !revealed && !!value;
   const rowErrors = formState.errors.rows?.[index];
   const message = rowErrors?.key?.message ?? rowErrors?.value?.message;
   const name = key || "new variable";
 
   return (
-    <li className="space-y-1 py-1.5">
+    <li className="group space-y-1 py-1.5">
       <div className={envGridClass}>
         <Input
           aria-label={`Name of ${name}`}
@@ -45,13 +49,18 @@ export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironm
             type={revealed ? "text" : "password"}
             autoComplete="off"
             data-1p-ignore
-            className={valueFieldClass}
+            className={cn("peer", valueFieldClass, masked && "text-transparent focus:text-foreground")}
             placeholder="empty"
             spellCheck={false}
             {...register(`rows.${index}.value`)}
           />
+          {masked && (
+            <span aria-hidden className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-sm text-muted-foreground peer-focus:hidden">
+              ••••••••••••
+            </span>
+          )}
         </TaggedInput>
-        <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${name}`} onClick={onRemove} className="size-8 text-muted-foreground hover:text-foreground">
+        <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${name}`} onClick={onRemove} className="size-8 text-muted-foreground opacity-0 transition-[color,background-color,opacity] duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100 hover:text-foreground pointer-coarse:opacity-100">
           <XIcon aria-hidden />
         </Button>
       </div>

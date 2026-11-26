@@ -17,6 +17,7 @@ interface ServiceRowProps {
   container: Container;
   hostnames: string[];
   outage?: ServiceOutage | undefined;
+  deployNote: string;
 }
 
 const imageOf = (c: Container): string => c.image || c.declared.image || c.declared.build || "";
@@ -71,13 +72,15 @@ const LogsButton = ({ container }: { container: Container }) => {
 };
 
 // One line per service: name and status, the image, how it is reached, and its logs; an open outage adds why under it.
-export const ServiceRow = ({ container, hostnames, outage }: ServiceRowProps) => {
+export const ServiceRow = ({ container, hostnames, outage, deployNote }: ServiceRowProps) => {
   const canReadLogs = useAreaAccess()?.("stackLogs") ?? false;
   const image = imageOf(container);
   const ports = (container.ports ?? []).map(parseContainerPort).filter((p): p is ContainerPort => p != null);
   const addresses = [...hostnames, ...ports.map((port) => portText(container.name, port))];
-  // Narrow, the reach column drops; the name's tooltip keeps the container and every address.
-  const nameTitle = [container.container_name ? `container ${container.container_name}` : container.name, ...addresses].join("\n");
+  // Narrow, the reach column drops; the name's tooltip keeps the container, every address and what the next deploy does.
+  const nameTitle = [container.container_name ? `container ${container.container_name}` : container.name, ...addresses, deployNote]
+    .filter(Boolean)
+    .join("\n");
   // The 14px name centres 1px lower than the 12px mono beside it; lifted so the row shares one baseline.
   const name = (
     <span className="min-w-0 -translate-y-px truncate text-sm leading-4 font-medium text-foreground" title={nameTitle}>
