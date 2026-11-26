@@ -120,7 +120,7 @@ describe("ConnectorsSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByText(/^by /)).toBeInTheDocument();
+    expect(await screen.findByText(/^Connected by /)).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();
   });

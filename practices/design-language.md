@@ -1489,7 +1489,7 @@ Saved with a check for 1.4s. Settings that apply the moment they are picked
 shows the value picked while it saves, and only a failed save says so, in an
 error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
-button. The page header's meta line carries the open section's facts
+button (`CopyValue`), at a field's height and type size so it lines up with the inputs beside it. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme, Dark; 2 gateways, 3 hostnames), each fact 16px from the next with no dot between
 (`HeaderFacts`, in the UI sans on Your settings, Configuration and Project settings alike, only an id such as the prefix in mono), and marks
 instance sections Instance-wide. On Your settings, Configuration and a project's settings the open section is the page
@@ -1504,17 +1504,21 @@ row's Edit, always in view, opening that question's own markdown in place with R
 segmented Questions | Markdown control over it for editing the whole text at once.
 A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
 that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
-device first with a muted "This device" in the action column, a plain device icon with no tile, a Sign out on each other row shown on hover, and an outline Sign out everywhere else that turns
+device first with "This device" in ink in the action column, a plain device icon with no tile, a Sign out on each other row shown on hover, and an outline Sign out everywhere else that turns
 `destructive` on hover), Personal access tokens (revoked ones last), then
 Connect a device as two rows, Phone app and Desktop app, the QR opening under
 its row only once a code is generated, with Cancel and New code in the row's slot and the code centred on the QR. In a
 settings list mono is for identifiers only (handles, IPs, token prefixes, hostnames, the pairing code); counts, dates
 and the words between names stay in the UI sans. A row's state sits on its second line, never on the title's: a Team
-row's presence, a connector's, which drops the word its group label already says. Connectors list the connected
-tools first and the rest under a Not connected microheader, with no filter. A Team row is two lines: the name with a
-presence dot, then one meta line of handles, roles or workspaces, last seen and setup. Sign-in providers are one
-card per provider, stacked. A starting template shows its state only once edited; a group hint the group above
-already said is left out.
+row's setup, a connector's problem; a connected connector says only who connected it and when, muted after its name, with
+what it is for on the line under it, wrapping rather than cut. Connectors list the connected
+tools first and the rest under a Not connected microheader, with no filter. A Team row is the name with a
+presence dot over its handles and one setup mark (the steps left read aloud and shown in the person's dialog), then two
+fixed columns every row shares, roles or workspaces and last seen, so the eye scans down them. Sign-in providers are one
+card per provider, stacked; an off provider shows its redirect URI and keeps its form folded behind Set up in the footer,
+and an enabled one shows its client ID in the same copy well as the URI. A starting template shows its state only once edited, and its row is the toggle that opens its editor, a muted chevron
+at its end turning down while open; single templates that reach workspaces the same way share one group (Workspace
+defaults), and the Interview template is named Interview questions so the play of that name reads apart.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
 pane, above) inside the tab, kept in the page's panel like the other Access

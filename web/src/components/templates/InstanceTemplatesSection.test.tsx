@@ -95,7 +95,7 @@ describe("InstanceTemplatesSection", () => {
   it("lists each template under its group, marking only the edited ones", async () => {
     renderSection();
 
-    const interview = within(await screen.findByRole("region", { name: "Interview" }));
+    const interview = within(await screen.findByRole("region", { name: "Workspace defaults" }));
     expect(await interview.findByText("Edited")).toBeInTheDocument();
     expect(interview.getByText(/by Sam /)).toBeInTheDocument();
     const plays = within(screen.getByRole("region", { name: "Play instructions" }));
@@ -113,7 +113,7 @@ describe("InstanceTemplatesSection", () => {
 
   it("saves an edited instance template", async () => {
     mocks.put.mockResolvedValue({ data: {} });
-    const user = await openEditor("Interview");
+    const user = await openEditor("Interview questions");
     expect(screen.getByText("1 question")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Template (markdown)"), "!");
@@ -135,7 +135,7 @@ describe("InstanceTemplatesSection", () => {
 
   it("resets an edited instance template to the default only after a confirm", async () => {
     mocks.delete.mockResolvedValue({ data: {} });
-    const user = await openEditor("Interview");
+    const user = await openEditor("Interview questions");
 
     await user.click(screen.getByRole("button", { name: "Reset to default" }));
     expect(mocks.delete).not.toHaveBeenCalled();
@@ -197,7 +197,7 @@ describe("InstanceTemplatesSection", () => {
 
   it("asks before overwriting a target with its own edits, and clones nothing when told no", async () => {
     target = { edited: true };
-    const user = await openEditor("Interview");
+    const user = await openEditor("Interview questions");
 
     await user.click(screen.getByRole("button", { name: "Clone to…" }));
     await pickTarget(user, "A workspace", "Beta");

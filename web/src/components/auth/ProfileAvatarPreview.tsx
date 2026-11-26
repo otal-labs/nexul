@@ -1,3 +1,4 @@
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { avatarFill } from "@nexul/client-core/avatarFill";
 import { cn, initials } from "@/lib/utils";
 
@@ -8,10 +9,11 @@ interface ProfileAvatarPreviewProps {
   className?: string;
 }
 
-// Without a picture the profile shows the fill everyone else sees, its initials following the name as it is typed.
+// Without a picture the profile shows the fill everyone else sees, its initials following the name as it is typed;
+// a served picture loads with the session through PersonAvatar, painting that fill until it arrives.
 export const ProfileAvatarPreview = ({ src, login, name, className = "size-16 text-xl" }: ProfileAvatarPreviewProps) => (
   <>
-    {src && <img src={src} alt="" className={cn("rounded-full object-cover", className)} referrerPolicy="no-referrer" />}
+    {src && <PersonAvatar src={src} login={login} name={name.trim()} label={name.trim() || login} className={className} />}
     {!src && (
       <span
         aria-hidden

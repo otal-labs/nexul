@@ -59,6 +59,7 @@ describe("OAuthProviderSection", () => {
   it("enables with client id + secret on the provider's route", async () => {
     const user = userEvent.setup();
     renderSection("google");
+    await user.click(screen.getByRole("button", { name: "Set up" }));
     await user.type(screen.getByLabelText(/client id/i), "g-id");
     await user.type(screen.getByLabelText(/client secret/i), "g-secret");
     await user.click(screen.getByRole("button", { name: "Enable Google sign-in" }));
@@ -68,6 +69,7 @@ describe("OAuthProviderSection", () => {
   it("refuses a first setup without a secret, without calling the api", async () => {
     const user = userEvent.setup();
     renderSection("discord");
+    await user.click(screen.getByRole("button", { name: "Set up" }));
     await user.type(screen.getByLabelText(/client id/i), "d-id");
     await user.click(screen.getByRole("button", { name: "Enable Discord sign-in" }));
     expect(mocks.put).not.toHaveBeenCalled();

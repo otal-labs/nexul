@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
-import { CopyButton } from "@/components/settings/CopyButton";
+import { CopyValue } from "@/components/settings/CopyValue";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
@@ -74,12 +74,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
             </div>
           </SettingsRow>
           <SettingsRow label="OAuth callback" description="Register it as the callback of the GitHub OAuth app.">
-            <span className="flex w-full min-w-0 items-center gap-1 rounded-md bg-surface-2 py-0.5 pr-0.5 pl-2.5 ring-1 ring-border">
-              <code className="min-w-0 flex-1 truncate font-mono text-xs" title={settings.oauth_callback}>
-                {settings.oauth_callback}
-              </code>
-              <CopyButton value={settings.oauth_callback} label="Copy OAuth callback" iconOnly variant="ghost" />
-            </span>
+            <CopyValue value={settings.oauth_callback} label="Copy OAuth callback" />
           </SettingsRow>
         </SettingsRows>
       </form>

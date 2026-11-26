@@ -17,10 +17,10 @@ export const TemplateEditedLine = ({ template }: TemplateEditedLineProps) => {
     .join(" ");
   if (!template.edited) return null;
   return (
-    <p className="flex min-w-0">
+    <span className="flex min-w-0">
       <SettingsStatus tone="info" detail={detail || undefined}>
         {template.added ? "Added" : "Edited"}
       </SettingsStatus>
-    </p>
+    </span>
   );
 };

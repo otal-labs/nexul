@@ -4,7 +4,7 @@ import { ActionButton } from "@/components/action/ActionButton";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { SamlCertificateRows } from "@/ee/components/SamlCertificateRows";
-import { SsoCopyValue } from "@/ee/components/SsoCopyValue";
+import { CopyValue } from "@/components/settings/CopyValue";
 import { SsoJoinRole } from "@/ee/components/SsoJoinRole";
 import { SsoOnlyRow } from "@/ee/components/SsoOnlyRow";
 import { useSaveSaml, useSetSamlOnly } from "@/ee/hooks/SsoHooks";
@@ -51,13 +51,13 @@ export const SamlRows = ({ saml }: { saml: SamlSettings }) => {
   return (
     <SettingsRows>
       <SettingsRow label="Entity ID" description="Register Nexul at your provider with these, or give it the metadata link.">
-        <SsoCopyValue value={saml.sp.entity_id} label="Copy entity ID" />
+        <CopyValue value={saml.sp.entity_id} label="Copy entity ID" />
       </SettingsRow>
       <SettingsRow label="Assertion consumer service URL">
-        <SsoCopyValue value={saml.sp.acs_url} label="Copy assertion consumer service URL" />
+        <CopyValue value={saml.sp.acs_url} label="Copy assertion consumer service URL" />
       </SettingsRow>
       <SettingsRow label="Metadata" description={<a href={saml.sp.metadata_url} className="text-brand underline-offset-2 hover:underline">Open Nexul's metadata XML</a>}>
-        <SsoCopyValue value={saml.sp.metadata_url} label="Copy metadata link" />
+        <CopyValue value={saml.sp.metadata_url} label="Copy metadata link" />
       </SettingsRow>
       <SettingsRow label="Provider" description={saml.idp_entity_id}>
         <span className="truncate text-sm">{saml.display_name}</span>

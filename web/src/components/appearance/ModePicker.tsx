@@ -2,7 +2,7 @@ import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useShallow } from "zustand/react/shallow";
 
 import { ThemeMiniature } from "@/components/appearance/ThemeMiniature";
-import { pickerGridClass, ThemeTile } from "@/components/appearance/ThemeTile";
+import { ThemeTile } from "@/components/appearance/ThemeTile";
 import { AppearanceMode, type AppearanceMode as AppearanceModeType } from "@/enums/Theme";
 import { themePreviewColors } from "@/lib/themePalettes";
 import { useThemeStore } from "@/stores/themeStore";
@@ -13,7 +13,7 @@ const MODES = [
   { mode: AppearanceMode.Dark, label: "Dark" },
 ] as const;
 
-// Each mode drawn in the current palette; System is light on the left and dark on the right, as the OS decides.
+// Three tiles span the row, so Mode and Theme end on one right edge. Each mode drawn in the current palette; System is light on the left and dark on the right, as the OS decides.
 export const ModePicker = () => {
   const { appearanceMode, themeId, setAppearanceMode } = useThemeStore(
     useShallow((s) => ({ appearanceMode: s.appearanceMode, themeId: s.themeId, setAppearanceMode: s.setAppearanceMode })),
@@ -24,7 +24,7 @@ export const ModePicker = () => {
   const pick = (mode: string) => setAppearanceMode(mode as AppearanceModeType);
 
   return (
-    <RadioGroupPrimitive.Root aria-label="Mode" value={appearanceMode} onValueChange={pick} className={pickerGridClass}>
+    <RadioGroupPrimitive.Root aria-label="Mode" value={appearanceMode} onValueChange={pick} className="grid grid-cols-3 gap-3">
       {MODES.map(({ mode, label }) => (
         <ThemeTile key={mode} value={mode} label={label} selected={appearanceMode === mode}>
           {mode === AppearanceMode.Light && <ThemeMiniature colors={light} />}

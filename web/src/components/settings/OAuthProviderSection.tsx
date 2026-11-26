@@ -1,4 +1,7 @@
-import { CopyButton } from "@/components/settings/CopyButton";
+import { useState } from "react";
+
+import { ActionButton } from "@/components/action/ActionButton";
+import { CopyValue } from "@/components/settings/CopyValue";
 import { OAuthProviderActions } from "@/components/settings/OAuthProviderActions";
 import { OAuthProviderForm } from "@/components/settings/OAuthProviderForm";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -12,7 +15,9 @@ interface OAuthProviderSectionProps {
 }
 
 // Optional sign-in providers (ADR 0040) for non-GitHub users; instance:write to change, secret is write-only.
+// An off provider keeps its form folded behind Set up, so the page is not mostly an unrequested form.
 export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectionProps) => {
+  const [settingUp, setSettingUp] = useState(false);
   const copy = oauthProviderCopy[provider];
   const enabled = settings[`${provider}_oauth_configured`] ?? false;
   const callback = settings[`${provider}_oauth_callback`] ?? "";
@@ -24,26 +29,35 @@ export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectio
       title={`${copy.label} sign-in`}
       description={`Lets invited people without GitHub, such as clients, sign in with ${copy.label}.`}
       aside={<SettingsStatus tone={enabled ? "success" : "muted"}>{enabled ? "Enabled" : "Off"}</SettingsStatus>}
-      footer={enabled && <OAuthProviderActions provider={provider} clientId={clientId} />}
+      footer={
+        <>
+          {enabled && <OAuthProviderActions provider={provider} clientId={clientId} />}
+          {!enabled && (
+            <ActionButton
+              permission="instance:write"
+              verb="change sign-in providers"
+              variant={settingUp ? "ghost" : "outline"}
+              size="sm"
+              aria-expanded={settingUp}
+              onClick={() => setSettingUp(!settingUp)}
+            >
+              {settingUp ? "Cancel" : "Set up"}
+            </ActionButton>
+          )}
+        </>
+      }
     >
       <SettingsRows>
         <SettingsRow label="Redirect URI" description={`${copy.console}, and register this as its redirect URI.`} stacked>
-          <span className="flex w-full min-w-0 items-center gap-1 rounded-md bg-surface-2 py-0.5 pr-0.5 pl-2.5 ring-1 ring-border">
-            <code className="min-w-0 flex-1 truncate font-mono text-xs" title={callback}>
-              {callback}
-            </code>
-            <CopyButton value={callback} label="Copy redirect URI" iconOnly variant="ghost" />
-          </span>
+          <CopyValue value={callback} label="Copy redirect URI" />
         </SettingsRow>
         {enabled && (
-          <SettingsRow label="Client ID">
-            <code className="truncate font-mono text-xs" title={clientId}>
-              {clientId}
-            </code>
+          <SettingsRow label="Client ID" stacked>
+            <CopyValue value={clientId} label="Copy client ID" />
           </SettingsRow>
         )}
       </SettingsRows>
-      {!enabled && (
+      {!enabled && settingUp && (
         <div className="mt-5">
           <OAuthProviderForm provider={provider} />
         </div>

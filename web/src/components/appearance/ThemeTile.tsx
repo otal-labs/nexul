@@ -11,10 +11,8 @@ interface ThemeTileProps {
   children: ReactNode;
 }
 
-// Mode and Theme share one column grid, so a mode tile is the size of a theme tile and the two read as one picker.
-export const pickerGridClass = "grid grid-cols-3 gap-3 @lg:grid-cols-4";
 
-// A radio drawn as the thing it picks: the miniature above its name, the selected one ringed in the accent and named in ink.
+// A radio drawn as the thing it picks: the miniature above its name, the selected one ringed in the accent (its one mark) and named in ink.
 export const ThemeTile = ({ value, label, selected, children }: ThemeTileProps) => (
   <RadioGroupPrimitive.Item
     value={value}
@@ -28,6 +26,6 @@ export const ThemeTile = ({ value, label, selected, children }: ThemeTileProps) 
     >
       {children}
     </span>
-    <span className={cn("truncate px-0.5 text-xs", selected ? "font-medium text-foreground" : "text-muted-foreground")}>{label}</span>
+    <span className={cn("truncate px-0.5 text-row", selected ? "text-foreground" : "text-muted-foreground")}>{label}</span>
   </RadioGroupPrimitive.Item>
 );
