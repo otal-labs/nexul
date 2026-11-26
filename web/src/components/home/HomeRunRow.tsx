@@ -21,9 +21,9 @@ export const HomeRunRow = ({ run: { ticket, waiting, started }, prefix }: HomeRu
       <Link
         to={wsPath(ticketPath(ticket, prefix))}
         {...prefetch}
-        className="-mx-2 flex gap-2 rounded-md px-2 py-2 text-row transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
+        className="-mx-2 flex gap-2.5 rounded-md px-2 py-2 text-row transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
       >
-        <span className="flex h-lh w-3.5 shrink-0 items-center justify-center">
+        <span className="flex h-lh w-4 shrink-0 items-center justify-center">
           <span
             aria-hidden
             className={cn("size-2 rounded-full", waiting ? "bg-warning-mark" : "animate-[status-pulse_2.4s_ease-standard_infinite] bg-info")}

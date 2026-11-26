@@ -1877,14 +1877,14 @@ first step and a chevron. Opened, one 13px row per agent under a hairline: its
 mark, its title, its model in muted mono cut to fit, and its state dot; a row
 opens that agent's conversation in a dialog. `HandoffGroup` is the reference.
 
-Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, then a
-16px mark for what happened, both level with the title's first line (it shrinks to 0.6 as it fades over 150ms when
+Inbox row. A 6px `foreground` unread dot hung in the row's 12px left padding, so the
+16px mark sits on the list's microheader edge whether the row is read or not; then the mark for what happened, both level with the title's first line (it shrinks to 0.6 as it fades over 150ms when
 the row is read; a folder row's dot sits in the same gutter and shows only
 while the folder is collapsed), so unread reads as one column down the pane.
 The mark (assigned, mentioned, status, doc created or edited, questions,
 memory) is muted, or in its status hue for a notice that carries a state (a
 crash or 5xx over the limit `destructive`, their recovery `success`, a play
-waiting on an answer or a ticket due tomorrow `warning`); a play run that
+waiting on an answer or a ticket due tomorrow `warning`; a row whose ticket still waits on an answer leads with that question mark whatever its newest notice was); a play run that
 ended shows how, a check in `success`, a cross in `destructive` for failed, a
 stop in `warning` for interrupted, named by its label. The title is ink in
 both states, semibold while unread, two lines at most, a ticket key inside it
