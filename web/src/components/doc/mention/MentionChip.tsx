@@ -20,13 +20,17 @@ const MENTION_ICONS: Record<MentionType, LucideIcon> = { ticket: TicketIcon, doc
 
 const hrefFor = (type: MentionType, id: string) => (type === "ticket" ? `/tickets/${id}` : `/docs/${id}`);
 
+const UNNAMED: Record<MentionType, string> = { ticket: "Private ticket", doc: "Private doc" };
+
 // Ticket text follows the workspace template (spec.md §6); one the viewer can't open shows the same text, locked and inert.
 export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
   const workspace = useSelectedWorkspace();
   const wsPath = useWorkspacePath();
   const canOpen = chip?.can_open ?? false;
   const Icon = MENTION_ICONS[type];
-  const text = mentionChipText(type, workspace?.mention_chip_template ?? "", chip, label);
+  // A mention stored without a label carries only its id; one the viewer can't resolve is named, never shown as the id.
+  const unnamed = !chip?.title && label === id;
+  const text = unnamed ? UNNAMED[type] : mentionChipText(type, workspace?.mention_chip_template ?? "", chip, label);
 
   const content = (
     <>

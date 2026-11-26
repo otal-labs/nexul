@@ -50,6 +50,15 @@ describe("MentionChip", () => {
     expect(link).toHaveTextContent("Fix the bug · In progress");
   });
 
+  it("names a doc it can't resolve instead of showing its id", () => {
+    const chip: MentionChipData = { type: "doc", id: "d-1", title: "", can_open: false };
+    render(wrap(<MentionChip type="doc" id="d-1" label="d-1" chip={chip} />));
+
+    const inert = screen.getByTestId("mention-chip");
+    expect(inert).toHaveTextContent("Private doc");
+    expect(inert).not.toHaveTextContent("d-1");
+  });
+
   it("substitutes a custom template's tokens from the resolved chip fields", async () => {
     mockTemplate("{ticket.Project} {ticket.Ticket}");
     const chip: MentionChipData = {
