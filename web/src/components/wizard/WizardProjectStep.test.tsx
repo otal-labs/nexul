@@ -37,7 +37,7 @@ describe("WizardProjectStep", () => {
   it("uppercases the prefix as it is typed and creates a project whose prefix has a digit", async () => {
     const user = userEvent.setup();
     renderStep();
-    await screen.findByRole("button", { name: "Continue" });
+    expect(await screen.findByRole("button", { name: "Continue" })).toBeDisabled();
     await user.type(screen.getByLabelText("Project name"), "Phase 1");
     await user.type(screen.getByLabelText("Prefix"), "p1");
     expect(screen.getByLabelText("Prefix")).toHaveValue("P1");

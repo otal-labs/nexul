@@ -22,12 +22,12 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
   const unfinished = inSetup(project);
 
   return (
-    <SettingsCard id="project" title="Project">
+    <SettingsCard id="project" title="Project" description="Its name and mark, as the sidebar and board show them.">
       <div className="flex items-center gap-4 pb-5">
         <ProjectMark project={project} className="size-12 rounded-lg text-sm" />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
-            <ProjectName project={project} onRename={(name) => renameProject.mutateAsync({ id: project.id, name })} />
+            <ProjectName project={project} className="[&>svg]:opacity-100" onRename={(name) => renameProject.mutateAsync({ id: project.id, name })} />
           </div>
           <SettingsHint>
             Prefix <span className="font-mono text-foreground/90">{project.prefix}</span>, so tickets read{" "}

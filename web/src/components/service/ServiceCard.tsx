@@ -10,13 +10,14 @@ import { DeployStrategy, type ServiceDef } from "@/models/Service";
 
 interface ServiceCardProps {
   service: ServiceDef;
+  showMachine?: boolean | undefined;
 }
 
 // The machine it runs on, then the repository it builds from, each named, since two mono ids side by side read as one.
-const SourceLine = ({ service }: ServiceCardProps) => {
+const SourceLine = ({ service, showMachine = true }: ServiceCardProps) => {
   const repo = service.build_source;
   const built = repo?.repo_owner && repo?.repo_name ? `${repo.repo_owner}/${repo.repo_name}` : "";
-  const machine = service.machine || service.target;
+  const machine = showMachine && (service.machine || service.target);
   return (
     <span className="flex min-w-0 items-baseline gap-3">
       {machine && (
@@ -34,7 +35,7 @@ const SourceLine = ({ service }: ServiceCardProps) => {
 };
 
 // One service, opening its stack; a right-click opens the stack's Permissions… for whoever may set its rules.
-export const ServiceCard = ({ service }: ServiceCardProps) => {
+export const ServiceCard = ({ service, showMachine }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
   const { menu, manages } = useStackPermissions(service);
   const wsPath = useWorkspacePath();
@@ -54,7 +55,7 @@ export const ServiceCard = ({ service }: ServiceCardProps) => {
             {!canOpen && name}
           </>
         }
-        meta={<SourceLine service={service} />}
+        meta={<SourceLine service={service} showMachine={showMachine} />}
         control={canOpen && <ChevronRightIcon className="pointer-events-none size-4 text-muted-foreground" aria-hidden />}
       />
     </RowContextMenu>

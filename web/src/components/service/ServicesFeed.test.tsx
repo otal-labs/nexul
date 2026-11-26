@@ -49,4 +49,15 @@ describe("ServicesFeed", () => {
     expect(screen.getByText("10.0.0.2:22")).toBeInTheDocument();
     expect(screen.getByLabelText("run")).toBeInTheDocument();
   });
+
+  it("leaves a machine every service shares to the header, and keeps the repository", () => {
+    const shared = services.map((svc) => ({ ...svc, target: "", machine: "prod-1", build_source: { repo_owner: "acme", repo_name: "api" } }));
+    render(
+      <MemoryRouter>
+        <ServicesFeed services={shared as ServiceDef[]} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText("prod-1")).not.toBeInTheDocument();
+    expect(screen.getAllByText("acme/api")).toHaveLength(2);
+  });
 });

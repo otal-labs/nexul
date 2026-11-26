@@ -25,7 +25,7 @@ export const WorkspaceUrlField = () => {
           message && "border-destructive",
         )}
       >
-        <span className="hidden shrink-0 items-center border-r border-border bg-muted/50 px-2.5 font-mono text-sm text-muted-foreground @[32rem]:flex dark:bg-surface-2">
+        <span className="hidden shrink-0 items-center pl-3 font-mono text-sm text-muted-foreground @[32rem]:flex">
           {window.location.host}/
         </span>
         <Input
@@ -36,7 +36,7 @@ export const WorkspaceUrlField = () => {
           onChange={(e) => field.onChange(normalizeSlugInput(e.target.value))}
           spellCheck={false}
           autoComplete="off"
-          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent font-mono shadow-none outline-none! dark:bg-transparent"
+          className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent font-mono shadow-none outline-none! @[32rem]:pl-0 dark:bg-transparent"
         />
         {canSuggest && (
           <span className="flex shrink-0 items-center pr-1">

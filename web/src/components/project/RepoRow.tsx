@@ -45,9 +45,9 @@ export const RepoRow = ({ projectId, onLeave, repo, services }: RepoRowProps) =>
       lead={<GithubMark className="size-3.5 text-muted-foreground" />}
       name={<span className="truncate font-mono text-row" title={repo.full_name}>{repo.full_name}</span>}
       meta={
-        <span className="flex items-baseline gap-2">
-          <span className="rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5 font-medium">{tests ? "Tests, never deployed" : "App"}</span>
-          {services !== undefined && countLabel(services, "service")}
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 rounded-full border border-border bg-foreground/[0.04] px-2 py-0.5" title={tests ? "Tests, never deployed" : undefined}>{tests ? "Tests" : "App"}</span>
+          {services !== undefined && <span className="min-w-0 truncate">{countLabel(services, "service")}</span>}
         </span>
       }
       control={repo.connector_id === "github" && <RepoIssuesSwitch projectId={projectId} repo={repo} />}
