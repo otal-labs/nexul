@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { KeyRound, PlusIcon } from "lucide-react";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { EmptyRow } from "@/components/EmptyRow";
+import { EmptyState } from "@/components/EmptyState";
 import { AutomationListBar } from "@/components/automation/AutomationListBar";
 import { AutomationSecretForm } from "@/components/automation/AutomationSecretForm";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
@@ -16,27 +16,31 @@ export const AutomationSecretsSection = () => {
   const { data, isPending, error } = useFetchAutomationSecrets();
   const [editing, setEditing] = useState<{ name?: string } | null>(null);
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
+  const empty = !!data && data.length === 0 && !editing;
+  const addSecret = (
+    <ActionButton permission="automations:write" verb="add automation secrets" icon={PlusIcon} variant="outline" size="sm" onClick={() => setEditing({})}>
+      Add secret
+    </ActionButton>
+  );
 
   return (
     <section aria-label="Secrets" className="space-y-1">
-      <AutomationListBar
-        summary={
-          <>
-            {data && data.length > 0 && (
-              <span className="font-mono tabular-nums">
-                {data.length} {data.length === 1 ? "secret" : "secrets"} ·{" "}
-              </span>
-            )}
-            Every automation reads them as <code className="font-mono text-foreground">ctx.secrets.NAME</code>.
-          </>
-        }
-      >
-        {!editing && (
-          <ActionButton permission="automations:write" verb="add automation secrets" icon={PlusIcon} variant="outline" size="sm" onClick={() => setEditing({})}>
-            Add secret
-          </ActionButton>
-        )}
-      </AutomationListBar>
+      {data && !empty && (
+        <AutomationListBar
+          summary={
+            <>
+              {data.length > 0 && (
+                <span className="font-mono tabular-nums">
+                  {data.length} {data.length === 1 ? "secret" : "secrets"} ·{" "}
+                </span>
+              )}
+              Every automation reads them as <code className="font-mono text-foreground">ctx.secrets.NAME</code>.
+            </>
+          }
+        >
+          {!editing && addSecret}
+        </AutomationListBar>
+      )}
       {editing && (
         <div className="px-4 pt-1 pb-2">
           <AutomationSecretForm key={editing.name ?? "new"} {...(editing.name ? { name: editing.name } : {})} onDone={() => setEditing(null)} />
@@ -44,8 +48,13 @@ export const AutomationSecretsSection = () => {
       )}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && !editing && (
-        <EmptyRow className="border-y border-border">No secrets yet. Save an API key or a webhook URL here, and an automation reads it without it ever sitting in its code.</EmptyRow>
+      {empty && (
+        <EmptyState
+          icon={KeyRound}
+          title="No secrets yet"
+          message="Save an API key or a webhook URL once, and every automation reads it as ctx.secrets.NAME without it ever sitting in its code."
+          action={addSecret}
+        />
       )}
       {data && data.length > 0 && (
         <div ref={glideRef}>

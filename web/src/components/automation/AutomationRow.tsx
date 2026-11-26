@@ -27,7 +27,7 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
       <span className="row-span-2 self-start">
         <AutomationStatusMark automation={automation} />
       </span>
-      <div className="flex h-5 min-w-0 items-baseline gap-2">
+      <div className="flex h-5 min-w-0 items-baseline gap-3">
         <Link
           to={wsPath(`/automations/${automation.id}`)}
           title={automation.name}

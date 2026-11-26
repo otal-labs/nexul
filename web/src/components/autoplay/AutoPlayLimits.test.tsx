@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,11 +40,12 @@ describe("AutoPlayLimits", () => {
   it("sets the runs at once of the computer picked from, and lists none that are shared with the viewer", async () => {
     wrap(<AutoPlayLimits workspaceId="ws-1" ticket canWrite />);
 
-    const mint = await screen.findByRole("radiogroup", { name: "Runs at once on mint" });
-    await userEvent.setup().click(within(mint).getByRole("radio", { name: "3" }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("combobox", { name: "Runs at once on mint" }));
+    await user.click(await screen.findByRole("option", { name: "3" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-mint", { runs_at_once: 3 });
-    expect(screen.getAllByRole("radiogroup", { name: /^Runs at once on/ })).toHaveLength(2);
+    expect(screen.getAllByRole("combobox", { name: /^Runs at once on/ })).toHaveLength(2);
     expect(screen.queryByText(/lena-laptop/)).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Auto plays per ticket a day" })).toHaveTextContent("5");
   });

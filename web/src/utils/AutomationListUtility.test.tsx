@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { AutomationKind, AutomationRunOutcome } from "@/enums/Automation";
 import { AutomationAttention, AutomationState, type Automation } from "@/models/Automation";
-import { automationGroups, automationLastRunText, automationListItems, automationWeekText } from "@/utils/AutomationListUtility";
+import { automationGroups, automationLastRunText, automationListItems, automationNeedsAttention, automationWeekText } from "@/utils/AutomationListUtility";
 
 const failedRun = { outcome: AutomationRunOutcome.Failure, started_at: new Date().toISOString(), error: "boom" };
 
@@ -45,6 +45,17 @@ describe("automationListItems", () => {
       new Set(),
     );
     expect(items.map((item) => item.automation.name)).toEqual(["a2", "b", "a1", "c", "d"]);
+  });
+});
+
+describe("automationNeedsAttention", () => {
+  it.each([
+    { name: "an off automation with a pending version", a: automation("x", { enabled: false, pending_version: 2 }), expected: true },
+    { name: "an on automation with a pending version", a: automation("x", { pending_version: 2 }), expected: true },
+    { name: "a failing one, whose failure leads instead", a: automation("x", { last_run: failedRun, pending_version: 2 }), expected: false },
+    { name: "a healthy off automation", a: automation("x", { enabled: false }), expected: false },
+  ])("$name: $expected", ({ a, expected }) => {
+    expect(automationNeedsAttention(automationListItems([a], new Set())[0]!)).toBe(expected);
   });
 });
 

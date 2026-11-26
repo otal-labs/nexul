@@ -25,10 +25,9 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
         </span>
         <RunnerName name={code.name} muted />
       </span>
-      <span className="truncate text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
+      <span className="col-span-2 truncate text-right text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
         unused code · until {until}
       </span>
-      <span />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="-my-1 size-7 self-center justify-self-end" aria-label={`More actions for the code for ${code.name}`} loading={revoke.isPending}>
