@@ -315,7 +315,7 @@ describe("MessageRow on a touch screen", () => {
     expect(row).toHaveFocus();
     const hidden = [...(row?.querySelectorAll(".opacity-0") ?? [])];
     expect(hidden).toContain(screen.getByRole("button", { name: "Add reaction" }).parentElement);
-    if (continuation) expect(hidden).toContain(container.querySelector("time"));
+    if (continuation) expect(hidden).toContain(container.querySelector("time")?.closest(".opacity-0"));
     for (const el of hidden) expect(el.className).toContain("[@media(hover:none)]:group-focus:opacity-100");
   });
 });

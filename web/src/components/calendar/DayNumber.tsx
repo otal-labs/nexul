@@ -11,8 +11,8 @@ export const DayNumber = ({ day, today }: DayNumberProps) => (
   <span
     aria-current={today ? "date" : undefined}
     className={cn(
-      "inline-flex h-5 shrink-0 items-center font-mono text-xs tabular-nums",
-      today && "w-5 justify-center rounded-full bg-foreground font-semibold text-background",
+      "inline-flex h-6 shrink-0 items-center font-mono text-row tabular-nums",
+      today && "w-6 justify-center rounded-full bg-foreground font-semibold text-background",
     )}
   >
     {formatDayOfMonth(day)}

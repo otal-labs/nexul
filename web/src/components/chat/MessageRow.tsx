@@ -11,7 +11,7 @@ import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
 import { MessageReactions } from "@/components/chat/MessageReactions";
-import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
+import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, OwnMessageMeta, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { HandoffGroup } from "@/components/handoff/HandoffGroup";
 import { NoteMessage } from "@/components/note/NoteMessage";
@@ -41,15 +41,15 @@ interface MessageRowProps {
   onDelete: (messageId: string) => Promise<void>;
 }
 
-// timeOnHover is the clock time a grouped message of yours reveals beside its bubble, in place of the header it dropped.
+// grouped says the previous message is yours too, so this bubble's time waits for a hover.
 interface MessageBubbleProps {
   message: ChatMessage;
   own: boolean;
-  timeOnHover: boolean;
+  grouped: boolean;
   actions: ReactNode;
 }
 
-const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProps) => (
+const MessageBubble = ({ message, own, grouped, actions }: MessageBubbleProps) => (
   <div
     data-slot="bubble"
     className={cn(
@@ -59,12 +59,7 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
       !own && "max-w-[72ch] px-0 py-0",
     )}
   >
-    {timeOnHover && (
-      <MessageContinuationTime
-        createdAt={message.created_at}
-        className="absolute top-1/2 right-full mr-2 -translate-y-1/2"
-      />
-    )}
+    {own && <OwnMessageMeta message={message} revealed={!grouped} />}
     {actions}
     <MessageBody body={message.body} mentionHandles={(message.mentions ?? []).map((m) => m.handle)} />
   </div>
@@ -103,7 +98,7 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
   );
 };
 
-// Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
+// Your own messages sit right-aligned with their time beside the bubble; everyone else gets an avatar + name/time header.
 const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
@@ -155,7 +150,7 @@ const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false
             </MessageAvatar>
           )}
           <MessageContent className="gap-0.5">
-            {!continuation && <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />}
+            {!continuation && align === "start" && <MessageRowHeader message={message} isAgent={isAgent} author={author} />}
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
             )}
@@ -163,7 +158,7 @@ const MessageRowImpl = ({ message, author: resolved, isOwn, continuation = false
               <MessageBubble
                 message={message}
                 own={align === "end"}
-                timeOnHover={continuation && align === "end"}
+                grouped={continuation}
                 actions={
                   !message.pending && (
                     <MessageActions

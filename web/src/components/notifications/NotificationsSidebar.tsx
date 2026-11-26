@@ -2,16 +2,16 @@ import { CheckCheckIcon, InboxIcon } from "lucide-react";
 import { useRef } from "react";
 import { useParams } from "react-router";
 
-import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneEmpty } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
-import { InboxEntryRow } from "@/components/notifications/InboxEntryRow";
+import { InboxDaySection } from "@/components/notifications/InboxDaySection";
 import { InboxFilterToggle } from "@/components/notifications/InboxFilterToggle";
 import { InboxListSkeleton } from "@/components/notifications/InboxListSkeleton";
 import { Button } from "@/components/ui/button";
 import { useInboxFilterStore } from "@/stores/inboxFilterStore";
-import { inboxUnreadCount, unreadEntries, type InboxEntry } from "@/utils/InboxUtility";
+import { cn } from "@/lib/utils";
+import { inboxDayGroups, inboxUnreadCount, unreadEntries, type InboxEntry } from "@/utils/InboxUtility";
 
 interface NotificationsSidebarProps {
   entries: InboxEntry[] | undefined;
@@ -39,7 +39,8 @@ export const NotificationsSidebar = ({
     onMarkAllRead();
   };
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    // Filling the page, the list keeps to a reading width so each row's time stays beside its title.
+    <div className={cn("flex h-full min-h-0 flex-col", !rowKey && "mx-auto max-w-4xl")}>
       <ListPaneHeader
         title="Inbox"
         count={unread}
@@ -60,11 +61,7 @@ export const NotificationsSidebar = ({
         {Boolean(error) && <ErrorDisplay error={error} />}
         {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" hint="Assignments, mentions and changes to what you follow land here." />}
         {entries && entries.length > 0 && shown && shown.length === 0 && <ListPaneEmpty icon={InboxIcon} message="Nothing unread" hint="All shows what you've read." />}
-        {shown && shown.length > 0 && (
-          <EnterList as="div" arrival="rise">
-            {shown.map((e) => <InboxEntryRow key={e.key} entry={e} />)}
-          </EnterList>
-        )}
+        {shown && shown.length > 0 && inboxDayGroups(shown).map((group) => <InboxDaySection key={group.label} group={group} />)}
       </nav>
     </div>
   );
