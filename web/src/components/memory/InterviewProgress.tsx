@@ -10,9 +10,9 @@ interface InterviewProgressProps {
 }
 
 const SEGMENT: Record<RowProgress, string> = {
-  answered: "bg-foreground/55",
-  skipped: "bg-foreground/20 ring-1 ring-foreground/45 ring-inset",
-  drafted: "bg-warning-mark/45",
+  answered: "bg-success",
+  skipped: "bg-foreground/40",
+  drafted: "bg-warning-mark/60",
   waiting: "bg-foreground/10",
 };
 
@@ -63,7 +63,7 @@ export const InterviewProgress = ({ sections, current, onJump }: InterviewProgre
 
 const LegendItem = ({ swatch, label }: { swatch: string; label: string }) => (
   <li className="flex items-center gap-1.5">
-    <span className={cn("h-1 w-3 rounded-full", swatch)} />
+    <span className={cn("h-1.5 w-3 rounded-full", swatch)} />
     {label}
   </li>
 );

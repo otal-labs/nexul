@@ -52,13 +52,12 @@ describe.each([
   { who: "a reader", showLocked: false },
   { who: "a reader whose role shows locked actions", showLocked: true },
 ])("the memories list for $who", ({ showLocked }) => {
-  it("hides or locks New memory and the always-included switch", async () => {
+  it("hides or locks New memory", async () => {
     renderPane(showLocked);
     await screen.findByText("Naming rules");
     await expectWriteControls(
       [
         { role: "button", name: "New memory", reason: "Your role can't create memories" },
-        { role: "switch", name: "Always include Naming rules", reason: "Your role can't change memories" },
       ],
       showLocked,
     );
@@ -85,8 +84,8 @@ describe.each([
 });
 
 describe("a memories list row", () => {
-  it("says when a run last read it, and says nothing while none has", async () => {
-    const read = { ...memory, id: "mem-2", title: "Release steps", last_read_at: new Date(Date.now() - 2 * 3_600_000).toISOString() };
+  it("says when it is sent in every turn, and keeps quiet otherwise", async () => {
+    const read = { ...memory, id: "mem-2", title: "Release steps", always_included: true };
     mocks.get.mockImplementation(asReader({ permissions: ["memories:read"] }));
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -97,7 +96,7 @@ describe("a memories list row", () => {
     );
 
     const readRow = (await screen.findByText("Release steps")).closest("li");
-    expect(readRow).toHaveTextContent("Read by a run 2h ago");
-    expect(screen.getByText("Naming rules").closest("li")).not.toHaveTextContent("Read by a run");
+    expect(readRow).toHaveTextContent("Always included");
+    expect(screen.getByText("Naming rules").closest("li")).not.toHaveTextContent("Always included");
   });
 });

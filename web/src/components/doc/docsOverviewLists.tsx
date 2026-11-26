@@ -40,7 +40,7 @@ export interface DayGroup {
 // Newest-first docs split at today and the last week; empty groups are left out.
 export const dayGroups = (docs: DocListItem[]): DayGroup[] =>
   [
-    { label: "Today", docs: docs.filter((d) => daysAgo(d.updated_at) < 1) },
-    { label: "Last 7 days", docs: docs.filter((d) => daysAgo(d.updated_at) >= 1 && daysAgo(d.updated_at) < 7) },
-    { label: "Earlier", docs: docs.filter((d) => daysAgo(d.updated_at) >= 7) },
+    { label: "Edited today", docs: docs.filter((d) => daysAgo(d.updated_at) < 1) },
+    { label: "Edited in the last 7 days", docs: docs.filter((d) => daysAgo(d.updated_at) >= 1 && daysAgo(d.updated_at) < 7) },
+    { label: "Edited earlier", docs: docs.filter((d) => daysAgo(d.updated_at) >= 7) },
   ].filter((group) => group.docs.length > 0);

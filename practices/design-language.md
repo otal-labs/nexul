@@ -644,16 +644,21 @@ so with the compact orbit around the list's own icon (the one its sidebar
 link uses), "Select a doc", a muted count of what the list holds ("27 docs
 in Atlas Platform"), and, where the command palette finds these records,
 its shortcut ("Ctrl K to search"); `ListDetailPlaceholder` is the
-reference. Docs instead opens on its overview (`DocsOverview`), read from the
+reference. A list whose pane makes records (Memories) gives the placeholder
+its primary New action, which turns it into the full `EmptyState` (the 26px
+Fraunces headline over the count, the action, then the shortcut), and hides
+the list's `+` beside it. Docs instead opens on its overview (`DocsOverview`), read from the
 set the list shows (live docs, or archived ones while that view is on) and
-filtered by the list's search: a muted line of the folder count and the last
-edit (mono only as a relative figure, "14m ago"; a date stays in the line's sans) with the pane's one primary `New doc` at its right, the list's `+` hidden beside it, a "Needs attention"
+filtered by the list's search: a page header titled "Docs" in the display face over a muted line of the folder count and the last
+edit (mono only as a relative figure, "14m ago"; a date stays in the line's sans), with the pane's one primary `New doc` at its right, the list's `+` hidden beside it, a "Needs attention"
 group of the docs a play is writing or waiting on (waiting first, at most
-five), and the rest of the newest twenty under Today, Last 7 days
-and Earlier as its group labels; a search reads "Matching" and its count, the archived view "Archived", each one flat set. Each overview row
+five), and the rest of the newest twenty under Edited today, Edited in the
+last 7 days and Edited earlier as its group labels, so their times read as
+edits beside the list's creation dates; a search reads "Matching" and its count, the archived view "Archived", each one flat set. Each overview row
 is the state slot, the title in 13px medium on the baseline of its mono time,
 and one muted line: the folder and either the run's state or "created by" and the creator and
-the doc's first line, its blocks apart by " · ". An empty project's overview is the `EmptyState` with
+the doc's first line, its blocks apart by " · ", with pasted record ids left
+out (`readableSnippet`) and the line held to a 42rem measure. An empty project's overview is the `EmptyState` with
 `New doc`; the list then shows its header alone. Docs groups its rows by
 folder below Pinned, the default folder first and the rest in creation order, each folder's own folders nested under its row above its docs and stepped in 20px a level, so a chevron sits under its parent's folder icon:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
@@ -874,10 +879,12 @@ is three lines with no closing hairline (`actionsOn="crumbs"`): the
 breadcrumb with the actions on its right, pinned to the top of the record's
 scroll on `panel-opaque` so the actions never scroll away, with a 16px fade
 under it once scrolled (`sticky-crumbs`, whose fade rests unseen on a doc too
-short to scroll, so it never washes the title). The view switch (Doc | Tickets N |
-Questions) is held right after the breadcrumb, and Plays, watch, thread and the
-`…` menu sit at the right, wrapping under the breadcrumb rather than cutting it or
-running past the pane; the "On this page" button keeps its place, unseen, off the
+short to scroll, so it never washes the title). A locked doc's mark (the lock and
+"Locked", muted mono) leads the actions; Unlock lives in the `…` menu, since a word
+and a button side by side read as a stutter. Plays, watch, thread and the `…` menu
+sit at the right of the breadcrumb, wrapping under it rather than cutting it or
+running past the pane, and the view switch (Doc | Tickets N | Questions) sits at the
+right end of the meta line under the title, so the crumbs and actions keep one row; the "On this page" button keeps its place, unseen, off the
 doc view, so nothing in the row shifts as the view changes. The `…` menu holds the
 doc's actions only, each with its icon (Create ticket from this doc, History,
 Permissions…, Lock or Unlock, Move to folder, Archive or Restore), the same size however many
@@ -894,8 +901,8 @@ tooltip, indented from the doc's top level, and the section in view (the
 first before any scroll) in ink with the 2px `brand` edge. Narrower, the
 rail is not drawn and an "On this page" icon in the actions opens the same
 outline in a popover. A memory's body sits on the panel the same way, under
-the same three-line header: the `Memories` crumb and the folder, with Save and
-a `…` menu (Clone to…, then Delete) on its right; the title; and a settings
+the same three-line header: the `Memories` crumb and the folder, with Save (shown
+only once something has changed) and a `…` menu (Clone to…, then Delete) on its right; the title; and a settings
 line in place of the meta line: the folder as a ghost menu (Main or Footer,
 each with its one-line meaning), the Always included switch with its word, and
 the mono "updated · N versions". The interview and the decisions log show a
@@ -904,11 +911,14 @@ of the switch, with their reason as a visible muted line under it, never only
 a tooltip. Above the body, the "When to use" microheader over the rule in a
 `surface-2` well with a 2px rule in `foreground` at 25% on its left, square on
 that side, growing with the text. Attachments and the newest five versions sit
-in the 13rem right rail from a 50rem pane and under the body below it; no
-tabs. In the list, a fixed memory's row carries the lock in the switch's
-column, as wide as the switch so the dates stay in one column, and the date
-and switch sit on the title's first line (`metaOnTitleLine`), because a title
-that wraps beside them would otherwise leave them level with neither line.
+in the 13rem right rail from a 50rem pane and under the body below it, on the
+body's measure; no tabs. A version is one 32px hairline row: the mono `vN`,
+who saved it (muted "No author recorded" when no one is), and its mono time
+right-aligned, "current" in its place on the newest. In the list a row is the
+title with its mono date on the title's first line (`metaOnTitleLine`) over
+one preview line, so every row keeps two lines; a memory sent in every turn
+(always included, or the interview) leads that line with "Always included" in
+ink, and the switch lives on the record only.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
 16px at 1.75 (quoted in a chat bubble 14px, in a rail 12px, both at 1.6), headings in Inter 600 at 22, 20 and 16px for `h1` to `h3` (the
@@ -1995,14 +2005,16 @@ Questions while some wait. `DocQuestionsPanel` in
 
 Interview. The page caps at 68rem; each run's state sits beside its own
 action (the memory's with Regenerate, the audit's with Audit via AI, on its
-own row once written). Two tabs, Questions and Memory.
+own row once written); while the audit has no line, Regenerate and Audit via AI
+sit together at the row's right end. Two tabs, Questions and Memory.
 Questions opens on a meter, one 4px segment per question grouped by round
-(answered ink at 55%, skipped at 20%, a draft or suggestion waiting `warning`
-at 45%, unanswered a hairline, the open one `brand`), over one mono line from
+(answered `success`, as its row's check, skipped ink at 40%, a draft or suggestion
+waiting `warning-mark` at 60%, unanswered ink at 10%, the open one `brand`), over one mono line from
 the same partition: answered, skipped, and a "need you" button that opens the
 first, and a key naming each kind of segment on screen. The rows are the shared checklist: one glyph each (a check, a dash, or
 the number with a `warning` dot while a draft waits), titles that wait on the
-person in ink at 500, settled ones muted, and the open row as the current row.
+person in ink at 500, settled ones muted, and the open row as the current row,
+its tint and edge on the title row alone, never down the form under it.
 A draft names its sources as neutral chips that open them. A suggested change
 is a `surface-2` well: Now, then each pick or sentence it adds (+, `success`)
 or drops (−, `destructive`). From a 60rem container the meter takes the grid's

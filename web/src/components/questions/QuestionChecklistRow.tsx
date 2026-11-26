@@ -74,7 +74,9 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
   );
 
   return (
-    <li className="relative border-b border-border">
+    <li className="border-b border-border">
+      {/* The edge marks the title row alone; running it down the open form turned the accent into a block. */}
+      <div className="relative">
       {open && <CurrentRowEdge />}
       {readOnly && <div className={cn("flex min-h-11 items-start gap-3 rounded-md px-2.5 py-3", (open || lit) && currentRowFillClass)}>{summary}</div>}
       {!readOnly && (
@@ -91,6 +93,7 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
           {summary}
         </button>
       )}
+      </div>
       {open && children}
     </li>
   );

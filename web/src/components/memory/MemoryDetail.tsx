@@ -51,7 +51,7 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
         meta={<MemorySettingsLine memory={memory} />}
         actions={
           <>
-            {canWrite && (
+            {canWrite && (dirty || saving) && (
               <Button size="sm" className="h-7" loading={saving} disabled={!dirty} onClick={() => onSave({ title, when_to_use: whenToUse, body })}>
                 Save
               </Button>
@@ -72,7 +72,7 @@ export const MemoryDetail = ({ memory, onSave, onDelete, saving }: MemoryDetailP
               <InterviewLengthMeter length={interviewLength} />
             </div>
           )}
-          <div className="max-w-sm space-y-8 @min-[50rem]:hidden">
+          <div className="space-y-8 pt-2 @min-[50rem]:hidden">
             <MemorySections memoryId={memory.id} />
           </div>
         </article>

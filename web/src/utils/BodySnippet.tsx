@@ -32,3 +32,8 @@ export const bodySnippet = (body: string): string => {
   const prose = texts.find((t) => !t.heading && t.text !== "");
   return (prose ?? texts.find((t) => t.text !== ""))?.text ?? "";
 };
+
+// A pasted record id (whole, or cut short by the stored preview's limit) reads as noise in a one-line preview.
+const recordId = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f-]*/gi;
+
+export const readableSnippet = (snippet: string): string => snippet.replace(recordId, "").replace(/\s+([,.;:])/g, "$1").replace(/\s{2,}/g, " ").trim();

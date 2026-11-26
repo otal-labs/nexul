@@ -354,6 +354,7 @@ describe("DocDetail", () => {
     expect(socket.send).not.toHaveBeenCalled();
     expect(screen.getByText("Locked")).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Doc actions" }));
     await user.click(await screen.findByRole("button", { name: "Unlock" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
   });
@@ -371,17 +372,20 @@ describe("DocDetail", () => {
       return defaultGet!(url);
     });
     await renderDetail(new FakeSocket(), { ...doc, locked: true });
+    const explains = () => vi.mocked(api.get).mock.calls.filter(([url]) => url === "/api/permissions/explain");
+    await waitFor(() => expect(explains()).toHaveLength(1));
 
+    await user.click(screen.getByRole("button", { name: "Doc actions" }));
     const unlock = await screen.findByRole("button", { name: "Unlock" });
     await waitFor(() => expect(unlock).toHaveAttribute("aria-disabled", "true"));
     await user.hover(unlock);
     expect((await screen.findAllByText(sentence)).length).toBeGreaterThan(0);
     await user.click(unlock);
     expect(api.post).not.toHaveBeenCalledWith("/api/docs/doc-1/unlock");
-    expect(vi.mocked(api.get).mock.calls.filter(([url]) => url === "/api/permissions/explain")).toHaveLength(1);
   });
 
   it("shows a writer without docs:lock that the doc is locked, with no way to unlock it", async () => {
+    const user = userEvent.setup();
     const defaultGet = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation(async (url: string) =>
       url === "/api/workspaces/ws-1/me"
@@ -391,6 +395,7 @@ describe("DocDetail", () => {
     await renderDetail(new FakeSocket(), { ...doc, locked: true });
 
     expect(await screen.findByText("Locked")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Doc actions" }));
     expect(screen.queryByRole("button", { name: "Unlock" })).not.toBeInTheDocument();
   });
 

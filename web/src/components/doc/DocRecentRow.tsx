@@ -4,6 +4,7 @@ import { DocOverviewRow } from "@/components/doc/DocOverviewRow";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useDocRunState } from "@/hooks/TrailHooks";
 import type { DocListItem } from "@/models/Doc";
+import { readableSnippet } from "@/utils/BodySnippet";
 
 interface DocRecentRowProps {
   doc: DocListItem;
@@ -21,10 +22,10 @@ export const DocRecentRow = ({ doc, projectToken, folderName }: DocRecentRowProp
       runState={runState}
       projectToken={projectToken}
       detail={
-        <span className="flex min-w-0">
+        <span className="flex max-w-2xl min-w-0">
           <span className="max-w-40 shrink-0 truncate">{folderName}</span>
           <span className="hidden max-w-56 shrink-0 truncate pl-1 @[40rem]:inline">· created by {creator}</span>
-          <span className="min-w-0 truncate pl-1">· {doc.snippet || "Empty doc"}</span>
+          <span className="min-w-0 truncate pl-1">· {readableSnippet(doc.snippet ?? "") || "Empty doc"}</span>
         </span>
       }
     />
