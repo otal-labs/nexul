@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 interface ContainerProps extends HTMLAttributes<HTMLDivElement> {
-  // "wide" for lists and grids, "page" for settings and single-record pages.
+  // "wide" for lists, grids and the records they open, so the content edge holds from a list to its record; "page" for settings.
   size?: "wide" | "page";
 }
 

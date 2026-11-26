@@ -62,7 +62,7 @@ export const StackPage = ({ tab = "overview" }: StackPageProps) => {
   const image = latest?.image || (stack?.strategy === "run" ? imageOf(services?.[0]) : undefined);
 
   return (
-    <Container size="page" className="py-8">
+    <Container className="py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {stack && (

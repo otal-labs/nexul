@@ -22,6 +22,7 @@ export interface TicketBodyLayout {
 const PAGE = "@container/main flex h-full flex-col gap-6 overflow-hidden px-6 pt-6";
 
 // The header stays put. From a 52rem panel the rail sits beside every tab but Notes; narrower it folds behind a Details row above the tabs.
+// From 68rem it widens to 24rem, taking the gutter the body's 68ch measure leaves and giving linked titles room.
 const PANE: TicketPageLayout = {
   container: "h-full max-w-none px-0 sm:px-0",
   page: `panel ${PAGE}`,
@@ -32,13 +33,13 @@ const PANE: TicketPageLayout = {
   ticketTab: "pb-6",
   article: "min-w-0",
   thread: "flex min-h-0 flex-col pb-4",
-  notesGrid: "grid content-start gap-8 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:gap-x-10",
+  notesGrid: "grid content-start gap-8 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[68rem]/main:grid-cols-[minmax(0,1fr)_24rem] @min-[52rem]/main:gap-x-10",
   notesRail: "min-w-0 border-t border-border pt-6 @min-[52rem]/main:border-t-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pt-0 @min-[52rem]/main:pl-6",
 };
 
 // Ticket and Notes scroll as one page with the rail, so the wheel moves the whole ticket wherever the pointer sits.
 const PAGE_BODY: TicketBodyLayout = {
-  body: "scroll-edge grid min-h-0 flex-1 grid-rows-[auto_max-content_minmax(max-content,1fr)] overflow-y-auto @min-[52rem]/main:-mt-6 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:grid-rows-[minmax(max-content,1fr)] @min-[52rem]/main:gap-x-10",
+  body: "scroll-edge grid min-h-0 flex-1 grid-rows-[auto_max-content_minmax(max-content,1fr)] overflow-y-auto @min-[52rem]/main:-mt-6 @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[68rem]/main:grid-cols-[minmax(0,1fr)_24rem] @min-[52rem]/main:grid-rows-[minmax(max-content,1fr)] @min-[52rem]/main:gap-x-10",
   rail: "row-start-2 hidden min-w-0 @min-[52rem]/main:col-start-2 @min-[52rem]/main:row-start-1 @min-[52rem]/main:block @min-[52rem]/main:border-b-0 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pt-6 @min-[52rem]/main:pl-6",
   railScroll: "-mx-2 pt-3 pb-6 @min-[52rem]/main:mx-0 @min-[52rem]/main:-mt-3 @min-[52rem]/main:pt-[22.5px]",
   tabs: "row-start-3 min-w-0 @min-[52rem]/main:col-start-1 @min-[52rem]/main:row-start-1 @min-[52rem]/main:pt-6",
@@ -46,7 +47,7 @@ const PAGE_BODY: TicketBodyLayout = {
 
 // The Thread tab scrolls its own stream above the composer, so the rail scrolls on its own beside it, faded at both ends.
 const THREAD_BODY: TicketBodyLayout = {
-  body: "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,max-content)_minmax(10rem,1fr)] @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[52rem]/main:grid-rows-[minmax(0,1fr)] @min-[52rem]/main:gap-x-10",
+  body: "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,max-content)_minmax(10rem,1fr)] @min-[52rem]/main:grid-cols-[minmax(0,1fr)_21rem] @min-[68rem]/main:grid-cols-[minmax(0,1fr)_24rem] @min-[52rem]/main:grid-rows-[minmax(0,1fr)] @min-[52rem]/main:gap-x-10",
   rail: "row-start-2 hidden min-h-0 min-w-0 @min-[52rem]/main:col-start-2 @min-[52rem]/main:row-start-1 @min-[52rem]/main:block @min-[52rem]/main:border-b-0 @min-[52rem]/main:-mt-6 @min-[52rem]/main:border-l @min-[52rem]/main:border-border @min-[52rem]/main:pt-6 @min-[52rem]/main:pl-6",
   railScroll: "-mx-2 h-full overflow-y-auto pt-3 pb-6 [mask-image:linear-gradient(to_bottom,transparent,#000_12px,#000_calc(100%-24px),transparent)] @min-[52rem]/main:mx-0 @min-[52rem]/main:-mt-3 @min-[52rem]/main:pt-[22.5px]",
   tabs: "row-start-3 min-h-0 min-w-0 @min-[52rem]/main:col-start-1 @min-[52rem]/main:row-start-1",

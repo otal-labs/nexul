@@ -17,11 +17,17 @@ export const useSidebarStore = create<SidebarStore>()(
       // Below 1280px an open sidebar leaves a list pane and its open record too little width, so it starts as the icon rail.
       collapsed: window.innerWidth < 1280,
       toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
-      workspaceNavOpen: false,
+      workspaceNavOpen: true,
       toggleWorkspaceNav: () => set((s) => ({ workspaceNavOpen: !s.workspaceNavOpen })),
-      threadsNavOpen: true,
+      threadsNavOpen: false,
       toggleThreadsNav: () => set((s) => ({ threadsNavOpen: !s.threadsNavOpen })),
     }),
-    { name: "sidebar", partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen, threadsNavOpen: s.threadsNavOpen }) },
+    {
+      name: "sidebar",
+      // Version 1 opened Workspace and folded Threads by default, so every browser starts once from the new defaults.
+      version: 1,
+      migrate: () => ({ workspaceNavOpen: true, threadsNavOpen: false }),
+      partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen, threadsNavOpen: s.threadsNavOpen }),
+    },
   ),
 );

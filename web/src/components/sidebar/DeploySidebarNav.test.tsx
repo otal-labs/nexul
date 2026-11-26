@@ -35,8 +35,9 @@ beforeEach(() => {
 });
 
 describe("DeploySidebarNav", () => {
-  it("starts folded in a browser that has never opened it", () => {
-    expect(useSidebarStore.getInitialState().workspaceNavOpen).toBe(false);
+  it("starts open and folds Threads instead in a browser that has never changed them", () => {
+    expect(useSidebarStore.getInitialState().workspaceNavOpen).toBe(true);
+    expect(useSidebarStore.getInitialState().threadsNavOpen).toBe(false);
   });
 
   it("folds down to its header and opens again", async () => {
