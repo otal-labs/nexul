@@ -21,6 +21,7 @@ import {
   StartIn,
   type HarnessProvider,
   type PairingDefaults,
+  type PlacementAnswer,
   type ProjectLink,
   type ProjectLinkFormData,
   type ReadinessLink,
@@ -121,4 +122,17 @@ export const useDefaultsSummary = (defaults: PairingDefaults | undefined): strin
   const placement = PLACEMENT_OPTIONS.find((o) => o.value === defaults.placement)?.label;
   const model = modelName(providers, { provider: defaults.provider ?? "", model: defaults.model ?? "" }) || COMPUTER_DEFAULT;
   return [placement, model, START_IN_SHORT_LABELS[defaults.start_in ?? StartIn.Folder]].filter(Boolean).join(" · ");
+};
+
+// Where the viewer's runs in a project land now, one answer per set of needs, in one read however many plays share them.
+export const useProjectPlacement = (projectId: string, needsSets: string[][]) => {
+  const keys = needsSets.map((needs) => needs.join(","));
+  return useQuery({
+    queryKey: [getHarnessResolveKey, "placement", projectId, keys],
+    queryFn: async () => {
+      const query = new URLSearchParams(keys.map((needs) => ["needs", needs]));
+      return (await api.get<{ answers: PlacementAnswer[] }>(`/api/pairing/projects/${projectId}/placement?${query}`)).data.answers;
+    },
+    enabled: projectId !== "" && keys.length > 0,
+  });
 };

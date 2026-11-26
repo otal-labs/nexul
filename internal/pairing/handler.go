@@ -3,6 +3,7 @@ package pairing
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
@@ -67,6 +68,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/pairing/defaults", h.setDefaults)
 	mux.HandleFunc("GET /api/pairing/projects", h.listProjectLinks)
 	mux.HandleFunc("GET /api/pairing/projects/{id}", h.getProjectLink)
+	mux.HandleFunc("GET /api/pairing/projects/{id}/placement", h.projectPlacement)
 	mux.HandleFunc("PUT /api/pairing/projects/{id}", h.setProjectLink)
 	mux.HandleFunc("DELETE /api/pairing/projects/{id}", h.clearProjectLink)
 	return mux
@@ -416,6 +418,21 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 		"model_options":      target.ModelOptions,
 		"passed_over":        target.PassedOver,
 	})
+}
+
+// projectPlacement answers where the caller's runs in a project would land now, once per needs query value ("gpu,linux";
+// an empty value is a play that needs nothing).
+func (h *Handler) projectPlacement(w http.ResponseWriter, r *http.Request) {
+	sets := make([][]string, 0, len(r.URL.Query()["needs"]))
+	for _, raw := range r.URL.Query()["needs"] {
+		sets = append(sets, strings.FieldsFunc(raw, func(c rune) bool { return c == ',' }))
+	}
+	answers, err := h.svc.PlacementAnswers(r.Context(), actorID(r), r.PathValue("id"), sets)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"answers": answers})
 }
 
 func (h *Handler) getDefaults(w http.ResponseWriter, r *http.Request) {
