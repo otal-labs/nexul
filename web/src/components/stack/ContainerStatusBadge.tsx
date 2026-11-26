@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Loader2, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Circle, Clock, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
 import { ContainerStatus, type ContainerStatus as ContainerStatusType } from "@/models/Stack";
@@ -6,7 +6,8 @@ import { ContainerStatus, type ContainerStatus as ContainerStatusType } from "@/
 // Colored icon beside plain text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
 const config: Record<ContainerStatusType, { icon: LucideIcon; color: string; iconClassName?: string; textClassName?: string }> = {
   [ContainerStatus.Pending]: { icon: Clock, color: "text-warning" },
-  [ContainerStatus.Running]: { icon: Loader2, color: "text-info", iconClassName: "animate-spin motion-reduce:animate-none" },
+  // Up with no healthcheck to pass: a steady state, so a still dot in the healthy hue, never a spinner.
+  [ContainerStatus.Running]: { icon: Circle, color: "text-success", iconClassName: "fill-current p-0.5" },
   [ContainerStatus.Healthy]: { icon: CheckCircle2, color: "text-success" },
   [ContainerStatus.Exited]: { icon: XCircle, color: "text-destructive", textClassName: "text-foreground" },
   [ContainerStatus.Stopped]: { icon: MinusCircle, color: "text-muted-foreground" },

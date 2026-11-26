@@ -6,14 +6,14 @@ interface ServiceDeployModesProps {
   hostnamesOf: (id: string) => string[];
 }
 
-// Which services the next deploy swaps with no downtime, and which it restarts in place and why.
+// Which services the next deploy swaps with no downtime, and which it restarts in place and why; runs on after the count line.
 export const ServiceDeployModes = ({ services, hostnamesOf }: ServiceDeployModesProps) => {
   const { swapped, restarted } = deployModes(services, hostnamesOf);
-  const restartText = restarted.map((g) => `${g.names.join(", ")} (${g.reason})`).join(" · ");
+  const restartText = restarted.map((g) => `${g.names.join(", ")} (${g.reason})`).join(", ");
   return (
-    <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-      {swapped.length > 0 && <p>{`Deploys swap with no downtime: ${swapped.join(", ")}`}</p>}
-      {restarted.length > 0 && <p>{`Deploys restart in place: ${restartText}`}</p>}
-    </div>
+    <>
+      {swapped.length > 0 && <span>{` · swaps with no downtime: ${swapped.join(", ")}`}</span>}
+      {restarted.length > 0 && <span>{` · restarts in place: ${restartText}`}</span>}
+    </>
   );
 };

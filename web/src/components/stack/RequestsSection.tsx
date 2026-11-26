@@ -20,20 +20,28 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
   const since = missingSince(requests);
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="font-mono text-sm tabular-nums">
-          <span className="text-2xl font-medium tracking-tight">{total.toLocaleString()}</span>{" "}
-          <span className="text-muted-foreground">requests in the last hour</span>
-        </p>
-        <p className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
-          {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning-mark" />}
-          {errors > 0 && <span>{`5xx ${formatShare(share)}`}</span>}
-          {errors > 0 && <span className="text-muted-foreground">{`(${errors.toLocaleString()})`}</span>}
-          {errors === 0 && <span className="text-muted-foreground">No 5xx</span>}
-        </p>
-      </div>
+      {total > 0 && (
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <p className="font-mono text-sm tabular-nums">
+            <span className="text-2xl font-medium tracking-tight">{total.toLocaleString()}</span>{" "}
+            <span className="text-muted-foreground">requests in the last hour</span>
+          </p>
+          <p className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
+            {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning-mark" />}
+            {errors > 0 && <span>{`5xx ${formatShare(share)}`}</span>}
+            {errors > 0 && <span className="text-muted-foreground">{`(${errors.toLocaleString()})`}</span>}
+            {errors === 0 && <span className="text-muted-foreground">No 5xx</span>}
+          </p>
+        </div>
+      )}
       <div className="rounded-lg bg-surface-2 p-3 ring-1 ring-border">
-        <RequestBars requests={requests} />
+        {total > 0 && <RequestBars requests={requests} />}
+        {/* A quiet hour is a flat floor with words, not sixty floor marks and the uncounted minutes towering over them. */}
+        {total === 0 && (
+          <div className="flex h-16 items-center justify-center border-b border-border">
+            <p className="text-xs text-muted-foreground">No requests reached this stack in the last hour</p>
+          </div>
+        )}
         <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
           <span>60 min ago</span>
           <span>now</span>

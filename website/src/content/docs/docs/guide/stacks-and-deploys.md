@@ -52,11 +52,11 @@ A service a hostname routes to through a gateway is swapped, not restarted. The 
 
 If the new container turns unhealthy, stops, or is not healthy within five minutes, the runner removes it and the deploy fails with the healthcheck's last output, while the old container goes on serving. Fix what the log shows and deploy again.
 
-A service restarts in place instead when it has no hostname, publishes a port on the host (two copies cannot hold one port), has no healthcheck, is not running yet, sets `container_name` or runs more than one container. Under the services on **Overview**, one line names the services a deploy swaps and another the ones it restarts and why, from what the runner last reported; the deploy's log has the final word, `<service> restarts in place:` with the reason, and is the only place a `container_name` shows. A service whose container already runs its current config and image is left alone, as before. A healthcheck comes from the compose file's `healthcheck:` or the image's `HEALTHCHECK`. Do not route a hostname to a database or another service that keeps state in a volume: for a moment two copies run on it.
+A service restarts in place instead when it has no hostname, publishes a port on the host (two copies cannot hold one port), has no healthcheck, is not running yet, sets `container_name` or runs more than one container. Under the services on **Overview**, one line names the services a deploy swaps and the ones it restarts and why, from what the runner last reported; the deploy's log has the final word, `<service> restarts in place:` with the reason, and is the only place a `container_name` shows. A service whose container already runs its current config and image is left alone, as before. A healthcheck comes from the compose file's `healthcheck:` or the image's `HEALTHCHECK`. Do not route a hostname to a database or another service that keeps state in a volume: for a moment two copies run on it.
 
 ## Environment
 
-**Settings → Environment** lists the stack's variables, a name and a value each. Values show as dots until you click **Reveal values**. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.
+**Settings → Environment** lists the stack's variables, a name and a value each. Values show as dots until you click the eye at the head of the value column. Edit a value, **Add variable**, or remove a row with the **×** beside it, then **Save**. Emptying a value keeps the variable with an empty value; removing the row removes the variable.
 
 Saving doesn't redeploy: the running containers keep their old values, and the next deploy starts with the new ones. **Deploy now**, beside **Save**, ships it at once. It builds the stack's branch when a repository is attached, and redeploys the running image of a single container without one. It waits until your changes are saved and takes `deploys:write`.
 
@@ -148,7 +148,7 @@ Tripping and recovering publish `stack.error_rate_crossed` and `stack.error_rate
 
 ## Logs
 
-**Logs** shows what each container prints, one tab per service, each with a dot for how the service is doing: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or pause to stop following. The marker at the end of the toolbar says whether the stream is live, paused or offline. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
+**Logs** shows what each container prints, picked from the services at the head of its toolbar, each with a dot for how the service is doing: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or pause to stop following. A line's leading level word is coloured, warnings amber and errors red. The marker at the right of the toolbar says whether the stream is live, paused or offline. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
 
 When the stack's runner is offline, the view says so and keeps retrying; **Details** under the sentence shows the server's own message.
 

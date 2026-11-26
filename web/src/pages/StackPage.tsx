@@ -4,6 +4,7 @@ import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
+import { DeployFilterToggle } from "@/components/service/DeployFilterToggle";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
 import { RequestsSection } from "@/components/stack/RequestsSection";
 import { StackAlertsSection } from "@/components/stack/StackAlertsSection";
@@ -66,9 +67,22 @@ export const StackPage = ({ tab = "overview" }: StackPageProps) => {
       {error && <DetailErrorDisplay error={error} />}
       {stack && (
         <div className="space-y-6">
-          <StackHeaderSection stack={stack} latest={latest} lastHealthy={lastHealthy} image={image} hostnames={hostnames} />
+          <StackHeaderSection
+            stack={stack}
+            latest={latest}
+            lastHealthy={lastHealthy}
+            image={image}
+            hostnames={hostnames}
+            showStatus={tab !== "settings"}
+          />
           <StackSecretsChangedNotice stack={stack} image={image} />
-          <StackTabs stackId={stack.id} active={tab} showLogs={showLogs} deployCount={deploys?.length} />
+          <StackTabs
+            stackId={stack.id}
+            active={tab}
+            showLogs={showLogs}
+            deployCount={deploys?.length}
+            trailing={tab === "deploys" && !!deploys?.length && <DeployFilterToggle />}
+          />
           {tab === "overview" && <ServicesSection stackId={stack.id} />}
           {tab === "overview" && <RequestsSection stack={stack} />}
           {tab === "deploys" && <DeployHistorySection deploys={deploys} lastHealthy={lastHealthy} isLoading={deploysPending} error={deploysError} />}

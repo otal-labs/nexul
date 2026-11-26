@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CopyIcon, DownloadIcon, PauseIcon, PlayIcon } from "lucide-react";
 
 import { LogStatusMarker } from "@/components/logs/LogStatusMarker";
@@ -18,6 +19,8 @@ interface LogToolbarProps {
   empty: boolean;
   // False with nothing received and nothing coming, where All and Errors would both show an empty block.
   filterable: boolean;
+  // What picks the log (a stack's service), led on the same row so the page keeps one tab row.
+  leading?: ReactNode;
 }
 
 interface ToolButtonProps {
@@ -28,11 +31,12 @@ interface ToolButtonProps {
   pressed?: boolean;
 }
 
-// Pause, Copy and Download are well-known tools, so they are icons; the row then fits one line beside its status marker.
+// Pause, Copy and Download are well-known tools, so they are quiet icons after the status marker; the row then fits one
+// line, and the filter is its one boxed control.
 const ToolButton = ({ label, icon: Icon, onClick, disabled, pressed }: ToolButtonProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <Button type="button" variant="outline" size="icon" aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="size-8">
+      <Button type="button" variant="ghost" size="icon" aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="size-8 text-muted-foreground hover:text-foreground">
         <Icon aria-hidden />
       </Button>
     </TooltipTrigger>
@@ -40,8 +44,9 @@ const ToolButton = ({ label, icon: Icon, onClick, disabled, pressed }: ToolButto
   </Tooltip>
 );
 
-export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onPausedChange, onCopy, onDownload, empty, filterable }: LogToolbarProps) => (
+export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onPausedChange, onCopy, onDownload, empty, filterable, leading }: LogToolbarProps) => (
   <div className="flex flex-wrap items-center gap-2">
+    {leading}
     <ToggleGroup
       type="single"
       variant="segmented"
@@ -54,15 +59,17 @@ export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onP
       <ToggleGroupItem value="all">All</ToggleGroupItem>
       <ToggleGroupItem value="errors">Errors</ToggleGroupItem>
     </ToggleGroup>
-    <ToolButton
-      label={paused ? "Resume" : "Pause"}
-      icon={paused ? PlayIcon : PauseIcon}
-      onClick={() => onPausedChange(!paused)}
-      disabled={status !== "live" && !paused}
-      pressed={paused}
-    />
-    <ToolButton label="Copy" icon={CopyIcon} onClick={onCopy} disabled={empty} />
-    <ToolButton label="Download" icon={DownloadIcon} onClick={onDownload} disabled={empty} />
     <LogStatusMarker status={status} reason={reason} paused={paused} />
+    <div className="flex items-center border-l border-border pl-1">
+      <ToolButton
+        label={paused ? "Resume" : "Pause"}
+        icon={paused ? PlayIcon : PauseIcon}
+        onClick={() => onPausedChange(!paused)}
+        disabled={status !== "live" && !paused}
+        pressed={paused}
+      />
+      <ToolButton label="Copy" icon={CopyIcon} onClick={onCopy} disabled={empty} />
+      <ToolButton label="Download" icon={DownloadIcon} onClick={onDownload} disabled={empty} />
+    </div>
   </div>
 );

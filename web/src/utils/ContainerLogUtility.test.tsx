@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_LOG_LINES, type ContainerLogLine, type ContainerLogWireLine } from "@/models/ContainerLog";
-import { appendLogLines, chunkLogLines, formatContainerLogTime, looksLikeError } from "@/utils/ContainerLogUtility";
+import { appendLogLines, breakableParts, chunkLogLines, formatContainerLogTime, logLineParts, looksLikeError } from "@/utils/ContainerLogUtility";
 
 describe("looksLikeError", () => {
   it.each([
@@ -59,5 +59,26 @@ describe("chunkLogLines", () => {
     const after = chunkLogLines(lines.slice(1));
     expect(after[1]?.[1]).toEqual(before[1]?.[1]);
     expect(after[0]?.[1]).toHaveLength((before[0]?.[1].length ?? 0) - 1);
+  });
+});
+
+describe("logLineParts", () => {
+  it.each([
+    ["warn: Microsoft.Hosting[60]", { indent: 0, level: "warn:", tone: "warning", rest: " Microsoft.Hosting[60]" }],
+    ["fail: request aborted", { indent: 0, level: "fail:", tone: "error", rest: " request aborted" }],
+    ["[ERROR] db down", { indent: 0, level: "[ERROR]", tone: "error", rest: " db down" }],
+    ["info: Now listening", { indent: 0, level: "info:", tone: undefined, rest: " Now listening" }],
+    ["      Storing keys in a directory", { indent: 6, level: "", tone: undefined, rest: "Storing keys in a directory" }],
+    ["warnings are off", { indent: 0, level: "", tone: undefined, rest: "warnings are off" }],
+    ["", { indent: 0, level: "", tone: undefined, rest: "" }],
+  ])("splits %j", (text, parts) => {
+    expect(logLineParts(text)).toEqual(parts);
+  });
+});
+
+describe("breakableParts", () => {
+  it("breaks a long dotted token after its dots and leaves short text whole", () => {
+    expect(breakableParts("ClutchHub.Api.Features.ReportClientErrorEndpoint")).toEqual(["ClutchHub.", "Api.", "Features.", "ReportClientErrorEndpoint"]);
+    expect(breakableParts("Now listening on :8080")).toEqual(["Now listening on :8080"]);
   });
 });

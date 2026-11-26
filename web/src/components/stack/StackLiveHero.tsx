@@ -7,6 +7,7 @@ import { OverflowCount } from "@/components/OverflowCount";
 import { HeroCell, HeroDetail, HeroLine, StackHostnamesCell, StackRequestsCell } from "@/components/stack/StackHeroCells";
 import { useFetchStackServices } from "@/hooks/StackHooks";
 import { useNow } from "@/hooks/useNow";
+import { useActorNamer } from "@/hooks/usePersonNamer";
 import { cn } from "@/lib/utils";
 import { isServiceDown, type Container, type Deploy, type StackWithBranches } from "@/models/Stack";
 import { errorRateHealth, errorRateOf } from "@/utils/ErrorRateUtility";
@@ -68,8 +69,9 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
 const LastDeploy = ({ latest, lastHealthy }: { latest: Deploy | undefined; lastHealthy: Deploy | undefined }) => {
   const inFlight = latest?.status === "running" || latest?.status === "pending";
   const now = useNow(inFlight);
+  const actorName = useActorNamer();
   const live = latest?.status === "healthy" ? latest : lastHealthy;
-  const facts = [!inFlight && latest && formatRelativeTime(latest.created_at), latest?.triggered_by].filter(Boolean).join(" · ");
+  const facts = [!inFlight && latest && formatRelativeTime(latest.created_at), actorName(latest?.triggered_by)].filter(Boolean).join(" · ");
   return (
     <HeroCell label="Last deploy">
       {!latest && <p className="text-sm text-muted-foreground">No deploys yet</p>}
@@ -79,7 +81,7 @@ const LastDeploy = ({ latest, lastHealthy }: { latest: Deploy | undefined; lastH
           {inFlight ? `${deployOutcome(latest.status)} · ${elapsedShort(latest.created_at, now)}` : deployOutcome(latest.status)}
         </p>
       )}
-      {facts && <HeroDetail indent>{facts}</HeroDetail>}
+      {facts && <HeroDetail indent><span className="truncate">{facts}</span></HeroDetail>}
       {live?.image && (
         <HeroDetail indent>
           <span className="mr-1.5 shrink-0">live</span>
@@ -99,7 +101,7 @@ export const StackLiveHero = ({ stack, latest, lastHealthy, hostnames }: StackLi
         aria-label="Live status"
         className={cn(
           "grid grid-cols-2 gap-x-6 gap-y-5 rounded-lg bg-surface-2 px-5 py-4 ring-1 ring-border",
-          "@3xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.35fr)_auto_minmax(0,1.2fr)]",
+          "@3xl:grid-cols-4",
         )}
       >
         <Health services={services} stack={stack} />

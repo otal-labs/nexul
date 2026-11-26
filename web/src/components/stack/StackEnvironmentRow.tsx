@@ -3,6 +3,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 
 import { SecretReferenceFieldTag } from "@/components/SecretReferenceFieldTag";
 import { TaggedInput } from "@/components/TaggedInput";
+import { envGridClass } from "@/components/stack/StackEnvironmentHead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { StackEnvFormData } from "@/models/StackEnv";
@@ -13,6 +14,10 @@ interface StackEnvironmentRowProps {
   onRemove: () => void;
 }
 
+// The name reads as a mono label until hovered or focused; the value is one quiet well with no outline of its own.
+const keyFieldClass = "border-transparent bg-transparent px-2 font-mono shadow-none dark:bg-transparent";
+const valueFieldClass = "border-transparent bg-surface-2 font-mono shadow-none dark:bg-surface-2";
+
 export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironmentRowProps) => {
   const { register, control, formState } = useFormContext<StackEnvFormData>();
   const key = useWatch({ control, name: `rows.${index}.key` });
@@ -21,12 +26,12 @@ export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironm
   const name = key || "new variable";
 
   return (
-    <li className="space-y-1 px-3 py-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+    <li className="space-y-1 py-1.5">
+      <div className={envGridClass}>
         <Input
           aria-label={`Name of ${name}`}
           aria-invalid={rowErrors?.key != null}
-          className="font-mono"
+          className={keyFieldClass}
           placeholder="NAME"
           spellCheck={false}
           autoCapitalize="off"
@@ -39,13 +44,13 @@ export const StackEnvironmentRow = ({ index, revealed, onRemove }: StackEnvironm
             type={revealed ? "text" : "password"}
             autoComplete="off"
             data-1p-ignore
-            className="font-mono"
+            className={valueFieldClass}
             placeholder="empty"
             spellCheck={false}
             {...register(`rows.${index}.value`)}
           />
         </TaggedInput>
-        <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${name}`} onClick={onRemove}>
+        <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${name}`} onClick={onRemove} className="size-8 text-muted-foreground hover:text-foreground">
           <XIcon aria-hidden />
         </Button>
       </div>

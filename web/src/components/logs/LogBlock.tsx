@@ -8,6 +8,7 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 import { LogChunk } from "@/components/logs/LogChunk";
+import { fillToBottom } from "@/lib/fillToBottom";
 import type { ContainerLogLine } from "@/models/ContainerLog";
 import { chunkLogLines, type EmptyLogMessage } from "@/utils/ContainerLogUtility";
 
@@ -15,31 +16,6 @@ interface LogBlockProps {
   lines: ContainerLogLine[];
   empty: EmptyLogMessage;
 }
-
-const MIN_HEIGHT = 320;
-// The page's 32px bottom padding inside the panel.
-const BOTTOM_PAD = 32;
-
-// Down to the panel's bottom, however tall the header above it, never shorter than 20rem; outside the page panel (a
-// sheet) the window's bottom stands in for it. Measured again whenever the page above it settles or the window resizes.
-const fillToBottom = (el: HTMLDivElement | null) => {
-  if (!el) return;
-  const frame = el.closest(".app-frame");
-  const fit = () => {
-    const bottom = frame ? frame.getBoundingClientRect().top + frame.clientTop + frame.clientHeight : window.innerHeight;
-    const top = el.getBoundingClientRect().top + (frame?.scrollTop ?? 0);
-    const height = `${Math.max(MIN_HEIGHT, Math.floor(bottom - top - BOTTOM_PAD))}px`;
-    if (el.style.height !== height) el.style.height = height;
-  };
-  fit();
-  const observer = new ResizeObserver(fit);
-  if (frame?.firstElementChild) observer.observe(frame.firstElementChild);
-  window.addEventListener("resize", fit);
-  return () => {
-    observer.disconnect();
-    window.removeEventListener("resize", fit);
-  };
-};
 
 // One terminal-style block: the scroller follows the newest line and lets go the moment the reader scrolls up.
 export const LogBlock = ({ lines, empty }: LogBlockProps) => (
@@ -57,7 +33,7 @@ export const LogBlock = ({ lines, empty }: LogBlockProps) => (
     )}
     {lines.length > 0 && (
       <MessageScroller className="h-full">
-        <MessageScrollerViewport aria-label="Container log" className="py-2">
+        <MessageScrollerViewport aria-label="Container log" className="scroll-edge py-2">
           <MessageScrollerContent className="gap-0">
             {chunkLogLines(lines).map(([bucket, chunk]) => (
               <MessageScrollerItem key={bucket} style={{ containIntrinsicSize: `auto ${chunk.length * 20}px` }}>

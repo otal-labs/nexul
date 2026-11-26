@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { LogBlock } from "@/components/logs/LogBlock";
@@ -10,10 +10,12 @@ import { containerLogToText, emptyLogMessage, filterLogLines, saveTextFile } fro
 
 interface LogsViewProps {
   source: ContainerLogSource;
+  // Rides at the head of the toolbar (a stack's service picker).
+  leading?: ReactNode;
 }
 
 // Pause freezes what is on screen while the stream keeps buffering; resuming shows everything that arrived.
-export const LogsView = ({ source }: LogsViewProps) => {
+export const LogsView = ({ source, leading }: LogsViewProps) => {
   const logs = useContainerLogs(source.path);
   const [frozen, setFrozen] = useState<ContainerLogLine[] | null>(null);
   const [filter, setFilter] = useState<LogFilter>("all");
@@ -39,6 +41,7 @@ export const LogsView = ({ source }: LogsViewProps) => {
           onDownload={() => saveTextFile(`${source.name}.log`, containerLogToText(shown))}
           empty={shown.length === 0}
           filterable={logs.status === "live" || logs.lines.length > 0}
+          leading={leading}
         />
         <LogBlock lines={shown} empty={emptyLogMessage(logs, filter, source.forbidden)} />
       </div>

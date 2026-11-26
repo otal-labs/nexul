@@ -13,3 +13,15 @@ export const usePersonNamer = () => {
     return "another member";
   };
 };
+
+// Who started a deploy or job: an account id (with ":mcp" when an agent acted for it) by name, any other word as written.
+export const useActorNamer = () => {
+  const nameOf = usePersonNamer();
+  return (by: string | undefined): string | undefined => {
+    if (!by) return undefined;
+    const id = by.replace(/:mcp$/, "");
+    const name = nameOf(id);
+    const who = name === "another member" && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id) ? id : name;
+    return by.endsWith(":mcp") ? `${who} via MCP` : who;
+  };
+};

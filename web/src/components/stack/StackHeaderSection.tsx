@@ -21,6 +21,8 @@ interface StackHeaderSectionProps {
   lastHealthy: Deploy | undefined;
   image: string | undefined;
   hostnames: string[];
+  // The live strip answers the daily views; configuration leaves it out so its forms start higher.
+  showStatus?: boolean;
 }
 
 // An instance stack (a gateway) has no project; Topology is where it lives.
@@ -34,7 +36,7 @@ const useStackCrumbs = (stack: Stack): Crumb[] => {
   return [workspaceCrumb];
 };
 
-export const StackHeaderSection = ({ stack, latest, lastHealthy, image, hostnames }: StackHeaderSectionProps) => {
+export const StackHeaderSection = ({ stack, latest, lastHealthy, image, hostnames, showStatus = true }: StackHeaderSectionProps) => {
   const wsPath = useWorkspacePath();
   const answer = useStackActions(stack);
   const crumbs = useStackCrumbs(stack);
@@ -75,7 +77,7 @@ export const StackHeaderSection = ({ stack, latest, lastHealthy, image, hostname
         </div>
       </div>
 
-      <StackLiveHero stack={stack} latest={latest} lastHealthy={lastHealthy} hostnames={hostnames} />
+      {showStatus && <StackLiveHero stack={stack} latest={latest} lastHealthy={lastHealthy} hostnames={hostnames} />}
     </div>
   );
 };
