@@ -1103,6 +1103,28 @@ it takes focus (`useHoverPrefetch`), so most opens show no loader. `EmptyState` 
 a card is a single `EmptyRow` sentence where the rows would be, `flush` when it
 sits in a card body and lines up with the text around it.
 
+Workspace home. A signed-in member with a role opens a workspace on their own
+work in the project the sidebar shows, never a pitch: the page header (the
+workspace's name, then as facts the project, how many open tickets wait on them
+and how many inbox rows are unread), then Your tickets beside a column of
+Unread and Plays running from 1024px, stacked below it. Each section is a
+microheader with a muted link to the full list (Open board, Open inbox) and at
+most eight, five and five rows: a ticket row is the overview row of Docs with
+the status mark in its slot, the key in mono and the status under the title,
+in stage order (in progress, review, testing, backlog) and newest first; the
+unread rows are the inbox's own `NotificationItem`; a run is its ticket with a
+`status-pulse` `info` dot, or a still `warning-mark` one while it waits for an
+answer. "Waits on you" is the board card's person (the tester while testing,
+else the developer). Each section loads in its own row shape and says it is
+empty in one `EmptyRow` sentence. `WorkspaceOverview` in
+`web/src/components/home/` is the reference.
+
+Error page. The not-found and crash screen (`ErrorScreen`) is the empty state at
+the showcase size: the orbit mark around `Unplug` (a crash, `CircleAlert`) with
+its entrance, the 32px headline, the console lines in 12px mono with the code
+in `destructive`, then the actions, set a little above centre. No eyebrow and no
+illustration: a drawn scene was a second art style beside the orbit.
+
 Showcase surfaces. The signed-out pages (home, sign in, invitation), the
 wizard frames and the error page sit on `ShowcaseSurface`: the light field,
 live where a page opts in, the same brand tint top right, card lift between and brand tint bottom left,

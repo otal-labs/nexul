@@ -10,7 +10,7 @@ export const PlayTrailPreview = () => (
     <div className="terminal-window__body">
       <p>
         <span className="text-primary">▶</span> Play "Fix with AI" on{" "}
-        <span className="text-info">ticket NEX-142</span>
+        ticket NEX-142
       </p>
       <p className="text-muted-foreground">
         <span className="text-primary">▸</span> read the failing test, found an off-by-one in
