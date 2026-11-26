@@ -114,6 +114,22 @@ describe("Your computers", () => {
     expect(await screen.findByText("1 of 4 play runs")).toBeInTheDocument();
   });
 
+  it("adds and removes the labels a play's needs match, beside the ones its facts give it", async () => {
+    const user = userEvent.setup();
+    computers = [{ ...computers[0]!, labels: ["gpu"], derived_labels: ["docker", "linux"] }, computers[1]!];
+    mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
+    renderAgent("/acme/agent/computers/c-laptop");
+
+    expect(await screen.findByText("From its facts")).toBeInTheDocument();
+    expect(screen.getByText("docker")).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Add a label to laptop" }), "Staging-Keys{Enter}");
+    expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { labels: ["gpu", "staging-keys"] });
+
+    await user.click(await screen.findByRole("button", { name: "Remove gpu" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/pairing/computers/c-laptop", { labels: ["staging-keys"] });
+    expect(screen.queryByRole("button", { name: "Remove docker" }), "what its facts give it can't be removed").not.toBeInTheDocument();
+  });
+
   it("switches a computer off for plays from its details, saying what still works there", async () => {
     const user = userEvent.setup();
     mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));

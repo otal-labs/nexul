@@ -127,6 +127,18 @@ func (f *fakeRepo) ReorderComputers(_ context.Context, userID string, ids []stri
 	return nil
 }
 
+func (f *fakeRepo) SetComputerLabels(_ context.Context, userID, computerID string, labels []string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.Labels = labels
+	f.computers[computerID] = c
+	return nil
+}
+
 func (f *fakeRepo) SetComputerPlaysOff(_ context.Context, userID, computerID string, off bool, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

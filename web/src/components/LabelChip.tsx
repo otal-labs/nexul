@@ -8,7 +8,7 @@ interface LabelChipProps extends React.ComponentProps<"span"> {
 }
 
 // A label is a tag, not a state: a neutral hairline pill with muted text, its own hue only on the leading dot.
-export const LabelChip = ({ label, color, className, ...props }: LabelChipProps) => (
+export const LabelChip = ({ label, color, className, children, ...props }: LabelChipProps) => (
   <span
     data-slot="label-chip"
     className={cn(
@@ -19,5 +19,6 @@ export const LabelChip = ({ label, color, className, ...props }: LabelChipProps)
   >
     <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} style={hueStyle(color)} aria-hidden />
     <span className="truncate">{label}</span>
+    {children}
   </span>
 );

@@ -318,11 +318,12 @@ func (h *Handler) updateComputer(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateComputerRequest struct {
-	Name          *string `json:"name"`
-	RunsAtOnce    *int    `json:"runs_at_once"`
-	ChatProjectID *string `json:"chat_project_id"`
-	ShellEnabled  *bool   `json:"shell_enabled"`
-	PlaysOff      *bool   `json:"plays_off"`
+	Name          *string   `json:"name"`
+	RunsAtOnce    *int      `json:"runs_at_once"`
+	ChatProjectID *string   `json:"chat_project_id"`
+	ShellEnabled  *bool     `json:"shell_enabled"`
+	PlaysOff      *bool     `json:"plays_off"`
+	Labels        *[]string `json:"labels"`
 }
 
 type reorderRequest struct {

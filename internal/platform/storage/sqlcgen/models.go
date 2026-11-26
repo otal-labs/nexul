@@ -973,6 +973,7 @@ type PairingComputer struct {
 	ChatProjectID         string
 	ShellEnabled          int64
 	PlaysOff              int64
+	Labels                string
 }
 
 type PairingMoveNotice struct {

@@ -1,7 +1,7 @@
 # 04 — Plays name needs
 
 **Status:** ready-for-agent
-**Blocked by:** 03
+**Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, Placement (Ready, Needs); Surfaces.
 

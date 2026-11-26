@@ -188,3 +188,22 @@ func TestPairingRepo_SetComputerPlaysOff_OwnerOnlyAndTakesPlaysByDefault(t *test
 	assert.True(t, got.PlaysOff)
 	require.ErrorIs(t, s.Pairing.SetComputerPlaysOff(ctx, "u2", "c1", false, time.Now()), apperrs.ErrNotFound)
 }
+
+func TestPairingRepo_SetComputerLabels_RoundTripsBesideTheDerivedOnes(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
+
+	got, err := s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{}, got.Labels)
+	require.NoError(t, s.Pairing.SetComputerLabels(ctx, "u1", "c1", []string{"gpu", "windows-vm"}, time.Now()))
+	got, err = s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"gpu", "windows-vm"}, got.Labels)
+	assert.Equal(t, pairing.DerivedLabels(got.Facts), got.DerivedLabels)
+	require.ErrorIs(t, s.Pairing.SetComputerLabels(ctx, "u2", "c1", nil, time.Now()), apperrs.ErrNotFound)
+}

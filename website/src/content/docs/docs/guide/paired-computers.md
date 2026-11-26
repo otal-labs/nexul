@@ -209,8 +209,9 @@ Everything about where turns run is on the **Agent** page in the sidebar, beside
 
 Under **Defaults** in **Projects**, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own page says whether it can take a project's runs.
 
-Each computer's details set three things for it:
+Each computer's details set four things for it:
 
+- **Labels**: words that say what the computer has, such as `gpu`, `staging-keys` or `windows-vm`: lowercase letters, digits and dashes, up to 32 characters, up to 20 on one computer. Type one in **Add label** and press Enter; the × on a label removes it. Beside them, after **From its facts**, are the ones Nexul gives it by itself and keeps up to date: `docker` while Docker answers there, and `linux`, `macos` or `windows`. A play that needs a label runs only on a computer that has it.
 - **Takes plays**, on by default: off, no play, auto play or `@Agent` turn runs there, pressed or picked, and a run passes it over as "desk is switched off for plays". Commands, logs and setup still work, so it suits a machine you only want a shell on. Turning it back on lets waiting runs try it at once.
 - **Runs at once**, 1 to 5: how many play runs it takes side by side. Its page says how many are going, such as "1 of 2 play runs". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer. Lowering it stops no run already going: new runs wait until fewer than the new number are running.
 - **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.

@@ -43,6 +43,7 @@ type Repo interface {
 	// SetComputerPlacement sets one of userID's own computers' runs at once and chat folder, or ErrNotFound.
 	SetComputerPlacement(ctx context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, at time.Time) error
 	SetComputerPlaysOff(ctx context.Context, userID, computerID string, off bool, at time.Time) error
+	SetComputerLabels(ctx context.Context, userID, computerID string, labels []string, at time.Time) error
 	// ListSharedRuns returns the newest limit play runs people other than ownerID ran on computerID.
 	ListSharedRuns(ctx context.Context, computerID, ownerID string, limit int) ([]SharedRun, error)
 	// CountRunning returns how many play runs are going on each of computerIDs, leaving out the idle ones.

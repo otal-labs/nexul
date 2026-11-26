@@ -296,6 +296,12 @@ A queued run waits when no ready computer has room; a pressed run never waits
 (ADR 0166).
 _Avoid_: Slots per person, concurrency limit
 
+**Label**:
+A word on a computer saying what it has, such as `gpu` or `windows-vm`: the ones its owner sets (lowercase letters,
+digits and dashes, up to 32 characters, up to 20), and the ones its facts give it, `docker` while Docker answers and
+its OS as `linux`, `macos` or `windows`. A play's needs match them (ADR 0197).
+_Avoid_: Tag, capability, trait
+
 **Takes plays**:
 A computer's switch, set by its owner and on by default: off, no play, auto play or `@Agent` turn runs there and
 placement passes it over as `no_plays`, while commands, logs and setup keep working (ADR 0211). Stored as `plays_off`.

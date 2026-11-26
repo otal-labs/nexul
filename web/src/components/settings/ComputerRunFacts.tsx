@@ -1,6 +1,7 @@
 import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ComputerLabels } from "@/components/settings/ComputerLabels";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
         </label>
         {computer.plays_off && <p className="mt-1.5 text-muted-foreground">Commands, logs and setup still work.</p>}
       </Fact>
+      <ComputerLabels computer={computer} />
       <Fact label="Runs at once">
         <ToggleGroup
           type="single"
