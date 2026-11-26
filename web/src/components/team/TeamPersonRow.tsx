@@ -1,11 +1,12 @@
 import { ChevronRight } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { RoleChipRow } from "@/components/role/RoleChipRow";
+import { OverflowCount } from "@/components/OverflowCount";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { TeamGapLine } from "@/components/team/TeamGapLine";
 import { TeamSignInAccounts } from "@/components/team/TeamSignInAccounts";
-import { heldRoles, type TeamPerson } from "@/models/Team";
+import { heldRoles, type TeamPerson, type TeamRole } from "@/models/Team";
 import { personName, presenceText } from "@/utils/TeamUtility";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -14,8 +15,24 @@ interface TeamPersonRowProps {
   onOpen: (id: string) => void;
 }
 
-// The name with its presence dot over the handles and one setup mark, then two fixed columns every row shares, roles
-// or workspaces and last seen, so the eye scans down them.
+// The role as plain ink text, like the workspace count beside it on other rows, the rest behind a count.
+const TeamRoleNames = ({ roles }: { roles: TeamRole[] }) => {
+  const [first, ...rest] = roles;
+  return (
+    <span className="flex min-w-0 items-baseline gap-1">
+      {!first && <span>No roles</span>}
+      {first && <span className="truncate text-foreground">{first.name}</span>}
+      {rest.length > 0 && (
+        <span className="pointer-events-auto">
+          <OverflowCount label={`${rest.length} more ${rest.length === 1 ? "role" : "roles"}`} items={rest.map((role) => role.name)} />
+        </span>
+      )}
+    </span>
+  );
+};
+
+// The name over the handles and one muted setup mark, then two fixed columns every row shares, role or workspaces and
+// presence, so the eye scans down them.
 export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
   const [only] = person.workspaces;
   const several = person.workspaces.length > 1;
@@ -35,12 +52,6 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
             <span dir="auto" className="truncate text-sm font-medium" title={personName(person)}>
               {personName(person)}
             </span>
-            {person.online && (
-              <span className="flex shrink-0 items-center">
-                <span aria-hidden className="size-1.5 rounded-full bg-success" />
-                <span className="sr-only">Online</span>
-              </span>
-            )}
             <AccountStatusLabel status={person.status} />
           </span>
           <span className="flex min-w-0 items-center gap-x-4 text-xs whitespace-nowrap text-muted-foreground">
@@ -49,13 +60,14 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
           </span>
         </span>
         <span className="flex w-36 shrink-0 text-xs text-muted-foreground">
-          {only && !several && <RoleChipRow roles={heldRoles(only)} />}
+          {only && !several && <TeamRoleNames roles={heldRoles(only)} />}
           {several && <span className="tabular-nums">{person.workspaces.length} workspaces</span>}
           {!only && <span>No workspace</span>}
         </span>
         <span className="w-20 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+          {person.online && <SettingsStatus tone="success">Online</SettingsStatus>}
           {!person.online && person.last_seen_at && <span className="sr-only">Last seen </span>}
-          {!person.online && person.last_seen_at ? formatRelativeTime(person.last_seen_at) : presenceText(person)}
+          {!person.online && (person.last_seen_at ? formatRelativeTime(person.last_seen_at) : presenceText(person))}
         </span>
         <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </div>

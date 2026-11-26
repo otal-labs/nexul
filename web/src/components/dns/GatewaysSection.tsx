@@ -19,11 +19,13 @@ export const GatewaysSection = () => {
       title="Gateways"
       description="Each gateway makes one Docker network reachable from the internet."
       aside={
-        <ActionButton permission="dns:write" verb="set up DNS" variant="ghost" size="sm" to="/wizard/onboarding/dns">
-          Set up DNS
-        </ActionButton>
+        <>
+          <ActionButton permission="dns:write" verb="set up DNS" variant="ghost" size="sm" to="/wizard/onboarding/dns">
+            Set up DNS
+          </ActionButton>
+          <CreateGatewayDialog />
+        </>
       }
-      footer={<CreateGatewayDialog />}
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load gateways." />}

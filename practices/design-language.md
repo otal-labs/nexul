@@ -1479,10 +1479,15 @@ box of their own and no hover lift unless the row is a link. State is a
 detail 16px after it, set apart by space alone ("Connected" then "by Alice 20d ago", "Active" then "last used 9d ago", "Revoked 8 Oct"),
 never a chip; an active account says nothing, only one that can't sign in
 (Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job (Unlink, Delete,
-Disconnect, Sign out) are outline buttons in ink whose word turns `destructive` on hover, kept apart from the primary action,
-and ask before they act: a bare word read as content, not a control. A row's action that repeats down a list
-(a device's Sign out, a template's Edit) stays quiet until the row is pointed at, and is always shown where nothing hovers.
-A row's rules keep the text's edge; only a hover lift reaches 8px past it. A card footer's lone action sits at its right. A card that edits values saves from its footer with
+Disconnect, Revoke, Sign out, Remove key) are one quiet control: a ghost button whose word is `muted-foreground` at rest and turns
+`destructive` over a `destructive` 10% fill on hover (`destroyActionClass` and `destroyActionLiveClass` in `ConfirmDestroyButton`),
+always in view so a finger reaches it with its 44px hit area, kept apart from the primary action, and asking before it acts
+(the button arming into a solid Confirm and an X, or a confirmation dialog). An outline at rest made the destructive word
+the loudest mark on every row. A row's other repeating action (a template's Edit) stays quiet until the row is pointed at,
+and is always shown where nothing hovers.
+A row's rules keep the text's edge; only a hover lift reaches 8px past it. A card footer's lone action sits at its right; a card that saves nothing keeps its actions in the header beside its state
+(Version, License, Gateways), so one card never splits its calls to action between header and footer. Facts in a settings card (Running, Channel, Newest;
+Licensee, Expires) take a muted 12px label over the value (`Fact` with `plain`), never the mono microheader. A card that edits values saves from its footer with
 `SettingsSaveBar`: the strip is always there; Save is the primary button,
 disabled (the flat disabled look) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
@@ -1506,7 +1511,7 @@ row's Edit, always in view, opening that question's own markdown in place with R
 segmented Questions | Markdown control over it for editing the whole text at once.
 A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
 that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
-device first with "This device" in ink in the action column, a plain device icon with no tile, a Sign out on each other row shown on hover, and an outline Sign out everywhere else that turns
+device first with "This device" in ink in the action column, a plain device icon with no tile, the quiet Sign out on each other row, always in view like a token's Revoke, and an outline Sign out everywhere else that turns
 `destructive` on hover), Personal access tokens (revoked ones last), then
 Connect a device as two rows, Phone app and Desktop app, the QR opening under
 its row only once a code is generated, with Cancel and New code in the row's slot and the code centred on the QR. In a
@@ -1514,11 +1519,13 @@ settings list mono is for identifiers only (handles, IPs, token prefixes, hostna
 and the words between names stay in the UI sans. A row's state sits on its second line, never on the title's: a Team
 row's setup, a connector's problem; a connected connector says only who connected it and when, muted after its name, with
 what it is for on the line under it, wrapping rather than cut. Connectors list the connected
-tools first and the rest under a Not connected microheader, with no filter. A Team row is the name with a
-presence dot over its handles and one setup mark (the steps left read aloud and shown in the person's dialog), then two
-fixed columns every row shares, roles or workspaces and last seen, so the eye scans down them. Sign-in providers are one
+tools first and the rest under a Not connected microheader, with no filter. A Team row is the name over its
+handles and one setup mark in muted meta (only its dot takes the tone; the steps left are read aloud and shown in the
+person's dialog), then two fixed columns every row shares, so the eye scans down them: the role as plain ink text with a
+count for the rest, or the workspace count muted; and presence, Online beside a `success` dot or when they were last seen. Sign-in providers are one
 card per provider, stacked; an off provider shows its redirect URI and keeps its form folded behind Set up in the footer,
-and an enabled one shows its client ID in the same copy well as the URI. A starting template shows its state only once edited, and its row is the toggle that opens its editor, a muted chevron
+and an enabled one shows its client ID in the same copy well as the URI. A starting template's row is one 44px line, its state at the row's end (Edited or Added with who and when, else a muted
+Default), and the row is the toggle that opens its editor, a muted chevron
 at its end turning down while open; single templates that reach workspaces the same way share one group (Workspace
 defaults), and the Interview template is named Interview questions so the play of that name reads apart.
 

@@ -7,6 +7,7 @@ import { secretManagerName } from "@nexul/client-core/secretReference";
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
+import { destroyActionClass, destroyActionLiveClass } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
@@ -46,8 +47,8 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   const connectedBy = usePerson(status.connected_by ?? "");
   const connectorBy = status.connected_by && personLabel(connectedBy);
   const connectedDetail = [
-    // The owner wizard connects as "setup", which reads as a person's name after "by".
-    connectorBy && (connectorBy === "setup" ? "at setup" : `by ${connectorBy}`),
+    // The owner wizard connects as "setup", which is no person, so it says only when.
+    connectorBy && connectorBy !== "setup" && `by ${connectorBy}`,
     status.connected_at && formatRelativeTime(status.connected_at),
   ]
     .filter(Boolean)
@@ -95,8 +96,9 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           permission="connectors:write"
           verb="disconnect connectors"
           size="sm"
-          variant="outline"
-          liveClassName="hover:text-destructive"
+          variant="ghost"
+          className={destroyActionClass}
+          liveClassName={destroyActionLiveClass}
           onClick={() => void onDisconnect()}
           loading={disconnect.isPending}
         >

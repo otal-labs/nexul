@@ -41,7 +41,7 @@ export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowPr
   };
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "py-1")}>
+    <li data-leaving={leaving || undefined} className={leavingRowClass}>
       <div className="flex min-h-11 items-center gap-1">
         <button
           type="button"
@@ -50,10 +50,9 @@ export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowPr
           onClick={() => setOpen(!open)}
           className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left transition-[background-color] duration-150 ease-standard hover:bg-accent"
         >
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium first-letter:uppercase">{label}</span>
-            <TemplateEditedLine template={template} />
-          </span>
+          <span className="block min-w-0 flex-1 truncate text-sm font-medium first-letter:uppercase">{label}</span>
+          <TemplateEditedLine template={template} />
+          {!template.edited && <span className="text-xs text-muted-foreground">Default</span>}
           <ChevronRight
             aria-hidden
             className={cn(

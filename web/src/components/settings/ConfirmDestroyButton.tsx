@@ -23,8 +23,9 @@ interface ConfirmDestroyButtonProps {
   gate?: ActionGate;
 }
 
-// A worded one is an outline button like the card's other secondary actions, its word turning red on hover; a bare word in ink read as content, not a control.
-const labelledClass = "text-foreground";
+// A row's destructive action is a muted ghost that turns red on hover, so it never outweighs the row's safe actions; it stays in view on touch.
+export const destroyActionClass = "text-muted-foreground";
+export const destroyActionLiveClass = "hover:bg-destructive/10 hover:text-destructive";
 
 // Arms into confirm/cancel instead of firing on first click; auto-reverts so it can't linger as a trap.
 export const ConfirmDestroyButton = ({
@@ -53,11 +54,11 @@ export const ConfirmDestroyButton = ({
         <ActionButton
           {...gate}
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           aria-label={label}
-          className={labelledClass}
-          liveClassName="hover:text-destructive"
+          className={destroyActionClass}
+          liveClassName={destroyActionLiveClass}
           disabled={disabled}
           loading={loading}
           onClick={() => setArmed(true)}
@@ -75,7 +76,7 @@ export const ConfirmDestroyButton = ({
           aria-label={idleLabel}
           title={idleLabel}
           className="size-8"
-          liveClassName="hover:text-destructive"
+          liveClassName={destroyActionLiveClass}
           disabled={disabled}
           loading={loading}
           onClick={() => setArmed(true)}
@@ -84,11 +85,11 @@ export const ConfirmDestroyButton = ({
       {!armed && !gate && (
         <Button
           type="button"
-          variant={labelled ? "outline" : "ghost"}
+          variant="ghost"
           size="sm"
           aria-label={label ?? (labelled ? undefined : idleLabel)}
           title={labelled ? undefined : idleLabel}
-          className={cn("hover:text-destructive", labelled && labelledClass)}
+          className={cn(destroyActionLiveClass, labelled && destroyActionClass)}
           disabled={disabled}
           loading={loading}
           onClick={() => setArmed(true)}

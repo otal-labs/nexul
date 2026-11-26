@@ -98,7 +98,7 @@ describe("TeamSection", () => {
     expect(dotOf(eve)).toBeNull();
   });
 
-  it("shows a person's roles as chips, three then a count that lists the rest without opening the person, and says when there are none", async () => {
+  it("shows a person's first role, then a count that lists the rest without opening the person, and says when there are none", async () => {
     const user = userEvent.setup();
     const roles = ["Owner", "Lead", "Editor", "Client", "Tester"].map((name) => ({ id: `r-${name}`, name, is_owner: name === "Owner" }));
     const nexul = team.people[0]!.workspaces[0]!;
@@ -112,11 +112,10 @@ describe("TeamSection", () => {
 
     const lena = await personRow("Lena");
     expect(within(lena).getByText("Owner")).toBeInTheDocument();
-    expect(within(lena).getByText("Editor")).toBeInTheDocument();
     expect(within(lena).queryByText("Client")).not.toBeInTheDocument();
     expect(within(await personRow("Sam")).getByText("No roles")).toBeInTheDocument();
 
-    await user.click(within(lena).getByRole("button", { name: "2 more roles: Client, Tester" }));
+    await user.click(within(lena).getByRole("button", { name: "4 more roles: Lead, Editor, Client, Tester" }));
 
     expect(await screen.findByText("Client")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Lena" })).not.toBeInTheDocument();
