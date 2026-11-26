@@ -1,5 +1,5 @@
 import { CircleAlert, Unplug } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { errorMessage } from "@/api/client";
 import { OrbitMark } from "@/components/EmptyState";
@@ -16,6 +16,7 @@ interface ErrorScreenProps {
 // The empty state's orbit and its entrance, at the showcase headline's size; the console lines say what happened.
 export const ErrorScreen = ({ error }: ErrorScreenProps) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const isCrash = error != null;
 
   return (
@@ -39,7 +40,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
             )}
             {!isCrash && (
               <>
-                $ curl /route/that/does/not/exist
+                $ curl {pathname}
                 <br />
                 <span className="text-destructive">404</span> No page at this address.
               </>
