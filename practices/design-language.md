@@ -1125,11 +1125,11 @@ sits in a card body and lines up with the text around it.
 Workspace home. A signed-in member with a role opens a workspace on their own
 work in the project the sidebar shows, never a pitch: the page header (the
 workspace's name, then as facts the project, how many open tickets wait on them
-and how many inbox rows are unread), then Your tickets beside a column of
+and how many inbox rows are unread, left out at zero), then Your tickets beside a column of
 Inbox and Plays running from 1024px, stacked below it. Each section is a
 microheader with a muted link to the full list (Open board, Open inbox) and at
 most eight, six and five rows: a ticket row is the overview row of Docs with
-the status mark in its slot (a status without an icon takes its stage's: dashed for backlog), the key in mono and the status under the title,
+the status mark in its slot (a status without an icon takes its stage's: dashed for backlog), the key in mono and the status under the title (except backlog, which the dashed mark already says, so eight backlog rows don't repeat it),
 in stage order (in progress, review, testing, backlog) and newest first; the
 inbox rows are the inbox's own `NotificationItem`, unread first, then the latest read, so a quiet inbox still shows what happened; what a section leaves out is a muted link with its count and an arrow ("9 more on the board"); a run is its ticket with a
 `status-pulse` `info` dot, or a still `warning-mark` one while it waits for an

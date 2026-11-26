@@ -12,7 +12,7 @@ const Count = ({ n, label }: { n: number; label: string }) => (
   </>
 );
 
-// The facts the sections below read from: which project, how much waits on the viewer there, how much is unread.
+// The facts the sections below read from: which project, how much waits on the viewer there, how much is unread (nothing at zero, beside read rows).
 export const WorkspaceOverviewHeader = ({ project }: { project: Project | undefined }) => {
   const workspace = useSelectedWorkspace();
   const can = useAreaAccess(project?.id);
@@ -26,7 +26,7 @@ export const WorkspaceOverviewHeader = ({ project }: { project: Project | undefi
           parts={[
             project?.name,
             mine && <Count n={mine.length} label={mine.length === 1 ? "ticket on you" : "tickets on you"} />,
-            unread && <Count n={unread.count} label="unread" />,
+            unread && unread.count > 0 && <Count n={unread.count} label="unread" />,
           ]}
         />
       }
