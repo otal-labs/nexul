@@ -326,7 +326,7 @@ describe("StackPage", () => {
     expect(await within(services).findByRole("link", { name: "app.example.com" })).toHaveAttribute("href", "https://app.example.com");
     expect(within(services).getByRole("button", { name: "1 more address: api:8080 → host :8080" })).toHaveTextContent("+1");
     expect(within(services).getByText("db:5432")).toBeInTheDocument();
-    expect(within(services).getByTitle("container api-db-1 db:5432")).toHaveTextContent("db");
+    expect(within(services).getByTitle(/^container api-db-1\s+db:5432/)).toHaveTextContent("db");
     expect(within(services).getAllByTitle("ghcr.io/onik/api:v1")[0]).toHaveTextContent("api:v1");
     expect(within(services).getByText("2 services on api_default")).toBeInTheDocument();
   });

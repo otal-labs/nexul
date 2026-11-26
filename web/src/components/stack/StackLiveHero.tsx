@@ -43,7 +43,9 @@ const Health = ({ services, stack }: { services: Container[] | undefined; stack:
   return (
     <HeroCell label="Health">
       {!services && <HeroDetail>—</HeroDetail>}
-      {clear && <HeroLine dot="bg-success">No issues</HeroLine>}
+      {/* A clean report from a fortnight ago is not today's health, so a stale one says so instead of "No issues". */}
+      {clear && !stale && <HeroLine dot="bg-success">No issues</HeroLine>}
+      {clear && stale && <HeroLine dot="bg-muted-foreground">No recent report</HeroLine>}
       {/* One line, so the count and its age read as one sentence. */}
       {clear && <HeroDetail indent>{[`${total} of ${total} up`, seen].filter(Boolean).join(" · ")}</HeroDetail>}
       {names.length > 0 && (

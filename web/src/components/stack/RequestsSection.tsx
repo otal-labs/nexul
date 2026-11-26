@@ -36,7 +36,7 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
       )}
       <div>
         {total > 0 && <RequestBars requests={requests} />}
-        {/* A quiet hour is a flat floor with words, not sixty floor marks and the uncounted minutes towering over them. */}
+        {/* A quiet hour is a flat floor with words, not sixty bare floor marks. */}
         {total === 0 && (
           <div className="flex h-16 items-center justify-center border-b border-border">
             <p className="text-xs text-muted-foreground">No requests reached this stack in the last hour</p>

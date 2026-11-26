@@ -11,7 +11,7 @@ const BAR = 7;
 const HEIGHT = 64;
 const FLOOR = 2;
 
-// One bar a minute on a hairline floor: the answered part in a neutral tone, the 5xx part on top in `warning`; a quiet minute leaves the floor bare, and one nobody counted is a faint full-height track.
+// One bar a minute on a hairline floor: the answered part in a neutral tone, the 5xx part on top in `warning`; a quiet minute leaves the floor bare, and one nobody counted is a dash on the floor, never a bar.
 export const RequestBars = ({ requests }: RequestBarsProps) => {
   const peak = Math.max(1, ...requests.requests.map((r) => r ?? 0));
   const width = requests.requests.length * SLOT;
@@ -29,7 +29,7 @@ export const RequestBars = ({ requests }: RequestBarsProps) => {
         const time = formatClockTime(minuteAt(requests, i));
         if (count === null) {
           return (
-            <rect key={i} x={x} y={0} width={BAR} height={HEIGHT} className="fill-muted-foreground/10">
+            <rect key={i} x={x} y={HEIGHT - 1} width={BAR} height={1} className="fill-muted-foreground/60">
               <title>{`${time} · no data`}</title>
             </rect>
           );

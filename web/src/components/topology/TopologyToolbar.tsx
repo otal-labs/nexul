@@ -150,25 +150,30 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
         </div>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1">
-        <ToolButton label="Zoom out" icon={MinusIcon} onClick={() => void zoomOut()} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" className="h-8 w-14 px-0 font-mono text-xs tabular-nums" aria-label="Zoom to 100%" onClick={() => void zoomTo(1)}>
-              {Math.round(viewport.zoom * 100)}%
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Zoom to 100%</TooltipContent>
-        </Tooltip>
-        <ToolButton label="Zoom in" icon={PlusIcon} onClick={() => void zoomIn()} />
-        <ToolButton label="Fit" icon={MaximizeIcon} onClick={onFit} />
-        <Divider className="hidden @2xl:block" />
-        {rare.map((t, i) => (
-          <Fragment key={t.label}>
-            {i === 2 && <Divider className="hidden @5xl:block" />}
-            <ToolButton {...t} className={t.shownFrom === "@2xl" ? "hidden @2xl:inline-flex" : "hidden @5xl:inline-flex"} />
-          </Fragment>
-        ))}
-        <MoreTools tools={rare} />
+        {/* An empty canvas has nothing to zoom, page or arrange, so only adding a node stays. */}
+        {lanes.length > 0 && (
+          <div className="flex items-center gap-1">
+            <ToolButton label="Zoom out" icon={MinusIcon} onClick={() => void zoomOut()} />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" className="h-8 w-14 px-0 font-mono text-xs tabular-nums" aria-label="Zoom to 100%" onClick={() => void zoomTo(1)}>
+                  {Math.round(viewport.zoom * 100)}%
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Zoom to 100%</TooltipContent>
+            </Tooltip>
+            <ToolButton label="Zoom in" icon={PlusIcon} onClick={() => void zoomIn()} />
+            <ToolButton label="Fit" icon={MaximizeIcon} onClick={onFit} />
+            <Divider className="hidden @2xl:block" />
+            {rare.map((t, i) => (
+              <Fragment key={t.label}>
+                {i === 2 && <Divider className="hidden @5xl:block" />}
+                <ToolButton {...t} className={t.shownFrom === "@2xl" ? "hidden @2xl:inline-flex" : "hidden @5xl:inline-flex"} />
+              </Fragment>
+            ))}
+            <MoreTools tools={rare} />
+          </div>
+        )}
         <ActionButton
           permission="topology:write"
           verb="add topology nodes"
