@@ -150,6 +150,10 @@ func (f *fakeMachineShells) RunMachineShell(_ context.Context, runnerID string, 
 	return nil
 }
 
+func (f *fakeMachineShells) OpenMachineTerminal(context.Context, string, string, shelljob.TerminalSize) (shelljob.TerminalStream, error) {
+	return nil, errors.New("the runner is not connected")
+}
+
 func (f *fakeMachineShells) CancelShell(_ context.Context, jobID string) error {
 	f.mu.Lock()
 	sink := f.sinks[jobID]
@@ -346,4 +350,35 @@ func TestMachineShell_AComputersCommandIsNotAMachines(t *testing.T) {
 func TestMachineShellStartError(t *testing.T) {
 	assert.Contains(t, machineShellStartError(ErrCannotRunShell), "too old")
 	assert.Equal(t, "the runner is not connected", machineShellStartError(errors.New("dial")))
+}
+
+func TestMachineTerminal_RefusesWhatCommandsRefuse(t *testing.T) {
+	size := shelljob.TerminalSize{Cols: 80, Rows: 24}
+	tests := []struct {
+		name, user, runner string
+		want               error
+	}{
+		{"a person who can't see the machine", "mallory", "r-edge", apperrs.ErrNotFound},
+		{"a person without Run commands", "dev", "r-edge", apperrs.ErrForbidden},
+		{"a person's computer runner", "ops", "r-laptop", apperrs.ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newMachineShellFixture(t)
+			_, err := f.svc.OpenTerminal(as(tt.user), tt.runner, size)
+			require.ErrorIs(t, err, tt.want)
+			assert.Empty(t, f.jobs.jobs)
+		})
+	}
+	t.Run("an offline runner is a recorded refusal", func(t *testing.T) {
+		f := newMachineShellFixture(t)
+		_, err := f.svc.OpenTerminal(as("ops"), "r-edge", size)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		require.Len(t, f.jobs.jobs, 1)
+		for _, job := range f.jobs.jobs {
+			assert.Equal(t, shelljob.Refused, job.Status)
+			assert.Equal(t, "ops", job.RequesterID)
+			assert.Equal(t, "the runner is not connected", job.Error)
+		}
+	})
 }

@@ -5,7 +5,7 @@ import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
 import { getMachinesKey } from "@/hooks/RunnerHooks";
-import type { ComputerCommand, ComputerCommandPage } from "@/models/ComputerCommand";
+import { TERMINAL_OPEN_SIZE, type ComputerCommand, type ComputerCommandPage } from "@/models/ComputerCommand";
 import type { Machine } from "@/models/Runner";
 import type { LiveFollower } from "@/lib/live";
 
@@ -23,22 +23,14 @@ export const useFetchMachineCommands = (machineId: string, enabled: boolean) =>
     enabled: !!machineId && enabled,
   });
 
-export const useRunMachineCommand = (machineId: string) => {
+export const useOpenMachineTerminal = (machineId: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: requires(
       "machines:shell",
-      async ({ runnerId, command }: { runnerId: string; command: string }) =>
-        (
-          await api.post<ComputerCommand>(`/api/runners/${runnerId}/commands`, {
-            command,
-          })
-        ).data,
+      async (runnerId: string) => (await api.post<ComputerCommand>(`/api/runners/${runnerId}/terminals`, TERMINAL_OPEN_SIZE)).data,
     ),
-    onSuccess: () =>
-      client.invalidateQueries({
-        queryKey: [getMachineCommandsKey, machineId],
-      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: [getMachineCommandsKey, machineId] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };

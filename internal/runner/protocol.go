@@ -101,6 +101,9 @@ const (
 	FrameShellCancel FrameType = "shell_cancel"
 	FrameShellOutput FrameType = "shell_output"
 	FrameShellResult FrameType = "shell_result"
+	// FrameTerminalOpen (server -> runner) opens a terminal: the runner starts its default shell on a pseudo-terminal and opens
+	// stream id to carry it (ADR 0212), or answers harness_dial_refused.
+	FrameTerminalOpen FrameType = "terminal_open"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -243,6 +246,9 @@ type Frame struct {
 	Script         string `json:"script,omitempty"`
 	Cwd            string `json:"cwd,omitempty"`
 	TimeoutSeconds int    `json:"timeout,omitempty"`
+	// Cols and Rows carry a terminal_open's size.
+	Cols int `json:"cols,omitempty"`
+	Rows int `json:"rows,omitempty"`
 }
 
 // The bounds a secrets_changed frame is held to, so a runner cannot make the server hold an unbounded notice.
@@ -353,6 +359,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameShellCancel:         (*Frame).validateID,
 	FrameShellOutput:         (*Frame).validateLogsChunk,
 	FrameShellResult:         (*Frame).validateShellResult,
+	FrameTerminalOpen:        (*Frame).validateTerminalOpen,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -706,6 +713,16 @@ func (f *Frame) validateShellRun() error {
 func (f *Frame) validateShellResult() error {
 	if f.ID == "" || !oneOf(f.Status, ShellStatusSucceeded, ShellStatusFailed, ShellStatusTimedOut, ShellStatusCancelled, ShellStatusRefused) {
 		return fmt.Errorf("%w: shell_result requires id and a status", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateTerminalOpen() error {
+	if f.ID == "" {
+		return fmt.Errorf("%w: terminal_open requires id", apperrs.ErrInvalid)
+	}
+	if f.Cols < 1 || f.Cols > 1000 || f.Rows < 1 || f.Rows > 1000 {
+		return fmt.Errorf("%w: terminal_open size must be 1 to 1000 columns and rows", apperrs.ErrInvalid)
 	}
 	return nil
 }

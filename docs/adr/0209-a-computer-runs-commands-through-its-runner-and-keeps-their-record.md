@@ -41,3 +41,5 @@ flipped with `machines:shell`, whose off cancels the machine's running commands.
 user, root on Linux. Its audit row is an ordinary one, since it is nobody's computer. `command_run` takes `runner_id` in
 place of `computer_id`, `machine_list` with an id and `commands` reads the record back, and the advertised size budget
 rises to 201,000 characters for them.
+
+Amended 2026-11-26: ADR 0212 adds a terminal beside commands, under the same switches, access and record.

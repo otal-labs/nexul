@@ -327,3 +327,16 @@ func (r *runnerComputers) CancelShell(ctx context.Context, jobID string) error {
 	}
 	return h.CancelShell(ctx, jobID)
 }
+
+// OpenTerminal is pairing's seam for opening a terminal on a computer through its runner.
+func (r *runnerComputers) OpenTerminal(ctx context.Context, computerID, id string, size shelljob.TerminalSize) (shelljob.TerminalStream, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	stream, err := h.OpenTerminal(ctx, computerID, id, size)
+	if errors.Is(err, runner.ErrCannotOpenTerminal) {
+		return nil, fmt.Errorf("%w: the Nexul app on it is too old to open a terminal; it updates itself, then try again", apperrs.ErrConflict)
+	}
+	return stream, err
+}

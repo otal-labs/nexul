@@ -45,6 +45,9 @@
   --color-info: var(--info);
   --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
+  --color-console: var(--console);
+  --color-console-edge: var(--console-edge);
+  --color-console-ink: var(--console-ink);
   --color-well-shade: var(--well-shade);
   --color-media: var(--media);
   --color-brand: var(--brand);
@@ -98,6 +101,11 @@
   /* What a panel's radius inset leaves short of 12px: zero by default, the whole 12px in a palette with square panels. */
   --radius-gap: max(0px, calc(0.75rem - var(--shape-xl)));
   --shape-2xl: 1rem;
+
+  /* The terminal, a console dark in both modes and every palette, as on the site. */
+  --console: #0b0b0b;
+  --console-edge: #232323;
+  --console-ink: #d4d4d4;
 
   /* canvas < surface-2 (wells inside a panel) < panel < card < popover */
   --background: oklch(0.95 0.004 265);

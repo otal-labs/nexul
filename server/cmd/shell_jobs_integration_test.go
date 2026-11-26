@@ -32,7 +32,7 @@ func startShellRunner(t *testing.T, c privacyCast, srv *httptest.Server, compute
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	personal := runner.NewClient(runner.ClientConfig{
 		URL: base + "/ws/runner", StreamURL: base + "/api/runners/streams", Credential: enrolled.Credential, Name: enrolled.Name,
-		Version: "v0.3.101-beta", Logger: logger, Executor: runner.NewShellExecutor(nil, runner.ExecutorConfig{}, logger),
+		Version: "v0.3.102-beta", Logger: logger, Executor: runner.NewShellExecutor(nil, runner.ExecutorConfig{}, logger),
 		Personal: true, ShellEnabled: shellEnabled, T3Home: t.TempDir(),
 	})
 	ctx, stop := context.WithCancel(context.Background())

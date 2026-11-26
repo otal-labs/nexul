@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { requires } from "@nexul/client-core/requires";
 
 import { api, errorMessage } from "@/api/client";
-import type { ComputerCommand, ComputerCommandPage } from "@/models/ComputerCommand";
+import { TERMINAL_OPEN_SIZE, type ComputerCommand, type ComputerCommandPage } from "@/models/ComputerCommand";
 import type { LiveFollower } from "@/lib/live";
 
 export const getComputerCommandsKey = "getComputerCommands";
@@ -22,15 +22,25 @@ export const useFetchComputerCommands = (computerId: string) =>
     enabled: !!computerId,
   });
 
-export const useRunComputerCommand = (computerId: string) => {
+export const useOpenComputerTerminal = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: requires("none", async (command: string) =>
-      (await api.post<ComputerCommand>(`/api/pairing/computers/${computerId}/commands`, { command })).data),
+    mutationFn: requires("none", async () =>
+      (await api.post<ComputerCommand>(`/api/pairing/computers/${computerId}/terminals`, TERMINAL_OPEN_SIZE)).data),
     onSuccess: () => client.invalidateQueries({ queryKey: [getComputerCommandsKey, computerId] }),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+export const getCommandKey = "getCommand";
+
+// One command or terminal with what it printed, from the computer's routes or a machine runner's.
+export const useFetchCommand = (command: ComputerCommand) =>
+  useQuery({
+    queryKey: [getCommandKey, command.id, command.machine_id, command.status],
+    queryFn: async () =>
+      (await api.get<ComputerCommand>(command.machine_id ? `/api/runners/commands/${command.id}` : `/api/pairing/commands/${command.id}`)).data,
+  });
 
 export const useCancelComputerCommand = () =>
   useMutation({

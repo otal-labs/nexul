@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), use
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: mocks.post, put: mocks.put }, errorMessage: (e: Error) => e.message }));
 vi.mock("@/hooks/ContainerLogHooks", () => ({ useContainerLogs: mocks.useContainerLogs }));
+vi.mock("@/components/terminal/LazyTerminal", () => ({
+  LazyTerminalDialog: ({ title, socketPath }: { title: string; socketPath: string }) => <p>{`terminal ${title} ${socketPath}`}</p>,
+}));
 vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 vi.mock("@/hooks/useWorkspacePath", () => ({ useWorkspacePath: () => (path: string) => path }));
 vi.mock("react-router", async (original) => ({ ...(await original<typeof import("react-router")>()), useNavigate: () => vi.fn() }));
@@ -92,7 +95,7 @@ describe("MachineCommands", () => {
     expect(screen.queryByRole("button", { name: "More actions for prod" })).not.toBeInTheDocument();
   });
 
-  it("lists who ran what on which runner, runs a command on the machine's runner and stops a running one", async () => {
+  it("lists who ran what on which runner, opens a terminal on the machine's runner and stops a running command", async () => {
     const user = userEvent.setup();
     renderMenu(prod());
     await openCommands(user);
@@ -102,9 +105,9 @@ describe("MachineCommands", () => {
     expect(screen.getByText("alice")).toBeInTheDocument();
     expect(mocks.get).toHaveBeenCalledWith("/api/machines/m-1/commands", { params: { limit: 10 } });
 
-    await user.type(screen.getByRole("textbox", { name: "Command" }), "uptime");
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    expect(mocks.post).toHaveBeenCalledWith("/api/runners/r-edge/commands", { command: "uptime" });
+    await user.click(screen.getByRole("button", { name: "Open terminal" }));
+    expect(mocks.post).toHaveBeenCalledWith("/api/runners/r-edge/terminals", { cols: 80, rows: 24 });
+    expect(await screen.findByText("terminal edge /runners/terminals/j2")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Stop df -h" }));
     expect(mocks.post).toHaveBeenCalledWith("/api/runners/commands/j1/cancel");
@@ -114,13 +117,13 @@ describe("MachineCommands", () => {
     expect(mocks.useContainerLogs).toHaveBeenCalledWith("/runners/commands/j1/output");
   });
 
-  it("offers no command box while the machine's switch is off, and turns it on", async () => {
+  it("offers no terminal while the machine's switch is off, and turns it on", async () => {
     const user = userEvent.setup();
     renderMenu(prod({ shell_enabled: false }));
     await openCommands(user);
 
     expect(await screen.findByText("df -h")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "Command" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open terminal" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("switch", { name: "Run commands from Nexul" }));
     expect(mocks.put).toHaveBeenCalledWith("/api/machines/m-1/shell", { enabled: true });
   });

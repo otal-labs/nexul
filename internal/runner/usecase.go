@@ -91,6 +91,7 @@ type Service struct {
 	shellJobs  MachineShellJobs
 	shells     MachineShells
 	shellQueue *shelljob.Queue
+	terminals  *shelljob.Terminals
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time

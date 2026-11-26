@@ -31,6 +31,8 @@ type Shells interface {
 	RunShell(ctx context.Context, computerID string, run shelljob.Run, sink shelljob.Sink) error
 	// CancelShell asks the runner running jobID to stop it; its end still arrives through the sink.
 	CancelShell(ctx context.Context, jobID string) error
+	// OpenTerminal opens terminal id on the computer through its runner, in its default shell.
+	OpenTerminal(ctx context.Context, computerID, id string, size shelljob.TerminalSize) (shelljob.TerminalStream, error)
 }
 
 // ShellJobStore persists shell jobs; each change carries its event for the outbox in the same transaction.
@@ -177,6 +179,7 @@ func (s *Service) CancelShellJob(ctx context.Context, userID, jobID string) (*sh
 	if err != nil {
 		return nil, err
 	}
+	s.terminals.Cancel(job.ID, "")
 	s.shellQueue.Cancel(ctx, job.ID, "")
 	return s.WaitShellJob(ctx, userID, jobID)
 }
@@ -198,11 +201,13 @@ func (s *Service) SetShellEnabled(ctx context.Context, userID, computerID string
 	return c, nil
 }
 
-// cancelComputerJobs stops every live job on computerID, or only requesterID's when it is set, saying why.
+// cancelComputerJobs stops every live job and terminal on computerID, or only requesterID's when it is set, saying why.
 func (s *Service) cancelComputerJobs(ctx context.Context, computerID, requesterID, why string) {
-	s.shellQueue.CancelWhere(ctx, func(job shelljob.Job) bool {
+	match := func(job shelljob.Job) bool {
 		return job.ComputerID == computerID && (requesterID == "" || job.RequesterID == requesterID)
-	}, why)
+	}
+	s.shellQueue.CancelWhere(ctx, match, why)
+	s.terminals.CancelWhere(match, why)
 }
 
 // HandleComputerGrantChanged stops what a person ran on a computer shared with them once its rule no longer gives them

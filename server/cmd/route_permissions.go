@@ -216,6 +216,7 @@ var routePermissions = map[string][]string{
 	"POST /api/runners/self/remove":             none,
 	"DELETE /api/runners/{id}":                  {"machines:write"},
 	"POST /api/runners/{id}/commands":           {"machines:shell"},
+	"POST /api/runners/{id}/terminals":          {"machines:shell"},
 	"POST /api/runners/commands/{jobID}/cancel": {"machines:shell"},
 
 	"POST /api/me/welcome/first-run":     none,
@@ -255,6 +256,7 @@ var routePermissions = map[string][]string{
 	"POST /api/pairing/computers/{id}/restart":                          none,
 	"POST /api/pairing/computers/{id}/tools":                            none,
 	"POST /api/pairing/computers/{id}/commands":                         none,
+	"POST /api/pairing/computers/{id}/terminals":                        none,
 	"POST /api/pairing/commands/{jobID}/cancel":                         none,
 	"POST /api/pairing/computers/{id}/git-identity":                     none,
 	"POST /api/pairing/computers/{id}/projects":                         none,

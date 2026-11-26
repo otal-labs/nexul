@@ -38,14 +38,17 @@ const (
 // streamWaiter is DialComputer waiting on the runner it asked to open one stream.
 type streamWaiter struct {
 	runnerID string
-	result   chan dialResult
+	// raw is a terminal waiting for its stream as messages, where a T3 Code dial wants bytes.
+	raw    bool
+	result chan dialResult
 	// done closes when DialComputer stops waiting, so a late stream is closed instead of handed to nobody.
 	done chan struct{}
 }
 
 type dialResult struct {
-	conn net.Conn
-	err  error
+	conn     net.Conn
+	terminal *terminalStream
+	err      error
 }
 
 // deliver hands r to the waiting DialComputer, or closes its conn when nobody waits any more.
@@ -56,6 +59,9 @@ func (w *streamWaiter) deliver(r dialResult) bool {
 	case <-w.done:
 		if r.conn != nil {
 			_ = r.conn.Close()
+		}
+		if r.terminal != nil {
+			r.terminal.Close()
 		}
 		return false
 	}
@@ -204,6 +210,13 @@ func (h *Handler) ServeStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = ws.CloseNow() }()
+	if waiter.raw {
+		if !waiter.deliver(dialResult{terminal: &terminalStream{conn: ws, cancel: cancel}}) {
+			return
+		}
+		<-ctx.Done()
+		return
+	}
 	if !waiter.deliver(dialResult{conn: &streamConn{Conn: websocket.NetConn(ctx, ws, websocket.MessageBinary), cancel: cancel}}) {
 		return
 	}
@@ -221,10 +234,23 @@ func (h *Handler) deliverRefusal(c *runnerConn, f Frame) {
 	if !ok || w.runnerID != c.id {
 		return
 	}
+	if w.raw {
+		w.deliver(dialResult{err: fmt.Errorf("%w: %s", apperrs.ErrConflict, f.Error)})
+		return
+	}
 	w.deliver(dialResult{err: apperrs.Retryable(fmt.Errorf("the computer's runner could not reach T3 Code: %s", f.Error))})
 }
 
 // ---- runner side ----
+
+// openStream answers a frame that opens a stream of its own: a terminal, or a dial to T3 Code.
+func (c *Client) openStream(streamCtx, ctx context.Context, control *websocket.Conn, f Frame) {
+	if f.Type == FrameTerminalOpen {
+		c.startTerminal(streamCtx, ctx, control, f)
+		return
+	}
+	c.startStream(streamCtx, ctx, control, f.ID)
+}
 
 // startStream answers harness_dial with one stream to T3 Code; streamCtx outlives a control reconnect.
 func (c *Client) startStream(streamCtx, ctx context.Context, control *websocket.Conn, id string) {

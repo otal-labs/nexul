@@ -94,3 +94,25 @@ func (h *HTTPHandler) CommandOutputSocket(w http.ResponseWriter, r *http.Request
 		return h.svc.OpenShellOutput(ctx, jobID)
 	})
 }
+
+func (h *HTTPHandler) openTerminal(w http.ResponseWriter, r *http.Request) {
+	var req shelljob.TerminalSize
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	job, err := h.svc.OpenTerminal(r.Context(), r.PathValue("id"), req)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, job)
+}
+
+// TerminalSocket carries a terminal on a machine's runner that the caller opened, until either end closes it.
+func (h *HTTPHandler) TerminalSocket(w http.ResponseWriter, r *http.Request) {
+	jobID := r.PathValue("jobID")
+	shelljob.ServeTerminal(w, r, func(ctx context.Context, accept func() (shelljob.TerminalStream, error)) error {
+		return h.svc.AttachTerminal(ctx, jobID, accept)
+	})
+}

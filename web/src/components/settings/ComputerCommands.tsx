@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { Suspense, useState } from "react";
+
+import { SquareTerminalIcon } from "lucide-react";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -7,35 +9,28 @@ import { ComputerCommandRow } from "@/components/settings/ComputerCommandRow";
 import { ComputerCommandSheet } from "@/components/settings/ComputerCommandSheet";
 import { ComputerFact } from "@/components/settings/ComputerFact";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { LazyTerminalDialog } from "@/components/terminal/LazyTerminal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useFetchComputerCommands, useRunComputerCommand } from "@/hooks/ComputerCommandHooks";
+import { useFetchComputerCommands, useOpenComputerTerminal } from "@/hooks/ComputerCommandHooks";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
-import type { ComputerCommand } from "@/models/ComputerCommand";
+import { terminalSocketPath, type ComputerCommand } from "@/models/ComputerCommand";
 import type { Computer } from "@/models/Pairing";
 
 interface ComputerCommandsProps {
   computer: Computer;
 }
 
-// Commands run on the computer through its Nexul app, from here or by an agent's command_run. Its owner has the switch
-// and every command; a person it is shared with by Run commands sees only their own.
+// A terminal on the computer through its Nexul app, and the record of it and of an agent's command_run. Its owner has the
+// switch and every entry; a person it is shared with by Run commands sees only their own.
 export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
   const { data: commands, isPending, error } = useFetchComputerCommands(computer.id);
   const settings = useUpdateComputerSettings(computer.id);
-  const run = useRunComputerCommand(computer.id);
+  const openTerminal = useOpenComputerTerminal(computer.id);
+  const [terminal, setTerminal] = useState<ComputerCommand | null>(null);
   const [shown, setShown] = useState<{ command: ComputerCommand | null; open: boolean }>({ command: null, open: false });
   const owner = !computer.shared;
   const offThere = computer.facts?.shell?.enabled === false;
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const command = String(new FormData(form).get("command") ?? "").trim();
-    if (!command) return;
-    run.mutate(command, { onSuccess: () => form.reset() });
-  };
 
   return (
     <ComputerFact label="Commands">
@@ -60,12 +55,9 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
           </SettingsStatus>
         )}
         {(computer.shell_enabled || !owner) && (
-          <form className="flex items-center gap-2" onSubmit={submit}>
-            <Input name="command" aria-label="Command" placeholder="Command" autoComplete="off" spellCheck={false} className="font-mono" />
-            <Button type="submit" variant="outline" size="sm" disabled={run.isPending}>
-              Run
-            </Button>
-          </form>
+          <Button type="button" variant="outline" size="sm" loading={openTerminal.isPending} onClick={() => openTerminal.mutate(undefined, { onSuccess: setTerminal })}>
+            <SquareTerminalIcon aria-hidden /> Open terminal
+          </Button>
         )}
         {isPending && <LoadingDisplay label="Loading commands" className="justify-start p-0" />}
         {error && <ErrorDisplay error={error} title="Couldn't list the commands." className="p-3" />}
@@ -80,6 +72,11 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
       </div>
       {shown.command && (
         <ComputerCommandSheet command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
+      )}
+      {terminal && (
+        <Suspense fallback={null}>
+          <LazyTerminalDialog title={computer.name} socketPath={terminalSocketPath(terminal)} onClose={() => setTerminal(null)} />
+        </Suspense>
       )}
     </ComputerFact>
   );
