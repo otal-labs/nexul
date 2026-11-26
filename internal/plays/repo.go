@@ -83,6 +83,8 @@ type QueueDispatchRepo interface {
 	QueuedSince(ctx context.Context, autoPlayID string, targetType TargetType, targetID string, since time.Time) (bool, error)
 	// WakePerson makes every queued item of personID due now, for a change to their computers that may close a setup gap.
 	WakePerson(ctx context.Context, personID string, now time.Time) error
+	// WakePlay makes every queued item of playID due now, for a saved play whose needs may now match another computer.
+	WakePlay(ctx context.Context, playID string, now time.Time) error
 	// RecoverDispatching settles items a crash left dispatching: started when their trail exists, queued again otherwise.
 	RecoverDispatching(ctx context.Context) error
 }

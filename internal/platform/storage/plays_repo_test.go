@@ -44,6 +44,7 @@ func TestPlaysRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, []string{"proj-2", "proj-1"}, got.ExcludedProjectIDs)
 	assert.Equal(t, "user-1", got.CreatedBy)
 	assert.True(t, got.Enabled)
+	assert.Equal(t, []string{}, got.Needs, "a play names no needs until it is given some")
 }
 
 func TestPlaysRepo_Create_DocPlay_HasNoStage(t *testing.T) {
@@ -89,6 +90,7 @@ func TestPlaysRepo_Update(t *testing.T) {
 	p.Label = "Renamed"
 	p.Enabled = false
 	p.ExcludedProjectIDs = []string{"proj-1"}
+	p.Needs = []string{"gpu", "windows-vm"}
 	p.UpdatedAt = time.Now()
 	require.NoError(t, s.Plays.Update(context.Background(), p, plays.Revision{}))
 
@@ -97,6 +99,7 @@ func TestPlaysRepo_Update(t *testing.T) {
 	assert.Equal(t, "Renamed", got.Label)
 	assert.False(t, got.Enabled)
 	assert.Equal(t, []string{"proj-1"}, got.ExcludedProjectIDs)
+	assert.Equal(t, []string{"gpu", "windows-vm"}, got.Needs)
 }
 
 func TestPlaysRepo_Delete(t *testing.T) {

@@ -23,6 +23,7 @@ type playResult struct {
 	ShowWhenStage      *Stage     `json:"show_when_stage,omitempty"`
 	ExcludedProjectIDs []string   `json:"excluded_project_ids"`
 	Repository         Repository `json:"repository"`
+	Needs              []string   `json:"needs"`
 	// CanRun is set on a listed play only: whether the caller may run it, from its own rules and their roles.
 	CanRun *bool `json:"can_run,omitempty"`
 	// Runs is set on a list without type only: what the runs the caller can see say about the play.
@@ -46,7 +47,7 @@ func toPlayResult(p *Play) playResult {
 	return playResult{
 		ID: p.ID, WorkspaceID: p.WorkspaceID, Label: p.Label, Type: p.Type, Description: p.Description,
 		Instructions: p.Instructions, Enabled: p.Enabled, ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: p.ExcludedProjectIDs,
-		Repository: p.Repository,
+		Repository: p.Repository, Needs: p.Needs,
 	}
 }
 
@@ -70,6 +71,7 @@ type playCreateIn struct {
 	ShowWhenStage      Stage      `json:"show_when_stage,omitempty" jsonschema:"Required for a ticket play, refused for any other: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
 	ExcludedProjectIDs []string   `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, from project_list."`
 	Repository         Repository `json:"repository,omitempty" enum:"app,tests" jsonschema:"Which project repository runs work on; app by default."`
+	Needs              []string   `json:"needs,omitempty" jsonschema:"Labels a computer needs to take its runs."`
 }
 
 type playUpdateIn struct {
@@ -82,6 +84,7 @@ type playUpdateIn struct {
 	ShowWhenStage      *Stage             `json:"show_when_stage,omitempty" jsonschema:"Ticket plays only: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
 	ExcludedProjectIDs *[]string          `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, replacing the whole list; an empty list clears it."`
 	Repository         Repository         `json:"repository,omitempty" enum:"app,tests" jsonschema:"Which project repository runs work on."`
+	Needs              *[]string          `json:"needs,omitempty" jsonschema:"Replaces the labels a computer needs to run it."`
 	AddAutoPlays       []autoPlayIn       `json:"add_auto_plays,omitempty" jsonschema:"Auto plays to add, each starting the play by itself when its moment matches. A new one starts switched off; turn it on with update_auto_plays."`
 	UpdateAutoPlays    []autoPlayChangeIn `json:"update_auto_plays,omitempty" jsonschema:"Changes by auto play id, from play_list; only the fields passed change."`
 	RemoveAutoPlays    []string           `json:"remove_auto_plays,omitempty" jsonschema:"Ids of auto plays to delete, from play_list."`
@@ -90,7 +93,7 @@ type playUpdateIn struct {
 }
 
 func (in playUpdateIn) changesPlay() bool {
-	return in.Label != nil || in.Description != nil || in.Instructions != nil || in.Enabled != nil || in.ShowWhenStage != nil || in.ExcludedProjectIDs != nil || in.Repository != "" || len(in.Edits) > 0
+	return in.Label != nil || in.Description != nil || in.Instructions != nil || in.Enabled != nil || in.ShowWhenStage != nil || in.ExcludedProjectIDs != nil || in.Repository != "" || in.Needs != nil || len(in.Edits) > 0
 }
 
 type playDeleteIn struct {
@@ -144,7 +147,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				p, err := s.Create(WithViaMCP(ctx), in.WorkspaceID, CreateInput{
 					Label: in.Label, Type: in.Type, Description: in.Description, Instructions: in.Instructions,
 					Enabled: in.Enabled, ShowWhenStage: optionalStage(in.ShowWhenStage), ExcludedProjectIDs: in.ExcludedProjectIDs,
-					Repository: in.Repository,
+					Repository: in.Repository, Needs: in.Needs,
 				})
 				if err != nil {
 					return nil, err
@@ -345,7 +348,7 @@ func attachAutoPlays(ctx context.Context, s *Service, workspaceID string, page [
 func overlayPlay(p *Play, in playUpdateIn) UpdateInput {
 	out := UpdateInput{
 		Label: p.Label, Description: p.Description, Instructions: p.Instructions, Enabled: p.Enabled,
-		ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: p.ExcludedProjectIDs, Repository: in.Repository,
+		ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: p.ExcludedProjectIDs, Repository: in.Repository, Needs: in.Needs,
 	}
 	if in.Label != nil {
 		out.Label = *in.Label

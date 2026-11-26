@@ -53,7 +53,9 @@ type RunRequest struct {
 	// the tests repository for Tests, else the app's (ADR 0204).
 	Repository string
 	// Tests is a run of a play that works on the project's tests repository.
-	Tests        bool
+	Tests bool
+	// Needs are labels the computer must have, its own or from its facts; a computer missing one is passed over (ADR 0197).
+	Needs        []string
 	Provider     string
 	Model        string
 	ModelOptions []harness.OptionSetting
@@ -296,7 +298,7 @@ func (s *Service) tryOption(ctx context.Context, p *plan, o option, live bool) (
 }
 
 // check is what Nexul last heard about c, in the order a gap is named: taking plays at all, reachable, set up for the run's provider,
-// offering its model, holding the project's checkout, and with room.
+// offering its model, having the play's needs, holding the project's checkout, and with room.
 func (s *Service) check(ctx context.Context, p *plan, c Computer, running int) (*option, *miss, error) {
 	if c.PlaysOff {
 		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverNoPlays, Text: c.Name + " is switched off for plays"}}, nil
@@ -306,6 +308,9 @@ func (s *Service) check(ctx context.Context, p *plan, c Computer, running int) (
 	}
 	if m, err := s.providerReady(ctx, p, c); m != nil || err != nil {
 		return nil, m, err
+	}
+	if need := missingNeed(c, p.req.Needs); need != "" {
+		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverMissingNeed, Text: c.Name + " doesn't have " + need}}, nil
 	}
 	checkout, m, err := s.checkout(ctx, p, c)
 	if m != nil || err != nil {

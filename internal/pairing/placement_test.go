@@ -568,3 +568,33 @@ func TestSetPlaysOff_OnlyOnYourOwnComputer(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	assert.False(t, f.repo.computers["desk"].PlaysOff)
 }
+
+func TestNeeds_GoToTheFirstComputerThatHasThemAll(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "laptop", func(c *Computer) { c.Labels = []string{"staging-keys"} })
+	f.add(t, "desk", func(c *Computer) {
+		c.Labels = []string{"gpu", "staging-keys"}
+		c.Facts.OS = "linux"
+	})
+	preview := func(needs ...string) (*ResolvedTarget, error) {
+		return f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Needs: needs, Room: RoomPreferred, Person: true})
+	}
+
+	met, err := preview("staging-keys")
+	require.NoError(t, err)
+	assert.Equal(t, "laptop", met.Computer.ID, "a need the first computer has keeps it first")
+
+	moved, err := preview("gpu", "linux")
+	require.NoError(t, err)
+	assert.Equal(t, "desk", moved.Computer.ID, "a label from its facts counts too")
+	assert.Equal(t, []PassOver{{ComputerID: "laptop", Name: "laptop", Why: PassOverMissingNeed, Text: "laptop doesn't have gpu"}}, moved.PassedOver)
+
+	_, err = preview("windows-vm")
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc)
+	assert.Equal(t, []PassOver{
+		{ComputerID: "laptop", Name: "laptop", Why: PassOverMissingNeed, Text: "laptop doesn't have windows-vm"},
+		{ComputerID: "desk", Name: "desk", Why: PassOverMissingNeed, Text: "desk doesn't have windows-vm"},
+	}, nc.PassedOver, "the waiting line names every computer and what it lacks")
+}

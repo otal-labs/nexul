@@ -80,7 +80,7 @@ type autoPlayChangeIn struct {
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"A new priority, replacing the old one whole."`
 	OnceWithinMinutes *int        `json:"once_within_minutes,omitempty" jsonschema:"A new limit in minutes, 0 for none."`
 	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, causer, or computer."`
-	ComputerIDs       *[]string   `json:"computer_ids,omitempty" jsonschema:"With run_on computer: new computers' ids in order, picked as you, from computer_list; [] means your own computers in their usual order. Omit to keep the list and who picked it."`
+	ComputerIDs       *[]string   `json:"computer_ids,omitempty" jsonschema:"With run_on computer: new computer ids in order, picked as you; [] means your own order. Omit to keep it."`
 	ComputerID        *string     `json:"computer_id,omitempty" jsonschema:"With run_on computer: one new computer's id, as computer_ids with a single id; ignored when computer_ids is sent."`
 	MemoryIDs         *[]string   `json:"memory_ids,omitempty" jsonschema:"New memory ids, replacing the old list whole; [] reads none beyond the always-included ones."`
 	OneAtATime        *bool       `json:"one_at_a_time,omitempty" jsonschema:"On or off."`

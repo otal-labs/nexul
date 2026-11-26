@@ -413,6 +413,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	for _, topic := range plays.ComputerTopics {
 		mustSubscribe(ctx, bus, "plays.queue_computer", topic, " for the run queue", svc.playsRunner.HandleComputerChanged)
 	}
+	// A saved play's needs may now match another computer, so its queued runs look again.
+	mustSubscribe(ctx, bus, "plays.queue_play", plays.TopicUpdated, " for the run queue", svc.playsRunner.HandlePlayUpdated)
 	// A switched-off or deleted auto play lets go of the runs it still has queued.
 	for _, topic := range plays.AutoPlayOffTopics {
 		mustSubscribe(ctx, bus, "plays.queue_auto_play", topic, " for the run queue", svc.playsRunner.HandleAutoPlayOff)

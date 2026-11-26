@@ -30,6 +30,8 @@ type playRequest struct {
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
 	// Repository is app or tests; omitted, it is app on create and kept on update.
 	Repository Repository `json:"repository"`
+	// Needs are labels a computer must have to take its runs; omitted, none on create and kept on update.
+	Needs *[]string `json:"needs"`
 }
 
 // Routes are mounted under the tenancy domain's /api/workspaces prefix.
@@ -184,13 +186,21 @@ func actorIDFromRequest(r *http.Request) string {
 }
 
 func createInputFrom(req playRequest) CreateInput {
-	return CreateInput(req)
+	in := CreateInput{
+		Label: req.Label, Type: req.Type, Description: req.Description, Instructions: req.Instructions,
+		Enabled: req.Enabled, ShowWhenStage: req.ShowWhenStage, ExcludedProjectIDs: req.ExcludedProjectIDs, Repository: req.Repository,
+	}
+	if req.Needs != nil {
+		in.Needs = *req.Needs
+	}
+	return in
 }
 
 func updateInputFrom(req playRequest) UpdateInput {
 	return UpdateInput{
 		Label: req.Label, Description: req.Description, Instructions: req.Instructions,
 		Enabled: req.Enabled, ShowWhenStage: req.ShowWhenStage, ExcludedProjectIDs: req.ExcludedProjectIDs, Repository: req.Repository,
+		Needs: req.Needs,
 	}
 }
 

@@ -103,3 +103,7 @@ SELECT EXISTS (
     WHERE q.sweep_id = ? AND (q.status IN ('queued', 'dispatching')
       OR (q.status = 'started' AND EXISTS (SELECT 1 FROM play_trails t WHERE t.id = q.trail_id AND t.state IN ('starting', 'running'))))
 );
+
+-- name: WakePlayQueuePlay :exec
+UPDATE play_queue SET not_before = sqlc.arg(now)
+WHERE status = 'queued' AND play_id = sqlc.arg(play_id) AND not_before > sqlc.arg(now);

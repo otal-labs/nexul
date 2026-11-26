@@ -6639,6 +6639,12 @@
               "tests"
             ]
           },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "builtin_key": {
             "type": "string"
           },
@@ -6665,6 +6671,7 @@
           "show_when_stage",
           "excluded_project_ids",
           "repository",
+          "needs",
           "builtin_key",
           "created_by",
           "created_at",
@@ -6860,7 +6867,7 @@
         "items": {
           "type": "string"
         },
-        "description": "The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."
+        "description": "Computers its auto play names for run_on computer, in order; empty uses its person's own order."
       },
       "computer_id": {
         "type": "string",
@@ -7091,7 +7098,7 @@
         "items": {
           "type": "string"
         },
-        "description": "The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."
+        "description": "Computers its auto play names for run_on computer, in order; empty uses its person's own order."
       },
       "computer_id": {
         "type": "string",
@@ -7419,6 +7426,12 @@
               "tests"
             ]
           },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "builtin_key": {
             "type": "string"
           },
@@ -7445,6 +7458,7 @@
           "show_when_stage",
           "excluded_project_ids",
           "repository",
+          "needs",
           "builtin_key",
           "created_by",
           "created_at",

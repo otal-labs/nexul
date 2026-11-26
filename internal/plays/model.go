@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 )
 
 // Type says what a play is fired from: a ticket, a doc, a project's interview, or a stack.
@@ -60,6 +61,8 @@ type Play struct {
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
 	// Repository is which of a project's repositories its runs work on, by role (ADR 0204).
 	Repository Repository `json:"repository" enum:"app,tests"`
+	// Needs are the labels a computer must have to take its runs; empty needs nothing (ADR 0197).
+	Needs []string `json:"needs"`
 	// BuiltinKey names the seeded play this one is, kept through renames; empty for a play a person created.
 	BuiltinKey string    `json:"builtin_key"`
 	CreatedBy  string    `json:"created_by"`
@@ -276,5 +279,10 @@ func (p *Play) Validate() error {
 	if p.Repository != RepositoryApp && p.Repository != RepositoryTests {
 		return fmt.Errorf("%w: repository must be app or tests", apperrs.ErrInvalid)
 	}
+	needs, err := labels.Normalize(p.Needs)
+	if err != nil {
+		return err
+	}
+	p.Needs = needs
 	return nil
 }

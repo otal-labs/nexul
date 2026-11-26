@@ -66,6 +66,22 @@ func (r *Runner) HandleComputerChanged(ctx context.Context, ev eventbus.Event) e
 	return nil
 }
 
+// HandlePlayUpdated makes a saved play's queued runs due now, since its needs may now match another computer.
+func (r *Runner) HandlePlayUpdated(ctx context.Context, ev eventbus.Event) error {
+	if r.queue == nil {
+		return nil
+	}
+	var p UpdatedEvent
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if err := r.queue.WakePlay(ctx, p.Play.ID, r.now().UTC()); err != nil {
+		return apperrs.Retryable(fmt.Errorf("wake the queued runs of play %s: %w", p.Play.ID, err))
+	}
+	r.Kick()
+	return nil
+}
+
 // AutoPlayOffTopics are the changes that can end an auto play's say over its queued runs; HandleAutoPlayOff is subscribed to each.
 var AutoPlayOffTopics = []string{TopicAutoPlayUpdated, TopicAutoPlayDeleted}
 

@@ -92,13 +92,13 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 type playRunIn struct {
 	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
 	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the Decisions check play on a done ticket instead of a play_id; pass only target_type ticket and target_id."`
-	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays the daily cap paused on a ticket or doc, instead of running a play; pass only target_type and target_id. Its automatic-run count restarts and queued runs go ahead."`
+	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays the daily cap paused on a ticket or doc instead of running a play; pass only target_type and target_id. Queued runs then go ahead."`
 	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, interview, or stack."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to read before the run, from memory_list; its always-included ones come anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
 	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of your paired computers, from computer_list. Omit to use the first that can take the run."`
-	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project to run in, from computer_list with that computer's id, remembered as the target project's checkout there. Required when none of your computers has a checkout of the project."`
+	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project to run in, from computer_list; remembered as the project's checkout there. Required when no computer of yours has one."`
 	Provider           string                  `json:"provider,omitempty" jsonschema:"Harness provider, for example claude. Omit for the computer's default."`
 	Model              string                  `json:"model,omitempty" jsonschema:"Model, for example sonnet-5. Omit for the provider's default."`
 	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option, true or false for a switch, as the harness lists them per model. Only applies with model."`
@@ -110,7 +110,7 @@ type trailListIn struct {
 	TargetID   string     `json:"target_id,omitempty" jsonschema:"Without id: the ticket's or doc's id, or for an interview the project's id."`
 	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the trails of this play."`
 	Steps      int        `json:"steps,omitzero" jsonschema:"With id: newest transcript steps to return, 1 to 300. Defaults to 50."`
-	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first: queued, started, skipped, didn't run, or cancelled, each with why, plus whether the daily cap paused auto plays there."`
+	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first, each with its state and why, and whether the daily cap paused them."`
 	mcptool.PageArgs
 }
 

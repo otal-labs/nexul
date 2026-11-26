@@ -62,6 +62,7 @@ const savePlayInput = (overrides: Partial<SavePlayFormData> = {}): SavePlayFormD
   show_when_stage: "progress",
   excluded_project_ids: [],
   repository: "app",
+  needs: [],
   ...overrides,
 });
 
@@ -94,6 +95,7 @@ describe("useCreatePlay", () => {
       show_when_stage: null,
       excluded_project_ids: [],
       repository: "app",
+      needs: [],
     });
   });
 });
