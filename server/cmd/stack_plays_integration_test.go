@@ -25,11 +25,10 @@ import (
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
-// TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRightGoes wires a stack play end to end over
-// the real share check: the owner of a computer and a person it is shared with can pick it, a person without Run
-// agents cannot, a crash queues a run as the person who picked it, and a crash after the share is taken away is
-// "didn't run" with the reason.
-func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRightGoes(t *testing.T) {
+// TestIntegration_StackPlays_RunAsTheirPickerAndStopWhenTheirRightGoes wires a stack play end to end: a stack auto play
+// runs as whoever saved it, a crash queues a run as that person with no computer named, and a crash after the person
+// loses the right to run plays is "didn't run" with the reason.
+func TestIntegration_StackPlays_RunAsTheirPickerAndStopWhenTheirRightGoes(t *testing.T) {
 	t.Parallel()
 	c := newSharingCast(t)
 	ctx := t.Context()
@@ -43,27 +42,12 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 		Strategy: deploy.StrategyCompose, CreatedAt: now, UpdatedAt: now}))
 	play, err := c.svc.playsSvc.Create(as("u-carol"), "workspace-default", plays.CreateInput{Label: "Look into crashes", Type: plays.TypeStack, Enabled: true})
 	require.NoError(t, err)
-	pick := func(user string) (*plays.AutoPlay, error) {
-		return c.svc.playsSvc.CreateAutoPlay(as(user), "workspace-default", play.ID, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed, ComputerIDs: &[]string{c.laptop}})
-	}
-
-	_, err = pick("u-dave")
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "dave sees no such computer")
-	code, body := c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:run_commands"],"state":"allow"`)
-	require.Equal(t, 204, code, body)
-	_, err = pick("u-dave")
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "Run commands is not Run agents")
-	code, body = c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:run_agents"],"state":"allow"`)
-	require.Equal(t, 204, code, body)
-
-	own, err := pick("u-alice")
+	own, err := c.svc.playsSvc.CreateAutoPlay(as("u-alice"), "workspace-default", play.ID, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed})
 	require.NoError(t, err)
-	shared, err := pick("u-dave")
+	shared, err := c.svc.playsSvc.CreateAutoPlay(as("u-dave"), "workspace-default", play.ID, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed})
 	require.NoError(t, err)
 	assert.Equal(t, []any{"u-alice", "u-dave"}, []any{own.RunAs, shared.RunAs})
-	_, err = c.svc.playsSvc.UpdateAutoPlay(as("u-dave"), "workspace-default", play.ID, shared.ID, true, plays.AutoPlayInput{
-		Moment: plays.MomentStackServiceCrashed, ComputerIDs: &[]string{c.laptop},
-	})
+	_, err = c.svc.playsSvc.UpdateAutoPlay(as("u-dave"), "workspace-default", play.ID, shared.ID, true, plays.AutoPlayInput{Moment: plays.MomentStackServiceCrashed})
 	require.NoError(t, err)
 
 	crash := func() {
@@ -78,11 +62,11 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 	items, err := c.store.PlayQueue.ListQueueByTarget(ctx, plays.TargetStack, "stack-shop")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
-	assert.Equal(t, []any{plays.QueueQueued, "u-dave", c.laptop, "api"}, []any{items[0].Status, items[0].PersonID, items[0].ComputerID, items[0].Service}, items[0].Reason)
-	assert.Equal(t, []string{c.laptop}, items[0].ComputerIDs)
+	assert.Equal(t, []any{plays.QueueQueued, "u-dave", plays.RunOnPerson, "api"}, []any{items[0].Status, items[0].PersonID, items[0].RunOn, items[0].Service}, items[0].Reason)
+	assert.Equal(t, []any{[]string{}, ""}, []any{items[0].ComputerIDs, items[0].ComputerID}, "no computer is named; placement picks one from dave's order")
 
-	code, body = c.share(t, c.alice, `"user_ids":["u-dave"],"actions":["computers:see"],"state":"fallback"`)
-	require.Equal(t, 204, code, body)
+	_, err = c.db.Exec(`UPDATE roles SET permissions = '["plays:read","autoplays:read","autoplays:write"]' WHERE id = 'role-member'`)
+	require.NoError(t, err)
 	// The live wiring's dispatcher may be mid-pass on the run; once it lets go the run is queued again or gone.
 	require.Eventually(t, func() bool {
 		it, err := c.store.PlayQueue.GetQueueItem(ctx, items[0].ID)
@@ -103,7 +87,7 @@ func TestIntegration_StackPlays_RunAsWhoeverPickedTheComputerAndStopWhenTheirRig
 	require.Len(t, items, 2)
 	didnt := slices.IndexFunc(items, func(it *plays.QueueItem) bool { return it.ID != first && it.Status == plays.QueueDidntRun })
 	require.GreaterOrEqual(t, didnt, 0, "the second crash did not run")
-	assert.Contains(t, items[didnt].Reason, "may not run agents on the computer picked for it")
+	assert.Contains(t, items[didnt].Reason, "may not run")
 }
 
 // TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt: a container dying on a machine opens the outage,
@@ -128,7 +112,7 @@ func TestStackPlays_ACrashTheRunnerSeesReachesTheAutoPlayWaitingForIt(t *testing
 		ID: ids.New(), PlayID: play.ID, WorkspaceID: play.WorkspaceID, Enabled: true, Moment: plays.MomentStackServiceCrashed,
 		Conditions: plays.Conditions{Match: plays.MatchAll, Groups: []plays.Group{}},
 		Priority:   plays.Priority{Rules: []plays.PriorityRule{}, Otherwise: plays.LevelNormal},
-		RunOn:      plays.RunOnComputer, ComputerIDs: []string{"c-1"}, RunAs: uOwner, CreatedAt: now, UpdatedAt: now,
+		RunOn:      plays.RunOnPerson, RunAs: uOwner, CreatedAt: now, UpdatedAt: now,
 	}))
 
 	require.NoError(t, bus.Publish(ctx, runner.TopicContainerEvent, runner.ContainerEvent{Machine: "m1", Container: "web", Action: runner.ContainerActionDie, ExitCode: 137}))

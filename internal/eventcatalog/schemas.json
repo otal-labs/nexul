@@ -440,21 +440,25 @@
               "developer",
               "tester",
               "causer",
+              "person",
               "computer"
             ]
+          },
+          "run_as": {
+            "type": "string"
           },
           "computer_ids": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."
+            "description": "Always []: an auto play runs as a person on their order now (ADR 0197).",
+            "deprecated": true
           },
           "computer_id": {
-            "type": "string"
-          },
-          "run_as": {
-            "type": "string"
+            "type": "string",
+            "description": "Always empty: an auto play runs as a person on their order now (ADR 0197).",
+            "deprecated": true
           },
           "memory_ids": {
             "type": "array",
@@ -488,9 +492,9 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "run_as",
           "computer_ids",
           "computer_id",
-          "run_as",
           "memory_ids",
           "created_by",
           "created_at",
@@ -1047,21 +1051,25 @@
               "developer",
               "tester",
               "causer",
+              "person",
               "computer"
             ]
+          },
+          "run_as": {
+            "type": "string"
           },
           "computer_ids": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."
+            "description": "Always []: an auto play runs as a person on their order now (ADR 0197).",
+            "deprecated": true
           },
           "computer_id": {
-            "type": "string"
-          },
-          "run_as": {
-            "type": "string"
+            "type": "string",
+            "description": "Always empty: an auto play runs as a person on their order now (ADR 0197).",
+            "deprecated": true
           },
           "memory_ids": {
             "type": "array",
@@ -1095,9 +1103,9 @@
           "priority",
           "once_within_minutes",
           "run_on",
+          "run_as",
           "computer_ids",
           "computer_id",
-          "run_as",
           "memory_ids",
           "created_by",
           "created_at",
@@ -6867,11 +6875,13 @@
         "items": {
           "type": "string"
         },
-        "description": "Computers its auto play names for run_on computer, in order; empty uses its person's own order."
+        "description": "Always []: an auto play runs as a person on their order now (ADR 0197).",
+        "deprecated": true
       },
       "computer_id": {
         "type": "string",
-        "description": "The first of computer_ids, for readers that predate the list; empty when it is empty."
+        "description": "Always empty: an auto play runs as a person on their order now (ADR 0197).",
+        "deprecated": true
       },
       "service": {
         "type": "string",
@@ -7098,11 +7108,13 @@
         "items": {
           "type": "string"
         },
-        "description": "Computers its auto play names for run_on computer, in order; empty uses its person's own order."
+        "description": "Always []: an auto play runs as a person on their order now (ADR 0197).",
+        "deprecated": true
       },
       "computer_id": {
         "type": "string",
-        "description": "The first of computer_ids, for readers that predate the list; empty when it is empty."
+        "description": "Always empty: an auto play runs as a person on their order now (ADR 0197).",
+        "deprecated": true
       },
       "service": {
         "type": "string",

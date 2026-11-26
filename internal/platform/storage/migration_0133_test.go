@@ -37,14 +37,14 @@ INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, pl
 		got[a.ID] = a
 	}
 	picked := got["ap-picked"]
-	assert.Equal(t, []any{[]string{"c-box"}, "c-box", "u-alice", true, plays.RunOnComputer},
-		[]any{picked.ComputerIDs, picked.ComputerID, picked.RunAs, picked.Enabled, picked.RunOn}, "the one computer is the whole list, still switched on and run as the same person")
+	assert.Equal(t, []any{"u-alice", true, plays.RunOnPerson},
+		[]any{picked.RunAs, picked.Enabled, picked.RunOn}, "still switched on, run as the same person, now on her order (0183)")
 	assert.Equal(t, []string{}, got["ap-waiting"].ComputerIDs, "no computer is an empty list")
 	assert.Equal(t, []string{}, got["ap-developer"].ComputerIDs)
 
 	box, err := s.PlayQueue.GetQueueItem(ctx, "q-box")
 	require.NoError(t, err)
-	assert.Equal(t, []any{[]string{"c-box"}, "c-box"}, []any{box.ComputerIDs, box.ComputerID}, "a run already waiting for the computer keeps it")
+	assert.Equal(t, []any{"u-alice", plays.RunOnPerson}, []any{box.PersonID, box.RunOn}, "a run already waiting keeps its person, and goes to her order (0183)")
 	dev, err := s.PlayQueue.GetQueueItem(ctx, "q-dev")
 	require.NoError(t, err)
 	assert.Equal(t, []string{}, dev.ComputerIDs)

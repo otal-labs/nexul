@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeSchedule, zoneName } from "@nexul/client-core/autoPlayText";
+import { describeSchedule, normalRunOn, runOnPhrase, zoneName } from "@nexul/client-core/autoPlayText";
 
 describe("describeSchedule", () => {
   it.each([
@@ -19,5 +19,19 @@ describe("describeSchedule", () => {
 
   it("names a zone by its city", () => {
     expect(zoneName("America/Argentina/Buenos_Aires")).toBe("Buenos Aires");
+  });
+});
+
+describe("runOnPhrase", () => {
+  it("names the person whose computers a person auto play runs on, or nobody yet", () => {
+    expect(runOnPhrase("person", "Your")).toBe("Your computers");
+    expect(runOnPhrase("person", "Sam's")).toBe("Sam's computers");
+    expect(runOnPhrase("person", "")).toBe("Nobody yet");
+    expect(runOnPhrase("developer", "")).toBe("The developer's computers");
+  });
+
+  it("reads the older computer run-on as a person", () => {
+    expect(normalRunOn("computer")).toBe("person");
+    expect(runOnPhrase("computer", "Sam's")).toBe("Sam's computers");
   });
 });

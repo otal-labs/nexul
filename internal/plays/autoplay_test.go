@@ -49,9 +49,9 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		{"entering a stage that does not exist", TypeTicket, AutoPlay{Moment: MomentTicketEnteredStage, MomentStage: stagePtr("shipped")}, "needs moment_stage"},
 		{"an unknown run_on", TypeTicket, AutoPlay{Moment: MomentTicketCreated, RunOn: "owner"}, "run_on must be"},
 		{"a doc play run on its developer", TypeDoc, AutoPlay{Moment: MomentDocCreated, RunOn: RunOnDeveloper}, "runs on causer"},
-		{"a stack play run on its causer", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, RunOn: RunOnCauser}, "runs on a chosen computer"},
+		{"a stack play run on its causer", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, RunOn: RunOnCauser}, "runs as a person"},
 		{"a stack moment on a ticket play", TypeTicket, AutoPlay{Moment: MomentStackServiceCrashed}, "belongs to stack plays"},
-		{"a switched-on run on a computer nobody picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true}, "pick the computers"},
+		{"a switched-on run as a person nobody picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true}, "pick the person it runs as"},
 		{"a ticket field on a stack play", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldLabel, OpIs, "bug"))}}}, `field "label" is not one a stack play reads`},
 		{"a stack field on a ticket play", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"))}}}, `field "service" is not one a ticket play reads`},
 		{"an op a stack field does not take", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpSet))}}}, "takes the ops is, is_not"},
@@ -93,15 +93,16 @@ func TestAutoPlayValidate_AcceptsWhatTheComposerBuilds(t *testing.T) {
 		{"a bare moment", TypeTicket, AutoPlay{Moment: MomentTicketUnblocked}},
 		{"a stage moment", TypeTicket, AutoPlay{Moment: MomentTicketEnteredStage, MomentStage: stagePtr(StageDone), RunOn: RunOnCauser}},
 		{"a doc moment", TypeDoc, AutoPlay{Moment: MomentDocChanged, Conditions: Conditions{Match: MatchAny, Groups: []Group{when(rule(FieldFolder, OpIsNot, "f-1"))}}}},
-		{"a doc moment on a chosen computer", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnComputer, ComputerIDs: []string{"c-1"}, RunAs: "u-alice"}},
-		{"a stack moment on the picker's own order", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true, RunAs: "u-alice"}},
-		{"a stack moment off until a computer is picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed}},
-		{"an error-rate crossing on a computer", TypeStack, AutoPlay{
-			Moment: MomentStackErrorRateCrossed, Enabled: true, ComputerIDs: []string{"c-1"}, RunAs: "u-alice",
+		{"a doc moment as a person", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnPerson, RunAs: "u-alice"}},
+		{"a doc moment on the older computer spelling", TypeDoc, AutoPlay{Moment: MomentDocCreated, Enabled: true, RunOn: RunOnComputer, RunAs: "u-alice"}},
+		{"a stack moment as a person", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Enabled: true, RunAs: "u-alice"}},
+		{"a stack moment off until a person is picked", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed}},
+		{"an error-rate crossing as a person", TypeStack, AutoPlay{
+			Moment: MomentStackErrorRateCrossed, Enabled: true, RunAs: "u-alice",
 			Conditions: Conditions{Groups: []Group{when(rule(FieldStack, OpIs, "st-1"), rule(FieldProject, OpIs, "p-1"))}},
 		}},
-		{"a stack moment on a computer", TypeStack, AutoPlay{
-			Moment: MomentStackServiceRecovered, Enabled: true, ComputerIDs: []string{"c-1", "c-2"}, RunAs: "u-alice",
+		{"a stack moment recovered as a person", TypeStack, AutoPlay{
+			Moment: MomentStackServiceRecovered, Enabled: true, RunAs: "u-alice",
 			Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"), rule(FieldStack, OpIsNot, "st-2"), rule(FieldProject, OpIs, "p-1"))}},
 		}},
 		{"two levels of conditions and a priority", TypeTicket, AutoPlay{
@@ -140,14 +141,18 @@ func TestAutoPlayNormalize_FillsWhatAnOmittedPartMeans(t *testing.T) {
 	assert.Equal(t, RunOnCauser, doc.RunOn, "a doc has no developer, so its auto plays run on whoever caused the moment")
 	assert.Equal(t, []Group{}, doc.Conditions.Groups)
 
-	stack := AutoPlay{Moment: MomentStackServiceCrashed, ComputerIDs: []string{" c-2", "c-1", "c-2", ""}}
+	stack := AutoPlay{Moment: MomentStackServiceCrashed, ComputerIDs: []string{"c-1"}, ComputerID: "c-1"}
 	stack.normalize(TypeStack)
-	assert.Equal(t, RunOnComputer, stack.RunOn, "a stack has no developer, tester or causer, so its auto plays run on a chosen computer")
-	assert.Equal(t, []any{[]string{"c-2", "c-1"}, "c-2"}, []any{stack.ComputerIDs, stack.ComputerID}, "trimmed and deduped, in the order picked, the first also kept as computer_id")
+	assert.Equal(t, RunOnPerson, stack.RunOn, "a stack has no developer, tester or causer, so its auto plays run as a person")
+	assert.Equal(t, []any{[]string{}, ""}, []any{stack.ComputerIDs, stack.ComputerID}, "the retired computer fields are always empty")
 
-	moved := AutoPlay{Moment: MomentTicketCreated, RunOn: RunOnTester, ComputerIDs: []string{"c-1"}, ComputerID: "c-1", RunAs: "u-alice"}
+	older := AutoPlay{Moment: MomentTicketCreated, RunOn: RunOnComputer, RunAs: "u-alice"}
+	older.normalize(TypeTicket)
+	assert.Equal(t, []any{RunOnPerson, "u-alice"}, []any{older.RunOn, older.RunAs}, "the older computer spelling reads as person and keeps who it runs as")
+
+	moved := AutoPlay{Moment: MomentTicketCreated, RunOn: RunOnTester, RunAs: "u-alice"}
 	moved.normalize(TypeTicket)
-	assert.Equal(t, []any{[]string{}, "", ""}, []any{moved.ComputerIDs, moved.ComputerID, moved.RunAs}, "an auto play that no longer runs on a computer forgets them and who picked them")
+	assert.Empty(t, moved.RunAs, "an auto play that no longer runs as a person forgets who")
 }
 
 // autoPlayFixture seeds a ticket play, a doc play, and an interview play; "editor" holds every autoplays bit.

@@ -17,7 +17,10 @@ export type AutoPlayMoment =
 
 export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
-export type AutoPlayRunOn = "developer" | "tester" | "causer" | "computer";
+export type AutoPlayRunOn = "developer" | "tester" | "causer" | "person";
+
+// The server still reads "computer" as "person", so an older payload or cache can carry it.
+export const normalRunOn = (runOn: AutoPlayRunOn | "computer"): AutoPlayRunOn => (runOn === "computer" ? "person" : runOn);
 export type AutoPlayOp = "is" | "is_not" | "set" | "unset";
 export type AutoPlayField =
   | "type"
@@ -121,10 +124,17 @@ export const PRESENCE_PHRASES: Partial<Record<AutoPlayField, Record<"set" | "uns
 export const LEVEL_LABELS: Record<AutoPlayLevel, string> = { high: "High", normal: "Normal", low: "Low" };
 
 // Where a rule runs, read as a place beside named computers rather than a role.
-export const RUN_ON_PHRASES: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
+const RUN_ON_PHRASES: Record<Exclude<AutoPlayRunOn, "person">, string> = {
   developer: "The developer's computers",
   tester: "The tester's computers",
   causer: "The computers of whoever caused it",
+};
+
+// owner is the person's name as a possessive ("Your", "Sam's"), "" while nobody has been picked.
+export const runOnPhrase = (runOn: AutoPlayRunOn | "computer", owner: string): string => {
+  const normal = normalRunOn(runOn);
+  if (normal !== "person") return RUN_ON_PHRASES[normal];
+  return owner === "" ? "Nobody yet" : `${owner} computers`;
 };
 
 // A value list reads "frontend, backend or infrastructure", so its own "or" is never confused with the one between rules.

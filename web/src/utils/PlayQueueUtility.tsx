@@ -1,7 +1,6 @@
 import { onlyComputersFull, waitingWhy } from "@nexul/client-core/playQueue";
 
 import type { PlayType } from "@/models/Play";
-import { agentPath } from "@/models/Agent";
 import { ADD_COMPUTER_LINK, COMPUTERS_PATH, checkoutFixLink, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
@@ -29,16 +28,10 @@ const setupLinks: Record<string, ReadinessLink> = {
 
 const waitingOn = (item: PlayQueueItem) => item.waiting_on ?? [];
 
-// An auto play's own computers outrank the person's and the project's, so a run held on them is fixed in the auto play.
-const autoPlayComputersLink = (item: PlayQueueItem): ReadinessLink | undefined => {
-  if (item.auto_play_id === "" || item.computer_ids.length === 0 || setupLinks[item.reason] !== YOUR_COMPUTERS_LINK) return undefined;
-  return { to: agentPath("plays", item.play_id), label: "Auto play's computers" };
-};
-
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
 export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined => {
   if (item.status !== "queued" || onlyComputersFull(item)) return undefined;
-  return checkoutFixLink(waitingOn(item)) ?? autoPlayComputersLink(item) ?? setupLinks[item.reason];
+  return checkoutFixLink(waitingOn(item)) ?? setupLinks[item.reason];
 };
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [

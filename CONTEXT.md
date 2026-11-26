@@ -509,9 +509,8 @@ by an agent; a stack's service crashes, or recovers), conditions on the
 ticket's, doc's or stack's existing fields in all/any groups (a stack's are
 its project, the stack and the service by name), a priority, limits, and whom
 it runs on: the developer, the tester, whoever caused the moment (a doc has
-no developer, so it offers only that), or chosen computers, which every
-play type offers and a stack play offers alone (see **Run on a chosen
-computer**), and memories each run reads beside the always-included ones,
+no developer, so it offers only that), or a person, which every
+play type offers and a stack play offers alone (see **Run as a person**), and memories each run reads beside the always-included ones,
 only those in its target's project. The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until a ready computer of theirs has room
@@ -546,23 +545,19 @@ time across every auto play that names it, for runs that share one machine. A he
 stopped on a question lets go.
 _Avoid_: Lock, mutex, concurrency limit (that is the computer's Runs at once)
 
-**Run on a chosen computer**:
-A choice of whose computers, in order, an auto play's run lands on, offered on every play
-type and the only one a stack play has, since a stack has no developer, tester
-or causer. The auto play stores the computers and the person who picked them,
-who must own each or hold `computers:run_agents` on its share; with none
-named it is **Your order**, the picker's own computers as they are ordered. The
-person is whoever last saved a new list, and the run acts as them: the trail is theirs and the run waits in their
-queue. Saving a new list or person moves the runs the auto play still has
-queued onto it. The right is checked again when the moment matches and at the front of
-the queue, which drops a computer they have lost and leaves the run as
-"didn't run" with the reason when none is left. An auto play that runs on a
-computer stays off until someone has picked.
-_Avoid_: Shared computer run, service account
+**Run as a person**:
+An auto play's choice to run as one picked person, on their computers in their order (ADR 0197), offered on every
+play type and the only one a stack play has, since a stack has no developer, tester or causer. A new one runs as its
+creator; **Run as me** makes whoever saves it the person, and moves its still queued runs onto them. The trail is
+theirs, the run waits in their queue, and their order, narrowed by the play's needs, decides the computer; a shared
+computer takes it only once they added it to their order. They are checked again when the moment matches and at the
+front of the queue. One with no person yet stays off until someone picks. Replaced naming computers on the auto play
+(Run on a chosen computer) in ADR 0197.
+_Avoid_: Run on a chosen computer, shared computer run, service account
 
 **Investigate a crash**:
 A seeded stack play with one seeded auto play, on a service crashing, off
-until someone picks the computer it runs on. It reads the stack with
+until someone picks the person it runs as. It reads the stack with
 `stack_get` and the crashed service's logs, finds the cause against the
 project's repository, and writes the findings on the crash's ticket, or a new
 one. It never deploys, restarts or edits the stack, and opens a fix pull

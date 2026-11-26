@@ -22,7 +22,6 @@ type QueueRig struct {
 	perm     *fakePerm
 	facts    *fakeFacts
 	targets  *fakeTargets
-	shares   *fakeComputers
 	turns    *idleTurns
 	memories *fakeMemories
 }
@@ -35,13 +34,12 @@ func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID,
 		facts:    &fakeFacts{byID: map[string]Facts{}},
 		targets:  &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}, stacks: map[string]StackTarget{}},
 		turns:    &idleTurns{started: make(chan struct{})},
-		shares:   &fakeComputers{owners: map[string]string{}, held: map[string]permissions.Set{}},
 		memories: &fakeMemories{byProject: map[string][]Memory{}},
 	}
 	q.Runner = NewRunner(RunnerConfig{
 		Plays: playsRepo, Trails: trails, Queue: queue, Facts: q.facts, Perm: q.perm, Targets: q.targets,
 		Projects: &fakeProjects{workspaces: map[string]string{projectID: workspaceID}},
-		Harness:  q.harness, Checkouts: q.harness, Memories: q.memories, Threads: &fakeThreads{}, Turns: q.turns, Users: fakeUsers{}, Computers: q.shares, Now: now,
+		Harness:  q.harness, Checkouts: q.harness, Memories: q.memories, Threads: &fakeThreads{}, Turns: q.turns, Users: fakeUsers{}, Now: now,
 	})
 	return q
 }
@@ -67,17 +65,6 @@ func (q *QueueRig) SetStack(id, projectID, name string) {
 	q.targets.mu.Lock()
 	defer q.targets.mu.Unlock()
 	q.targets.stacks[id] = StackTarget{ProjectID: projectID, Name: name}
-}
-
-// OwnComputer makes ownerID the owner of computerID.
-func (q *QueueRig) OwnComputer(computerID, ownerID string) { q.shares.owners[computerID] = ownerID }
-
-// FailComputerCheck makes every check of what a person holds on a computer fail with err; nil answers again.
-func (q *QueueRig) FailComputerCheck(err error) { q.shares.err = err }
-
-// ShareComputer gives userID actions on computerID through its owner's rule; none takes the share away.
-func (q *QueueRig) ShareComputer(computerID, userID string, actions ...permissions.Action) {
-	q.shares.held[computerID+"/"+userID] = permissions.SetOf(actions...)
 }
 
 // LastPlayBlocks waits for the first started run, which a detached goroutine hands its request to, then returns the
@@ -340,26 +327,3 @@ func (t *idleTurns) RunTurn(_ context.Context, req agent.TurnRequest) {
 func (*idleTurns) Interrupt(context.Context, string) error { return nil }
 
 func (*idleTurns) Answer(context.Context, string, string, harness.QuestionAnswer) error { return nil }
-
-// fakeComputers answers ComputerGate the way access does: the owner holds every computer action, a person a computer
-// is shared with what the rule gives them, anyone else finds no such computer.
-type fakeComputers struct {
-	owners map[string]string
-	held   map[string]permissions.Set
-	err    error
-}
-
-func (f *fakeComputers) ComputerPermissions(_ context.Context, userID, computerID string) (string, permissions.Set, error) {
-	if f.err != nil {
-		return "", nil, f.err
-	}
-	owner, ok := f.owners[computerID]
-	if ok && owner == userID {
-		return owner, permissions.SetOf(permissions.ComputerActions...), nil
-	}
-	held, shared := f.held[computerID+"/"+userID]
-	if !ok || !shared || !held.Has(permissions.ComputersSee) {
-		return "", nil, apperrs.ErrNotFound
-	}
-	return owner, held, nil
-}

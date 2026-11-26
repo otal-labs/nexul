@@ -110,8 +110,7 @@ type Service struct {
 	perm     PermissionGate
 	instance InstanceTemplates
 	// computers is optional; without it no auto play can be pinned to a computer.
-	computers ComputerGate
-	now       func() time.Time
+	now func() time.Time
 }
 
 // InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
@@ -121,9 +120,6 @@ type InstanceTemplates interface {
 
 // SetInstanceTemplates wires the instance layer a new workspace's built-in plays take their instructions from.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
-
-// SetComputers wires the share check an auto play's chosen computer is picked under.
-func (s *Service) SetComputers(c ComputerGate) { s.computers = c }
 
 // NewService wires the plays use-cases over the given repo and permission gate.
 func NewService(repo Repo, perm PermissionGate) *Service {
@@ -623,23 +619,4 @@ func normalizeIDs(raw []string) []string {
 	}
 	slices.Sort(out)
 	return out
-}
-
-// orderedIDs trims, drops empties and dedupes like normalizeIDs, but keeps the order, which is the point of a list of computers.
-func orderedIDs(raw []string) []string {
-	out := make([]string, 0, len(raw))
-	for _, id := range raw {
-		if id = strings.TrimSpace(id); id != "" && !slices.Contains(out, id) {
-			out = append(out, id)
-		}
-	}
-	return out
-}
-
-// firstID is the head of an ordered id list, "" when it is empty.
-func firstID(ids []string) string {
-	if len(ids) == 0 {
-		return ""
-	}
-	return ids[0]
 }

@@ -311,8 +311,8 @@ func (r *Runner) queueSweep(ctx context.Context, a *AutoPlay, play *Play, s *Swe
 		it := &QueueItem{
 			ID: ids.From("auto-play-sweep:" + s.ID + ":" + t.ID), WorkspaceID: a.WorkspaceID, ProjectID: t.ProjectID,
 			TargetType: TargetTicket, TargetID: t.ID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
-			PersonID: a.person(t.Facts, moment{}), RunOn: a.RunOn, Moment: MomentSchedule, ComputerIDs: slices.Clone(a.ComputerIDs),
-			ComputerID: a.ComputerID, Priority: a.Priority.level(t.Facts), Status: QueueQueued, Via: ViaWeb, QueuedAt: now,
+			PersonID: a.person(t.Facts, moment{}), RunOn: a.RunOn, Moment: MomentSchedule,
+			Priority: a.Priority.level(t.Facts), Status: QueueQueued, Via: ViaWeb, QueuedAt: now,
 			NotBefore: now, SweepID: s.ID, SweepPosition: i, StartBy: s.StartBy, LockKey: a.LockKey(),
 		}
 		if busy[t.ID] {

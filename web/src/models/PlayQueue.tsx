@@ -16,7 +16,7 @@ export interface PlayQueueItem {
   auto_play_id: string;
   automation_id: string;
   person_id: string;
-  run_on: "developer" | "tester" | "causer" | "computer";
+  run_on: "developer" | "tester" | "causer" | "person";
   moment: string;
   priority: "high" | "normal" | "low";
   status: PlayQueueStatus;
@@ -28,9 +28,6 @@ export interface PlayQueueItem {
   queued_at: string;
   decided_at: string | null;
   not_before: string;
-  // The computers its auto play names for "computer", in the order they are tried; empty when it goes to its person's own order.
-  computer_ids: string[];
-  computer_id: string;
   // For a stack moment, the service that went down or came back and its outage; "" otherwise.
   service: string;
   outage_id: string;

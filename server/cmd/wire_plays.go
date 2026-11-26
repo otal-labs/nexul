@@ -143,8 +143,7 @@ func runRequest(userID, projectID string, choice plays.HarnessChoice, room pairi
 		UserID: userID, ProjectID: projectID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions, Room: room,
 		Repository: choice.Repository, Tests: choice.Tests, Needs: choice.Needs,
 	}
-	req.ComputerIDs = choice.ComputerIDs
-	if len(req.ComputerIDs) == 0 && choice.ComputerID != "" {
+	if choice.ComputerID != "" {
 		req.ComputerIDs = []string{choice.ComputerID}
 	}
 	return req

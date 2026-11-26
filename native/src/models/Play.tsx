@@ -1,5 +1,6 @@
 import type { EventPayloads } from "@otal-labs/nexul-sdk/events";
 
+import { normalRunOn } from "@nexul/client-core/autoPlayText";
 import type { PlayRunHealth, PlayStage } from "@nexul/client-core/plays";
 
 // An interview play runs on a project's Interview page, which the phone doesn't have; a stack play runs on a stack.
@@ -42,10 +43,7 @@ export const playRequest = (play: Play, enabled: boolean) => ({
 
 export type AutoPlay = EventPayloads["auto_play.updated"]["auto_play"];
 
-// A seeded auto play that runs on chosen computers has nobody's computers until someone picks them on the web.
-export const computersPicked = (autoPlay: Pick<AutoPlay, "run_on" | "run_as">) => autoPlay.run_on !== "computer" || autoPlay.run_as !== "";
-
-// The full replace an auto play's PATCH takes; no computer_ids keeps the stored list and its person.
+// The full replace an auto play's PATCH takes; no run_as_me keeps its person.
 export const autoPlayRequest = (autoPlay: AutoPlay, enabled: boolean) => ({
   enabled,
   moment: autoPlay.moment,
@@ -54,9 +52,7 @@ export const autoPlayRequest = (autoPlay: AutoPlay, enabled: boolean) => ({
   conditions: autoPlay.conditions,
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
-  run_on: autoPlay.run_on,
-  ...(autoPlay.run_on === "computer" &&
-    computersPicked(autoPlay) && { computer_ids: autoPlay.computer_ids ?? (autoPlay.computer_id === "" ? [] : [autoPlay.computer_id]) }),
+  run_on: normalRunOn(autoPlay.run_on),
   memory_ids: autoPlay.memory_ids,
   one_at_a_time: autoPlay.one_at_a_time,
   resource: autoPlay.resource,

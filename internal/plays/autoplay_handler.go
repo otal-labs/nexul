@@ -2,7 +2,6 @@ package plays
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
@@ -17,28 +16,19 @@ type autoPlayRequest struct {
 	Priority          Priority   `json:"priority"`
 	OnceWithinMinutes int        `json:"once_within_minutes"`
 	RunOn             RunOn      `json:"run_on"`
-	// ComputerIDs, even empty, is a pick; absent keeps the stored list. ComputerID is the older one-computer spelling.
-	ComputerIDs *[]string `json:"computer_ids"`
-	ComputerID  string    `json:"computer_id"`
-	MemoryIDs   []string  `json:"memory_ids"`
-	OneAtATime  bool      `json:"one_at_a_time"`
-	Resource    string    `json:"resource"`
+	// RunAsMe picks the caller as the person a run_on person auto play runs as.
+	RunAsMe    bool     `json:"run_as_me"`
+	MemoryIDs  []string `json:"memory_ids"`
+	OneAtATime bool     `json:"one_at_a_time"`
+	Resource   string   `json:"resource"`
 }
 
 func (req autoPlayRequest) input() AutoPlayInput {
 	return AutoPlayInput{
 		Moment: req.Moment, MomentStage: req.MomentStage, Schedule: req.Schedule, Conditions: req.Conditions, Priority: req.Priority,
-		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn, ComputerIDs: pickedComputers(req.ComputerIDs, req.ComputerID), MemoryIDs: req.MemoryIDs,
+		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn, RunAsMe: req.RunAsMe, MemoryIDs: req.MemoryIDs,
 		OneAtATime: req.OneAtATime, Resource: req.Resource,
 	}
-}
-
-// pickedComputers is the list a request picks: its computer_ids, else the older computer_id as a list of one, else no pick.
-func pickedComputers(ids *[]string, legacy string) *[]string {
-	if legacy = strings.TrimSpace(legacy); ids == nil && legacy != "" {
-		return &[]string{legacy}
-	}
-	return ids
 }
 
 func (h *Handler) listAutoPlays(w http.ResponseWriter, r *http.Request) {

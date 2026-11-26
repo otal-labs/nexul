@@ -55,8 +55,8 @@ INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, pl
 		require.NoError(t, err)
 		require.Len(t, autoPlays, 1, tt.ws)
 		a := autoPlays[0]
-		assert.Equal(t, []any{false, plays.MomentStackServiceCrashed, plays.RunOnComputer, "", "", plays.LevelNormal},
-			[]any{a.Enabled, a.Moment, a.RunOn, a.ComputerID, a.RunAs, a.Priority.Otherwise}, "off, until a computer is picked in %s", tt.ws)
+		assert.Equal(t, []any{false, plays.MomentStackServiceCrashed, plays.RunOnPerson, "", plays.LevelNormal},
+			[]any{a.Enabled, a.Moment, a.RunOn, a.RunAs, a.Priority.Otherwise}, "off, until a person is picked in %s", tt.ws)
 		require.NoError(t, a.Validate(plays.TypeStack))
 	}
 

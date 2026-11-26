@@ -160,15 +160,12 @@ func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
 	assert.Equal(t, plays.Facts{ProjectID: "project-general", FolderID: storagetest.GeneralMainFolderID}, doc)
 }
 
-// TestIntegration_PlaysHarnessResolver_ARunOnChosenComputersGoesToTheFirstOneThatCanTakeIt resolves a queued run with
-// two chosen computers over the real pairing placement: the first one offline or full is passed over for the second, the
-// order picked is the order tried, and a run naming one computer still waits on it.
-func TestIntegration_PlaysHarnessResolver_ARunOnChosenComputersGoesToTheFirstOneThatCanTakeIt(t *testing.T) {
+// TestIntegration_PlaysHarnessResolver_AQueuedRunNamingNoComputerGoesToTheFirstOneThatCanTakeIt resolves a queued run
+// over the real pairing placement: with no computer named the first of the person's order that is offline or full is
+// passed over for the next, and a run naming one computer still waits on it.
+func TestIntegration_PlaysHarnessResolver_AQueuedRunNamingNoComputerGoesToTheFirstOneThatCanTakeIt(t *testing.T) {
 	t.Parallel()
-	// listed is the choice a queued run makes: its list, and computer_id as the list's first.
-	listed := func(ids ...string) plays.HarnessChoice {
-		return plays.HarnessChoice{ComputerID: ids[0], ComputerIDs: ids}
-	}
+	none := plays.HarnessChoice{}
 	tests := []struct {
 		name       string
 		offline    string
@@ -178,9 +175,9 @@ func TestIntegration_PlaysHarnessResolver_ARunOnChosenComputersGoesToTheFirstOne
 		wantReason string
 		wantPassed string
 	}{
-		{name: "the first one offline", offline: "a", choice: listed("a", "b"), wantOn: "b", wantPassed: "a"},
-		{name: "the first one full", busy: "a", choice: listed("a", "b"), wantOn: "b", wantPassed: "a"},
-		{name: "the order picked is the order tried", choice: listed("b", "a"), wantOn: "b"},
+		{name: "the first one offline", offline: "a", choice: none, wantOn: "b", wantPassed: "a"},
+		{name: "the first one full", busy: "a", choice: none, wantOn: "b", wantPassed: "a"},
+		{name: "the order is the order tried", choice: none, wantOn: "a"},
 		{name: "one computer that is full still waits", busy: "a", choice: plays.HarnessChoice{ComputerID: "a"}, wantReason: string(pairing.ReasonNoComputerReady)},
 	}
 	for _, tt := range tests {

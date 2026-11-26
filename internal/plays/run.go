@@ -97,9 +97,7 @@ type ProjectLookup interface {
 // dialog, or what the resolution picked from their computers and project link when they picked none.
 type HarnessChoice struct {
 	ComputerID string
-	// ComputerIDs is an ordered list the run may land on, the first that can take it; empty takes ComputerID, else the starter's own order.
-	ComputerIDs []string
-	Worktree    bool
+	Worktree   bool
 	// HarnessProjectID is the T3 project a person picked beside ComputerID, remembered for the project as the run starts.
 	HarnessProjectID string
 	// Repository is the repository the run works on, as owner/name; empty takes the play's (ADR 0204).
@@ -259,8 +257,6 @@ type RunnerConfig struct {
 	Turns    TurnRunner
 	Live     LivePublisher
 	Users    UserReader
-	// Computers is optional; without it a run on a chosen computer never starts.
-	Computers ComputerGate
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
 	Links LinkReader
 	// Answers is optional; nil means an interview run's follow-ups live only on the trail and it names no sources.
@@ -300,7 +296,6 @@ type Runner struct {
 	turns     TurnRunner
 	live      LivePublisher
 	users     UserReader
-	computers ComputerGate
 	links     LinkReader
 	answers   InterviewAnswers
 	checkouts Checkouts
@@ -339,7 +334,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, computers: cfg.Computers, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, background: cfg.Background, queue: cfg.Queue, facts: cfg.Facts,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, background: cfg.Background, queue: cfg.Queue, facts: cfg.Facts,
 		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1), scheduleKick: make(chan struct{}, 1),
 		runs: map[string]*trailObserver{},
 	}

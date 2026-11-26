@@ -22,8 +22,6 @@ export const queueItem = (overrides: Partial<PlayQueueItem> = {}): PlayQueueItem
   queued_at: "2026-10-10T09:00:00Z",
   decided_at: null,
   not_before: "2026-10-10T09:00:00Z",
-  computer_ids: [],
-  computer_id: "",
   service: "",
   outage_id: "",
   ...overrides,

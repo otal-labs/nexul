@@ -1,6 +1,7 @@
 import {
   FIELD_OPS,
   LEVEL_LABELS,
+  normalRunOn,
   type AutoPlayField,
   type AutoPlayGroup,
   type AutoPlayLevel,
@@ -35,11 +36,8 @@ export interface AutoPlay {
   priority: AutoPlayPriority;
   once_within_minutes: number;
   run_on: AutoPlayRunOn;
-  // The person who picked a "computer" auto play's computers, whose identity the run takes; "" until someone has (a seeded one) and for every other run-on.
+  // The person a "person" auto play runs as, on their computers in their order; "" until someone picks (a seeded one) and for every other run-on.
   run_as: string;
-  // The computers a "computer" auto play tries in order; empty follows its person's own order. computer_id is the first, for older payloads.
-  computer_ids: string[];
-  computer_id: string;
   // Read by each run beside the always-included memories; a run reads only those in its own project.
   memory_ids: string[];
   // One run at a time: its own, or with a resource, across every auto play naming it.
@@ -50,17 +48,11 @@ export interface AutoPlay {
   updated_at: string;
 }
 
-// The full replace the create and update routes take; no computer_ids keeps the stored list and its person.
+// The full replace the create and update routes take; run_as_me makes the caller the person, and leaving it out keeps who it runs as.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
   "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource"
-> & { computer_ids?: string[] };
-
-export const storedComputerIds = (autoPlay: Pick<AutoPlay, "computer_ids" | "computer_id">): string[] =>
-  autoPlay.computer_ids ?? (autoPlay.computer_id === "" ? [] : [autoPlay.computer_id]);
-
-// A seeded auto play has no person yet, so nothing has been picked for it and it cannot be switched on.
-export const computersPicked = (autoPlay: Pick<AutoPlay, "run_on" | "run_as">) => autoPlay.run_on !== "computer" || autoPlay.run_as !== "";
+> & { run_as_me?: boolean };
 
 export interface AutoPlayLimits {
   daily_cap_per_ticket: number;
@@ -115,47 +107,21 @@ export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
 export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "stack", "developer", "tester"]);
 
-export const RUN_ON_LABELS: Record<Exclude<AutoPlayRunOn, "computer">, string> = {
+export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
   developer: "Developer",
   tester: "Tester",
   causer: "Whoever caused it",
+  person: "A person",
 };
-
-// What the Run on select offers: the computer run-on is two choices, the person's own order and a list they picked.
-export type RunOnChoice = keyof typeof RUN_ON_LABELS | "own" | "picked";
-
-export const RUN_ON_CHOICE_LABELS: Record<RunOnChoice, string> = { ...RUN_ON_LABELS, own: "Your computers", picked: "Picked computers" };
 
 // Which choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
-export const SUBJECT_RUN_ON: Record<AutoPlaySubject, RunOnChoice[]> = {
-  ticket: ["developer", "tester", "causer", "own", "picked"],
-  doc: ["causer", "own", "picked"],
-  stack: ["own", "picked"],
+export const SUBJECT_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn[]> = {
+  ticket: ["developer", "tester", "causer", "person"],
+  doc: ["causer", "person"],
+  stack: ["person"],
 };
 
-const FIRST_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn> = { ticket: "developer", doc: "causer", stack: "computer" };
-
-type RunOnFields = Pick<AutoPlayDraft, "run_on" | "computer_ids" | "computers_picked">;
-
-// "" for a seeded auto play nobody has picked computers for.
-export const runOnChoice = ({ run_on, computer_ids, computers_picked }: RunOnFields): RunOnChoice | "" => {
-  if (run_on !== "computer") return run_on;
-  if (!computers_picked) return "";
-  return computer_ids.length > 0 ? "picked" : "own";
-};
-
-// A picked list starts as the viewer's own computers in their order, for them to reorder and trim.
-export const draftForChoice = (choice: RunOnChoice, ownIds: string[]): RunOnFields => {
-  if (choice === "own") return { run_on: "computer", computer_ids: [], computers_picked: true };
-  if (choice === "picked") return { run_on: "computer", computer_ids: ownIds, computers_picked: true };
-  return { run_on: choice, computer_ids: [], computers_picked: true };
-};
-
-const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
-
-// Whose identity a save gives the run: whoever picked the computers before, until the list is changed, then the one saving.
-export const runsAsAfterSave = (draft: Pick<AutoPlayDraft, "run_as" | "computer_ids">, saved: string[], viewerId: string) =>
-  draft.run_as === "" || !sameIds(draft.computer_ids, saved) ? viewerId : draft.run_as;
+const FIRST_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn> = { ticket: "developer", doc: "causer", stack: "person" };
 
 export const LIMIT_PRESETS = [0, 60, 24 * 60, 7 * 24 * 60];
 
@@ -193,11 +159,10 @@ export interface AutoPlayDraft {
   one_at_a_time: boolean;
   resource: string;
   run_on: AutoPlayRunOn;
-  // [] follows the person's own order; computers_picked is false until a seeded auto play has been given either.
-  computer_ids: string[];
-  computers_picked: boolean;
-  // Who picked the computers, "" for nobody yet; never sent, it only says who a save leaves the run as.
+  // Who a person auto play runs as, "" for nobody yet; never sent, run_as_me is.
   run_as: string;
+  // Makes the caller the person on save; a new auto play starts with it set, as the server makes its creator the person.
+  run_as_me: boolean;
   memory_ids: string[];
 }
 
@@ -217,9 +182,8 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   max_runs: DEFAULT_SWEEP_RUNS,
   one_at_a_time: false,
   resource: "",
-  computer_ids: [],
-  computers_picked: true,
   run_as: "",
+  run_as_me: true,
   memory_ids: [],
 });
 
@@ -238,10 +202,9 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   max_runs: autoPlay.schedule?.max_runs ?? DEFAULT_SWEEP_RUNS,
   one_at_a_time: autoPlay.one_at_a_time,
   resource: autoPlay.resource,
-  run_on: autoPlay.run_on,
-  computer_ids: storedComputerIds(autoPlay),
-  computers_picked: computersPicked(autoPlay),
+  run_on: normalRunOn(autoPlay.run_on),
   run_as: autoPlay.run_as,
+  run_as_me: false,
   memory_ids: autoPlay.memory_ids,
 });
 
@@ -261,7 +224,7 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   priority: draft.priority,
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
-  ...(draft.run_on === "computer" && draft.computers_picked && { computer_ids: draft.computer_ids }),
+  ...(draft.run_on === "person" && draft.run_as_me && { run_as_me: true }),
   memory_ids: draft.memory_ids,
   one_at_a_time: draft.one_at_a_time,
   resource: draft.one_at_a_time ? draft.resource.trim() : "",
@@ -275,8 +238,7 @@ export const toRequest = (autoPlay: AutoPlay): SaveAutoPlayRequest => ({
   conditions: autoPlay.conditions,
   priority: autoPlay.priority,
   once_within_minutes: autoPlay.once_within_minutes,
-  run_on: autoPlay.run_on,
-  ...(autoPlay.run_on === "computer" && computersPicked(autoPlay) && { computer_ids: storedComputerIds(autoPlay) }),
+  run_on: normalRunOn(autoPlay.run_on),
   memory_ids: autoPlay.memory_ids,
   one_at_a_time: autoPlay.one_at_a_time,
   resource: autoPlay.resource,

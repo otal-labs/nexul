@@ -2,6 +2,9 @@
 
 Amended by ADR 0165: a chosen-computer auto play names an ordered list of computers and runs on the first ready one.
 
+Amended by ADR 0197: an auto play names no computers; it runs as a person on their order, and the right checks apply to
+that person (implemented as Run as a person).
+
 Succeeds ADR 0132 for the third play type and for whose computer a run lands on. ADR 0091 is why a crashed service's
 output is read live by the agent and never carried in an event.
 

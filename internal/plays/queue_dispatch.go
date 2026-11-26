@@ -119,10 +119,9 @@ func (r *Runner) HandleAutoPlayOff(ctx context.Context, ev eventbus.Event) error
 	return nil
 }
 
-// HandleAutoPlayComputersChanged moves the queued runs of an edited auto play that runs on computers onto its current
-// list and person, so a run held on a full or gone computer is tried on the ones now chosen. Dispatch checks the person's
-// rights on them as it does for any run.
-func (r *Runner) HandleAutoPlayComputersChanged(ctx context.Context, ev eventbus.Event) error {
+// HandleAutoPlayPersonChanged moves the queued runs of a run-as-person auto play onto the person now picked on it, so
+// they wait on that person's order; dispatch checks the person as it does for any run.
+func (r *Runner) HandleAutoPlayPersonChanged(ctx context.Context, ev eventbus.Event) error {
 	if r.queue == nil {
 		return nil
 	}
@@ -131,7 +130,7 @@ func (r *Runner) HandleAutoPlayComputersChanged(ctx context.Context, ev eventbus
 		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
 	}
 	a := p.AutoPlay
-	if !a.Enabled || a.RunOn != RunOnComputer {
+	if !a.Enabled || a.RunOn != RunOnPerson {
 		return nil
 	}
 	items, err := r.queue.ListQueuedByPlay(ctx, a.PlayID, ProjectScope{All: true})
@@ -141,17 +140,17 @@ func (r *Runner) HandleAutoPlayComputersChanged(ctx context.Context, ev eventbus
 	now := r.now().UTC()
 	moved := false
 	for _, it := range items {
-		if it.AutoPlayID != a.ID || it.RunOn != RunOnComputer || (it.PersonID == a.RunAs && slices.Equal(it.ComputerIDs, a.ComputerIDs)) {
+		if it.AutoPlayID != a.ID || it.PersonID == a.RunAs {
 			continue
 		}
-		it.PersonID, it.ComputerIDs, it.ComputerID = a.RunAs, slices.Clone(a.ComputerIDs), a.ComputerID
+		it.PersonID = a.RunAs
 		it.Reason, it.WaitingOn, it.NotBefore = "", nil, now
 		err := r.queue.RepointQueueItem(ctx, it, r.queueEvent(TopicQueueUpdated, it))
 		if errors.Is(err, apperrs.ErrConflict) {
 			continue
 		}
 		if err != nil {
-			return apperrs.Retryable(fmt.Errorf("move queue item %s onto the new computers: %w", it.ID, err))
+			return apperrs.Retryable(fmt.Errorf("move queue item %s onto the new person: %w", it.ID, err))
 		}
 		moved = true
 	}
@@ -335,7 +334,7 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: normalizeIDs(tgt.memoryIDs),
 		State: TrailStarting, StartedAt: now,
 	}
-	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{ComputerID: it.ComputerID, ComputerIDs: it.ComputerIDs, Repository: it.Repository}, launchQueued)
+	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{Repository: it.Repository}, launchQueued)
 	if err == nil {
 		r.logDecide(ctx, it, QueueDispatching, QueueStarted, "")
 		return
@@ -414,9 +413,6 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 	if slices.ContainsFunc(trails, func(t *Trail) bool { return t.PlayID == it.PlayID && !t.StartedAt.Before(it.QueuedAt) }) {
 		return nil, target{}, skip("already ran"), nil
 	}
-	if reason := r.whyNoComputer(ctx, it); reason != "" {
-		return nil, target{}, verdict{status: QueueDidntRun, reason: reason}, nil
-	}
 	tgt, err := r.readTarget(identity.WithActor(ctx, identity.Actor{ID: it.PersonID}), it.TargetType, it.TargetID)
 	if err != nil {
 		return nil, target{}, verdict{status: QueueDidntRun, reason: err.Error()}, nil
@@ -478,8 +474,8 @@ func stillMatches(a *AutoPlay, it *QueueItem, f Facts) verdict {
 	if !a.Conditions.holds(f) {
 		return skip("its conditions no longer hold")
 	}
-	if a.RunOn == RunOnComputer && a.RunAs != it.PersonID {
-		return skip("its computer was picked by someone else")
+	if a.RunOn == RunOnPerson && a.RunAs != it.PersonID {
+		return skip("it runs as someone else now")
 	}
 	return samePerson(a.RunOn, it.PersonID, f)
 }
