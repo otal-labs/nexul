@@ -15,8 +15,9 @@ interface PlayListRowProps {
   selected: boolean;
 }
 
-// The group already names the type, so a row says only where a ticket play shows.
-const whereText = (play: WorkspacePlay) => play.type === "ticket" && play.show_when_stage && `On “${PLAY_STAGE_LABELS[play.show_when_stage]}”`;
+// The group already names the type, so a ticket play's line says where it shows and any other play's previews what it does.
+const whereText = (play: WorkspacePlay) =>
+  play.type === "ticket" && play.show_when_stage ? `On “${PLAY_STAGE_LABELS[play.show_when_stage]}”` : play.description.trim();
 
 export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
   const wsPath = useWorkspacePath();
@@ -27,15 +28,15 @@ export const PlayListRow = ({ play, selected }: PlayListRowProps) => {
     <span className="font-mono text-micro text-muted-foreground tabular-nums">{formatShortAgo(play.last_run.started_at)}</span>
   );
 
-  // In a tight row the auto count drops its words first, then the stage cuts; the count and what needs a look never do.
+  // In a tight row the stage or preview cuts; the auto count and what needs a look never do.
   const where = whereText(play);
   const detail = (where || auto || !play.enabled || attention) && (
-    <span className="@container flex w-full min-w-0 items-center gap-3">
+    <span className="flex w-full min-w-0 items-center gap-3">
       {where && <span className="min-w-0 truncate">{where}</span>}
       {auto && (
         <span className="inline-flex shrink-0 items-center gap-1">
           <ZapIcon aria-hidden className="size-3" />
-          {play.auto_plays_on} <span className="@max-[20rem]:sr-only">auto on</span>
+          {play.auto_plays_on} <span>auto on</span>
         </span>
       )}
       {!play.enabled && <span className="shrink-0">Off</span>}

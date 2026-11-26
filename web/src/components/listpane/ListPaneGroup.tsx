@@ -10,11 +10,12 @@ interface ListPaneGroupProps {
   children: ReactNode;
 }
 
+// The count trails in the rows' meta column, so it never reads as part of the label.
 export const ListPaneGroup = ({ label, count, children }: ListPaneGroupProps) => (
   <section aria-label={label}>
     <h2 className={cn(microheaderClass, "sticky-group-head flex items-end gap-2 px-3 pb-1.5")}>
       {label}
-      {count !== undefined && <span className="font-mono tabular-nums">{count}</span>}
+      {count !== undefined && <span className="ml-auto font-mono tabular-nums">{count}</span>}
     </h2>
     <EnterList>{children}</EnterList>
   </section>

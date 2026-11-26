@@ -66,7 +66,7 @@ const renderMenu = (machine: Machine) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MachineMenu machine={machine} menu={{}} manages={false} />
+      <MachineMenu machine={machine} menu={{}} manages={false} addsRunners={false} />
     </QueryClientProvider>,
   );
   return client;

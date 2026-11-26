@@ -4,10 +4,9 @@ import { hasPermission } from "@nexul/client-core/permissions";
 
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import type { RowMenu } from "@/components/listpane/rowMenu";
-import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
-import { GroupDot } from "@/components/runner/GroupDot";
 import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
 import { MachineDeleteDetails } from "@/components/runner/MachineDeleteDetails";
+import { MachineMark } from "@/components/runner/MachineMark";
 import { MachineMenu } from "@/components/runner/MachineMenu";
 import { MachinePeopleButton } from "@/components/runner/MachinePeopleButton";
 import { useActionState } from "@/hooks/useActionState";
@@ -25,7 +24,7 @@ interface MachineBandProps {
   toggle?: ReactNode;
 }
 
-// The group's head, pinned while its rows scroll: the dot sits on the runner dots' x and the name keeps its full text.
+// The group's head, pinned while its rows scroll: its runners step in under the name, which keeps its full text.
 export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProps) => {
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
@@ -55,7 +54,7 @@ export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProp
   return (
     <RowContextMenu menu={menu} manages={manages}>
       <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-border group-has-[>ul[hidden]]/fleet:border-b-0 bg-card bg-linear-to-b from-well-shade to-well-shade px-4 py-2.5">
-        <GroupDot tone={state.tone} />
+        <MachineMark tone={state.tone} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2.5">
             <h2 id={`machine-${machine.id}`} className="min-w-0 text-sm/5 font-semibold wrap-anywhere">
@@ -74,8 +73,7 @@ export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProp
         <div className="-my-1.5 flex shrink-0 items-center gap-0.5">
           {toggle}
           {manages && <MachinePeopleButton machine={machine} className="max-w-32 @[44rem]:max-w-56" />}
-          {runners.length + codes > 0 && <AddRunnerDialog machine={machine} triggerSize="sm" triggerVariant="ghost" compact />}
-          <MachineMenu machine={machine} menu={menu} manages={manages} />
+          <MachineMenu machine={machine} menu={menu} manages={manages} addsRunners={runners.length + codes > 0} />
         </div>
       </div>
     </RowContextMenu>

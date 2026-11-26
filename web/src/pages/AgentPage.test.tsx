@@ -84,6 +84,19 @@ describe("the plays list", () => {
     expect(screen.getByText("Select a play or a computer")).toBeInTheDocument();
   });
 
+  it.each([
+    { width: "from 1024px", wide: true, path: "/acme/agent/plays/t" },
+    { width: "below 1024px, where the list is the page", wide: false, path: "/acme/agent" },
+  ])("opens the list's first play $width", async ({ wide, path }) => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: wide, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    serve([play({ id: "s", label: "Investigate a crash", type: "stack", show_when_stage: null }), play({ id: "t", label: "Fix with AI" })]);
+    const router = renderAgentPage();
+    await screen.findByText("Investigate a crash");
+    await settle();
+    expect(router.state.location.pathname).toBe(path);
+    vi.unstubAllGlobals();
+  });
+
   it("groups plays by type in the order Ticket, Doc, Stack, Interview and says what each shows on and whether it is off", async () => {
     serve([
       play({ id: "i", label: "Interview a project", type: "interview", show_when_stage: null }),
@@ -210,8 +223,12 @@ describe("an open play", () => {
 
   it("deletes the open play after confirming and goes back to the list", async () => {
     const user = userEvent.setup();
-    serve([play()]);
-    mocks.delete.mockResolvedValue({});
+    let plays = [play()];
+    mocks.get.mockImplementation(asOwner((url) => rest(plays)(url)));
+    mocks.delete.mockImplementation(async () => {
+      plays = [];
+      return {};
+    });
     const router = renderAgentPage("/acme/agent/plays/play-fix");
 
     await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));

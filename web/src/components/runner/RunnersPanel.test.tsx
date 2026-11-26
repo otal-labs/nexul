@@ -82,7 +82,7 @@ describe("RunnersPanel", () => {
     mocks.errorMessage.mockReset();
   });
 
-  it("lists each machine's runners in one list under a column head, saying what each is doing", async () => {
+  it("lists each machine's runners in one list under its band, saying what each is doing", async () => {
     serve({ "/api/runners": [busyRunner, offlineRunner], "/api/machines": [machine], "/api/runners/queue": [] });
     renderPanel();
 
@@ -93,7 +93,6 @@ describe("RunnersPanel", () => {
     expect(group.getByText(/^offline ·/)).toBeInTheDocument();
     expect(group.getByText("alpha")).toBeInTheDocument();
     expect(group.getByText("beta")).toBeInTheDocument();
-    expect(screen.getByText("Runner").parentElement).toHaveTextContent("RunnerVersionDoing");
     expect(screen.queryByText(/^d-9$/)).not.toBeInTheDocument();
   });
 
