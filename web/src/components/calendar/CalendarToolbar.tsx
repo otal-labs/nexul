@@ -9,7 +9,7 @@ import { useCalendarStore } from "@/stores/calendarStore";
 import { periodTitle } from "@/utils/CalendarUtility";
 
 // Step through the period, jump back to today, and switch between the month and the week.
-export const CalendarToolbar = () => {
+export const CalendarToolbar = ({ empty }: { empty: boolean }) => {
   const { view, anchor, setView, step, today } = useCalendarStore(
     useShallow((s) => ({ view: s.view, anchor: s.anchor, setView: s.setView, step: s.step, today: s.today })),
   );
@@ -29,6 +29,7 @@ export const CalendarToolbar = () => {
         <h2 className="ml-2 text-base font-semibold" aria-live="polite">
           {periodTitle(view, anchor, viewDays(view, anchor))}
         </h2>
+        {empty && <p className="text-sm text-muted-foreground">No meetings or due tickets this {unit}</p>}
       </div>
       <ToggleGroup
         type="single"

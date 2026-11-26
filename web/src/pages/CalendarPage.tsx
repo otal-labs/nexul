@@ -12,11 +12,11 @@ import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 // The viewer's meetings and the tickets due, by month or week; the grid stands while its entries load, so stepping never shows a spinner.
 export const CalendarPage = () => {
   const workspaceCrumb = useWorkspaceCrumb();
-  const { view, days, byDay, error } = useCalendarEntries();
+  const { view, days, byDay, error, empty } = useCalendarEntries();
   return (
     <Container className="flex min-h-full flex-col gap-4 py-8">
       <PageHeader crumbs={[workspaceCrumb]} title="Calendar" actions={<NewMeetingButton />} className="border-b-0 pb-0" />
-      <CalendarToolbar />
+      <CalendarToolbar empty={empty} />
       {error && <ErrorDisplay error={error} title="Couldn't load the calendar." />}
       {view === "month" && <CalendarMonth days={days} byDay={byDay} />}
       {view === "week" && <CalendarWeek days={days} byDay={byDay} />}

@@ -6,6 +6,7 @@ import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
 import { CalendarTitleContext } from "@/components/chat/calendarTitle";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ConversationHeader } from "@/components/chat/ConversationHeader";
+import { ConversationStart } from "@/components/chat/ConversationStart";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { ChatTranscriptSkeleton } from "@/components/chat/ChatTranscriptSkeleton";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
@@ -139,6 +140,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
             onEdit={onEdit}
             onDelete={onDelete}
             onInterruptAgent={() => void interruptAgent.mutateAsync()}
+            start={showHeader && <ConversationStart conversation={conversation} label={label} icon={Icon} />}
           />
           </QuestionDockContext>
         )}

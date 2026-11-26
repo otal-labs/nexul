@@ -1,10 +1,8 @@
-import { CircleIcon } from "lucide-react";
-
 import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
-import { formatUpdatedAgo } from "@/components/doc/docTime";
+import { formatShortAgo } from "@/components/doc/docTime";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
-import { notificationKindIcon } from "@/components/notifications/notificationKindIcon";
-import { notificationToneText } from "@/components/notifications/notificationTone";
+import { KeyedTitle } from "@/components/notifications/KeyedTitle";
+import { notificationMark } from "@/components/notifications/notificationTone";
 import { docQuery } from "@/hooks/DocHooks";
 import { useMarkNotificationUnread, useOpenInboxRow, useSelectedInboxRow } from "@/hooks/NotificationHooks";
 import { ticketQuery } from "@/hooks/TicketHooks";
@@ -23,7 +21,7 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
   const open = useOpenInboxRow();
   const markUnread = useMarkNotificationUnread();
   const unread = row.unreadIds.length > 0;
-  const KindIcon = notificationKindIcon[row.notification.kind] ?? CircleIcon;
+  const { icon: MarkIcon, tone, label } = notificationMark(row.notification);
   const { subject_type, subject_id } = row.notification;
   // The detail pane reads a ticket or a doc by its id; the other subjects load nothing worth fetching early.
   const prefetch = useHoverPrefetch((client) => {
@@ -51,19 +49,28 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
             className="unread-dot size-1.5 rounded-full bg-foreground"
           />
         </span>
+        <span className="mr-2.5 flex h-lh shrink-0 items-center">
+          <MarkIcon
+            className={cn("size-4", tone ?? "text-muted-foreground")}
+            {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
+          />
+        </span>
         <span className="min-w-0 flex-1">
-          <span
-            dir="auto"
-            title={row.title}
-            className={cn("line-clamp-2 break-words text-pretty text-foreground", unread && "font-semibold", !unread && selected && "font-medium")}
-          >
-            {row.title}
+          <span className="flex items-start gap-3">
+            <span
+              dir="auto"
+              title={row.title}
+              className={cn("line-clamp-2 min-w-0 flex-1 break-words text-pretty text-foreground", unread && "font-semibold", !unread && selected && "font-medium")}
+            >
+              <KeyedTitle title={row.title} />
+            </span>
+            <span className="shrink-0 font-mono text-micro leading-5 text-muted-foreground tabular-nums">{formatShortAgo(row.notification.created_at)}</span>
           </span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <KindIcon className={cn("size-3.5 shrink-0", notificationToneText[row.notification.kind])} aria-hidden />
-            <span title={row.summary} className="min-w-0 flex-1 truncate">{row.summary}</span>
-            <span className="shrink-0 font-mono text-micro tabular-nums">{formatUpdatedAgo(row.notification.created_at)}</span>
-          </span>
+          {row.summary && (
+            <span title={row.summary} className="mt-0.5 block truncate text-xs text-muted-foreground">
+              {row.summary}
+            </span>
+          )}
         </span>
       </button>
     </RowContextMenu>

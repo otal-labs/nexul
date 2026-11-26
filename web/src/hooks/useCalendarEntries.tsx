@@ -64,5 +64,8 @@ export const useCalendarEntries = () => {
     return out;
   }, [range.data, due.data]);
 
-  return { view, days, byDay, error: range.error ?? due.error };
+  const error = range.error ?? due.error;
+  // Settled with nothing in it: the toolbar says so, since 42 blank cells alone read as still loading.
+  const empty = !range.isPending && !due.isPending && !error && byDay.size === 0;
+  return { view, days, byDay, error, empty };
 };

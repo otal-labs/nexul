@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Notification } from "@/models/Notification";
-import { groupInbox, inboxRows, unreadEntries, type InboxFolder, type InboxRow } from "@/utils/InboxUtility";
+import { groupInbox, inboxDayGroups, inboxRows, playRunOutcome, unreadEntries, type InboxFolder, type InboxRow } from "@/utils/InboxUtility";
 
 let seq = 0;
 const note = (over: Partial<Notification>): Notification => ({
@@ -191,7 +191,20 @@ describe("groupInbox", () => {
       note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-1", created_at: at(11) }),
       note({ subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-2", created_at: at(10) }),
     ]) as InboxRow[];
-    expect(entries.map((e) => e.summary)).toEqual(["memory updated", "play run ended", "needs your answer"]);
+    expect(entries.map((e) => e.summary)).toEqual(["memory updated", "", "needs your answer"]);
+  });
+
+  it("leaves a ticket's play runs no summary of their own and words the newest outcome beside its other news", () => {
+    const runsOnly = groupInbox([
+      note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-1", subject_title: "Fix with AI failed on ATL-1", created_at: at(12) }),
+      note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-1", subject_title: "Fix with AI finished on ATL-1", created_at: at(11) }),
+    ]) as InboxRow[];
+    const mixed = groupInbox([
+      note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-2", subject_title: "Fix with AI interrupted on ATL-2", created_at: at(12) }),
+      note({ subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-2", subject_title: "Fix it", created_at: at(11) }),
+    ]) as InboxRow[];
+    expect(runsOnly.map((e) => e.summary)).toEqual([""]);
+    expect(mixed.map((e) => [e.title, e.summary])).toEqual([["Fix it", "assigned to you · run interrupted"]]);
   });
 
   it("treats a doc whose folder is unknown, deleted docs included, as a plain row", () => {
@@ -223,5 +236,36 @@ describe("unreadEntries", () => {
     const kept = unreadEntries(entries, "doc:doc-c");
     expect(kept.map((e) => e.key)).toEqual(["doc:doc-b", "doc:doc-c", "folder:f-gs"]);
     expect((kept[2] as InboxFolder).rows.map((r) => r.title)).toEqual(["EP01"]);
+  });
+});
+
+describe("playRunOutcome", () => {
+  it.each([
+    ["Review e2e PR failed on ATL-3", "failed"],
+    ["Fix with AI interrupted on ATL-3", "interrupted"],
+    ["Fix with AI finished on ATL-3", "finished"],
+    ["Fix the failed on-call page finished on ATL-3", "finished"],
+  ])("reads %s as %s", (subject_title, outcome) => {
+    expect(playRunOutcome(note({ kind: "play.run_finished", subject_title }))).toBe(outcome);
+  });
+});
+
+describe("inboxDayGroups", () => {
+  it("splits newest-first entries by calendar day and leaves empty groups out", () => {
+    const now = new Date(2026, 9, 10, 9, 0);
+    const local = (day: number, hour: number) => new Date(2026, 9, day, hour, 0).toISOString();
+    const entries = groupInbox([
+      note({ subject_id: "a", created_at: local(10, 1) }),
+      note({ subject_id: "b", created_at: local(9, 23) }),
+      note({ subject_id: "c", created_at: local(5, 12) }),
+      note({ subject_id: "d", created_at: local(1, 12) }),
+      note({ subject_id: "e", created_at: local(1, 11) }),
+    ]);
+    expect(inboxDayGroups(entries, now).map((g) => [g.label, g.entries.map((e) => e.key)])).toEqual([
+      ["Today", ["doc:a"]],
+      ["Yesterday", ["doc:b"]],
+      ["Last 7 days", ["doc:c"]],
+      ["Earlier", ["doc:d", "doc:e"]],
+    ]);
   });
 });

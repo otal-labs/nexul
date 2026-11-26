@@ -136,8 +136,8 @@ describe("ChatPage for a member without members:write", () => {
     stagePeople("Lewis");
     renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
-    // The thread header and the message author.
-    expect(await screen.findAllByText("Lewis")).toHaveLength(2);
+    // The thread header, the conversation's start and the message author.
+    expect(await screen.findAllByText("Lewis")).toHaveLength(3);
     expect(screen.queryByText("u-lewis")).not.toBeInTheDocument();
   });
 
@@ -145,8 +145,8 @@ describe("ChatPage for a member without members:write", () => {
     stagePeople("");
     renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
-    // The thread header and the message author.
-    expect(await screen.findAllByText("LewisWelch94")).toHaveLength(2);
+    // The thread header, the conversation's start and the message author.
+    expect(await screen.findAllByText("LewisWelch94")).toHaveLength(3);
     expect(screen.queryByText("u-lewis")).not.toBeInTheDocument();
   });
 });

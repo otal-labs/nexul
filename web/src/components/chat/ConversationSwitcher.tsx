@@ -1,5 +1,5 @@
-import { ChevronDown, type LucideIcon } from "lucide-react";
-import { useState, type MouseEvent } from "react";
+import { ChevronDown } from "lucide-react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
@@ -11,7 +11,8 @@ interface ConversationSwitcherProps {
   workspaceId: string | undefined;
   conversationId: string;
   label: string;
-  icon: LucideIcon;
+  /** The header's own mark: the kind's icon, or the other person's avatar. */
+  leading: ReactNode;
 }
 
 // The sidebar marks the open row with its sliding block, which the popover lacks; this draws the same tint and edge.
@@ -21,7 +22,7 @@ const openRowClass = cn(
 );
 
 // While the sidebar is the icon rail, the open conversation's name opens the sidebar's own conversation list.
-export const ConversationSwitcher = ({ workspaceId, conversationId, label, icon: Icon }: ConversationSwitcherProps) => {
+export const ConversationSwitcher = ({ workspaceId, conversationId, label, leading }: ConversationSwitcherProps) => {
   const [open, setOpen] = useState(false);
   const { data: conversations } = useFetchConversations(workspaceId);
   const { data: unread } = useFetchChatUnread(workspaceId);
@@ -39,7 +40,7 @@ export const ConversationSwitcher = ({ workspaceId, conversationId, label, icon:
           aria-label={waiting > 0 ? `${label}, switch conversation, ${waiting} unread elsewhere` : `${label}, switch conversation`}
           className="-ml-1.5 flex h-8 min-w-0 items-center gap-2 rounded-md px-1.5 transition-colors duration-150 ease-standard hover:bg-accent"
         >
-          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          {leading}
           <span dir="auto" className="min-w-0 truncate text-sm font-semibold">
             {label}
           </span>

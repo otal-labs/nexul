@@ -743,7 +743,8 @@ empty Runs is the same card with one muted line), then Instructions in a
 Inbox. One row per doc or ticket however many notifications it has: the
 title, over a meta line saying what happened ("created · 2 updates",
 "mentioned you · 2 status changes") with the newest time
-trailing it in mono, unread while any of them is. Rows hover and select like the
+trailing the title's line in mono, unread while any of them is; a play run's
+row reads its outcome from the title's words and says nothing under it. Rows hover and select like the
 list pane's, with no dividers. The header is `ListPaneHeader` without New or
 search: the unread count in mono, hidden at zero, Mark all read as a ghost
 check-check icon while anything is unread, then an Unread | All segmented
@@ -755,8 +756,11 @@ the Docs pane's, its meta the number of docs, expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name, and its rows
 take no indent. A ticket's play runs join its row. Every other notification
 is its own row, and all of them
-interleave by newest activity. Until a row is picked the list fills the page,
-with no open pane beside it; picking one opens the record beside the list, at
+interleave by newest activity under day microheaders (Today, Yesterday, Last
+7 days, Earlier, by calendar day; a group with nothing is left out), pinned
+like the list pane's groups. Until a row is picked the list fills the page
+as one centred 56rem column, header included, so a row's time stays beside
+its title, with no open pane beside it; picking one opens the record beside the list, at
 the list pane's width.
 
 Board. One grid. The header carries the project's identity: its 32px mark,
@@ -1012,16 +1016,17 @@ Calendar. A page of its own, not a list pane: the title and New meeting over
 one toolbar row of previous, next and Today as outline buttons, the period's
 name, and a Month | Week segmented control at the right, every control 32px;
 the header drops its hairline here, and the view fills the rest of the panel.
-The month is a hairline grid of seven columns, the weekend's at 0.65 of a
-weekday's above 880px of grid, a week to a row; the rows share the panel's
+The month is a hairline grid of seven equal columns, a week to a row; the rows share the panel's
 height above a floor that fits a cell's head and its lines, so nothing clips
 and a short screen scrolls. A cell holds five lines in a five-week month and
 four in a six-week one, a number taken from the week count, never measured.
-Its head is the day number (today in an ink disc, never the accent) and, at the
+Its head is the day number in 13px mono (today in a 24px ink disc, never the
+accent, and today's whole cell tinted `foreground` at 4%) and, at the
 right, what had no line, counted by kind in mono (`+1 due · +3`, the total
 alone under 880px), a button that opens that day's week. Days of the
-neighbouring months sit in the board's `well-shade`, and the grid ends in 8px
-corners. Due tickets lead as outlined
+neighbouring months mute their text on the same surface, and the grid ends in 8px
+corners. A period with nothing in it says so in the toolbar after its name
+("No meetings or due tickets this month"), muted. Due tickets lead as outlined
 boxes (4px, `foreground` at 4%, a hairline ring, the calendar-clock icon and
 the title, the key in the tooltip), giving lines to the meetings while they
 need them; a meeting is one 20px line, its zero-padded start in mono on a lead
@@ -1696,7 +1701,7 @@ are the reference.
 Chat stream. The messages run in one centred column up to 48rem wide, the
 composer under it at the same width, so your bubble on the right never sits a
 panel away from the line it answers. The column has two edges: its own left
-edge holds the header's icon and name, the avatars, the day divider's rules
+edge holds the header's icon (a conversation with one other person: their 24px avatar) and name, the avatars, the day divider's rules
 and the composer's frame, and the body indent (avatar and gap) holds what a
 message carries, its name line, text and a bot's report. From a 50rem stream
 the scroller keeps a scrollbar gutter on both sides, so the column centres on
@@ -1711,7 +1716,8 @@ for whoever has settings there, both opening the dialog the sidebar row's menu
 opens. While the sidebar is the icon rail, the name is a switcher: a chevron and the
 unread count of every other listed conversation as a dot and "3 elsewhere", opening a 20rem popover of the
 sidebar's own conversation sections. Your own messages are the one bubble
-(`brand-tint` under ink); everyone else's text runs plain under a 32px avatar and a header
+(`brand-tint` under ink), the mono clock time (and "edited") left of it on its
+last line, a grouped one's only on hover or focus; everyone else's text runs plain under a 32px avatar and a header
 of the name in 13px semibold and the mono clock time (the full time on hover),
 2px over the text and held to 72ch, so a long thread reads as a transcript instead of a stack of
 boxes. A new author starts 12px under the last message; a run of one person's messages drops the avatar and header after the
@@ -1721,7 +1727,11 @@ your own bubble keeps it on the bubble's corner. The pill and a grouped message'
 microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
 is not this one) between two hairlines. The composer is one framed field
 (`bg-card`, `rounded-lg`, the `input` ring turning to the focus ring) holding
-attach, the text and emoji. `MessageList`, `ConversationHeader` and `ChatComposer` are the
+attach, the text and emoji. A history short enough to be all loaded
+opens with the conversation's start at the stream's foot: the person's 48px
+avatar or the kind's icon on a 48px tile, the name, and "This is the start of
+your conversation with Sam." muted, so a short conversation sits above the
+composer. `MessageList`, `ConversationHeader`, `ConversationStart` and `ChatComposer` are the
 reference.
 
 Scheduled messages. The composer's last icon is a muted ghost clock (Schedule
@@ -1851,17 +1861,19 @@ first step and a chevron. Opened, one 13px row per agent under a hairline: its
 mark, its title, its model in muted mono cut to fit, and its state dot; a row
 opens that agent's conversation in a dialog. `HandoffGroup` is the reference.
 
-Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, level
-with the title's first line (it shrinks to 0.6 as it fades over 150ms when
+Inbox row. A 6px `foreground` unread dot in a 12px leading gutter, then a
+16px mark for what happened, both level with the title's first line (it shrinks to 0.6 as it fades over 150ms when
 the row is read; a folder row's dot sits in the same gutter and shows only
 while the folder is collapsed), so unread reads as one column down the pane.
-The title is ink in both states, semibold while unread, two lines at most.
-Under it the meta line: a 14px icon for what happened (assigned, mentioned,
-status, doc created or edited, questions, memory, a play run), muted, or in
-its status hue for a notice that carries a state (a crash or 5xx over the
-limit `destructive`, their recovery `success`, a play waiting on an answer or
-a ticket due tomorrow `warning`), the summary, and the mono time on the
-right. Its focus ring draws inside the row (`inset-focus`), where the list's
+The mark (assigned, mentioned, status, doc created or edited, questions,
+memory) is muted, or in its status hue for a notice that carries a state (a
+crash or 5xx over the limit `destructive`, their recovery `success`, a play
+waiting on an answer or a ticket due tomorrow `warning`); a play run that
+ended shows how, a check in `success`, a cross in `destructive` for failed, a
+stop in `warning` for interrupted, named by its label. The title is ink in
+both states, semibold while unread, two lines at most, a ticket key inside it
+in mono, and the short mono time ("3d", "18 Nov") ends its first line. Under
+it a muted summary line only when it says what the title does not. Its focus ring draws inside the row (`inset-focus`), where the list's
 clip cannot cut it off.
 
 Bot message. A bot's post sits plain like a person's, under the
@@ -2144,6 +2156,8 @@ The web app's pattern decisions, each with what it was picked over.
 | Decision | Why |
 |---|---|
 | The Inbox list fills the page until a row is picked, filters Unread or All, and every list pane starts at 360px (2026-10-30) | Reverses the Inbox row's rejection of a full-width list, on the owner's call after the inbox review: beside an empty "Select a notification" pane the list kept to 300px at 1440 and cut most titles to two lines, while the open pane said one sentence. The jump to the list pane's width on the first pick is the cost. At 300px the list pane cut titles on Docs, Memories and Plays too, so its default moves to 360, which still leaves an open record about 650px at 1280; a width saved at the old default moves with it, and a dragged one stays. Unread sits in the header as a segmented control because it narrows one list, and the row just opened stays listed so reading it never pulls it out from under the pointer |
+| The Inbox row leads with its mark, puts the time on the title's line and groups by day; filling the page it keeps to 56rem (2026-11-26) | Reverses the 2026-10-29 meta-line icon: a run of play notices drew one sparkle and "play run ended" on every row, so a failed run read like a finished one and fifteen rows repeated a line that said nothing. Leading with the outcome in its hue reads at a glance, and the title keeps its room at the 360px default because the summary line goes when it adds nothing. At full width the time sat about 1100px from a short title; the 56rem column keeps it beside it |
+| The calendar's seven columns are equal, and neighbouring months mute their text instead of taking `well-shade` (2026-11-26) | Against weekends at 0.65 of a weekday above 880px: the grid read uneven at 1440 and equal at 768; and against shaded out-of-month cells, which put two surface steps in one grid. Today's cell takes a quiet tint so the month reads at a glance |
 | An open play is one page of sections with its runs, and its list row carries its run health (2026-10-30) | Against the Play and Auto plays tabs: the Play tab was a short facts block over an empty panel, and a play's runs were nowhere on its page, only on each ticket. Runs only make sense read beside the auto plays that start them, so they share one page, and the list row marks a play running, waiting on answers, or failed so a lead finds the one that needs a look without opening each |
 | On the board card a label is a pill in its own hue, and the type stays its icon (2026-10-29) | Reverses the neutral chip for the card only, on the owner's call: with the type reduced to an icon and the key on a mono eyebrow, the labels are the card's only tinted shape, so they no longer compete with a type pill, and a hue read at a glance across a column beats a 6px dot. The tint stays at 15% under the hue's ink, so a label stays quieter than the title. The ticket page and the phone card keep the neutral chip until they are brought in line |
 | The agent turn: an outcome mark over a rule, every step one row of one weight, commands listed like files (2026-10-29) | Against the fold as shipped: each command took two rows ("Ran a command" over a well holding the whole command), a leading `cd` into the run's directory pushed the command itself off the clamp, commands never grouped while reads and edits did, a tool was a bare line while a command was a box, and the muted 12px header weighed less than the body under it. One row per step and a count over neighbours keeps a run of twelve commands to about thirteen rows. The done mark stays muted rather than `success`: a long run is a column of turns, and a check in a hue on each read as a status board; failure keeps its hue. Rejected: a task card per turn (still the box the fold replaced) and a timer that moves through steps known up front (the Agent does not know its steps ahead) |

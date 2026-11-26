@@ -9,7 +9,7 @@ interface MonthDayCellProps {
   day: Date;
   entries: DayEntries;
   today: boolean;
-  // Days of the weeks that spill into the neighbouring months sit in the board's well shade.
+  // Days of the weeks that spill into the neighbouring months mute their text; the cells stay one surface.
   inMonth: boolean;
   // How many entries the month's row height holds.
   lines: number;
@@ -20,9 +20,9 @@ export const MonthDayCell = ({ day, entries, today, inMonth, lines }: MonthDayCe
   return (
     <section
       aria-label={formatLongDay(day.toISOString())}
-      className={cn("flex min-w-0 flex-col overflow-hidden border-r border-b border-border px-1.5 py-0.5 @max-[55rem]:px-1", !inMonth && "bg-well-shade text-muted-foreground")}
+      className={cn("flex min-w-0 flex-col overflow-hidden border-r border-b border-border px-1.5 py-0.5 @max-[55rem]:px-1", !inMonth && "text-muted-foreground", today && "bg-foreground/4")}
     >
-      <div className="flex h-5 shrink-0 items-center justify-between gap-1">
+      <div className="flex h-6 shrink-0 items-center justify-between gap-1">
         <DayNumber day={day} today={today} />
         <MonthOverflow day={day} shown={shown} />
       </div>

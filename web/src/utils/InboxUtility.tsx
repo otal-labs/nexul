@@ -68,10 +68,21 @@ const docSummary = (ns: Notification[]) => {
   return parts.filter(Boolean).join(" · ");
 };
 
+export type PlayRunOutcome = "finished" | "failed" | "interrupted";
+
+// The server words the outcome into the title ("Fix with AI failed on CLTCH-12") and carries no field for it.
+export const playRunOutcome = (n: Notification): PlayRunOutcome => {
+  const match = / (failed|interrupted) on /.exec(n.subject_title);
+  return (match?.[1] as PlayRunOutcome | undefined) ?? "finished";
+};
+
 const ticketSummary = (ns: Notification[]) => {
   const count = (kind: NotificationKind) => ns.filter((n) => n.kind === kind).length;
   const mentions = count(NotificationKind.TicketMentioned);
   const changes = count(NotificationKind.TicketStatusChanged);
+  const runs = ns.filter((n) => n.kind === NotificationKind.PlayRunFinished);
+  // A row of play runs alone says nothing its title does not, so it takes the one-line row.
+  if (runs.length === ns.length) return "";
   const parts = [
     count(NotificationKind.PlayRunWaiting) > 0 && kindLabels[NotificationKind.PlayRunWaiting],
     mentions === 1 && "mentioned you",
@@ -80,7 +91,7 @@ const ticketSummary = (ns: Notification[]) => {
     count(NotificationKind.TicketAssigned) > 0 && kindLabels[NotificationKind.TicketAssigned],
     changes === 1 && kindLabels[NotificationKind.TicketStatusChanged],
     changes > 1 && plural(changes, "status change"),
-    count(NotificationKind.PlayRunFinished) > 0 && kindLabels[NotificationKind.PlayRunFinished],
+    runs[0] && `run ${playRunOutcome(runs[0])}`,
   ];
   return parts.filter(Boolean).join(" · ");
 };
@@ -117,7 +128,7 @@ const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => 
     return { type: "ticket", key: `ticket:${newest.subject_id}`, notification: newest, title, summary: ticketSummary(ns), unreadIds, count: ns.length };
   }
   if (newest.subject_type !== SubjectType.Doc) {
-    return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: kindLabels[newest.kind], unreadIds, count: ns.length };
+    return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: newest.kind === NotificationKind.PlayRunFinished ? "" : kindLabels[newest.kind], unreadIds, count: ns.length };
   }
   return {
     type: "doc",
@@ -192,4 +203,38 @@ export const unreadEntries = (entries: InboxEntry[], openKey: string | undefined
     const rows = e.rows.filter(keep);
     return rows.length > 0 ? [{ ...e, rows }] : [];
   });
+};
+
+/** Where an entry sits in time: its newest notification, a folder's being its first row's. */
+const entryTime = (e: InboxEntry): string => (e.type === "folder" ? (e.rows[0]?.notification.created_at ?? "") : e.notification.created_at);
+
+export interface InboxDayGroup {
+  label: string;
+  entries: InboxEntry[];
+}
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+const dayLabel = (iso: string, today: number): string => {
+  const days = Math.round((today - startOfDay(new Date(iso))) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return "Last 7 days";
+  return "Earlier";
+};
+
+/** Splits newest-first entries by calendar day into Today, Yesterday, Last 7 days and Earlier; empty groups are left out. */
+export const inboxDayGroups = (entries: InboxEntry[], now = new Date()): InboxDayGroup[] => {
+  const today = startOfDay(now);
+  const groups: InboxDayGroup[] = [];
+  for (const entry of entries) {
+    const label = dayLabel(entryTime(entry), today);
+    const last = groups[groups.length - 1];
+    if (last?.label === label) {
+      last.entries.push(entry);
+      continue;
+    }
+    groups.push({ label, entries: [entry] });
+  }
+  return groups;
 };

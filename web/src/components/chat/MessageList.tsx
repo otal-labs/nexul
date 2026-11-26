@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MessagesSquare } from "lucide-react";
 
 import type { Person } from "@nexul/client-core/person";
@@ -40,7 +40,12 @@ interface MessageListProps {
   onInterruptAgent: () => void;
   // Fired when the newest persisted message enters the viewport; a scrolled-up chat is not "read".
   onNewestSeen?: ((messageId: string) => void) | undefined;
+  /** Heads the stream once its whole history is loaded. */
+  start?: ReactNode;
 }
+
+// The messages endpoint's default page; a shorter list is the whole conversation.
+const PAGE = 50;
 
 // IntersectionObserver only runs while this is mounted; reports the newest visible message.
 const NewestSeenReporter = ({ newestId, onSeen }: { newestId: string; onSeen: (id: string) => void }) => {
@@ -91,6 +96,7 @@ export const MessageList = ({
   onDelete,
   onInterruptAgent,
   onNewestSeen,
+  start,
 }: MessageListProps) => {
   const stream = useAgentStreamStore((s) => s.streams[conversation.id]);
   const blocks = useThreadTrailBlocks(conversation);
@@ -117,6 +123,7 @@ export const MessageList = ({
             {/* A gutter each side centres the column on the header and composer; narrower, no scrollbar takes the column's width. */}
             <MessageScrollerViewport className="[mask-image:linear-gradient(to_bottom,transparent,black_1rem,black_calc(100%-0.75rem),transparent)] [scrollbar-gutter:auto]! [scrollbar-width:none]! @min-[50rem]/scroller:[scrollbar-gutter:stable_both-edges]! @min-[50rem]/scroller:scrollbar-thin!">
               <MessageScrollerContent className="mx-auto w-full max-w-[var(--chat-column,48rem)] gap-0 pt-2 pb-3" aria-busy={stream?.streaming ?? false}>
+                {messages.length < PAGE && start}
                 {messages.map((message, i) => {
                   const own = message.author_id === currentUserId;
                   const newest = i === messages.length - 1;
