@@ -68,6 +68,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
                 id="instance_url"
                 label="Instance URL"
                 hideLabel
+                className="font-mono"
                 placeholder="https://deploy.example.com"
               />
             </div>

@@ -67,7 +67,7 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
       data-leaving={leaving || undefined}
       className={cn(
         leavingRowClass,
-        "group/row relative flex min-h-11 flex-col justify-center bg-card px-2 before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40",
+        "group/row relative flex min-h-11 flex-col justify-center bg-card before:pointer-events-none before:absolute before:-inset-x-2 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40",
         isDragging && "z-10 rounded-md shadow-elevated",
       )}
     >

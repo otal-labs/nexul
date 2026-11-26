@@ -3,7 +3,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { InstanceTemplateGroup } from "@/components/templates/InstanceTemplateGroup";
 import { useFetchTemplates } from "@/hooks/TemplateHooks";
-import { TEMPLATE_KINDS } from "@/models/Template";
+import { TEMPLATE_GROUP_HINTS, TEMPLATE_KINDS } from "@/models/Template";
 
 export const InstanceTemplatesSection = () => {
   const { data: templates, error, isPending } = useFetchTemplates();
@@ -18,8 +18,13 @@ export const InstanceTemplatesSection = () => {
       {error && <ErrorDisplay error={error} />}
       {templates && (
         <div className="space-y-6">
-          {TEMPLATE_KINDS.map((kind) => (
-            <InstanceTemplateGroup key={kind} kind={kind} templates={templates.filter((t) => t.kind === kind)} />
+          {TEMPLATE_KINDS.map((kind, index) => (
+            <InstanceTemplateGroup
+              key={kind}
+              kind={kind}
+              templates={templates.filter((t) => t.kind === kind)}
+              showHint={index === 0 || TEMPLATE_GROUP_HINTS[TEMPLATE_KINDS[index - 1]!] !== TEMPLATE_GROUP_HINTS[kind]}
+            />
           ))}
         </div>
       )}

@@ -5,6 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ArchivedWorkspaceRow } from "@/components/settings/ArchivedWorkspaceRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchArchivedWorkspaces } from "@/hooks/WorkspaceHooks";
 
@@ -21,7 +22,7 @@ const ArchivedWorkspacesCard = () => {
       {error && <ErrorDisplay error={error} />}
       {workspaces && workspaces.length === 0 && <EmptyRow flush>No workspace is archived.</EmptyRow>}
       {workspaces && workspaces.length > 0 && (
-        <ul className="-mx-3 divide-y divide-border">
+        <ul className={settingsListClass}>
           {workspaces.map((workspace) => (
             <ArchivedWorkspaceRow key={workspace.id} workspace={workspace} />
           ))}

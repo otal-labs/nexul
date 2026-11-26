@@ -2,7 +2,7 @@ import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useShallow } from "zustand/react/shallow";
 
 import { ThemeMiniature } from "@/components/appearance/ThemeMiniature";
-import { ThemeTile } from "@/components/appearance/ThemeTile";
+import { pickerGridClass, ThemeTile } from "@/components/appearance/ThemeTile";
 import { AppearanceMode, type AppearanceMode as AppearanceModeType } from "@/enums/Theme";
 import { themePreviewColors } from "@/lib/themePalettes";
 import { useThemeStore } from "@/stores/themeStore";
@@ -24,7 +24,7 @@ export const ModePicker = () => {
   const pick = (mode: string) => setAppearanceMode(mode as AppearanceModeType);
 
   return (
-    <RadioGroupPrimitive.Root aria-label="Mode" value={appearanceMode} onValueChange={pick} className="grid grid-cols-3 gap-3">
+    <RadioGroupPrimitive.Root aria-label="Mode" value={appearanceMode} onValueChange={pick} className={pickerGridClass}>
       {MODES.map(({ mode, label }) => (
         <ThemeTile key={mode} value={mode} label={label} selected={appearanceMode === mode}>
           {mode === AppearanceMode.Light && <ThemeMiniature colors={light} />}

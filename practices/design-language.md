@@ -1476,9 +1476,11 @@ box of their own and no hover lift unless the row is a link. State is a
 `SettingsStatus`, a 6px status dot beside plain text with an optional muted
 detail 16px after it, set apart by space alone ("Connected" then "by Alice 20d ago", "Active" then "last used 9d ago", "Revoked 8 Oct"),
 never a chip; an active account says nothing, only one that can't sign in
-(Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job are ghost
-buttons that turn `destructive` on hover, kept apart from the primary action,
-and ask before they act. A card that edits values saves from its footer with
+(Disabled, muted, for it can come back; Removed in `destructive`). Destructive actions that are not the card's job (Unlink, Delete,
+Disconnect, Sign out) are outline buttons in ink whose word turns `destructive` on hover, kept apart from the primary action,
+and ask before they act: a bare word read as content, not a control. A row's action that repeats down a list
+(a device's Sign out, a template's Edit) stays quiet until the row is pointed at, and is always shown where nothing hovers.
+A row's rules keep the text's edge; only a hover lift reaches 8px past it. A card footer's lone action sits at its right. A card that edits values saves from its footer with
 `SettingsSaveBar`: the strip is always there; Save is the primary button,
 disabled (the flat disabled look) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
@@ -1501,13 +1503,17 @@ row's Edit opening that question's own markdown in place with Remove and Done, a
 segmented Questions | Markdown control over it for editing the whole text at once.
 A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
 that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
-device first, a ghost Sign out on each other row, and an outline Sign out everywhere else that turns
+device first with a muted "This device" in the action column, a plain device icon with no tile, a Sign out on each other row shown on hover, and an outline Sign out everywhere else that turns
 `destructive` on hover), Personal access tokens (revoked ones last), then
 Connect a device as two rows, Phone app and Desktop app, the QR opening under
 its row only once a code is generated, with Cancel and New code in the row's slot and the code centred on the QR. In a
 settings list mono is for identifiers only (handles, IPs, token prefixes, hostnames, the pairing code); counts, dates
 and the words between names stay in the UI sans. A row's state sits on its second line, never on the title's: a Team
-row's presence, a connector's, which drops the word its tab already says.
+row's presence, a connector's, which drops the word its group label already says. Connectors list the connected
+tools first and the rest under a Not connected microheader, with no filter. A Team row is two lines: the name with a
+presence dot, then one meta line of handles, roles or workspaces, last seen and setup. Sign-in providers are one
+card per provider, stacked. A starting template shows its state only once edited; a group hint the group above
+already said is left out.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
 pane, above) inside the tab, kept in the page's panel like the other Access
@@ -1650,10 +1656,10 @@ Appearance. Mode and Theme are radio groups of tiles, each a miniature of the
 app (`ThemeMiniature`: canvas, sidebar with its brand marker, a panel with a
 title, two text lines, a brand button and an outline one) drawn from the
 palette's own roles in the mode being shown (`themePreviewColors`); System is
-light with the dark miniature clipped across its right side. Mode is three across at every width; Theme runs six across from
-a 42rem card body, four from 32rem and three below, so the twelve themes sit in
-two rows above the fold at 1440. The picked tile
-gets a 2px `brand` ring and a check badge top right; arrow keys move the pick.
+light with the dark miniature clipped across its right side. Mode and Theme share one column grid, three across and four
+from a 32rem card body, Mode filling three of its columns, so a mode tile is the size of a theme tile and the two read as
+one picker. The picked tile gets a 2px `brand` ring and its name in ink at weight 500, one mark rather than a ring and a
+badge; arrow keys move the pick.
 "Dim behind dialogs" is a row with a miniature of a dialog over the scrim at
 the slider's strength.
 
@@ -1987,7 +1993,8 @@ look, and the job picks the control, never the page:
   settings, a stack's Settings tab). The sidebar's row grammar at settings scale: muted rows,
   the `bg-accent/60` hover lift, and the sidebar's sliding block (the current
   row's tint with the 2px `brand` edge on its left) on the current one. A side column
-  from 1024px, a scrolling top row below it, where the block drops its edge.
+  from 1024px, a top row below it that wraps onto a second line rather than scroll, so no
+  label is ever cut, where the block drops its edge.
   Danger zone is a plain row set apart at the end by a hairline (a gap in the
   top row): the red lives on its card, and a red label at rest pulled the eye
   to the rarest action on every visit.
@@ -1996,7 +2003,7 @@ look, and the job picks the control, never the page:
   `foreground` underline that slides to the active tab.
 - Segmented control (`ToggleGroup variant="segmented"`, size `xs`): two to
   five views, filters or modes of the same content, held in the page and
-  never in the path: Connected / Not connected, All / Errors, Doc |
+  never in the path: All / Errors, Doc |
   Tickets | Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
   well with a hairline ring and a 2px inset, holding a raised thumb (`card`,
   the hairline ring drawn inside its edge so a line of the well shows
@@ -2023,7 +2030,7 @@ not disabled, and a view left with one tab drops the row, unless it has a `trail
 deep-links into a tabbed view builds its path with `useTabPath`, never by
 hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
-list (`ConnectorsSection`'s Connected and Not connected) is not a tab; it is a
+list (a log's All and Errors) is not a tab; it is a
 segmented control.
 
 Doc views. A doc heads its page with a "Doc | Tickets N | Questions N"

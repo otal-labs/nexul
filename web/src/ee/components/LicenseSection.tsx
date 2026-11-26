@@ -1,4 +1,4 @@
-import { KeyRound, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Link } from "react-router";
 
 import { EmptyRow } from "@/components/EmptyRow";
@@ -116,7 +116,6 @@ export const LicenseSection = () => {
       id="license"
       title="License"
       description="A license key unlocks the enterprise features on this instance. It's checked here, without contacting anyone."
-      icon={KeyRound}
       aside={<LicenseStatus />}
       footer={data && <LicenseFooter license={data} />}
     >

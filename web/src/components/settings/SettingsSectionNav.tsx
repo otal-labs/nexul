@@ -14,26 +14,6 @@ const itemClass = (isActive: boolean) =>
     isActive ? "font-medium text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
-// The narrow top row fades on each side that has more to scroll to, so a cut label reads as more, not as half a word.
-const markScrolled = (el: HTMLUListElement | null) => {
-  if (!el) return;
-  const mark = () => {
-    el.toggleAttribute("data-scrolled", el.scrollLeft > 0);
-    el.toggleAttribute("data-more", el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  };
-  mark();
-  el.addEventListener("scroll", mark, { passive: true });
-  const resized = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(mark);
-  resized?.observe(el);
-  return () => {
-    el.removeEventListener("scroll", mark);
-    resized?.disconnect();
-  };
-};
-
-// A deep link can land on an item past the right edge of the narrow top row; bring it into view.
-const revealActive = (el: HTMLAnchorElement | null) => el?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-
 export interface SettingsSectionNavItem {
   section: string;
   label: string;
@@ -54,13 +34,10 @@ interface SettingsSectionNavProps {
   active: string;
 }
 
-// A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
+// A wrapping top row below `lg:` (at 768px a side column left too little width for the content, and a scrolling row cut its labels) and a side column from it; shared by every settings-style page so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:sticky lg:top-[4.5rem] lg:w-48 lg:shrink-0">
-    <ul
-      ref={markScrolled}
-      className="relative isolate flex items-center gap-1 overflow-x-auto scrollbar-none scroll-px-12 pb-1 max-lg:data-more:[mask-image:linear-gradient(to_right,#000_calc(100%-3rem),transparent)] max-lg:data-scrolled:[mask-image:linear-gradient(to_right,transparent,#000_3rem)] max-lg:data-scrolled:data-more:[mask-image:linear-gradient(to_right,transparent,#000_3rem,#000_calc(100%-3rem),transparent)] lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0"
-    >
+    <ul className="relative isolate flex flex-wrap items-center gap-1 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-0.5">
       <ActiveIndicator selector='[aria-current="page"]' className={cn("rounded-md", currentRowFillClass)}>
         <CurrentRowEdge className="hidden lg:block" />
       </ActiveIndicator>
@@ -78,7 +55,6 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           <li className={cn("shrink-0", item.danger && index > 0 && "lg:mt-2.5 lg:border-t lg:border-border lg:pt-3")}>
             <Link
               to={item.to ?? `${basePath}/${item.section}`}
-              ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section)}
             >
@@ -94,8 +70,6 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           </li>
         </Fragment>
       ))}
-      {/* Room past the last label, so scrolled to the end it clears the fade. */}
-      <li aria-hidden className="w-6 shrink-0 lg:hidden" />
     </ul>
   </nav>
 );

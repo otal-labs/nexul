@@ -27,7 +27,7 @@ export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectio
       footer={enabled && <OAuthProviderActions provider={provider} clientId={clientId} />}
     >
       <SettingsRows>
-        <SettingsRow label="Redirect URI" description={`${copy.console}, and register this as its redirect URI.`}>
+        <SettingsRow label="Redirect URI" description={`${copy.console}, and register this as its redirect URI.`} stacked>
           <span className="flex w-full min-w-0 items-center gap-1 rounded-md bg-surface-2 py-0.5 pr-0.5 pl-2.5 ring-1 ring-border">
             <code className="min-w-0 flex-1 truncate font-mono text-xs" title={callback}>
               {callback}

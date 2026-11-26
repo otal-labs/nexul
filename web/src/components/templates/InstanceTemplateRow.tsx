@@ -37,8 +37,8 @@ export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowPr
   };
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "py-3")}>
-      <div className="flex items-center gap-3">
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "group/row py-2")}>
+      <div className="flex min-h-9 items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium first-letter:uppercase">{label}</p>
           <TemplateEditedLine template={template} />
@@ -48,7 +48,20 @@ export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowPr
             Delete
           </Button>
         )}
-        <Button type="button" variant="ghost" size="sm" aria-expanded={open} aria-label={editLabel} onClick={() => setOpen(!open)}>
+        {/* Quiet until the row is pointed at, where something can hover; an open editor keeps its Close. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-expanded={open}
+          aria-label={editLabel}
+          onClick={() => setOpen(!open)}
+          className={cn(
+            "-mr-3",
+            !open &&
+              "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
+          )}
+        >
           {open ? "Close" : "Edit"}
         </Button>
       </div>

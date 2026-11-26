@@ -1,4 +1,4 @@
-import { Settings, Unlink } from "lucide-react";
+import { Unlink } from "lucide-react";
 import { Link } from "react-router";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
@@ -36,15 +36,18 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
             </SettingsStatus>
           )}
           {!account && <SettingsStatus tone="muted">Not linked</SettingsStatus>}
+          {/* In the meta line, not the action column, so every row ends on the same one action. */}
+          {identity && provider === "github" && canOpenConnectors && (
+            <Link
+              to="/settings/connectors/github-app"
+              aria-label="GitHub App settings"
+              className="ml-4 text-xs text-muted-foreground underline decoration-border underline-offset-2 transition-colors duration-150 ease-standard hover:text-foreground"
+            >
+              App settings
+            </Link>
+          )}
         </p>
       </div>
-      {identity && provider === "github" && canOpenConnectors && (
-        <Button asChild variant="ghost" size="sm" aria-label="GitHub App settings" title="GitHub App settings">
-          <Link to="/settings/connectors/github-app">
-            <Settings className="size-4" />
-          </Link>
-        </Button>
-      )}
       {identity && !onlyOne && (
         <ConfirmDestroyButton
           icon={Unlink}

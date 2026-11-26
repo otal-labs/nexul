@@ -1,9 +1,8 @@
-import { ArrowRightLeft, Building2, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Trash2 } from "lucide-react";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { InlineNotice } from "@/components/InlineNotice";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -71,10 +70,10 @@ const MoveSignInsRow = () => (
 const SsoBody = ({ sso, saml, saved }: { sso: SsoSettings; saml: SamlSettings; saved: Saved }) => (
   <div className="space-y-4">
     {!sso.unlocked && (
-      <InlineNotice title="Single sign-on needs a license key" tone="warning">
-        The sign-in button is off until a key that unlocks it is added under Instance.
+      <SettingsHint>
+        The sign-in button is off until a license key that unlocks it is added under Instance.
         {saved !== "none" && " The saved settings stay and work again with one."}
-      </InlineNotice>
+      </SettingsHint>
     )}
     {sso.unlocked && saved === "none" && (
       <EmptyRow flush>People sign in with GitHub, Google, Discord or a passkey. Set up a provider over OpenID Connect, or SAML if it speaks nothing else.</EmptyRow>
@@ -108,7 +107,6 @@ export const SsoSection = () => {
       id="single-sign-on"
       title="Single sign-on"
       description="Lets people sign in through your company's identity provider, over OpenID Connect or SAML."
-      icon={Building2}
       aside={ready && <SsoStatus sso={ready.sso} configured={ready.sso.configured || ready.saml.configured} />}
       footer={ready && <SsoFooter {...ready} />}
     >

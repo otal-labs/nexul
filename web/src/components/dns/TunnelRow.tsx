@@ -41,10 +41,10 @@ export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
         permission="dns:delete"
         verb="delete tunnels"
         type="button"
-        variant="ghost"
+        variant="outline"
         size="sm"
         aria-label={`Delete tunnel ${tunnel.name}`}
-        className="-mt-1.5 -mr-3 text-muted-foreground"
+        className="-mt-1.5 text-foreground"
         liveClassName="hover:text-destructive"
         loading={deleteTunnel.isPending}
         onClick={() => void onDelete()}
