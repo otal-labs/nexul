@@ -21,7 +21,7 @@ To get one, write to [sales@nexul.io](mailto:sales@nexul.io) with the instance's
 
 | Plan | Covers |
 | --- | --- |
-| Simple | [Single sign-on](/docs/guide/single-sign-on/) and [branding](/docs/guide/branding/) |
+| Simple | [Single sign-on](/docs/guide/single-sign-on/) over OpenID Connect or SAML, [branding](/docs/guide/branding/), and the [audit log](/docs/guide/audit-log/) kept longer and streamed |
 | Enterprise | Arranged on a call |
 
 For a price, a pilot (an 8 to 12 week paid trial), a hosting partner agreement or a done-for-you install, write to the same address.
