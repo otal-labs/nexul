@@ -86,6 +86,7 @@ const (
 	MemoriesTemplate   Action = "memories:template"
 	InstanceRead       Action = "instance:read"
 	InstanceWrite      Action = "instance:write"
+	SignInsMove        Action = "sign_ins:move"
 	AccountsRead       Action = "accounts:read"
 	AccountsWrite      Action = "accounts:write"
 	AccountsDelete     Action = "accounts:delete"
@@ -142,6 +143,7 @@ const (
 	deploy   = "deploy"
 	shell    = "shell"
 	viewAs   = "view_as"
+	move     = "move"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -168,6 +170,7 @@ var verbLabel = map[Action]string{
 	MembersViewAs:    "View Nexul as another member",
 	CalendarWrite:    "Create meetings",
 	CalendarDelete:   "Change or cancel anyone's meetings",
+	SignInsMove:      "Move sign-ins between accounts",
 }
 
 // Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
@@ -227,6 +230,7 @@ var domainTable = []domainInfo{
 	{"computer_activity", "computer activity", []string{read}, AreaInstance},
 	{"logs", "the instance's logs", []string{read}, AreaInstance},
 	{"accounts", "accounts", []string{read, write, delete}, AreaInstance},
+	{"sign_ins", "sign-ins", []string{move}, AreaInstance},
 	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
 	// templates:read scopes a token's reads; a signed-in member reads instance templates with membership alone.
 	{"templates", "instance templates", []string{read, write}, AreaInstance},
@@ -247,6 +251,7 @@ const SignInProviders = "sign_in_providers"
 var instanceAreas = []InstanceArea{
 	{"instance", "the instance", []Action{InstanceRead, InstanceWrite, EventsRead}},
 	{SignInProviders, "sign-in providers", []Action{InstanceRead, InstanceWrite}},
+	{"sign_ins", "moving sign-ins between accounts", []Action{SignInsMove}},
 	{"dns", "DNS and gateways", []Action{DNSRead, DNSWrite, DNSDelete}},
 	{"templates", "instance templates", []Action{TemplatesRead, TemplatesWrite}},
 	{"accounts", "accounts", []Action{AccountsRead, AccountsWrite, AccountsDelete}},

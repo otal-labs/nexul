@@ -22,6 +22,7 @@ import { instanceUpgradeFollower } from "@/hooks/InstanceUpgradeHooks";
 import { auditLogFollower } from "@/ee/hooks/AuditLogHooks";
 import { brandingFollower } from "@/ee/hooks/BrandingHooks";
 import { licenseFollower } from "@/ee/hooks/LicenseHooks";
+import { signInMoveFollower } from "@/ee/hooks/SignInMoveHooks";
 import { ssoFollower } from "@/ee/hooks/SsoHooks";
 import { interviewSourceFollower } from "@/hooks/InterviewSourceHooks";
 import { machineCommandFollower } from "@/hooks/MachineCommandHooks";
@@ -100,6 +101,7 @@ const followers: LiveFollower[] = [
   instanceUpgradeFollower,
   licenseFollower,
   ssoFollower,
+  signInMoveFollower,
   brandingFollower,
   auditLogFollower,
   interviewSourceFollower,

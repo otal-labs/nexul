@@ -326,11 +326,15 @@ func (r *SSORepo) MoveSignIn(ctx context.Context, fromID, toID, actorID string) 
 			}
 			evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: auth.TopicAccountDisabled, Payload: auth.AccountLifecycleEvent{AccountID: fromID, ActorID: actorID}})
 		}
+		resolved, err := dropExpected(ctx, q, toID, actorID)
+		if err != nil {
+			return err
+		}
 		revoked, err := endSessionsOf(ctx, q, fromID)
 		if err != nil {
 			return err
 		}
-		return enqueueWorkspaceOutbox(ctx, tx, append(evts, revoked...))
+		return enqueueWorkspaceOutbox(ctx, tx, append(append(evts, resolved...), revoked...))
 	})
 }
 
@@ -352,7 +356,7 @@ func checkMove(ctx context.Context, q *sqlcgen.Queries, fromID, toID string) (sq
 	if err != nil {
 		return sqlcgen.User{}, sqlcgen.UserIdentity{}, err
 	}
-	if err := hasNoSSO(ctx, q, toID); err != nil {
+	if err := hasNoSignInOf(ctx, q, toID, moved.Provider); err != nil {
 		return sqlcgen.User{}, sqlcgen.UserIdentity{}, err
 	}
 	if err := protectLastActiveOwner(ctx, q, from, auth.AccountDisabled); err != nil {
@@ -394,15 +398,15 @@ func onlySSOIdentity(ctx context.Context, q *sqlcgen.Queries, userID string) (sq
 	return identities[0], nil
 }
 
-func hasNoSSO(ctx context.Context, q *sqlcgen.Queries, userID string) error {
-	identities, err := q.ListIdentitiesByUser(ctx, userID)
+// hasNoSignInOf refuses an account that signs in through provider already; one on the other protocol takes the move,
+// which is how people are moved from one protocol to the other.
+func hasNoSignInOf(ctx context.Context, q *sqlcgen.Queries, userID, provider string) error {
+	n, err := q.CountSSOIdentitiesOfProvider(ctx, sqlcgen.CountSSOIdentitiesOfProviderParams{UserID: userID, Provider: provider})
 	if err != nil {
-		return fmt.Errorf("list identities of %s: %w", userID, err)
+		return fmt.Errorf("count %s identities of %s: %w", provider, userID, err)
 	}
-	for _, id := range identities {
-		if isSSOProvider(id.Provider) {
-			return fmt.Errorf("%w: that account already signs in through single sign-on", apperrs.ErrConflict)
-		}
+	if n > 0 {
+		return fmt.Errorf("%w: that account already signs in through single sign-on", apperrs.ErrConflict)
 	}
 	return nil
 }

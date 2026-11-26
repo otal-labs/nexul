@@ -81,7 +81,7 @@ export const useShowRunnersLink = (): boolean => {
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.
 const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string[], owner = false): SettingsSection[] => {
   const instanceSections = (Object.keys(INSTANCE_SECTION_PERMISSION) as InstanceSection[]).filter((section) =>
-    hasPermission(anywhere, INSTANCE_SECTION_PERMISSION[section]),
+    INSTANCE_SECTION_PERMISSION[section].some((permission) => hasPermission(anywhere, permission)),
   );
   return visibleSettingsSections({
     instanceSections,

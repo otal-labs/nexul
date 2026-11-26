@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -63,6 +64,24 @@ func (f *fakeTeam) UpdateMemberRoles(_ context.Context, _, workspaceID, _ string
 
 func (f *fakeTeam) MoveSignIn(_ context.Context, fromID, toID string) error {
 	return f.record("sso " + fromID + ">" + toID)
+}
+
+func (f *fakeTeam) SignInMoves(context.Context) (sso.SignInMoves, error) {
+	if err := f.record("moves"); err != nil {
+		return sso.SignInMoves{}, err
+	}
+	return sso.SignInMoves{People: []sso.OldSignIn{
+		{MoveAccount: sso.MoveAccount{ID: "alice", Login: "alice", Email: "alice@example.com"}, Match: &sso.MoveAccount{ID: "dup", Email: "alice@example.com"}},
+		{MoveAccount: sso.MoveAccount{ID: "bob", Email: "bob@example.com"}, ExpectedEmail: "robert@example.com"},
+	}}, nil
+}
+
+func (f *fakeTeam) ExpectSignIn(_ context.Context, accountID, email string) (sso.ExpectedLink, error) {
+	return sso.ExpectedLink{}, f.record("expect " + accountID + " " + email)
+}
+
+func (f *fakeTeam) RemoveExpected(_ context.Context, accountID string) error {
+	return f.record("unexpect " + accountID)
 }
 
 func (f *fakeTeam) RemoveMember(_ context.Context, _, workspaceID, _ string) error {
@@ -136,6 +155,9 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 		{"taking a role from a non-member is invalid", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","remove_roles":["viewer"]}]}`, "", nil, apperrs.ErrInvalid},
 		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
 		{"a duplicate's single sign-on moves first", `{"id":"bob","sso_from":"dup","remove_workspace_ids":["ws-nexul"]}`, "", []string{"sso dup>bob", "remove ws-nexul"}, nil},
+		{"an expected sign-in is saved, before the status", `{"id":"bob","expect_sign_in":"bob@example.com","status":"active"}`, "", []string{"expect bob bob@example.com"}, nil},
+		{"an empty expected sign-in removes it", `{"id":"bob","expect_sign_in":" "}`, "", []string{"unexpect bob"}, nil},
+		{"a refused expected sign-in stops the rest", `{"id":"bob","expect_sign_in":"bob@example.com","remove_workspace_ids":["ws-nexul"]}`, "expect bob bob@example.com", []string{"expect bob bob@example.com"}, apperrs.ErrForbidden},
 		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
@@ -169,6 +191,22 @@ func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 		assert.Contains(t, err.Error(), "input schema", entry)
 		assert.Empty(t, team.calls, entry)
 	}
+}
+
+func TestAccountList_OldSignIn_ListsWhoIsStillOnTheOtherProtocolWithTheirMatch(t *testing.T) {
+	team := &fakeTeam{}
+	got, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, team), "account_list", `{"old_sign_in":true,"limit":1}`)
+	require.NoError(t, err)
+	raw, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"items":[{"id":"alice","login":"alice","name":"","email":"alice@example.com","expected_sign_in":"",
+		"match":{"id":"dup","login":"","name":"","email":"alice@example.com","created_at":"0001-01-01T00:00:00Z"}}],
+		"total":2,"has_more":true,"next_offset":1}`, string(raw))
+	assert.Equal(t, []string{"moves"}, team.calls)
+
+	refused := &fakeTeam{failOn: "moves"}
+	_, err = callAccountTool(t, AccountTools(&fakeStatusSetter{}, refused, refused), "account_list", `{"old_sign_in":true}`)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
 func TestAccountUpdate_StatusGoesToTheAccountAndTheResultOmitsAnUnreadableTeam(t *testing.T) {

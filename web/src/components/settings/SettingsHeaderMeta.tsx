@@ -3,6 +3,8 @@ import type { SettingsSection } from "@/components/settings/SettingsNav";
 import type { YourSettingsSection } from "@/components/you/YourSettingsNav";
 import { useFetchMe, useFetchSettings, useListPATs, useListSessions } from "@/hooks/AuthHooks";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
+import { useSignInMoves } from "@/ee/hooks/SignInMoveHooks";
+import { otherProtocolName } from "@/ee/models/SignInMove";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchInvitations } from "@/hooks/InvitationHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
@@ -79,6 +81,19 @@ const SignInMeta = () => {
   );
 };
 
+const SignInMovesMeta = () => {
+  const { data: moves } = useSignInMoves();
+  return (
+    <HeaderFacts
+      parts={[
+        "Instance-wide",
+        moves && moves.protocol !== "" && `${count(moves.people.length, "person", "people")} still on ${otherProtocolName(moves.protocol)}`,
+        moves && `${count(moves.expected.length, "expected sign-in")}`,
+      ]}
+    />
+  );
+};
+
 const ConnectorsMeta = () => {
   const { data } = useFetchConnectors();
   const connected = data?.filter((entry) => entry.status.configured).length;
@@ -103,16 +118,19 @@ const TemplatesMeta = () => {
 
 interface SettingsHeaderMetaProps {
   section: YourSettingsSection | SettingsSection;
+  // Sign-in providers shows its Move sign-ins page.
+  moving?: boolean;
 }
 
-export const SettingsHeaderMeta = ({ section }: SettingsHeaderMetaProps) => (
+export const SettingsHeaderMeta = ({ section, moving = false }: SettingsHeaderMetaProps) => (
   <>
     {section === "profile" && <ProfileMeta />}
     {section === "appearance" && <AppearanceMeta />}
     {section === "security" && <SecurityMeta />}
     {section === "instance" && <InstanceMeta />}
     {section === "team" && <TeamMeta />}
-    {section === "sign-in" && <SignInMeta />}
+    {section === "sign-in" && !moving && <SignInMeta />}
+    {section === "sign-in" && moving && <SignInMovesMeta />}
     {section === "connectors" && <ConnectorsMeta />}
     {section === "dns" && <DnsMeta />}
     {section === "templates" && <TemplatesMeta />}

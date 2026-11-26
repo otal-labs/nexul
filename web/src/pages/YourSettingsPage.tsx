@@ -14,31 +14,36 @@ import {
   sectionLabels,
   YourSettingsNav,
 } from "@/components/you/YourSettingsNav";
-import { useInstanceSettingsSections } from "@/hooks/AccessHooks";
+import { useHasInstancePermission, useInstanceSettingsSections } from "@/hooks/AccessHooks";
+import { MOVE_SIGN_INS_TAB } from "@/models/Access";
 
 export const YourSettingsPage = () => {
-  const { section: rawSection } = useParams();
+  const { section: rawSection, tab } = useParams();
   const instanceSections = useInstanceSettingsSections();
+  const readsProviders = useHasInstancePermission("instance:read");
   const instanceSection = isSettingsSection(rawSection) && instanceSections?.includes(rawSection) ? rawSection : undefined;
   // An instance link holds its place until permissions answer, so a deep link never flashes Profile first.
   const resolving = !instanceSections && isSettingsSection(rawSection);
   const section = isYourSettingsSection(rawSection) ? rawSection : DEFAULT_YOUR_SETTINGS_SECTION;
   // The open section names the page, so the title says where you are instead of repeating "Settings".
   const yourTitle = resolving ? "Settings" : sectionLabels[section];
-  const title = instanceSection ? instanceLabels[instanceSection] : yourTitle;
-
+  // A holder of sign_ins:move alone opens Sign-in providers on its Move sign-ins page, the one part they may read.
+  const moving = instanceSection === "sign-in" && (tab === MOVE_SIGN_INS_TAB || !readsProviders);
+  const instanceTitle = instanceSection && (moving ? "Move sign-ins" : instanceLabels[instanceSection]);
+  const title = instanceTitle || yourTitle;
+  const crumbs = [{ label: "Settings", to: "/settings" }, ...(moving && readsProviders ? [{ label: instanceLabels["sign-in"], to: "/settings/sign-in" }] : [])];
 
   return (
     <Container size="page" className="py-8">
       <PageHeader
         className="mb-8"
-        crumbs={[{ label: "Settings", to: "/settings" }]}
+        crumbs={crumbs}
         title={title}
-        meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
+        meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} moving={moving} />}
       />
       <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>
         {resolving && <LoadingDisplay />}
-        {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
+        {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} moving={moving} />}
         {!resolving && !instanceSection && <YourSettingsContent section={section} />}
       </SettingsShell>
     </Container>

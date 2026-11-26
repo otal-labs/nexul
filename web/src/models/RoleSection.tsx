@@ -46,6 +46,7 @@ const ABILITY_LINES: Record<string, string> = {
   "projects:create": "A new project lists its creator and the roles they pick.",
   "projects:access": "Choose who's in a project and what they can do there.",
   "memories:template": "Change the questions every interview in this workspace asks.",
+  "sign_ins:move": "Move a single sign-on sign-in onto the account it belongs to when the provider changes.",
 };
 
 const ABILITY_ORDER = Object.keys(ABILITY_LINES);

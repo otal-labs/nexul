@@ -1384,6 +1384,13 @@ type SetupCode struct {
 	ExpiresAt int64
 }
 
+type SsoExpectedLink struct {
+	UserID    string
+	Email     string
+	CreatedBy string
+	CreatedAt int64
+}
+
 type SsoGrant struct {
 	UserID       string
 	RefreshToken []byte

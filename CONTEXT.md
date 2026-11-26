@@ -1423,7 +1423,7 @@ _Avoid_: Whole instance, admin settings
 **Instance area**:
 One part of the instance a Permission overwrite may sit on, outside every
 workspace: the instance itself (its URL, upgrades, failed events), Sign-in
-providers, each Connector, DNS and gateways, Instance templates, accounts,
+providers, moving sign-ins between accounts, each Connector, DNS and gateways, Instance templates, accounts,
 adding machines, the topology registry, integrations, the audit log, and the
 instance's logs.
 Each names the permissions its rules may set. A person holds
@@ -1492,10 +1492,18 @@ Connector is the instance's credential, not a person's)
 **Single sign-on**:
 An Enterprise feature: the instance's one identity provider (Okta, Entra, Google Workspace, Keycloak), over OpenID
 Connect or SAML, never both at once, set by the instance Owner, that people sign in through from the button "Sign in with
-<name>". The email the provider vouches for links to the account that has it from a Google or Discord sign-in;
-otherwise the first sign-in makes an account in the default workspace with the role the Owner chose. Without a License
+<name>". The email the provider vouches for links to the account an Expected sign-in names for it, else to the account that
+has it from a Google or Discord sign-in; otherwise the first sign-in makes an account in the default workspace with the
+role the Owner chose. Without a License
 key that unlocks it the button is off and the saved settings stay.
 _Avoid_: SSO provider, IdP login
+
+**Expected sign-in**:
+An account and an email saved while moving people from one Single sign-on protocol to the other: the first sign-in through
+the provider that brings the email lands on that account, ahead of the match by email, and uses it up. One per account
+and per email, removed by hand or by that sign-in. Saved, with moving a sign-in onto someone's account, by a holder of
+Move sign-ins between accounts (`sign_ins:move`), who may not do either for an instance Owner's account unless they are one.
+_Avoid_: Pending link, reserved account, pre-link
 
 **Service provider metadata**:
 The XML a SAML identity provider registers Nexul from, served at `/auth/saml/metadata` once a SAML provider is saved:

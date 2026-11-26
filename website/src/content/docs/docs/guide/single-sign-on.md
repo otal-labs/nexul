@@ -25,7 +25,7 @@ The provider must send the person's `email` and `email_verified` in the ID token
 
 ## Set it up over SAML
 
-Use SAML when your provider speaks nothing else. An instance holds one provider: while an OpenID Connect provider is saved the card offers no SAML setup, so remove that one first, and the same the other way round. Nobody's account changes, and each person's first sign-in through the new provider is matched as in Who signs in below: someone whose only sign-in was the old provider gets a second account, which you can join onto their own.
+Use SAML when your provider speaks nothing else. An instance holds one provider: while an OpenID Connect provider is saved the card offers no SAML setup, so remove that one first, and the same the other way round. Nobody's account changes, and each person's first sign-in through the new provider is matched as in Who signs in below: someone whose only sign-in was the old provider would get a second account, so move them across as in [Move people to the new provider](#move-people-to-the-new-provider).
 
 1. At your provider, add Nexul as a SAML application. It needs three values, all on the **Single sign-on** card once SAML is saved, and in the setup dialog before:
    - **Entity ID** (the audience): the instance address followed by `/auth/saml/metadata`.
@@ -61,20 +61,39 @@ Nexul's own certificate is made at the first save and runs for five years. Each 
 
 The first time someone signs in through the provider:
 
-- if the provider's verified email is the email of an existing account's Google or Discord sign-in, that sign-in is linked to the account and they land in it. Accounts that only sign in with GitHub hold no email, so they are not matched; those people get a second account the first time, which you can join onto their own (below).
+- if an [expected sign-in](#expect-a-sign-in) waits for that email, they land in the account it names, and the expected sign-in is used up. It comes before the match by email below.
+- otherwise, if the provider's verified email is the email of an existing account's Google or Discord sign-in, that sign-in is linked to the account and they land in it. Accounts that only sign in with GitHub hold no email, so they are not matched; those people get a second account the first time, which you can join onto their own (below).
 - otherwise their account is made, joined to the default workspace with the **New people join as** role, as an invitation would. They then see the same Welcome steps as anyone new.
 
 After that the provider's identity is the account's sign-in, whatever email they use later. A disabled or removed account is refused, as at every other sign-in. Invitations still work as they did: the person picks the provider on the invitation page, and signs in through single sign-on afterwards.
 
 ### Join a second account onto the first
 
-When someone's first sign-in made a second account, the instance Owner moves the sign-in over:
+When someone's first sign-in made a second account, whoever can move sign-ins (below) moves the sign-in over:
 
 1. Open **Settings → Team** and click the person's own account.
 2. Under **Single sign-on**, click **Move from another account** and pick the account the sign-in made; only accounts whose one way in is single sign-on are listed.
 3. Confirm with **Move sign-in**.
 
 From then on, signing in through the provider opens their own account. The second account is disabled and signed out, and anything it made stays; remove it from Team when you no longer need it. The row also says **Signs in through** your provider for anyone already linked.
+
+## Move people to the new provider
+
+When you switch from OpenID Connect to SAML or back, everyone the old provider signed in still has only that sign-in. **Move sign-ins**, linked from the **Single sign-on** card once a provider is saved (**Settings → Sign-in providers → Move sign-ins**), lists them and moves them across in three cards:
+
+- **Likely duplicates**: people still on the old protocol whose email matches an account a first sign-in through the new provider already made. Each pair is ticked; untick any that are not the same person and click **Link**. Each ticked pair moves as in Join a second account above, on its own: if one is refused, the toast says why and the others stay linked.
+- **Not matched**: people still on the old protocol with no such account. **Expect sign-in** saves an expected sign-in (below), with the email Nexul knows for them filled in; change it if the new provider sends another one. **Pick account** lists the accounts first sign-ins made that match nobody, for someone whose email changed; picking one links it, as above.
+- **Expected sign-ins**: every expected sign-in still waiting, with **Remove** to take one back.
+
+The page and its header update as people sign in, so you can leave it open while everyone moves.
+
+### Expect a sign-in
+
+An expected sign-in names an account and an email. The first sign-in through the provider, OpenID Connect or SAML, that brings that email opens that account instead of making a new one, even if a Google or Discord sign-in elsewhere has the same email, and the expected sign-in is then used up. An account holds one expected sign-in, an email is expected for one account, and an account that already signs in through the provider takes none. It needs a key that unlocks single sign-on; removing one does not.
+
+### Who can move sign-ins
+
+Moving sign-ins is its own permission, **Move sign-ins between accounts** (`sign_ins:move`). The instance Owner holds it. To hand it to someone else, give a role it on the role's **Instance** tab, or add a rule for a role or a person on **moving sign-ins between accounts** in the **Access** card under **Settings → Sign-in providers**. A holder who is not an instance Owner opens **Settings → Sign-in providers** on this page alone, and can't move a sign-in onto or off an instance Owner's account, nor expect one for it, since that would hand them an instance Owner's way in.
 
 ## Only single sign-on
 
@@ -98,6 +117,6 @@ When the key expires, is removed or stops fitting the instance's address, the sw
 
 ## Over MCP
 
-`instance_get` returns the single sign-on settings with the license, never the client secret. `instance_update` takes an `sso` object with `issuer_url`, `client_id`, `client_secret`, `display_name`, `join_role_id` and `only`; an omitted field keeps its value, and `remove: true` deletes the provider. The provider is reached, and a secret reference read, before anything is stored. `workspace_list` with the default workspace's id lists the roles for `join_role_id`. `account_update` with `sso_from` set to the second account's id joins it onto the account named by `id`, as above. The same permissions apply as on the web page, and the card updates on every open Settings page at once.
+`instance_get` returns the single sign-on settings with the license, never the client secret. `instance_update` takes an `sso` object with `issuer_url`, `client_id`, `client_secret`, `display_name`, `join_role_id` and `only`; an omitted field keeps its value, and `remove: true` deletes the provider. The provider is reached, and a secret reference read, before anything is stored. `workspace_list` with the default workspace's id lists the roles for `join_role_id`. `account_update` with `sso_from` set to the second account's id joins it onto the account named by `id`, as above, and `expect_sign_in` saves an expected sign-in for that account (an empty string removes it). `account_list` with `old_sign_in: true` lists the people still on the other protocol, each with their email, the account it matches and any expected sign-in. These need `sign_ins:move`. Otherwise the same permissions apply as on the web page, and the card updates on every open Settings page at once.
 
 For SAML, `instance_get` returns a `saml` object beside it, with the values to register (`sp`), each certificate's expiry and whether the last metadata read failed, never Nexul's private key. `instance_update` takes a `saml` object with `metadata_url` or `metadata_xml`, `email_attribute`, `name_attribute`, `display_name`, `join_role_id` and `only`; sending the saved `metadata_url` again reads it again, `rotate: true` and `retire: true` rotate and retire Nexul's certificate, and `remove: true` deletes the provider. Saving one protocol while the other is saved is refused with what to remove first.

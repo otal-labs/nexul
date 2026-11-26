@@ -17,12 +17,12 @@ const providersOf = (person: TeamPerson): readonly string[] => person.providers;
 // An account a first sign-in through the provider made: single sign-on, stored under its protocol, is its only way in.
 const onlySso = (person: TeamPerson, protocol: string): boolean => providersOf(person).length === 1 && providersOf(person)[0] === protocol;
 
-// Whether the person signs in through the provider; for the instance Owner, also the way to move that sign-in here
+// Whether the person signs in through the provider; for a holder of sign_ins:move, also the way to move that sign-in here
 // from the duplicate account a first sign-in made.
 export const TeamSsoRow = ({ person }: { person: TeamPerson }) => {
   const { data: sso } = usePublicSso();
   const { data: team } = useFetchTeam();
-  const canMove = useHasInstancePermission("instance:write");
+  const canMove = useHasInstancePermission("sign_ins:move");
   const move = useMoveSsoSignIn();
   const { open: confirm } = useConfirmationDialog();
   if (!sso?.active) return null;

@@ -36,3 +36,20 @@ escape (ADR 0184, ADR 0186).
   the private key. The advertised size budget rises by 1,000 characters for it.
 
 Decided: 2026-11-14. Accepted 2026-11-25.
+
+Amended 2026-11-26: moving people between protocols. Matching by email alone left everyone whose only sign-in was the old
+provider with a second, empty account to join by hand, one `sso_from` at a time. **Move sign-ins** (Settings, Sign-in
+providers) lists the active accounts holding a single sign-on identity of the protocol not saved now and none of the saved
+one's, pairs each with the account whose one sign-in is the saved provider's under the same email (ignoring case), and links
+the ticked pairs in one request through the same move as `sso_from`, each pair in its own transaction with a result per
+pair. An account taking a move may hold the other protocol's identity; only one of the moved protocol is refused. For
+someone not signed in yet it saves an **Expected sign-in** (`sso_expected_links`: one per account and per email): the
+first sign-in through the saved provider, OIDC or SAML, that brings the email lands on that account and uses it up, ahead
+of the Google or Discord email match and after a known subject; nothing else about a first sign-in changes. Removing one
+needs no key. It is its own permission, `sign_ins:move` (Move sign-ins between accounts), on its own instance area beside
+Sign-in providers, which the instance Owner holds by right and can hand to a role or a person; `sso_from` and its route
+take it too, in place of `instance:write`. A holder who is not an instance Owner may not move a sign-in onto or off an
+instance Owner's account, nor expect one for it, because either would hand them that Owner's way in. Over MCP,
+`account_list` gains `old_sign_in` and `account_update` gains `expect_sign_in`, for which the advertised size budget
+rises by 500 characters; `instance.sso_expected_changed` is the event, and `identity.linked` is now pushed to holders of
+the permission, so the page follows sign-ins as they happen.

@@ -1,5 +1,6 @@
-import { Building2, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Building2, Trash2 } from "lucide-react";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { InlineNotice } from "@/components/InlineNotice";
@@ -7,6 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsHint } from "@/components/settings/SettingsHint";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { SamlProviderDialog } from "@/ee/components/SamlProviderDialog";
 import { SamlRows } from "@/ee/components/SamlRows";
@@ -15,6 +17,7 @@ import { SsoProviderDialog } from "@/ee/components/SsoProviderDialog";
 import { useRemoveSaml, useRemoveSso, useSamlSettings, useSsoSettings } from "@/ee/hooks/SsoHooks";
 import { samlSaved, type SamlSettings } from "@/ee/models/Saml";
 import type { SsoSettings } from "@/ee/models/Sso";
+import { MOVE_SIGN_INS_TAB } from "@/models/Access";
 
 // The one provider an instance holds, by protocol; none until either is saved.
 type Saved = "oidc" | "saml" | "none";
@@ -54,6 +57,17 @@ const RemoveProviderButton = ({ saved }: { saved: Saved }) => {
 
 const otherProtocol: Record<Exclude<Saved, "none">, string> = { oidc: "SAML", saml: "OpenID Connect" };
 
+// After a switch of protocol, the people the old one signed in are moved onto their accounts from their own page.
+const MoveSignInsRow = () => (
+  <SettingsRows>
+    <SettingsRow label="Move sign-ins" description="Link the people the other protocol signed in to the accounts their first sign-in here made, or expect their sign-in.">
+      <ActionButton permission="sign_ins:move" verb="move sign-ins" variant="outline" size="sm" icon={ArrowRightLeft} to={`/settings/sign-in/${MOVE_SIGN_INS_TAB}`}>
+        Move sign-ins
+      </ActionButton>
+    </SettingsRow>
+  </SettingsRows>
+);
+
 const SsoBody = ({ sso, saml, saved }: { sso: SsoSettings; saml: SamlSettings; saved: Saved }) => (
   <div className="space-y-4">
     {!sso.unlocked && (
@@ -67,6 +81,7 @@ const SsoBody = ({ sso, saml, saved }: { sso: SsoSettings; saml: SamlSettings; s
     )}
     {saved === "saml" && <SamlRows saml={saml} />}
     {saved !== "saml" && (saved === "oidc" || sso.unlocked) && <SsoOidcRows sso={sso} />}
+    {saved !== "none" && <MoveSignInsRow />}
     {saved !== "none" && <SettingsHint>An instance holds one provider: remove this one to set up {otherProtocol[saved]} instead.</SettingsHint>}
   </div>
 );

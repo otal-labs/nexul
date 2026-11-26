@@ -77,6 +77,7 @@ var liveRules = map[string]liveRule{
 	auth.TopicAccountRemoved:           everyone,
 	auth.TopicAccountRestored:          everyone,
 	auth.TopicProfileUpdated:           everyone,
+	auth.TopicIdentityLinked:           anywhere(permissions.SignInsMove),
 	templates.TopicUpdated:             everyone,
 	branding.TopicChanged:              everyone,
 
@@ -219,6 +220,7 @@ var liveRules = map[string]liveRule{
 	license.TopicChanged:               anywhere(permissions.InstanceRead),
 	sso.TopicChanged:                   anywhere(permissions.InstanceRead),
 	sso.TopicSAMLChanged:               anywhere(permissions.InstanceRead),
+	sso.TopicExpectedChanged:           anywhere(permissions.SignInsMove),
 	auditlog.TopicSettingsChanged:      anywhere(permissions.InstanceRead),
 	topicTopologyCanvas:                topologyCanvasFrame,
 	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),

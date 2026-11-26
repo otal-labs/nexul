@@ -56,7 +56,7 @@ const renderRow = (who: TeamPerson) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.permissions = ["instance:write"];
+  mocks.permissions = ["sign_ins:move"];
   mocks.post.mockResolvedValue({ data: undefined });
 });
 
