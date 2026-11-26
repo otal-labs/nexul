@@ -1,8 +1,10 @@
+import { ServerIcon } from "lucide-react";
+
 import { EnterList } from "@/components/EnterList";
 import { AutomationListBar } from "@/components/automation/AutomationListBar";
 import { AddAutomationHostDialog } from "@/components/automationHost/AddAutomationHostDialog";
 import { AutomationHostRow } from "@/components/automationHost/AutomationHostRow";
-import { EmptyRow } from "@/components/EmptyRow";
+import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
@@ -17,6 +19,7 @@ export const AutomationHostsSection = () => {
   const { answer } = useAutomationHostManagement();
   const add = useActionState({ permission: "machines:write", answer, verb: "add automations hosts" });
   const instanceOnly = hosts?.length === 1 && hosts[0]?.name === InstanceHostName;
+  const addHost = add.state !== "hidden" && <AddAutomationHostDialog />;
 
   return (
     <section aria-label="Hosts" className="space-y-1">
@@ -32,12 +35,12 @@ export const AutomationHostsSection = () => {
           </>
         }
       >
-        {add.state !== "hidden" && <AddAutomationHostDialog />}
+        {!instanceOnly && hosts?.length !== 0 && addHost}
       </AutomationListBar>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {hosts && hosts.length === 0 && (
-        <EmptyRow className="border-y border-border">No hosts yet. Every automation runs on this instance until you add one.</EmptyRow>
+        <EmptyState icon={ServerIcon} title="No hosts yet" message="Every automation runs on this instance until you add one." action={addHost} />
       )}
       {hosts && hosts.length > 0 && (
         <EnterList className="divide-y divide-border border-y border-border">
@@ -47,7 +50,12 @@ export const AutomationHostsSection = () => {
         </EnterList>
       )}
       {instanceOnly && (
-        <EmptyRow>Every automation runs on this instance. Add a host to run them on a machine of your own, beside the secrets manager they read.</EmptyRow>
+        <EmptyState
+          icon={ServerIcon}
+          title="Runs on this instance"
+          message="Add a host to run automations on a machine of your own, beside the secrets manager they read."
+          action={addHost}
+        />
       )}
     </section>
   );

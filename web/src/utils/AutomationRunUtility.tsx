@@ -23,6 +23,25 @@ export const automationRunDays = (runs: readonly AutomationRun[], now = new Date
     return [...days, { label, runs: [run] }];
   }, []);
 
+export interface AutomationRunStretch {
+  run: AutomationRun;
+  count: number;
+}
+
+const sameRow = (a: AutomationRun, b: AutomationRun) =>
+  a.outcome === AutomationRunOutcome.Success && b.outcome === AutomationRunOutcome.Success && a.event_topic === b.event_topic && a.logs === b.logs;
+
+// Consecutive successful runs of one event that reported the same thing read as one row, led by the newest, with how many it stands for.
+export const collapseRepeatedRuns = (runs: readonly AutomationRun[]): AutomationRunStretch[] =>
+  runs.reduce<AutomationRunStretch[]>((rows, run) => {
+    const last = rows.at(-1);
+    if (last && sameRow(last.run, run)) {
+      last.count += 1;
+      return rows;
+    }
+    return [...rows, { run, count: 1 }];
+  }, []);
+
 const median = (values: readonly number[]): number => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor((sorted.length - 1) / 2)] ?? 0;

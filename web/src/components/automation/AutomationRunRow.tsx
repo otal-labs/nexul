@@ -6,11 +6,12 @@ import { formatClockTime, formatDurationMs, formatFullTime } from "@/utils/TimeU
 
 interface AutomationRunRowProps {
   run: AutomationRun;
+  count?: number;
   onSelect: (runId: string) => void;
 }
 
-// The outcome's mark, its event and what the run last reported on one line; only a failure writes its outcome, leading its error under it.
-export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
+// The outcome's mark, what the run last reported in the sans with its event as muted mono, and how many identical runs it stands for; only a failure writes its outcome, leading its error under it.
+export const AutomationRunRow = ({ run, count = 1, onSelect }: AutomationRunRowProps) => {
   const outcome = runOutcomes[run.outcome];
   const failed = run.outcome !== AutomationRunOutcome.Success;
   const Icon = outcome.icon;
@@ -27,11 +28,11 @@ export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-baseline gap-2 leading-5">
             {!failed && <span className="sr-only">{outcome.word}</span>}
-            <span className="max-w-1/3 min-w-0 shrink-0 truncate font-mono text-row text-foreground">{run.event_topic}</span>
-            <span className="min-w-0 flex-1 truncate text-row" title={summary ? `${summary.message} ${summary.fields}`.trim() : undefined}>
-              {summary?.message}
-              {summary?.fields && <span className="ml-2 font-mono text-xs text-muted-foreground">{summary.fields}</span>}
-            </span>
+            {summary?.message && <span className="min-w-0 shrink truncate text-row text-foreground" title={`${summary.message} ${summary.fields}`.trim()}>{summary.message}</span>}
+            {summary?.fields && <span className="min-w-0 shrink-[2] truncate font-mono text-xs text-muted-foreground">{summary.fields}</span>}
+            <span className={cn("min-w-0 truncate font-mono", summary?.message ? "text-xs text-muted-foreground" : "text-row text-foreground")}>{run.event_topic}</span>
+            <span className="flex-1" />
+            {count > 1 && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{count} runs</span>}
             <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
               {formatDurationMs(run.duration_ms)} ·{" "}
               <time dateTime={run.started_at} title={formatFullTime(run.started_at)}>

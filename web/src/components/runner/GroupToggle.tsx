@@ -11,19 +11,18 @@ interface GroupToggleProps {
   onToggle: () => void;
 }
 
-// Folds a group to its band; folded, it says how many rows it hides.
+// Leads its band, before the name it folds; the rows it hides are in its label.
 export const GroupToggle = ({ open, rows, name, controls, onToggle }: GroupToggleProps) => (
   <Button
     type="button"
     variant="ghost"
-    size="sm"
+    size="icon"
     aria-expanded={open}
     aria-controls={controls}
     aria-label={`${rows} row${rows === 1 ? "" : "s"} on ${name}`}
     onClick={onToggle}
-    className="gap-1 px-2 font-normal text-muted-foreground tabular-nums"
+    className="size-6 rounded-sm text-muted-foreground"
   >
-    {!open && <span>{rows}</span>}
     <ChevronDownIcon aria-hidden className={cn("transition-transform duration-150 ease-standard", !open && "-rotate-90")} />
   </Button>
 );

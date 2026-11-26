@@ -30,7 +30,6 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
     <section aria-labelledby="play-auto-plays" className="space-y-3">
       <div className="flex h-7 items-center gap-2">
         <Microheader id="play-auto-plays">Starts by itself</Microheader>
-        {autoPlays && autoPlays.length > 0 && <span className="font-mono text-micro text-muted-foreground tabular-nums">{autoPlays.length}</span>}
         <ActionButton permission="autoplays:write" verb="add auto plays" icon={PlusIcon} type="button" variant="ghost" size="sm" className="ml-auto" aria-label="Add auto play" onClick={() => onOpen(null)}>
           Add
         </ActionButton>
@@ -38,7 +37,7 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {autoPlays && (
-        <div ref={glideRef} className="overflow-hidden rounded-lg border bg-card">
+        <div ref={glideRef} className="overflow-hidden border-y border-border">
           {autoPlays.length === 0 && <EmptyRow className="text-pretty">Starts only when someone runs it. Add an auto play and it starts by itself when a {subject} matches.</EmptyRow>}
           {autoPlays.length > 0 && (
             <EnterList className="divide-y divide-border">

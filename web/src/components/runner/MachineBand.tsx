@@ -24,7 +24,7 @@ interface MachineBandProps {
   toggle?: ReactNode;
 }
 
-// The group's head, pinned while its rows scroll: its runners step in under the name, which keeps its full text.
+// The group's head, pinned while its rows scroll, on the same card as its rows: the fold leads, and its runners step in under the name, which keeps its full text.
 export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProps) => {
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
@@ -53,14 +53,17 @@ export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProp
 
   return (
     <RowContextMenu menu={menu} manages={manages}>
-      <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-border group-has-[>ul[hidden]]/fleet:border-b-0 bg-card bg-linear-to-b from-well-shade to-well-shade px-4 py-2.5">
-        <MachineMark tone={state.tone} />
+      <div className="sticky top-0 z-10 flex items-start gap-2 border-b border-border group-has-[>ul[hidden]]/fleet:border-b-0 bg-card px-4 py-2.5">
+        <span className="-ml-1 flex h-5 w-6 shrink-0 items-center justify-center">{toggle}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2.5">
             <h2 id={`machine-${machine.id}`} className="min-w-0 text-sm/5 font-semibold wrap-anywhere">
               {machine.name}
             </h2>
-            <span className="text-xs text-muted-foreground tabular-nums">{state.words}</span>
+            <span className="flex items-baseline gap-1.5 text-xs text-muted-foreground tabular-nums">
+              <MachineMark tone={state.tone} />
+              {state.words}
+            </span>
           </div>
           <div className="flex min-w-0 items-baseline gap-2 font-mono text-xs text-muted-foreground">
             {host && <span className="min-w-0 truncate">{host}</span>}
@@ -71,7 +74,6 @@ export const MachineBand = ({ machine, runners, codes, toggle }: MachineBandProp
           </div>
         </div>
         <div className="-my-1.5 flex shrink-0 items-center gap-0.5">
-          {toggle}
           {manages && <MachinePeopleButton machine={machine} className="max-w-32 @[44rem]:max-w-56" />}
           <MachineMenu machine={machine} menu={menu} manages={manages} addsRunners={runners.length + codes > 0} />
         </div>

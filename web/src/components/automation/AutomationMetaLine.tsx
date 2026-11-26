@@ -17,10 +17,12 @@ export const AutomationMetaLine = ({ automation }: AutomationMetaLineProps) => {
   return (
     <>
       <AutomationKindBadge kind={automation.kind} />
+      <span aria-hidden className="text-xs text-muted-foreground/40">·</span>
       <span className="flex items-center gap-1.5 text-xs">
         {host && <RunnerStatusDot connected={host.connected} />}
         Runs on {automation.host_id ? (host?.name ?? "its host") : "this instance"}
       </span>
+      {events > 0 && <span aria-hidden className="text-xs text-muted-foreground/40">·</span>}
       {events > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>

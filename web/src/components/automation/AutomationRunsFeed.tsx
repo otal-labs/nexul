@@ -33,7 +33,7 @@ export const AutomationRunsFeed = ({ automation }: AutomationRunsFeedProps) => {
   return (
     <div className="space-y-1">
       <div className="flex h-8 items-center justify-between gap-3 px-4">
-        <p className="font-mono text-xs text-muted-foreground tabular-nums">{runs && runs.length > 0 && automationRunsLine(runs, failedOnly)}</p>
+        <p className="text-sm text-foreground tabular-nums">{runs && runs.length > 0 && automationRunsLine(runs, failedOnly)}</p>
         <ToggleGroup type="single" variant="segmented" size="xs" aria-label="Show runs" value={show} onValueChange={(value) => value && setShow(value as Show)}>
           <ToggleGroupItem value="all">All</ToggleGroupItem>
           <ToggleGroupItem value="failures">Failures</ToggleGroupItem>
