@@ -18,7 +18,7 @@ interface EmptyStateProps {
 type Icon = ComponentType<{ className?: string }>;
 
 // One mark for every empty: the icon on two orbits from muted ink to the brand, a brand dot and an ink dot on opposite sides.
-const OrbitMark = ({ icon: Icon, compact }: { icon: Icon; compact: boolean }) => {
+export const OrbitMark = ({ icon: Icon, compact }: { icon: Icon; compact: boolean }) => {
   const id = useId();
   return (
     <span className={cn("relative grid place-items-center", compact ? "size-14" : "size-28")}>

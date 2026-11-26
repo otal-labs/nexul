@@ -20,12 +20,32 @@ const renderHome = () =>
     </QueryClientProvider>,
   );
 
-const signInWith = (permissions: string[]) => {
+const statuses = [
+  { id: "st-doing", name: "In progress", position: 0, kind: "progress", icon: "", created_at: "", updated_at: "" },
+  { id: "st-done", name: "Done", position: 1, kind: "done", icon: "", created_at: "", updated_at: "" },
+];
+const ticket = (id: string, number: number, title: string, overrides: Record<string, unknown> = {}) => ({
+  id, project_id: "p-1", category_id: "", type_id: "", title, body: "", status: "st-doing", position: 0, number, doc_id: "",
+  developer: "sam", developer_id: "u-sam", tester: "", tester_id: "", reporter: { kind: "user" }, due_on: "",
+  created_at: "", updated_at: "2026-11-20T00:00:00Z", labels: null, ...overrides,
+});
+
+const signInWith = (permissions: string[], data: Record<string, unknown> = {}) => {
   useSessionStore.setState({ isLoggedIn: true });
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-  vi.mocked(api.get).mockImplementation(async (url: string) => ({
-    data: url === "/api/workspaces" ? [{ id: "ws-1", name: "Acme", slug: "acme" }] : { role_name: "Member", roles: [{ id: "r-member", name: "Member", is_owner: false }], permissions },
-  }));
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
+  const responses: Record<string, unknown> = {
+    "/api/workspaces": [{ id: "ws-1", name: "Acme", slug: "acme" }],
+    "/api/workspaces/ws-1/me": { role_name: "Member", roles: [{ id: "r-member", name: "Member", is_owner: false }], permissions },
+    "/api/projects": [{ id: "p-1", name: "Atlas", prefix: "ATL", setup: { finished: true } }],
+    "/api/auth/me": { user: { id: "u-sam", login: "sam" } },
+    "/api/statuses": statuses,
+    "/api/tickets": [],
+    "/api/notifications": [],
+    "/api/notifications/unread-count": { count: 0, workspaces: {} },
+    "/api/plays/runs/active": { active: {}, waiting: {}, started: {} },
+    ...data,
+  };
+  vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: responses[url] ?? [] }));
 };
 
 beforeEach(() => {
@@ -46,33 +66,48 @@ describe("HomePage", () => {
     expect(screen.getByRole("link", { name: "Self-host your own" })).toHaveAttribute("rel", "noreferrer");
   });
 
-  it.each([
-    { permissions: ["tickets:read"], shown: "Open board", hidden: "Open topology" },
-    { permissions: ["topology:read"], shown: "Open topology", hidden: "Open board" },
-  ])("offers only the areas the member can read ($permissions)", async ({ permissions, shown, hidden }) => {
-    signInWith(permissions);
+  it("lists the open tickets waiting on the viewer, not done ones or someone else's", async () => {
+    signInWith(["tickets:read"], {
+      "/api/tickets": [
+        ticket("t-1", 12, "Fix the login redirect"),
+        ticket("t-2", 13, "Shipped already", { status: "st-done" }),
+        ticket("t-3", 14, "Lena's ticket", { developer: "lena", developer_id: "u-lena" }),
+      ],
+    });
     renderHome();
 
-    expect(await screen.findByRole("link", { name: shown })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Fix the login redirect/ })).toHaveAttribute("href", "/acme/tickets/ATL-12");
+    expect(screen.queryByText("Shipped already")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lena's ticket")).not.toBeInTheDocument();
+    expect(screen.getByText("ticket on you")).toBeInTheDocument();
   });
 
-  it("keeps agent, trail, and play wording from a member who can neither run nor read plays", async () => {
-    signInWith(["tickets:read", "docs:read"]);
+  it("says nothing waits on the viewer and the inbox is read when both are empty", async () => {
+    signInWith(["tickets:read"]);
     renderHome();
 
-    expect(await screen.findByRole("link", { name: "Open board" })).toBeInTheDocument();
-    expect(screen.queryByText(/agent/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/trail/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/play/i)).not.toBeInTheDocument();
+    expect(await screen.findByText("Nothing is waiting on you in Atlas.")).toBeInTheDocument();
+    expect(await screen.findByText("You're all caught up.")).toBeInTheDocument();
   });
 
-  it.each(["plays:run", "plays:read"])("shows the agent pitch to a member holding %s", async (permission) => {
-    signInWith(["tickets:read", permission]);
+  it("leaves the tickets and plays out for a member who reads neither", async () => {
+    signInWith(["docs:read"]);
     renderHome();
 
-    expect(await screen.findByText(/each play run leaves a trail of every step/)).toBeInTheDocument();
-    expect(screen.getByText("nexul · agent trail")).toBeInTheDocument();
+    expect(await screen.findByText("You're all caught up.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Your tickets" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Plays running" })).not.toBeInTheDocument();
+  });
+
+  it("shows a run waiting for an answer to a member holding plays:read", async () => {
+    signInWith(["tickets:read", "plays:read"], {
+      "/api/tickets": [ticket("t-1", 12, "Fix the login redirect", { developer: "", developer_id: "" })],
+      "/api/plays/runs/active": { active: { "t-1": "tr-1" }, waiting: { "t-1": "tr-1" }, started: { "t-1": "2026-11-20T00:00:00Z" } },
+    });
+    renderHome();
+
+    const runs = await screen.findByRole("region", { name: "Plays running" });
+    await vi.waitFor(() => expect(runs).toHaveTextContent(/Fix the login redirect.*ATL-12 · waiting for an answer/));
   });
 
   it("shows a member with no role why the workspace is empty and opens a DM with an Owner from it", async () => {

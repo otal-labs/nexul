@@ -1,6 +1,6 @@
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoRolesState } from "@/components/home/NoRolesState";
-import { WorkspaceWelcome } from "@/components/home/WorkspaceWelcome";
+import { WorkspaceOverview } from "@/components/home/WorkspaceOverview";
 import { useAccessSetupRedirect } from "@/hooks/useAccessSetupRedirect";
 import { useFetchMyRole, useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -17,7 +17,7 @@ export const WorkspaceHome = () => {
     <>
       {workspaceId && isPending && <LoadingDisplay />}
       {workspace && noRoles && <NoRolesState workspace={workspace} />}
-      {(!workspaceId || (me && !noRoles)) && <WorkspaceWelcome />}
+      {(!workspaceId || (me && !noRoles)) && <WorkspaceOverview />}
     </>
   );
 };

@@ -1,10 +1,9 @@
+import { CircleAlert, Unplug } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import { errorMessage } from "@/api/client";
-import { microheaderClass } from "@/components/Microheader";
-import { NotFoundIllustration } from "@/components/NotFoundIllustration";
+import { OrbitMark } from "@/components/EmptyState";
 import { displayTitleClass } from "@/components/PageHeader";
-import { useProductName } from "@/ee/hooks/useProductName";
 import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,21 +13,21 @@ interface ErrorScreenProps {
   error?: unknown;
 }
 
+// The empty state's orbit and its entrance, at the showcase headline's size; the console lines say what happened.
 export const ErrorScreen = ({ error }: ErrorScreenProps) => {
   const navigate = useNavigate();
-  const name = useProductName();
   const isCrash = error != null;
 
   return (
     <ShowcaseSurface quiet>
-      <div className="flex min-h-full flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
-        <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
-          <p className={microheaderClass}>{name}</p>
-          <h1 className={cn(displayTitleClass, "text-[clamp(2.75rem,6vw,4rem)]")}>
+      <div className="flex min-h-full items-center justify-center px-6 pt-16 pb-28 sm:px-8">
+        <div data-size="default" className="empty-state flex max-w-md flex-col items-center text-center">
+          <OrbitMark icon={isCrash ? CircleAlert : Unplug} compact={false} />
+          <h1 className={cn(displayTitleClass, "mt-6 text-headline")}>
             {isCrash && "Something went wrong"}
             {!isCrash && "Page not found"}
           </h1>
-          <p role={isCrash ? "alert" : undefined} className="max-w-sm font-mono text-sm break-words text-muted-foreground">
+          <p role={isCrash ? "alert" : undefined} className="mt-3 max-w-sm font-mono text-xs leading-5 break-words text-muted-foreground">
             {isCrash && (
               <>
                 $ app --resume
@@ -46,7 +45,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
               </>
             )}
           </p>
-          <div className="flex w-full flex-col gap-2 sm:w-fit sm:flex-row">
+          <div className="mt-7 flex w-full flex-col gap-2 sm:w-fit sm:flex-row">
             {isCrash && (
               <Button variant="outline" onClick={() => window.location.reload()}>
                 Reload page
@@ -64,7 +63,6 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
             )}
           </div>
         </div>
-        <NotFoundIllustration />
       </div>
     </ShowcaseSurface>
   );
