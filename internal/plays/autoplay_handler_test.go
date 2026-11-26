@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,30 +61,8 @@ func TestHandler_AutoPlayLimits(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, do(t, routes, http.MethodGet, path, "", "player").Code)
 }
 
-func TestHandler_StackAutoPlayPicksAComputerAsTheCaller(t *testing.T) {
-	s, _, ps := computerFixture(t)
-	routes := NewHandler(s).Routes()
-	base := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeStack].ID + "/auto-plays"
-
-	rec := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed","computer_id":"c-own"}`, "editor")
-	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	var created AutoPlay
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
-	assert.Equal(t, []any{RunOnComputer, []string{"c-own"}, "c-own", "editor"}, []any{created.RunOn, created.ComputerIDs, created.ComputerID, created.RunAs}, "the older computer_id is a list of one")
-
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-see"}`, "editor").Code)
-	unpicked := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed"}`, "editor")
-	require.Equal(t, http.StatusCreated, unpicked.Code, unpicked.Body.String())
-	var waiting AutoPlay
-	require.NoError(t, json.Unmarshal(unpicked.Body.Bytes(), &waiting))
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, base+"/"+waiting.ID, `{"enabled":true,"moment":"stack.service_crashed"}`, "editor").Code,
-		"switching on needs the computers picked")
-	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"stack.service_crashed","computer_id":"c-run"}`, "editor")
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-}
-
-func TestHandler_StackAutoPlayKeepsOrderedComputersUnlessAPickIsSent(t *testing.T) {
-	s, _, ps := computerFixture(t)
+func TestHandler_AutoPlayRunsAsAPersonAndRunAsMePicksTheCaller(t *testing.T) {
+	s, repo, ps := personFixture(t)
 	routes := NewHandler(s).Routes()
 	base := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeStack].ID + "/auto-plays"
 	read := func(rec *httptest.ResponseRecorder) AutoPlay {
@@ -97,32 +73,28 @@ func TestHandler_StackAutoPlayKeepsOrderedComputersUnlessAPickIsSent(t *testing.
 		return a
 	}
 
-	rec := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed","computer_ids":["c-run","c-own","c-run"]}`, "editor")
+	rec := do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed"}`, "editor")
 	created := read(rec)
-	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "c-run", "editor"}, []any{created.ComputerIDs, created.ComputerID, created.RunAs}, "in the order picked, once each")
-	assert.Contains(t, rec.Body.String(), `"computer_ids":["c-run","c-own"]`)
+	assert.Equal(t, []any{RunOnPerson, "editor"}, []any{created.RunOn, created.RunAs}, "a new one runs as its creator")
+	assert.Contains(t, rec.Body.String(), `"computer_ids":[]`, "the retired list stays empty, never null")
 	path := base + "/" + created.ID
+	repo.autoPlays[0].RunAs = "someone-else"
+
+	older := read(do(t, routes, http.MethodPost, base, `{"moment":"stack.service_crashed","run_on":"computer"}`, "editor"))
+	assert.Equal(t, RunOnPerson, older.RunOn, "run_on computer reads as person")
 
 	kept := read(do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered"}`, "editor"))
-	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "editor"}, []any{kept.ComputerIDs, kept.RunAs}, "no computer_ids key keeps the list and who picked it")
+	assert.Equal(t, "someone-else", kept.RunAs, "no run_as_me keeps the person")
 
-	yours := read(do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered","computer_ids":[]}`, "editor"))
-	assert.Equal(t, []any{[]string{}, "", "editor"}, []any{yours.ComputerIDs, yours.ComputerID, yours.RunAs}, "an empty list is a pick of the caller's own order")
-	assert.Contains(t, do(t, routes, http.MethodGet, base, "", "editor").Body.String(), `"computer_ids":[]`, "never null")
+	mine := read(do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered","run_as_me":true}`, "editor"))
+	assert.Equal(t, "editor", mine.RunAs, "run_as_me makes the caller the person")
 
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{"enabled":true,"moment":"stack.service_recovered","computer_ids":["c-own","c-see"]}`, "editor").Code,
-		"one computer in the list the caller may not run agents on refuses the pick")
-	tooMany := do(t, routes, http.MethodPatch, path, `{"moment":"stack.service_recovered","computer_ids":["`+strings.Join(manyComputers(MaxAutoPlayComputers+1), `","`)+`"]}`, "editor")
-	assert.Equal(t, http.StatusBadRequest, tooMany.Code)
-	assert.Contains(t, tooMany.Body.String(), "at most 20 computers", "the list is bounded before any right is read")
-}
-
-func manyComputers(n int) []string {
-	out := make([]string, 0, n)
-	for i := range n {
-		out = append(out, "c-"+strconv.Itoa(i))
-	}
-	return out
+	ticketBase := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeTicket].ID + "/auto-plays"
+	ticket := read(do(t, routes, http.MethodPost, ticketBase, `{"moment":"ticket.created"}`, "editor"))
+	tpath := ticketBase + "/" + ticket.ID
+	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, tpath, `{"enabled":true,"moment":"ticket.created","run_on":"person"}`, "editor").Code,
+		"switching on needs a person picked")
+	assert.Equal(t, http.StatusOK, do(t, routes, http.MethodPatch, tpath, `{"enabled":true,"moment":"ticket.created","run_on":"person","run_as_me":true}`, "editor").Code)
 }
 
 func TestHandler_ListCountsTheAutoPlaysSwitchedOn(t *testing.T) {

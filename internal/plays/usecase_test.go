@@ -494,11 +494,11 @@ func TestSeedDefaults_InvestigateACrashWaitsForAComputerBeforeItRuns(t *testing.
 		}
 	}
 	require.NotNil(t, a)
-	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnComputer, "", ""},
-		[]any{a.Enabled, a.Moment, a.RunOn, a.ComputerID, a.RunAs}, "off, and nobody has picked its computer yet")
+	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnPerson, ""},
+		[]any{a.Enabled, a.Moment, a.RunOn, a.RunAs}, "off, and nobody has picked who it runs as yet")
 	require.NoError(t, a.Validate(TypeStack))
 	a.Enabled = true
-	assert.ErrorIs(t, a.Validate(TypeStack), apperrs.ErrInvalid, "it cannot be switched on before a computer is picked")
+	assert.ErrorIs(t, a.Validate(TypeStack), apperrs.ErrInvalid, "it cannot be switched on before a person is picked")
 }
 
 func TestSeedDefaults_AutoPlayFails_ReturnsTheError(t *testing.T) {

@@ -98,8 +98,8 @@ func TestPlayList_AttachesAutoPlaysInOneReadForTheirReaders(t *testing.T) {
 	require.ErrorIs(t, err, assert.AnError)
 }
 
-func TestPlayCreateAndUpdate_StackPlayRunsOnAChosenComputer(t *testing.T) {
-	s, repo, _ := computerFixture(t)
+func TestPlayCreateAndUpdate_StackPlayRunsAsAPerson(t *testing.T) {
+	s, repo, _ := personFixture(t)
 	tools := MCPTools(s)
 
 	out, err := callTool(t, tools, ctxAs("owner"), "play_create", `{"workspace_id":"$WS","label":"Look into it","type":"stack","instructions":"Look."}`)
@@ -108,51 +108,38 @@ func TestPlayCreateAndUpdate_StackPlayRunsOnAChosenComputer(t *testing.T) {
 	assert.Equal(t, TypeStack, play.Type)
 
 	out, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","add_auto_plays":[
-		{"moment":"stack.service_crashed","computer_id":"c-run","conditions":{"match":"all","groups":[{"match":"all","rules":[{"field":"service","op":"is","values":["api"]}]}]}}]}`)
+		{"moment":"stack.service_crashed","conditions":{"match":"all","groups":[{"match":"all","rules":[{"field":"service","op":"is","values":["api"]}]}]}}]}`)
 	require.NoError(t, err)
 	added := out.(playResult).AutoPlays
 	require.Len(t, added, 1)
-	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnComputer, "c-run"}, []any{added[0].Enabled, added[0].Moment, added[0].RunOn, added[0].ComputerID},
-		"a stack play's auto play runs on the computer, with no run_on to say")
-
-	out, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added[0].ID+`","enabled":true,"computer_id":"c-own"}]}`)
-	require.NoError(t, err)
-	assert.Equal(t, []any{true, "c-own"}, []any{out.(playResult).AutoPlays[0].Enabled, out.(playResult).AutoPlays[0].ComputerID})
-	assert.Equal(t, "editor", repo.autoPlays[0].RunAs, "the run takes the identity of whoever picked the computer")
-
-	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","update_auto_plays":[{"id":"`+added[0].ID+`","computer_id":"c-see"}]}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer shared for seeing only cannot be picked")
+	assert.Equal(t, []any{false, MomentStackServiceCrashed, RunOnPerson, "editor"}, []any{added[0].Enabled, added[0].Moment, added[0].RunOn, added[0].RunAs},
+		"a stack play's auto play runs as whoever added it, with no run_on to say")
+	assert.Equal(t, "editor", repo.autoPlays[0].RunAs)
 }
 
-func TestPlayUpdate_AutoPlayComputersAreAnOrderedListTheModelCanKeepOrReplace(t *testing.T) {
-	s, repo, _ := computerFixture(t)
+func TestPlayUpdate_RunAsMeIsTheModelsOnlyWayToTakeAnAutoPlayOver(t *testing.T) {
+	s, repo, _ := personFixture(t)
 	tools := MCPTools(s)
 	out, err := callTool(t, tools, ctxAs("owner"), "play_create", `{"workspace_id":"$WS","label":"Look into it","type":"stack","instructions":"Look."}`)
 	require.NoError(t, err)
 	playID := out.(playResult).ID
-	update := func(changes string) []autoPlayResult {
+	update := func(who, changes string) []autoPlayResult {
 		t.Helper()
-		out, err := callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+playID+`",`+changes+`}`)
+		out, err := callTool(t, tools, ctxAs(who), "play_update", `{"workspace_id":"$WS","id":"`+playID+`",`+changes+`}`)
 		require.NoError(t, err)
 		return out.(playResult).AutoPlays
 	}
 
-	added := update(`"add_auto_plays":[{"moment":"stack.service_crashed","computer_ids":["c-run","c-own"]}]`)
-	assert.Equal(t, []any{[]string{"c-run", "c-own"}, "c-run", "editor"}, []any{added[0].ComputerIDs, added[0].ComputerID, added[0].RunAs}, "in the order the model gave")
+	added := update("editor", `"add_auto_plays":[{"moment":"stack.service_crashed"}]`)
+	assert.Equal(t, []any{RunOnPerson, "editor"}, []any{added[0].RunOn, added[0].RunAs})
 	id := added[0].ID
+	repo.autoPlays[0].RunAs = "someone-else"
 
-	kept := update(`"update_auto_plays":[{"id":"` + id + `","enabled":true}]`)
-	assert.Equal(t, []any{true, []string{"c-run", "c-own"}}, []any{kept[0].Enabled, kept[0].ComputerIDs}, "omitting computer_ids keeps the list")
+	kept := update("editor", `"update_auto_plays":[{"id":"`+id+`","enabled":true}]`)
+	assert.Equal(t, []any{true, "someone-else"}, []any{kept[0].Enabled, kept[0].RunAs}, "omitting run_as_me keeps the person")
 
-	reordered := update(`"update_auto_plays":[{"id":"` + id + `","computer_ids":["c-own","c-run"]}]`)
-	assert.Equal(t, []string{"c-own", "c-run"}, reordered[0].ComputerIDs)
-
-	yours := update(`"update_auto_plays":[{"id":"` + id + `","computer_ids":[]}]`)
-	assert.Equal(t, []any{[]string{}, "editor"}, []any{yours[0].ComputerIDs, yours[0].RunAs}, "an empty list is the caller's own computers in their order")
-	assert.Equal(t, []string{}, repo.autoPlays[0].ComputerIDs)
-
-	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+playID+`","update_auto_plays":[{"id":"`+id+`","computer_ids":["c-own","c-see"]}]}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "one computer in the list the caller may not run agents on refuses it")
+	mine := update("editor", `"update_auto_plays":[{"id":"`+id+`","run_as_me":true}]`)
+	assert.Equal(t, "editor", mine[0].RunAs, "run_as_me makes the caller the person it runs as")
 }
 
 func TestPlayUpdate_ASchedule_KeepsItsFieldsAcrossAPartialUpdate(t *testing.T) {
