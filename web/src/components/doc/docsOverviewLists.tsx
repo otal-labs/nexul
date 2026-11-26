@@ -11,7 +11,7 @@ export interface AttentionDoc {
 export interface DocsOverviewLists {
   /** Waiting docs first, then running, newest edit first within each; at most five. */
   attention: AttentionDoc[];
-  /** The newest edits other than those, so no doc shows twice; at most twenty. */
+  /** The newest edits other than those, so no doc shows twice; at most ten, the list beside it holds the rest. */
   recent: DocListItem[];
 }
 
@@ -26,7 +26,7 @@ export const overviewLists = (docs: DocListItem[], states: (TrailState | undefin
   const rank = (a: AttentionDoc) => (a.state === "waiting" ? 0 : 1);
   const attention = withState.sort((a, b) => rank(a) - rank(b) || newestEdit(a.doc, b.doc)).slice(0, 5);
   const held = new Set(attention.map((item) => item.doc.id));
-  return { attention, recent: docs.filter((doc) => !held.has(doc.id)).sort(newestEdit).slice(0, 20) };
+  return { attention, recent: docs.filter((doc) => !held.has(doc.id)).sort(newestEdit).slice(0, 10) };
 };
 
 export const docMatches = (query: string) => (doc: DocListItem) =>
@@ -37,10 +37,13 @@ export interface DayGroup {
   docs: DocListItem[];
 }
 
-// Newest-first docs split at today and the last week; empty groups are left out.
-export const dayGroups = (docs: DocListItem[]): DayGroup[] =>
-  [
+// Newest-first docs split at today and the last week; empty groups are left out, and a lone row folds the split into one list.
+export const dayGroups = (docs: DocListItem[]): DayGroup[] => {
+  const groups = [
     { label: "Edited today", docs: docs.filter((d) => daysAgo(d.updated_at) < 1) },
     { label: "Edited in the last 7 days", docs: docs.filter((d) => daysAgo(d.updated_at) >= 1 && daysAgo(d.updated_at) < 7) },
     { label: "Edited earlier", docs: docs.filter((d) => daysAgo(d.updated_at) >= 7) },
   ].filter((group) => group.docs.length > 0);
+  if (groups.length > 1 && groups.some((group) => group.docs.length === 1)) return [{ label: "Recently edited", docs }];
+  return groups;
+};
