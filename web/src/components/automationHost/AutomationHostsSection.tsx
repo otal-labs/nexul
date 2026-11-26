@@ -35,7 +35,7 @@ export const AutomationHostsSection = () => {
           </>
         }
       >
-        {!instanceOnly && hosts?.length !== 0 && addHost}
+        {hosts?.length !== 0 && addHost}
       </AutomationListBar>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -49,14 +49,7 @@ export const AutomationHostsSection = () => {
           ))}
         </EnterList>
       )}
-      {instanceOnly && (
-        <EmptyState
-          icon={ServerIcon}
-          title="Runs on this instance"
-          message="Add a host to run automations on a machine of your own, beside the secrets manager they read."
-          action={addHost}
-        />
-      )}
+      {instanceOnly && <p className="px-4 pt-2 text-xs text-muted-foreground">Add a host to run automations on a machine of your own, beside the secrets manager they read.</p>}
     </section>
   );
 };
