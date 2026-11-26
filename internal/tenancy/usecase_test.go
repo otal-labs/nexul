@@ -1359,3 +1359,20 @@ func TestAddMember(t *testing.T) {
 		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor", RoleIDsAdded: []string{"role-editor"}}, f.repo.events[0].Payload)
 	})
 }
+
+func TestByPresence_KeepsOnlinePeopleInLoginOrder(t *testing.T) {
+	earlier, later := fixedNow.Add(-time.Minute), fixedNow
+	people := []*TeamPerson{
+		{TeamAccount: TeamAccount{ID: "alice", Online: true, LastSeenAt: &earlier}},
+		{TeamAccount: TeamAccount{ID: "bob", Online: true, LastSeenAt: &later}},
+		{TeamAccount: TeamAccount{ID: "sam", LastSeenAt: &earlier}},
+		{TeamAccount: TeamAccount{ID: "lena", LastSeenAt: &later}},
+		{TeamAccount: TeamAccount{ID: "cy", Online: true}},
+	}
+	slices.SortStableFunc(people, byPresence)
+	ids := make([]string, 0, len(people))
+	for _, p := range people {
+		ids = append(ids, p.ID)
+	}
+	assert.Equal(t, []string{"alice", "bob", "cy", "lena", "sam"}, ids)
+}
