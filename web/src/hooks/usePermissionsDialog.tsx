@@ -1,17 +1,17 @@
 import type { ReactNode } from "react";
 
-import { PermissionsPanel } from "@/components/access/PermissionsPanel";
-import { PermissionsPanelHeader } from "@/components/access/PermissionsPanelHeader";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { PanelEntityContext } from "@/hooks/usePanelEntity";
 import { createPermissionPanelStore, PermissionPanelStoreContext } from "@/stores/permissionPanelStore";
 import { PermissionRulesFormSchema, type PermissionRulesFormData } from "@/models/Permission";
 import type { PanelEntity } from "@/models/PermissionPanel";
+import { loadPermissionsPanel } from "@/utils/loadAccessDialogs";
 
 // Opens the permissions panel on a doc, folder, play, project or stack, on target (a targetKey) when named; rules are held until Save.
 export const usePermissionsDialog = () => {
   const { open } = useFormDialog();
-  return (entity: PanelEntity, target?: string) => {
+  return async (entity: PanelEntity, target?: string) => {
+    const { PermissionsPanel, PermissionsPanelHeader } = await loadPermissionsPanel();
     const store = createPermissionPanelStore(target ?? null);
     const scoped = (children: ReactNode) => (
       <PanelEntityContext.Provider value={entity}>
