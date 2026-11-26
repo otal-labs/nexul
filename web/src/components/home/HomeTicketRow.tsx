@@ -27,6 +27,7 @@ interface HomeTicketRowProps {
 export const HomeTicketRow = ({ item: { ticket, status }, prefix }: HomeTicketRowProps) => {
   const wsPath = useWorkspacePath();
   const prefetch = useHoverPrefetch((client) => client.prefetchQuery(ticketQuery(ticket.id)));
+  const backlog = status?.kind === StatusKind.Backlog;
   return (
     <li>
       <Link
@@ -34,7 +35,7 @@ export const HomeTicketRow = ({ item: { ticket, status }, prefix }: HomeTicketRo
         {...prefetch}
         className="-mx-2 flex gap-2.5 rounded-md px-2 py-2 text-row transition-colors duration-150 ease-standard hover:bg-accent inset-focus"
       >
-        <span className="flex h-lh w-4 shrink-0 items-center justify-center">
+        <span title={status?.name} className="flex h-lh w-4 shrink-0 items-center justify-center">
           {status && <StatusMark status={{ kind: status.kind, icon: status.icon || stageIcon[status.kind] }} className="size-3.5" />}
         </span>
         <span className="min-w-0 flex-1">
@@ -48,8 +49,9 @@ export const HomeTicketRow = ({ item: { ticket, status }, prefix }: HomeTicketRo
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             <span className="font-mono">{prefix ? `${prefix}-${ticket.number}` : ticket.number}</span>
-            {" · "}
-            {status?.name ?? "Unknown status"}
+            {/* Most rows wait in backlog, so the dashed mark says it and the meta names only a status that moved. */}
+            {backlog && <span className="sr-only"> · {status.name}</span>}
+            {!backlog && ` · ${status?.name ?? "Unknown status"}`}
             {status?.kind === StatusKind.Testing && " · yours to test"}
           </span>
         </span>

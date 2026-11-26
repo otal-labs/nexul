@@ -605,7 +605,7 @@ body {
   overflow: visible;
 }
 
-/* A page that is all canvas never scrolls, so it reserves no scrollbar gutter and its insets stay equal. */
+/* A page that is all canvas, or a chat that scrolls its own stream, never scrolls the frame, so it reserves no gutter and a hairline reaches the panel edge. */
 .app-frame:has([data-canvas-page]) {
   overflow-y: hidden;
   scrollbar-gutter: auto;
