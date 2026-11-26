@@ -186,7 +186,7 @@ describe("a service that needs attention", () => {
   it("leaves a healthy path neutral and counts what needs attention", () => {
     const healthy = deriveWiring(stored, containers, stacks, [gateway], [exposure]);
     expect(healthy.edges.every((e) => !e.data?.tone)).toBe(true);
-    expect(summarize(deriveWiring(failing, containers, stacks, [gateway], [exposure]))).toEqual({ services: 2, failed: 1, stopped: 0, hostnames: 1 });
+    expect(summarize(deriveWiring(failing, containers, stacks, [gateway], [exposure]))).toEqual({ services: 1, failed: 1, stopped: 0, hostnames: 1 });
   });
 });
 

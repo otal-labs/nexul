@@ -208,6 +208,12 @@ describe("snapToColumns", () => {
     expect(snapped.map((n) => n.position.x)).toEqual([776, 776, 1000, 500]);
     expect(snapped[0]).toBe(nodes[0]);
   });
+
+  it("draws a box a little off the lane's leftmost box on that edge, and leaves one dragged well clear alone", () => {
+    const nodes = [service("a", 953, 0), service("b", 929, 400), service("c", 1100, 800)];
+    const boxes = [{ name: "one", memberIds: ["a"] }, { name: "two", memberIds: ["b"] }, { name: "three", memberIds: ["c"] }];
+    expect(snapToColumns(nodes, boxes).map((n) => n.position.x)).toEqual([929, 929, 1100]);
+  });
 });
 
 describe("laneBeyond and laneBefore", () => {

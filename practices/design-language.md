@@ -527,16 +527,17 @@ Motion, beyond the shared core:
 The canvas is the page: it fills the panel edge to edge as a `surface-2`
 field with a faint `muted-foreground` dot pattern, and one bar across its top
 is the page's header: the title in Fraunces at 20px, then the counts in
-tabular figures (services, the failed and stopped ones each after their
-status dot, hostnames), then the zoom (−, the percentage, +), Fit, Back and
-More (each disabled while there is no lane that way, so nothing shifts),
+tabular figures (the Services lane's cards, so a gateway is not counted twice,
+the failed and stopped ones each after their status dot, hostnames), then the
+zoom (−, the percentage, +), Fit, the two lane chevrons (each named by the lane
+it pans to and disabled while there is no lane that way, so nothing shifts),
 Lock, Arrange in lanes and "+ External" as the outline button, a hairline
-divider between the zoom tools, Back and More, and Lock and Arrange, so the
+divider between the zoom tools, the lane chevrons, and Lock and Arrange, so the
 row reads as three groups. The failed and
 stopped counts are buttons: each press centres the next service in that state
 at a zoom that reads. The bar folds by its own width: under 64rem it keeps
 only the failed and stopped counts and Lock and Arrange fold into a "…" menu,
-and under 42rem Back and More fold too. There is no floating control strip, no minimap (at the canvas's
+and under 42rem the lane chevrons fold too. There is no floating control strip, no minimap (at the canvas's
 size it covered a fifth of the map and showed grey blocks) and no library
 attribution.
 
@@ -556,8 +557,9 @@ over the container's name, the status trailing; one mono row per route,
 `→ service:port` with the bracketed `(address:port)` right-aligned in tabular
 figures, each row with its own hidden handle on both sides; and a mono footer
 of its machine and networks. Hostname pills are derived, never stored or
-dragged: each is a `rounded-full` pill (the one on the canvas) right-aligned
-one lane gap left of its gateway, level with the row it enters, so the wire in
+dragged: each is a `rounded-full` pill (the one on the canvas) left-aligned
+in one column whose right edge is one lane gap left of its gateway (the widest
+pill sets it), level with the row it enters, so the wire in
 is a straight line and the pills read as a column of row labels; a pill grows
 to its hostname up to 320px, then wraps after a dot, and its row grows to stay
 level. A hostname whose gateway is not on the canvas joins the same column,
@@ -569,7 +571,8 @@ untracked and moving whole to a second line before it breaks after a hyphen or
 underscore, and under
 it the machine when every member runs on it, which their cards then leave out) in
 the order the gateway rows reach them, on one left edge (a member dropped
-within 12px of the box's column is drawn on it), so the wires out fan without crossing;
+within 12px of the box's column is drawn on it, and a box within 48px of the
+lane's leftmost box is drawn on that edge), so the wires out fan without crossing;
 a service on no network takes its place in that order without a box. A drawn
 node is a 240px card under an "outside Nexul" microheader, so it never reads
 as a deployed service.
@@ -584,8 +587,10 @@ end, and the relations that touch it, and dims everything else to 35% over
 150ms.
 
 The canvas opens at a zoom that reads: it fits the widest run of whole lanes
-from the left at 0.8 to 1, top-aligned and zoomed out to the pane's height down
-to the same floor, never cutting a lane mid-card. A fade over an edge says the
+from the left at 0.8 to 1, top-aligned to the lanes in view and zoomed out to
+the pane's height down to the same floor, never cutting a lane mid-card. The
+header row sits over the highest lane in view, and panning to a lane brings its
+top into view. A fade over an edge says the
 drawing continues, and on the header row the next lane's name with an arrow
 ("Services →", "← Hostnames") sits at that edge and pans there. A saved camera is restored
 only at the pane width it was saved at. Nothing truncates and nothing
@@ -2235,6 +2240,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Runners: a runner's dot moved from before its name to beside its state word, and a code's dashed dot with it (2026-11-26) | A green dot before the name answered "connected" while the word at the row's end said `idle`, so one row spoke two state grammars beside the band's one dot-and-word; with the dot beside its word every state on the page reads as a dot and the word it means, and a busy runner no longer shows two dots |
 | A machine's commands are Commands… in its band's `⋯`, opening a right sheet (2026-11-25) | A root shell on a server is rare and held by few; a band button for it would sit on every machine for everyone who sees one. Against a section folded under the band: it pushed the runner rows down the page and the band is pinned while they scroll. The sheet reuses the computer row's command rows and log sheet, so a command reads the same wherever it ran |
 | Topology in lanes, read at a legible zoom (2026-10-29) | The fitted canvas sat near 0.5, where the mono route rows rendered at 6 to 8px, and its automatic layout scattered the hostnames, gateways and services so the left-to-right sentence only held inside each gateway card; at its worst the fit still cut hostnames and drawn nodes off both sides. Fixed lanes, pills level with their rows and a 0.8 floor keep the sentence whole. Against a docked route index listing every hostname (hostnames shown twice, which the hub rows were chosen to avoid) and against anchoring the camera on one lane (the whole sentence fits at 1440). The gateway, service, pill, drawn-node and frame shapes were picked from screenshot variants |
+| Topology at a narrow pane: the floor holds, the camera follows the lanes in view (2026-11-26) | At 768 all three lanes need about 0.6 (a 1,050px drawing in a 680px pane), where the 12px route rows render near 7px, the size the lanes decision rejected; so Services stays a pan away, and the camera and header row top-align to the lanes shown instead of the tallest lane, which had left a 300px empty band above the gateway. Pills left-aligned and boxes snapped to one lane edge, because right-aligned pills and boxes 24px apart read as ragged columns |
 | Topology service cards: the name on its own line, status and strategy under it, the machine under a rule (2026-10-29) | Replaced the icon tile with the status trailing the name, which squeezed long names at a fixed lane width; the tile stays on the gateway card, the one card whose icon says something |
 | Topology network boxes: opaque over the dot grid, and the machine every member shares named once under the box label (2026-10-30) | Against the translucent box, whose dots read as texture behind the cards, and against repeating one machine on every card in the box, which cost a ruled row per card and said nothing new |
 | The setup row is a nav row with a warning dot | Against an accent-filled row (it outranked every page title, read as the current page, and sat beside the destructive red on the stack page); the dot says setup is open without taking the accent's "here" |

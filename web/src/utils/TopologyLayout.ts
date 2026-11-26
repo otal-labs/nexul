@@ -53,7 +53,7 @@ const pillRows = (gateway: Extract<TopologyNode, { type: "gateway" }>, byId: Map
   return { heights, offsets: routeRowOffsets(gateway.data, heights) };
 };
 
-// Pills are never stored: each sits level with its gateway row (or its service), right-aligned in one column.
+// Pills are never stored: each sits level with its gateway row (or its service), left-aligned in one column.
 export const alignPillsToRows = (
   nodes: TopologyNode[],
   positions: Positions,
@@ -62,6 +62,8 @@ export const alignPillsToRows = (
 ): Positions => {
   const out = new Map(positions);
   const byId = new Map(nodes.map((n) => [n.id, n]));
+  // The widest pill sets the column, so every pill starts on the lane's left edge and a short one's wire runs longer.
+  const column = Math.max(0, ...nodes.filter((n) => n.type === "hostname").map((n) => designedFootprint(n).w));
   for (const n of nodes) {
     if (n.type !== "gateway") continue;
     const at = positions.get(n.id);
@@ -70,8 +72,8 @@ export const alignPillsToRows = (
     n.data.routes.forEach((r, i) => {
       const pill = byId.get(`host-${r.id}`);
       if (pill?.type !== "hostname") return;
-      const { w, h } = designedFootprint(pill);
-      out.set(pill.id, { x: at.x - LANE_GAP - w, y: at.y + offsets[i]! + heights[i]! / 2 - h / 2 });
+      const { h } = designedFootprint(pill);
+      out.set(pill.id, { x: at.x - LANE_GAP - column, y: at.y + offsets[i]! + heights[i]! / 2 - h / 2 });
     });
   }
   const direct = new Map<string, TopologyNode[]>();
@@ -93,8 +95,8 @@ export const alignPillsToRows = (
     const left = gatewayXs.length > 0 ? Math.min(boxLeft, ...gatewayXs) : boxLeft;
     let y = at.y + footprintOf(target).h / 2 - pills.reduce((sum, p) => sum + designedFootprint(p).h + 8, -8) / 2;
     for (const pill of pills) {
-      const { w, h } = designedFootprint(pill);
-      out.set(pill.id, { x: left - LANE_GAP - w, y });
+      const { h } = designedFootprint(pill);
+      out.set(pill.id, { x: left - LANE_GAP - column, y });
       y += h + 8;
     }
   }
@@ -202,15 +204,24 @@ export const overlaps = (nodes: TopologyNode[], positions: Positions, networks: 
   return false;
 };
 
-// A box's services a few pixels off its column (a drag that missed) are drawn on it, so the box has one left edge.
+// Boxes whose columns sit this close read as one ragged lane edge rather than two placements, so they share one.
+const LANE_SNAP = 48;
+
+// A box's services a few pixels off its column (a drag that missed) are drawn on it, so the box has one left edge,
+// and boxes a little off each other's column are drawn on the leftmost, so the Services lane has one too.
 // Positions only: the store keeps what was dropped until the card is moved again.
 export const snapToColumns = <T extends TopologyNode>(nodes: T[], networks: NetworkGroup[]): T[] => {
   const column = new Map<string, number>();
+  const boxLefts: number[] = [];
   for (const g of networks) {
     const members = nodes.filter((n) => n.type === "service" && g.memberIds.includes(n.id) && !column.has(n.id));
+    if (members.length === 0) continue;
     const left = Math.min(...members.map((n) => n.position.x));
+    boxLefts.push(left);
     for (const n of members) if (n.position.x - left <= CLEARANCE) column.set(n.id, left);
   }
+  const laneLeft = Math.min(...boxLefts);
+  for (const [id, x] of column) if (x - laneLeft <= LANE_SNAP) column.set(id, laneLeft);
   return nodes.map((n) => {
     const x = column.get(n.id);
     return x === undefined || x === n.position.x ? n : { ...n, position: { ...n.position, x } };
@@ -314,26 +325,36 @@ const HEADER_ROOM = 28;
 export const laneCamera = (lanes: Lane[], paneWidth: number, paneHeight = Infinity): { x: number; y: number; zoom: number } => {
   if (lanes.length === 0 || paneWidth <= 0) return { x: CAMERA_PAD, y: CAMERA_PAD, zoom: 1 };
   const left = lanes[0]!.left;
-  const top = Math.min(...lanes.map((l) => l.top)) - HEADER_ROOM;
+  // Top-aligned to the lanes in view, so a taller lane a pan away leaves no empty band above them.
+  let shown = lanes.slice(0, 1);
   let zoom = MIN_FIT_ZOOM;
   for (let k = lanes.length; k > 0; k--) {
     const fits = (paneWidth - CAMERA_PAD * 2) / (lanes[k - 1]!.right - left);
     if (fits < MIN_FIT_ZOOM) continue;
-    const tall = (paneHeight - CAMERA_PAD * 2) / (Math.max(...lanes.slice(0, k).map((l) => l.bottom)) - top);
+    shown = lanes.slice(0, k);
+    const top = Math.min(...shown.map((l) => l.top)) - HEADER_ROOM;
+    const tall = (paneHeight - CAMERA_PAD * 2) / (Math.max(...shown.map((l) => l.bottom)) - top);
     zoom = Math.max(MIN_FIT_ZOOM, Math.min(1, fits, tall));
     break;
   }
+  const top = Math.min(...shown.map((l) => l.top)) - HEADER_ROOM;
   return { x: CAMERA_PAD - left * zoom, y: CAMERA_PAD - top * zoom, zoom };
+};
+
+// Where the header row sits: over the highest of the lanes in view, so it follows the camera to a taller lane.
+export const headerTop = (lanes: Lane[], viewport: { x: number; zoom: number }, paneWidth: number): number => {
+  const inView = lanes.filter((l) => viewport.x + l.right * viewport.zoom > 0 && viewport.x + l.left * viewport.zoom < paneWidth);
+  return Math.min(...(inView.length > 0 ? inView : lanes).map((l) => l.top)) - HEADER_ROOM;
 };
 
 // The last lane that starts off the pane's left edge (after panning to later lanes), or none.
 export const laneBefore = (lanes: Lane[], viewport: { x: number; zoom: number }): Lane | undefined =>
   [...lanes].reverse().find((l) => viewport.x + l.left * viewport.zoom < CAMERA_PAD / 2);
 
-// Pans so that lane's left edge comes into view, keeping the zoom.
+// Pans so that lane's left edge and its top come into view, keeping the zoom.
 export const panBackTo = (lane: Lane, viewport: { y: number; zoom: number }) => ({
   x: CAMERA_PAD - lane.left * viewport.zoom,
-  y: viewport.y,
+  y: Math.max(viewport.y, CAMERA_PAD - (lane.top - HEADER_ROOM) * viewport.zoom),
   zoom: viewport.zoom,
 });
 
@@ -345,9 +366,9 @@ export const drawingBelow = (lanes: Lane[], viewport: { y: number; zoom: number 
 export const laneBeyond = (lanes: Lane[], viewport: { x: number; zoom: number }, paneWidth: number): Lane | undefined =>
   lanes.find((l) => viewport.x + l.right * viewport.zoom > paneWidth - CAMERA_PAD / 2);
 
-// Pans so that lane's right edge comes into view, keeping the zoom.
+// Pans so that lane's right edge and its top come into view, keeping the zoom.
 export const panTo = (lane: Lane, viewport: { y: number; zoom: number }, paneWidth: number) => ({
   x: paneWidth - CAMERA_PAD - lane.right * viewport.zoom,
-  y: viewport.y,
+  y: Math.max(viewport.y, CAMERA_PAD - (lane.top - HEADER_ROOM) * viewport.zoom),
   zoom: viewport.zoom,
 });

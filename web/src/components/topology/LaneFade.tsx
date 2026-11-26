@@ -3,7 +3,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
 import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
-import { drawingBelow, laneBeyond, laneBefore, panBackTo, panTo, type Lane } from "@/utils/TopologyLayout";
+import { drawingBelow, headerTop, laneBeyond, laneBefore, panBackTo, panTo, type Lane } from "@/utils/TopologyLayout";
 
 const fade = "pointer-events-none absolute z-[5] from-surface-2 to-transparent";
 const cue = cn(
@@ -20,7 +20,7 @@ export const LaneFade = ({ lanes }: { lanes: Lane[] }) => {
   const height = useViewportStore((s) => s.height);
   const before = laneBefore(lanes, viewport);
   const beyond = laneBeyond(lanes, viewport, width);
-  const headerY = lanes.length > 0 ? viewport.y + (Math.min(...lanes.map((l) => l.top)) - 28) * viewport.zoom - 4 : 0;
+  const headerY = lanes.length > 0 ? viewport.y + headerTop(lanes, viewport, width) * viewport.zoom - 4 : 0;
   const top = Math.min(Math.max(headerY, 8), Math.max(height - 32, 8));
   return (
     <>
