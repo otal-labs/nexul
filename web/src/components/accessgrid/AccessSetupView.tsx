@@ -49,7 +49,6 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
           <ProjectsCard grid={grid} footer={<ProjectsReadback grid={grid} />} />
           <ChannelsCard
             grid={grid}
-            alignWithProjects
             footer={
               <>
                 <span className="text-sm text-muted-foreground">Hide nothing to keep channels as they are.</span>

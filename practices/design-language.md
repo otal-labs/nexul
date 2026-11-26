@@ -1423,35 +1423,33 @@ muted line), which the bulk row never sets. A viewer who can't change a list see
 are the reference.
 
 Access grid. The Projects and Public channels tabs of the Access page are one
-grid each, rows by roles, and the card fills the panel's height: the grid is
-the one scroller, both ways, with a stable scrollbar gutter on both edges, so
-nothing moves when rows start to overflow and the rows' strips and rules stop
-the same 10px short of each side (the name column and the last column pad
-14px, keeping the names under the card's title), and it snaps sideways a whole role column at a
+grid each, rows by roles, and the card fills the panel's height and width: the grid is
+the one scroller, both ways, its rows' strips and rules running to the card's
+edges (the name column and the last column pad 24px, keeping the names under
+the card's title), and it snaps sideways a whole role column at a
 time. Its head row is sticky on top and its name column (240px, 200px below
 1024px, the name truncating inside it) sticky on the left, casting its edge
 (`edge-shade`) once scrolled sideways; the save strip sits under it, always in
 view. A role column is 72px: the name at 12px medium in up to three lines, cut
 at a whole word with its ellipsis when longer (`headName`), over its holder
-count in mono ("nobody" at none). The card is only as wide as its grid (or
-its title and description, if wider), up to the panel's: People follows the
-last role column and any spare width goes to a filler after it, so the ticks
-start beside the names and no empty band runs between the roles and People. Rows are one 44px line, the project's 24px mark and name.
+count in mono ("nobody" at none). The last column takes the grid's spare
+width, so it starts right after the last role and no empty band runs between
+the roles and it: People on Projects, the faces over one name or a count
+("3 people"), and Seen by on Public channels, "Everyone" muted or "Everyone
+but Client, QA" in ink. Rows are one 44px line, the project's 24px mark and name.
 The whole 72x44 cell is the box: on Projects a tick is a `foreground` check on
 a `foreground` 6% tint inset 2px, and an empty cell is unticked; on Public
-channels, where every member sees a channel, the exception is marked instead:
-an ink eye-off on the same tint on a role the channel is hidden from, and a
-seen cell a faint eye (`muted-foreground` at 45%), so every cell shows its
-state and the hidden ones stand out. The ticks are ink, not
+channels a seen cell is the same tint under an ink eye and a role the channel
+is hidden from a muted eye-off with no tint, so access reads as ink on a tint
+in both grids and Seen by names the exceptions. The ticks are ink, not
 the accent: a grid of them would put the ember on most of the page, so the
 ember rings an unsaved cell's tint (2px, inset) and the footer counts them
 ("3 changes"); keyboard focus rings the cell's own edge, outside the tint. The
 lead row on the muted strip sets a role on every row shown and says how many
-have it, in every state ("9/15", "15/15", "0/15"); on Public channels how
-many see it, after an eye while all do and an eye-off once one is hidden. People sits in a column pinned right, casting its edge while
-columns lie under it, its add button showing on the row's hover or focus; a
-grid with nothing pinned ends in a 16px column that fades what passes under
-it. The bottom of every scroller fades over 24px while rows lie past it.
+have it, in every state ("9/15", "15/15", "0/15"), the cell taking the
+row's tint and ink once every row has it; on Public channels how
+many see it, after an eye while all do and an eye-off once one is hidden. The last column is pinned right, never under 176px, casting its edge while
+columns lie under it; People's add button shows on the row's hover or focus. The bottom of every scroller fades over 24px while rows lie past it.
 `AccessGridTable` and `AccessGridCell` in `web/src/components/accessgrid/` are
 the reference.
 
@@ -2224,7 +2222,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | The Roles tab is a matrix of every area by every role (2026-10-29) | Replaces one row per role with a tally of levels ("Delete 16 · Write 6 · Read 3 · None 10") and a chevron for the areas: the counts changed which levels they listed from row to row and never named an area, and one role opened at a time, so two roles could not be compared. The owner picked the matrix over the tally kept in four fixed columns, as two lines or one, from screenshots on the worst-case workspace |
 | Access grid ticks are ink and the ember marks an unsaved cell (2026-10-29) | An ember box per tick put 150 ember marks on a worst-case Public channels tab and buried its few exceptions, and an ember ring on an ember box could not show a change. Picked from screenshots over a hairline box and a bare check: an ink check on a 6% cell tint. Public channels marks the hidden role (eye-off) and leaves a seen cell empty |
-| The Access grids sized to their columns, a seen channel cell a faint eye (2026-11-26) | A grid spanning the panel left a 600 to 750px empty band between two role columns and People, and a Public channels grid of empty seen cells read as unrendered. Sized to its columns with People after the last role, and every cell showing its state, the grid reads as one compact table; the ticks stay ink on a tint as picked |
+| The Access grids span the panel, the last column taking the spare width, a seen channel cell an ink eye (2026-11-26) | A grid spanning the panel with People pinned at its far edge left a 600 to 750px empty band between the roles and People; sizing the card to its columns instead left a 565px empty band beside the card at 1440 and stopped it short of the tab rule. Spanning the panel with People (or Seen by) starting right after the last role closes both, and a seen cell drawn as a faint eye read as empty, so seen is ink on a tint like a tick |
 | The Access grids fill the panel and scroll in one box (2026-10-29) | The card used to scroll inside the page, two scrollbars, the save strip below the fold and the names scrolling away with the boxes. A sticky head inside a box that scrolls sideways sticks to that box, so the box became the only scroller rather than syncing a separate head; it is paint-contained, because its sticky cells otherwise widened the page by 210px at 768 |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |

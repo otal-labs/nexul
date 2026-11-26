@@ -25,7 +25,7 @@ interface AccessGridRowProps {
 
 export const AccessGridRow = ({ row, roles, marks, isOn, isChanged, onToggle, trailing }: AccessGridRowProps) => (
   <tr className="group/row">
-    <th scope="row" className={cn(stickyCell, stickyHover, "h-11 border-b border-border pr-3 pl-3.5 text-left font-normal")}>
+    <th scope="row" className={cn(stickyCell, stickyHover, "h-11 border-b border-border pr-3 pl-6 text-left font-normal")}>
       <span className="flex min-w-0 items-center gap-2.5">
         {row.mark}
         <span className="relative h-5 min-w-0 flex-1">
@@ -48,8 +48,8 @@ export const AccessGridRow = ({ row, roles, marks, isOn, isChanged, onToggle, tr
         onToggle={() => onToggle(row.id, role.id)}
       />
     ))}
-    {trailing && <td className="grid-edge-end sticky right-0 z-10 border-b border-border bg-card py-1 pr-3.5 pl-3 group-hover/row:bg-linear-to-r group-hover/row:from-accent/40 group-hover/row:to-accent/40">{row.trailing}</td>}
+    {trailing && <td className="grid-edge-end sticky right-0 z-10 border-b border-border bg-card py-1 pr-6 pl-3 group-hover/row:bg-linear-to-r group-hover/row:from-accent/40 group-hover/row:to-accent/40">{row.trailing}</td>}
     {!trailing && <td aria-hidden className={fadeEndCell} />}
-    <td aria-hidden className={cn(fillerCell, "group-hover/row:bg-accent/40")} />
+    {!trailing && <td aria-hidden className={cn(fillerCell, "group-hover/row:bg-accent/40")} />}
   </tr>
 );

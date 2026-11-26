@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Hash, Volume2 } from "lucide-react";
 
 import { AccessGridTable } from "@/components/accessgrid/AccessGridTable";
+import { SeenByCell } from "@/components/accessgrid/SeenByCell";
 import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
@@ -11,15 +12,15 @@ interface ChannelsCardProps {
   grid: AccessGrid;
   footer: ReactNode;
   aside?: ReactNode;
-  // Under the projects grid on one page, an empty trailing column keeps the role columns in line with it.
-  alignWithProjects?: boolean;
   fill?: boolean;
 }
 
-// The same grid the other way round: a cell marks the exception, a role the channel is hidden from, because every member sees a public channel.
-export const ChannelsCard = ({ grid, footer, aside, alignWithProjects = false, fill = false }: ChannelsCardProps) => {
+// The same grid the other way round: every member sees a public channel, so a cell clears to hide it from a role, and Seen by reads the exceptions back.
+export const ChannelsCard = ({ grid, footer, aside, fill = false }: ChannelsCardProps) => {
   const draft = useAccessDraft(grid);
-  const rows = grid.channels.map((channel) => ({
+  const rows = grid.channels.map((channel) => {
+    const hidden = draft.hidden(channel.id);
+    return {
       id: channel.id,
       name: channel.name,
       mark: (
@@ -28,7 +29,9 @@ export const ChannelsCard = ({ grid, footer, aside, alignWithProjects = false, f
           {channel.kind !== "voice_channel" && <Hash className="size-3.5 text-muted-foreground" />}
         </span>
       ),
-  }));
+      trailing: <SeenByCell hiddenFrom={grid.roles.filter((role) => hidden.includes(role.id)).map((role) => role.name)} />,
+    };
+  });
 
   return (
     <SettingsCard
@@ -51,7 +54,7 @@ export const ChannelsCard = ({ grid, footer, aside, alignWithProjects = false, f
           isChanged={(rowId, roleId) => draft.hiddenChanged(rowId, roleId)}
           onToggle={draft.toggleHidden}
           onSetAll={(roleId, visible) => draft.setRoleOnChannels(roleId, rows.map((row) => row.id), visible)}
-          trailingHead={alignWithProjects ? "" : undefined}
+          trailingHead="Seen by"
           fill={fill}
         />
       )}
