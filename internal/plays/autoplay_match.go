@@ -153,7 +153,7 @@ type moment struct {
 
 // person is whose computer a's run lands on.
 func (a *AutoPlay) person(f Facts, m moment) string {
-	if a.RunOn == RunOnComputer {
+	if a.RunOn == RunOnPerson {
 		return a.RunAs
 	}
 	if a.RunOn == RunOnDeveloper {
@@ -436,7 +436,7 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 	it := &QueueItem{
 		ID: ids.From("auto-play-match:" + m.eventID + ":" + a.ID), WorkspaceID: workspaceID, ProjectID: f.ProjectID,
 		TargetType: m.targetType, TargetID: m.targetID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
-		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, ComputerIDs: slices.Clone(a.ComputerIDs), ComputerID: a.ComputerID, Service: m.service, OutageID: m.outageID,
+		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name, Service: m.service, OutageID: m.outageID,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
 	}
 	if m.targetType == TargetTicket {
@@ -481,8 +481,8 @@ func (r *Runner) offer(ctx context.Context, a *AutoPlay, it *QueueItem) (bool, e
 
 // whyNobody says why a run has nobody to land on: no such person, or one who can't see or run the play there.
 func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
-	if it.PersonID == "" && it.RunOn == RunOnComputer {
-		return "nobody to run it on: no one has picked a computer for it"
+	if it.PersonID == "" && (it.RunOn == RunOnPerson || it.RunOn == RunOnComputer) {
+		return "nobody to run it on: no one has picked who it runs as"
 	}
 	if it.PersonID == "" && it.RunOn == RunOnCauser {
 		return fmt.Sprintf("nobody to run it on: no person caused it and the %s has no developer", it.TargetType)
@@ -495,31 +495,6 @@ func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 		!r.perm.HasPermission(ctx, it.PersonID, it.WorkspaceID, permissions.PlaysRun, resourceTypePlay, it.PlayID) {
 		return fmt.Sprintf("%s may not run %s here", r.login(ctx, it.PersonID), it.PlayLabel)
 	}
-	return r.whyNoComputer(ctx, it)
-}
-
-// whyNoComputer says why a run on chosen computers can't start on any: its person no longer owns them or holds
-// computers:run_agents on their shares. Computers they lost are dropped from the run's list; an empty list is their own
-// order and has no such limit, as has a run on anything else.
-func (r *Runner) whyNoComputer(ctx context.Context, it *QueueItem) string {
-	if it.RunOn != RunOnComputer || len(it.ComputerIDs) == 0 {
-		return ""
-	}
-	allowed := make([]string, 0, len(it.ComputerIDs))
-	for _, id := range it.ComputerIDs {
-		ok, err := mayRunAgents(ctx, r.computers, it.PersonID, id)
-		if err != nil {
-			r.log.Error("plays: check who may run agents on a computer", "item", it.ID, "computer", id, "error", err)
-			return fmt.Sprintf("could not check whether %s may run agents on the computer picked for it", r.login(ctx, it.PersonID))
-		}
-		if ok {
-			allowed = append(allowed, id)
-		}
-	}
-	if len(allowed) == 0 {
-		return fmt.Sprintf("%s may not run agents on the computer picked for it", r.login(ctx, it.PersonID))
-	}
-	it.ComputerIDs, it.ComputerID = allowed, allowed[0]
 	return ""
 }
 

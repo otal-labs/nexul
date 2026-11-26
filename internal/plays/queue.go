@@ -59,8 +59,8 @@ type QueueItem struct {
 	QueuedAt      time.Time    `json:"queued_at"`
 	DecidedAt     *time.Time   `json:"decided_at"`
 	NotBefore     time.Time    `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
-	ComputerIDs   []string     `json:"computer_ids" jsonschema:"Computers its auto play names for run_on computer, in order; empty uses its person's own order."`
-	ComputerID    string       `json:"computer_id" jsonschema:"The first of computer_ids, for readers that predate the list; empty when it is empty."`
+	ComputerIDs   []string     `json:"computer_ids" deprecated:"true" jsonschema:"Always []: an auto play runs as a person on their order now (ADR 0197)."`
+	ComputerID    string       `json:"computer_id" deprecated:"true" jsonschema:"Always empty: an auto play runs as a person on their order now (ADR 0197)."`
 	Service       string       `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
 	OutageID      string       `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`
 	WaitingOn     []PassedOver `json:"waiting_on,omitempty" jsonschema:"While queued, to its person alone: each of their computers and why it cannot take the run. Never in an event, since a computer is its owner's."`
@@ -310,5 +310,6 @@ func (r *Runner) move(ctx context.Context, it *QueueItem, from, to QueueStatus, 
 func (r *Runner) queueEvent(topic string, it *QueueItem) eventbus.OutboxEvent {
 	payload := *it
 	payload.WaitingOn = nil
+	payload.ComputerIDs, payload.ComputerID = []string{}, ""
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: payload}
 }

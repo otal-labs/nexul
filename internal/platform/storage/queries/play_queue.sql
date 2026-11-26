@@ -1,6 +1,6 @@
 -- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, computer_ids, harness_project_id, service, outage_id, sweep_id, sweep_position, start_by, lock_key, repository)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, harness_project_id, service, outage_id, sweep_id, sweep_position, start_by, lock_key, repository)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING;
 
 -- name: GetPlayQueueItem :one
@@ -11,7 +11,7 @@ UPDATE play_queue SET status = ?, reason = ?, waiting_on = ?, trail_id = ?, deci
 WHERE id = ? AND status = sqlc.arg(from_status);
 
 -- name: RepointPlayQueueItem :execrows
-UPDATE play_queue SET person_id = ?, computer_id = ?, computer_ids = ?, reason = '', waiting_on = '[]', not_before = ?
+UPDATE play_queue SET person_id = ?, reason = '', waiting_on = '[]', not_before = ?
 WHERE id = ? AND status = 'queued';
 
 -- name: ListPlayQueueByTarget :many

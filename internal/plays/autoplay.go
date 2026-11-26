@@ -45,7 +45,9 @@ const (
 	RunOnDeveloper RunOn = "developer"
 	RunOnTester    RunOn = "tester"
 	RunOnCauser    RunOn = "causer"
-	// RunOnComputer lands on a chosen computer, as whoever picked it.
+	// RunOnPerson runs as the person picked on it, on the computers in their order (ADR 0197).
+	RunOnPerson RunOn = "person"
+	// RunOnComputer is the older spelling of RunOnPerson, from when an auto play named computers; it reads as person.
 	RunOnComputer RunOn = "computer"
 )
 
@@ -122,7 +124,6 @@ const (
 	MaxAutoPlayDailyCap     = 50
 	DefaultAutoPlayDailyCap = 5
 	MaxAutoPlayMemories     = 50
-	MaxAutoPlayComputers    = 20
 	MaxSweepRuns            = 100
 	DefaultSweepRuns        = 10
 	MaxResourceLength       = 40
@@ -190,14 +191,11 @@ type AutoPlay struct {
 	Priority   Priority   `json:"priority"`
 	// OnceWithinMinutes allows one run per target per window after the moment; 0 is no limit.
 	OnceWithinMinutes int   `json:"once_within_minutes"`
-	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,computer"`
-	// ComputerIDs are the computers a RunOnComputer auto play lands on, first ready first, and RunAs the person who
-	// picked them, whose identity the run takes. A RunAs with no ComputerIDs is "Your order": the run goes to that
-	// person's own computers as they are ordered. Both are empty for any other RunOn, and while a seeded one waits for its pick.
-	ComputerIDs []string `json:"computer_ids" jsonschema:"With run_on computer: the computers it runs on, in order; the run goes to the first that can take it. Empty with run_as set means the picker's own computers in their usual order."`
-	// ComputerID is the first of ComputerIDs, for readers that predate the list.
-	ComputerID string `json:"computer_id"`
-	RunAs      string `json:"run_as"`
+	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,person,computer"`
+	// RunAs is who a RunOnPerson auto play runs as, on their order; empty otherwise and while a seeded one awaits its pick.
+	RunAs string `json:"run_as"`
+	ComputerIDs []string `json:"computer_ids" deprecated:"true" jsonschema:"Always []: an auto play runs as a person on their order now (ADR 0197)."`
+	ComputerID  string   `json:"computer_id" deprecated:"true" jsonschema:"Always empty: an auto play runs as a person on their order now (ADR 0197)."`
 	// MemoryIDs are read by each run beside the always-included ones; a run reads only those in its target's project.
 	MemoryIDs []string  `json:"memory_ids"`
 	CreatedBy string    `json:"created_by"`
@@ -231,14 +229,16 @@ func (a *AutoPlay) normalize(playType Type) {
 			a.RunOn = RunOnCauser
 		}
 		if playType == TypeStack {
-			a.RunOn = RunOnComputer
+			a.RunOn = RunOnPerson
 		}
 	}
-	if a.RunOn != RunOnComputer {
-		a.ComputerIDs, a.RunAs = nil, ""
+	if a.RunOn == RunOnComputer {
+		a.RunOn = RunOnPerson
 	}
-	a.ComputerIDs = orderedIDs(a.ComputerIDs)
-	a.ComputerID = firstID(a.ComputerIDs)
+	if a.RunOn != RunOnPerson {
+		a.RunAs = ""
+	}
+	a.ComputerIDs, a.ComputerID = []string{}, ""
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
 	}
@@ -401,17 +401,17 @@ func parseClock(s string) (int, bool) {
 }
 
 func (a *AutoPlay) validateRunOn(playType Type) error {
-	if a.RunOn != RunOnDeveloper && a.RunOn != RunOnTester && a.RunOn != RunOnCauser && a.RunOn != RunOnComputer {
-		return fmt.Errorf("%w: run_on must be developer, tester, causer, or computer", apperrs.ErrInvalid)
+	if a.RunOn != RunOnDeveloper && a.RunOn != RunOnTester && a.RunOn != RunOnCauser && a.RunOn != RunOnPerson {
+		return fmt.Errorf("%w: run_on must be developer, tester, causer, or person", apperrs.ErrInvalid)
 	}
-	if playType == TypeDoc && a.RunOn != RunOnCauser && a.RunOn != RunOnComputer {
-		return fmt.Errorf("%w: a doc play's auto play runs on causer, whoever created or changed the doc, or on a chosen computer; a doc has no developer or tester", apperrs.ErrInvalid)
+	if playType == TypeDoc && a.RunOn != RunOnCauser && a.RunOn != RunOnPerson {
+		return fmt.Errorf("%w: a doc play's auto play runs on causer, whoever created or changed the doc, or as a person; a doc has no developer or tester", apperrs.ErrInvalid)
 	}
-	if playType == TypeStack && a.RunOn != RunOnComputer {
-		return fmt.Errorf("%w: a stack play's auto play runs on a chosen computer; a stack has no developer, tester or causer", apperrs.ErrInvalid)
+	if playType == TypeStack && a.RunOn != RunOnPerson {
+		return fmt.Errorf("%w: a stack play's auto play runs as a person; a stack has no developer, tester or causer", apperrs.ErrInvalid)
 	}
-	if a.RunOn == RunOnComputer && a.Enabled && a.RunAs == "" {
-		return fmt.Errorf("%w: pick the computers it runs on before switching it on", apperrs.ErrInvalid)
+	if a.RunOn == RunOnPerson && a.Enabled && a.RunAs == "" {
+		return fmt.Errorf("%w: pick the person it runs as before switching it on", apperrs.ErrInvalid)
 	}
 	return nil
 }

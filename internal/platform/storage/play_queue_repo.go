@@ -28,18 +28,14 @@ var levelPriority = map[plays.Level]int64{plays.LevelLow: 0, plays.LevelNormal: 
 
 func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) (bool, error) {
 	inserted := false
-	computers, err := marshalStringList(it.ComputerIDs)
-	if err != nil {
-		return false, fmt.Errorf("encode computers of queue item %s: %w", it.ID, err)
-	}
-	err = r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).InsertPlayQueueItem(ctx, sqlcgen.InsertPlayQueueItemParams{
 			ID: it.ID, WorkspaceID: it.WorkspaceID, ProjectID: it.ProjectID, TargetType: string(it.TargetType), TargetID: it.TargetID,
 			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, AutomationID: it.AutomationID, PersonID: it.PersonID, RunOn: string(it.RunOn),
 			Moment: string(it.Moment), Via: string(it.Via), Priority: levelPriority[it.Priority], Status: string(it.Status),
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(), ComputerID: firstID(it.ComputerIDs), ComputerIds: computers,
-			Service: it.Service, OutageID: it.OutageID,
+			NotBefore: it.NotBefore.Unix(),
+			Service:   it.Service, OutageID: it.OutageID,
 			SweepID: it.SweepID, SweepPosition: int64(it.SweepPosition), StartBy: nullUnixPtr(it.StartBy), LockKey: it.LockKey, Repository: it.Repository,
 		})
 		if err != nil {
@@ -83,13 +79,9 @@ func (r *PlayQueueRepo) MoveQueueItem(ctx context.Context, it *plays.QueueItem, 
 }
 
 func (r *PlayQueueRepo) RepointQueueItem(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) error {
-	computers, err := marshalStringList(it.ComputerIDs)
-	if err != nil {
-		return fmt.Errorf("encode computers of queue item %s: %w", it.ID, err)
-	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).RepointPlayQueueItem(ctx, sqlcgen.RepointPlayQueueItemParams{
-			PersonID: it.PersonID, ComputerID: firstID(it.ComputerIDs), ComputerIds: computers, NotBefore: it.NotBefore.Unix(), ID: it.ID,
+			PersonID: it.PersonID, NotBefore: it.NotBefore.Unix(), ID: it.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("repoint queue item %s: %w", it.ID, classifyWriteErr(err))
@@ -217,14 +209,13 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 			level = l
 		}
 	}
-	computers := decodeJSON(row.ComputerIds, []string{})
 	return &plays.QueueItem{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, TargetType: plays.TargetType(row.TargetType),
 		TargetID: row.TargetID, PlayID: row.PlayID, PlayLabel: row.PlayLabel, AutoPlayID: row.AutoPlayID, AutomationID: row.AutomationID, PersonID: row.PersonID,
 		RunOn: plays.RunOn(row.RunOn), Moment: plays.Moment(row.Moment), Priority: level, Status: plays.QueueStatus(row.Status),
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),
-		ComputerIDs: computers, ComputerID: firstID(computers), Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
+		ComputerIDs: []string{}, Service: row.Service, OutageID: row.OutageID, WaitingOn: decodePassedOver(row.WaitingOn),
 		SweepID: row.SweepID, SweepPosition: int(row.SweepPosition), StartBy: unixPtrFromNull(row.StartBy), LockKey: row.LockKey, Repository: row.Repository,
 	}
 }

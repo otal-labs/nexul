@@ -19,8 +19,6 @@ type autoPlayResult struct {
 	Priority          Priority   `json:"priority"`
 	OnceWithinMinutes int        `json:"once_within_minutes"`
 	RunOn             RunOn      `json:"run_on"`
-	ComputerIDs       []string   `json:"computer_ids"`
-	ComputerID        string     `json:"computer_id,omitempty"`
 	RunAs             string     `json:"run_as,omitempty"`
 	MemoryIDs         []string   `json:"memory_ids"`
 	OneAtATime        bool       `json:"one_at_a_time,omitempty"`
@@ -34,8 +32,8 @@ func toAutoPlayResults(list []*AutoPlay) []autoPlayResult {
 	for _, a := range list {
 		out = append(out, autoPlayResult{
 			ID: a.ID, Enabled: a.Enabled, Moment: a.Moment, MomentStage: a.MomentStage, Schedule: a.Schedule, Conditions: a.Conditions,
-			Priority: a.Priority, OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn, ComputerIDs: a.ComputerIDs,
-			ComputerID: a.ComputerID, RunAs: a.RunAs, MemoryIDs: a.MemoryIDs, OneAtATime: a.OneAtATime, Resource: a.Resource,
+			Priority: a.Priority, OnceWithinMinutes: a.OnceWithinMinutes, RunOn: a.RunOn,
+			RunAs: a.RunAs, MemoryIDs: a.MemoryIDs, OneAtATime: a.OneAtATime, Resource: a.Resource,
 		})
 	}
 	return out
@@ -48,9 +46,7 @@ type autoPlayIn struct {
 	Conditions        *Conditions `json:"conditions,omitempty" jsonschema:"What must also hold; omit to fire on every match of the moment."`
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"The run's place in its person's queue; omit for normal."`
 	OnceWithinMinutes int         `json:"once_within_minutes,omitempty" jsonschema:"At most one run per ticket or doc within this many minutes of the moment, up to 43200; 0 is no limit."`
-	RunOn             RunOn       `json:"run_on,omitempty" jsonschema:"Whose computer runs it: developer (default for ticket plays), tester, causer (whoever caused the moment, default for doc plays), or computer (chosen computers, the only choice for stack plays, with computer_ids)."`
-	ComputerIDs       *[]string   `json:"computer_ids,omitempty" jsonschema:"With run_on computer: the computers' ids in order, from computer_list; a run goes to the first that can take it. You must own each or hold computers:run_agents on its share, and the run takes your identity. [] means your own computers in their usual order. Needed before the auto play is switched on."`
-	ComputerID        string      `json:"computer_id,omitempty" jsonschema:"With run_on computer: one computer's id, as computer_ids with a single id; ignored when computer_ids is sent."`
+	RunOn             RunOn       `json:"run_on,omitempty" jsonschema:"Who it runs as, on their computers: developer (default for ticket plays), tester, causer (whoever caused the moment, default for doc plays), or person (you, on your order; the only choice for stack plays)."`
 	MemoryIDs         []string    `json:"memory_ids,omitempty" jsonschema:"Ids of memories each run reads beside the always-included ones, from memory_list, up to 50; a run reads only those in its ticket's, doc's, or stack's own project."`
 	OneAtATime        bool        `json:"one_at_a_time,omitempty" jsonschema:"One run at a time; with resource, across auto plays naming it."`
 	Resource          string      `json:"resource,omitempty" jsonschema:"A shared name, such as windows-vm."`
@@ -59,7 +55,7 @@ type autoPlayIn struct {
 func (in autoPlayIn) input() AutoPlayInput {
 	out := AutoPlayInput{
 		Moment: in.Moment, MomentStage: optionalStage(in.MomentStage), Schedule: in.Schedule, OnceWithinMinutes: in.OnceWithinMinutes, RunOn: in.RunOn,
-		ComputerIDs: pickedComputers(in.ComputerIDs, in.ComputerID), MemoryIDs: in.MemoryIDs, OneAtATime: in.OneAtATime, Resource: in.Resource,
+		MemoryIDs: in.MemoryIDs, OneAtATime: in.OneAtATime, Resource: in.Resource,
 	}
 	if in.Conditions != nil {
 		out.Conditions = *in.Conditions
@@ -79,9 +75,8 @@ type autoPlayChangeIn struct {
 	Conditions        *Conditions `json:"conditions,omitempty" jsonschema:"New conditions, replacing the old ones whole."`
 	Priority          *Priority   `json:"priority,omitempty" jsonschema:"A new priority, replacing the old one whole."`
 	OnceWithinMinutes *int        `json:"once_within_minutes,omitempty" jsonschema:"A new limit in minutes, 0 for none."`
-	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, causer, or computer."`
-	ComputerIDs       *[]string   `json:"computer_ids,omitempty" jsonschema:"With run_on computer: new computer ids in order, picked as you; [] means your own order. Omit to keep it."`
-	ComputerID        *string     `json:"computer_id,omitempty" jsonschema:"With run_on computer: one new computer's id, as computer_ids with a single id; ignored when computer_ids is sent."`
+	RunOn             *RunOn      `json:"run_on,omitempty" jsonschema:"developer, tester, causer, or person."`
+	RunAsMe           bool        `json:"run_as_me,omitempty" jsonschema:"With run_on person: true makes you the person it runs as, on your order."`
 	MemoryIDs         *[]string   `json:"memory_ids,omitempty" jsonschema:"New memory ids, replacing the old list whole; [] reads none beyond the always-included ones."`
 	OneAtATime        *bool       `json:"one_at_a_time,omitempty" jsonschema:"On or off."`
 	Resource          *string     `json:"resource,omitempty" jsonschema:"A new shared name, \"\" for none."`
@@ -124,11 +119,7 @@ func (in autoPlayChangeIn) overlay(a *AutoPlay) (bool, AutoPlayInput) {
 	if in.RunOn != nil {
 		out.RunOn = *in.RunOn
 	}
-	legacy := ""
-	if in.ComputerID != nil {
-		legacy = *in.ComputerID
-	}
-	out.ComputerIDs = pickedComputers(in.ComputerIDs, legacy)
+	out.RunAsMe = in.RunAsMe
 	if in.MemoryIDs != nil {
 		out.MemoryIDs = *in.MemoryIDs
 	}

@@ -373,7 +373,6 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Trails:    store.PlayTrails,
 		Perm:      svc.accessSvc,
 		Targets:   playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc, deploy: svc.deploySvc},
-		Computers: svc.accessSvc,
 		Docs:      svc.docsSvc,
 		Rounds:    svc.docsSvc,
 		Projects:  playsProjectLookup{memoriesProjectLookup{projects: store.Projects}},
@@ -420,7 +419,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		mustSubscribe(ctx, bus, "plays.queue_auto_play", topic, " for the run queue", svc.playsRunner.HandleAutoPlayOff)
 	}
 	// An edited auto play's computers and picker carry over to the runs it still has queued.
-	mustSubscribe(ctx, bus, "plays.queue_auto_play_computers", plays.TopicAutoPlayUpdated, " for the run queue", svc.playsRunner.HandleAutoPlayComputersChanged)
+	mustSubscribe(ctx, bus, "plays.queue_auto_play_computers", plays.TopicAutoPlayUpdated, " for the run queue", svc.playsRunner.HandleAutoPlayPersonChanged)
 	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
 	go svc.playsRunner.RunQueue(ctx)
 	// A schedule auto play sweeps its tickets when its cron comes round (ADR 0179).

@@ -73,10 +73,8 @@ type AutoPlay struct {
 	CreatedBy         string
 	CreatedAt         int64
 	UpdatedAt         int64
-	ComputerID        string
 	RunAs             string
 	MemoryIds         string
-	ComputerIds       string
 	Schedule          sql.NullString
 	OneAtATime        int64
 	Resource          string
@@ -1146,12 +1144,10 @@ type PlayQueue struct {
 	DecidedAt        sql.NullInt64
 	NotBefore        int64
 	AutomationID     string
-	ComputerID       string
 	HarnessProjectID string
 	Service          string
 	OutageID         string
 	WaitingOn        string
-	ComputerIds      string
 	SweepID          string
 	SweepPosition    int64
 	StartBy          sql.NullInt64

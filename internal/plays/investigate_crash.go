@@ -21,7 +21,7 @@ const investigateCrashInstructions = "A service in a stack crashed. Find out why
 // off until one is picked and it is switched on.
 func investigateCrashAutoPlay() AutoPlayInput {
 	return AutoPlayInput{
-		Moment: MomentStackServiceCrashed, RunOn: RunOnComputer,
+		Moment: MomentStackServiceCrashed, RunOn: RunOnPerson,
 		Conditions: Conditions{Match: MatchAll, Groups: []Group{}},
 		Priority:   Priority{Rules: []PriorityRule{}, Otherwise: LevelNormal},
 	}
