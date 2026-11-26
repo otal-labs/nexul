@@ -75,7 +75,7 @@ describe("ProjectRepos", () => {
   it("marks the tests repository and only that one", async () => {
     renderRepos();
     expect(await screen.findByText("onik97/nexul-e2e")).toBeInTheDocument();
-    expect(screen.getAllByText("Tests, never deployed")).toHaveLength(1);
+    expect(screen.getAllByText("Tests")).toHaveLength(1);
   });
 
   it("turns a GitHub repository's issue sync on from its row", async () => {

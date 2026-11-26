@@ -1,14 +1,19 @@
+import { HeaderFacts } from "@/components/HeaderFacts";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useFetchImports } from "@/hooks/ImportHooks";
+import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+// What the General card doesn't show: how much the workspace holds and since when; its URL is the card's first field.
 const GeneralMeta = () => {
   const workspace = useSelectedWorkspace();
-  return <span className="font-mono">{workspace && `/${workspace.slug}`}</span>;
+  const { data: projects } = useFetchProjects();
+  const since = workspace?.created_at && new Date(workspace.created_at).toLocaleDateString(undefined, { dateStyle: "medium" });
+  return <span className="tabular-nums"><HeaderFacts parts={[projects && count(projects.length, "project"), since && `Since ${since}`]} /></span>;
 };
 
 const InterviewMeta = () => {

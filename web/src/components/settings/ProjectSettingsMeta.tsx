@@ -91,8 +91,17 @@ const ReposMeta = ({ projectId }: { projectId: string }) => {
 
 const ServicesMeta = ({ projectId }: { projectId: string }) => {
   const { data: services } = useFetchServices(projectId);
-  const machines = services && new Set(services.map((s) => s.machine || s.target).filter(Boolean)).size;
-  return <Facts parts={[!!machines && `On ${count(machines, "machine")}`, services?.length === 0 && "Nothing deployed yet"]} />;
+  const machines = services && [...new Set(services.map((s) => s.machine || s.target).filter(Boolean))];
+  const only = machines?.length === 1 && machines[0];
+  return (
+    <Facts
+      parts={[
+        only && <>On <span className="font-mono">{only}</span></>,
+        !!machines && machines.length > 1 && `On ${count(machines.length, "machine")}`,
+        services?.length === 0 && "Nothing deployed yet",
+      ]}
+    />
+  );
 };
 
 // The header's facts line for the open section: what it holds right now, from the query the section already loads.
