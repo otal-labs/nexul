@@ -11,6 +11,7 @@ import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHo
 import {
   linkSaysSomething,
   PLACEMENT_OPTIONS,
+  projectLinkFormValues,
   ProjectLinkFormSchema,
   START_IN_OPTIONS,
   type ProjectLink,
@@ -18,16 +19,6 @@ import {
 } from "@/models/Pairing";
 
 const SAME_AS_DEFAULTS = "Same as defaults";
-
-const formValues = (link: ProjectLink): ProjectLinkFormData => ({
-  provider: link.provider ?? "",
-  model: link.model ?? "",
-  model_options: link.model_options ?? [],
-  start_in: link.start_in ?? "",
-  placement: link.placement ?? "",
-  computers: link.computers,
-  checkouts: link.checkouts,
-});
 
 interface ProjectLinkFormProps {
   projectId: string;
@@ -39,13 +30,13 @@ interface ProjectLinkFormProps {
 export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFormProps) => {
   const setLink = useSetProjectLink(projectId, projectName);
   const clearLink = useClearProjectLink(projectId, projectName);
-  const form = useForm<ProjectLinkFormData>({ defaultValues: formValues(link), resolver: zodResolver(ProjectLinkFormSchema) });
+  const form = useForm<ProjectLinkFormData>({ defaultValues: projectLinkFormValues(link), resolver: zodResolver(ProjectLinkFormSchema) });
   const ids = useWatch({ control: form.control, name: "computers" });
   const modelComputer = useModelComputerId(ids);
 
   const onSubmit = async (data: ProjectLinkFormData) => {
     try {
-      form.reset(formValues(await setLink.mutateAsync(data)));
+      form.reset(projectLinkFormValues(await setLink.mutateAsync(data)));
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
     }
@@ -54,7 +45,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
   const onClear = async () => {
     try {
       await clearLink.mutateAsync();
-      form.reset(formValues({ project_id: projectId, computers: [], checkouts: form.getValues("checkouts") }));
+      form.reset(projectLinkFormValues({ project_id: projectId, computers: [], checkouts: form.getValues("checkouts") }));
     } catch {
       // Error is surfaced by the hook's toast.
     }

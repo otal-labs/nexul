@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { ProjectCheckout } from "@/models/ProjectCheckout";
 
 interface ProjectCheckoutCellProps {
@@ -7,11 +8,12 @@ interface ProjectCheckoutCellProps {
   repository?: string | undefined;
   checkout: ProjectCheckout;
   onPick: (harnessProjectId: string) => void;
+  className?: string;
 }
 
 // What a project's run would use on one computer: its checkout there, a pick between several, or that it has none.
-export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick }: ProjectCheckoutCellProps) => (
-  <div className="flex min-w-0 items-center justify-end gap-2">
+export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick, className }: ProjectCheckoutCellProps) => (
+  <div className={cn("flex min-w-0 items-center justify-end gap-2", className)}>
     {repository && (
       <span className="shrink-0 font-mono text-micro text-muted-foreground" title={repository}>
         {repository.split("/").pop()}

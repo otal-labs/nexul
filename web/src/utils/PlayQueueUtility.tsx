@@ -1,7 +1,7 @@
 import { onlyComputersFull, waitingWhy } from "@nexul/client-core/playQueue";
 
 import type { PlayType } from "@/models/Play";
-import { ADD_COMPUTER_LINK, COMPUTERS_PATH, checkoutFixLink, type ReadinessLink } from "@/models/Pairing";
+import { ADD_COMPUTER_LINK, COMPUTERS_PATH, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
 
@@ -26,12 +26,10 @@ const setupLinks: Record<string, ReadinessLink> = {
   setup_required: { to: COMPUTERS_PATH, label: "Run setup" },
 };
 
-const waitingOn = (item: PlayQueueItem) => item.waiting_on ?? [];
-
 // Where the person the run lands on fixes the setup gap that holds it, if one does.
 export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined => {
   if (item.status !== "queued" || onlyComputersFull(item)) return undefined;
-  return checkoutFixLink(waitingOn(item)) ?? setupLinks[item.reason];
+  return setupLinks[item.reason];
 };
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [

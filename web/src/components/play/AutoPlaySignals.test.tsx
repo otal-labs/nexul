@@ -148,11 +148,11 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("link", { name: "Pair it again" })).not.toBeInTheDocument();
   });
 
-  it("names each computer the run waits on and why on its own line, and sends its person to add the project", async () => {
+  it("names each computer the run waits on and why on its own line, its checkout fixed on the run rather than a link away", async () => {
     mockApi(() => playQueue({ items: [waiting] }), "u-alice");
     renderSection();
     expect((await screen.findByText(/Laptop is offline/)).textContent).toMatch(/^Alice .* · Laptop is offline$/);
     const last = screen.getByText(/Workstation doesn't have this project/);
-    expect(within(last).getByRole("link", { name: "Add it to a computer" })).toHaveAttribute("href", "/acme/agent");
+    expect(within(last).queryByRole("link"), "WaitingCheckoutFix puts the fix under the run").not.toBeInTheDocument();
   });
 });

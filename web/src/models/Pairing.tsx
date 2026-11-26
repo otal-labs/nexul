@@ -525,6 +525,17 @@ export const ProjectLinkFormSchema = z.object({
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;
 
+// A saved link as the form edits it; a project with no link yet passes one with no computers and no checkouts.
+export const projectLinkFormValues = (link: ProjectLink): ProjectLinkFormData => ({
+  provider: link.provider ?? "",
+  model: link.model ?? "",
+  model_options: link.model_options ?? [],
+  start_in: link.start_in ?? "",
+  placement: link.placement ?? "",
+  computers: link.computers,
+  checkouts: link.checkouts,
+});
+
 // Whether the caller can run a play right now: the computer it would land on, with its checkout, provider, model and the
 // computers passed over before it, or a reason it can't. provider/model travel here so the run dialog's pill can preselect
 // them without a second call to the same resolve endpoint.
@@ -560,15 +571,9 @@ export const COMPUTERS_PATH = AGENT_PATH;
 export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_PATH, label: "Add a computer" };
 export const COMPUTER_PROJECTS_PATH = AGENT_PATH;
 
-const CHECKOUT_FIX_LINKS: Partial<Record<PassOver["why"], ReadinessLink>> = {
-  no_checkout: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
-  clone_failed: { to: COMPUTER_PROJECTS_PATH, label: "Add it to a computer" },
-  ambiguous_checkout: { to: COMPUTER_PROJECTS_PATH, label: "Pick a checkout" },
-};
-
-// A computer passed over for its checkout is fixed on the Projects tab, so that link wins over the generic one.
-export const checkoutFixLink = (passes: PassOver[]): ReadinessLink | undefined =>
-  passes.map((p) => CHECKOUT_FIX_LINKS[p.why]).find((link) => link !== undefined);
+// The computers a run passed over for the project's checkout there, which the run itself fixes (spec decision 6).
+export const checkoutPasses = (passes: PassOver[]): PassOver[] =>
+  passes.filter((p) => p.why === "ambiguous_checkout" || p.why === "no_checkout" || p.why === "clone_failed");
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, { message: string; link?: ReadinessLink }> = {

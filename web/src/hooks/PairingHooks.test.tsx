@@ -96,13 +96,13 @@ describe("useHarnessReadiness", () => {
     );
   });
 
-  it("links to the Agent page when a passed-over computer lacks the project", async () => {
+  it("links to your computers when a passed-over computer lacks the project, whose checkout the run itself picks", async () => {
     const offline = { computer_id: "c1", name: "laptop", why: "offline", text: "laptop is offline" };
     const missing = { computer_id: "c2", name: "box", why: "no_checkout", text: "box doesn't have this project" };
     mockRoutes({ resolve: { ok: false, reason: "no_computer_ready", passed_over: [offline, missing] }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ link: { to: "/agent", label: "Add it to a computer" } }),
+      expect(result.current).toMatchObject({ link: { to: "/agent", label: "Your computers" } }),
     );
   });
 

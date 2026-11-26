@@ -9,7 +9,6 @@ import { getPATsKey } from "@/hooks/AuthHooks";
 import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
-  checkoutFixLink,
   leftoverSessionNote,
   type Computer,
   type HarnessProject,
@@ -65,7 +64,7 @@ const blockedReadiness = (data: ResolveResponse): HarnessReadiness => {
   const copy = HARNESS_READINESS_COPY[state];
   const passes = state === "needs_location" ? [] : (data.passed_over ?? []);
   const message = passes.length > 0 ? `${copy.message} ${passOverLines(passes)}.` : copy.message;
-  const link = checkoutFixLink(passes) ?? copy.link;
+  const link = copy.link;
   return { state, message, passedOver: passes, ...(link && { link }) };
 };
 

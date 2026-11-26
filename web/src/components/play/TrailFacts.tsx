@@ -7,6 +7,7 @@ import { microheaderClass } from "@/components/Microheader";
 import { TrailFoundMemories } from "@/components/play/TrailFoundMemories";
 import { TrailSharedRunLine } from "@/components/play/TrailSharedRunLine";
 import { TrailVersion } from "@/components/play/TrailVersion";
+import { WaitingCheckoutFix } from "@/components/play/WaitingCheckoutFix";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { computersQuery, useFetchHarnessProviders } from "@/hooks/PairingHooks";
@@ -14,7 +15,7 @@ import { useLiveTrailState } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import { runnerPresence } from "@/models/ComputerChecks";
 import { findModel } from "@/models/ModelPick";
-import { passOverLines } from "@/models/Pairing";
+import { checkoutPasses, passOverLines } from "@/models/Pairing";
 import { sharedComputerName } from "@/models/SharedComputer";
 import { type Trail } from "@/models/Trail";
 import { useIsViewingAs } from "@/stores/viewAsStore";
@@ -62,13 +63,17 @@ const ComputerName = ({ trail }: TrailFactsProps) => {
   );
 };
 
-// The computer, then each one the run passed over before it and why.
+// The computer, then each one the run passed over before it and why, with the fix for a checkout on a computer of the viewer's own.
 const TrailComputer = ({ trail }: TrailFactsProps) => {
   const passedOver = trail.passed_over ?? [];
+  const fixes = checkoutPasses(passedOver);
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
       <ComputerName trail={trail} />
       {passedOver.length > 0 && <span className="text-xs text-pretty break-words text-muted-foreground">Passed over: {passOverLines(passedOver)}</span>}
+      {fixes.map((pass) => (
+        <WaitingCheckoutFix key={pass.computer_id} projectId={trail.project_id} pass={pass} />
+      ))}
     </span>
   );
 };
