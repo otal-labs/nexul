@@ -13,14 +13,12 @@ export const MemorySettingsLine = ({ memory }: MemorySettingsLineProps) => (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-row">
       <MemoryFolderMenu memory={memory} />
       <MemoryIncludedControl memory={memory} />
-      <span className="font-mono text-xs text-muted-foreground tabular-nums">
-        updated {formatUpdatedAgo(memory.updated_at)}
-      </span>
-      <span className="font-mono text-xs text-muted-foreground tabular-nums">
-        {memory.last_read_at && `read by a run ${formatUpdatedAgo(memory.last_read_at)}`}
-        {!memory.last_read_at && "no run has read it yet"}
-      </span>
     </div>
+    <p className="font-mono text-xs text-muted-foreground tabular-nums">
+      updated {formatUpdatedAgo(memory.updated_at)} ·{" "}
+      {memory.last_read_at && `read by a run ${formatUpdatedAgo(memory.last_read_at)}`}
+      {!memory.last_read_at && "no run has read it yet"}
+    </p>
     {isInterviewMemory(memory) && <p className="text-row text-muted-foreground">Sent in every Agent turn in this project; it can&apos;t be switched off.</p>}
     {isDecisionsLogMemory(memory) && <p className="text-row text-muted-foreground">Read from the memory index when an agent needs the why.</p>}
   </div>

@@ -66,14 +66,21 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
         <Routes>
           <Route path="/memories" element={<MemoriesPage />} />
           <Route path="/memories/:projectToken/:memoryId" element={<MemoriesPage />} />
+          <Route path="/acme/memories/:projectToken/:memoryId" element={<MemoriesPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
+// Below 1024px the list is the page; a test that wants the side-by-side layout widens it.
+const setWide = (wide: boolean) => {
+  window.matchMedia = ((query: string) => ({ matches: wide, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+};
+
 beforeEach(() => {
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
+  setWide(false);
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "", selectedProjectId: "" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.put).mockReset();
 });
@@ -92,6 +99,13 @@ describe("MemoriesPage", () => {
     expect(within(footer).getByRole("link", { name: /Where tickets go/ })).toBeInTheDocument();
     expect(within(footer).queryByRole("link", { name: /Naming rules/ })).not.toBeInTheDocument();
     expect(await screen.findByText("editing mem-2")).toBeInTheDocument();
+  });
+
+  it("opens the list's first memory from 1024px instead of an empty pane", async () => {
+    setWide(true);
+    useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
+    renderPage("/memories", ["memories:read"]);
+    expect(await screen.findByText("editing mem-1")).toBeInTheDocument();
   });
 
   it("moves a memory to the Footer folder from its row menu", async () => {

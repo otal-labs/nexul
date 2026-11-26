@@ -948,7 +948,9 @@ and Up make its row taller and shorter. A sized column drops the 6rem floor; a
 row's height is its minimum. Images take the large radius, a black or white 10% outline
 drawn inside, and the card shadow. A code block is a `surface-2` well at
 13px in both modes, its language picker the well's header row and its syntax
-hues set per mode to hold 4.5:1 on the well. The body's last block keeps no
+hues set per mode to hold 4.5:1 on the well; inline code is the same
+`surface-2` as a borderless tint at 0.85em, so a line of it still reads as
+text, never a row of outlines. The body's last block keeps no
 bottom margin and the editor has no minimum height, so a short or empty body
 ends where its text does; the gutter `+` shows only while the body has focus. A
 blockquote is a 2px rule in `foreground` at 25%.

@@ -153,7 +153,7 @@ describe("MemoryDetail", () => {
     { read: new Date(Date.now() - 2 * 3_600_000).toISOString(), line: "read by a run 2h ago" },
   ])("says when a run last read it: $line", async ({ read, line }) => {
     await renderDetail({ memory: { ...memory, last_read_at: read } });
-    expect(await screen.findByText(line)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(line))).toBeInTheDocument();
   });
 
   it("says the decisions log is not sent every turn, and why", async () => {

@@ -32,7 +32,7 @@ export const MemoryVersionsFeed = ({ memoryId }: MemoryVersionsFeedProps) => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {shown && (
-        <EnterList className="-mx-2">
+        <EnterList>
           {shown.map((version) => (
             <MemoryVersionRow key={version.version} version={version} onOpen={setOpened} />
           ))}

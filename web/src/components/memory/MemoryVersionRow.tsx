@@ -24,7 +24,7 @@ export const MemoryVersionRow = ({ version, onOpen }: MemoryVersionRowProps) => 
       <button
         type="button"
         onClick={() => onOpen(version.version)}
-        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left text-xs transition-colors duration-150 ease-standard hover:bg-accent focus-visible:bg-accent/40"
+        className="flex h-8 w-full items-center gap-2 text-left text-xs transition-colors duration-150 ease-standard focus-visible:bg-accent/40 [&:hover>span]:text-foreground"
       >
         <span className="w-6 shrink-0 font-mono text-muted-foreground tabular-nums">v{version.version}</span>
         <span className={cn("min-w-0 flex-1 truncate", !authorId && "text-muted-foreground")}>{authorId ? authorLabel(version.via, personLabel(author)) : "No author recorded"}</span>
