@@ -218,6 +218,23 @@ func (r *PairingRepo) ReorderComputers(ctx context.Context, userID string, ids [
 	})
 }
 
+func (r *PairingRepo) SetComputerLabels(ctx context.Context, userID, computerID string, labels []string, at time.Time) error {
+	encoded, err := json.Marshal(labels)
+	if err != nil {
+		return fmt.Errorf("encode labels of computer %s: %w", computerID, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerLabels(ctx, sqlcgen.SetPairingComputerLabelsParams{Labels: string(encoded), UpdatedAt: at.Unix(), ID: computerID, UserID: userID})
+		if err != nil {
+			return fmt.Errorf("set labels of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set labels of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *PairingRepo) SetComputerPlaysOff(ctx context.Context, userID, computerID string, off bool, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetPairingComputerPlaysOff(ctx, sqlcgen.SetPairingComputerPlaysOffParams{PlaysOff: boolToInt(off), UpdatedAt: at.Unix(), ID: computerID, UserID: userID})
@@ -623,6 +640,7 @@ func (r *PairingRepo) SetSetupMCPToken(ctx context.Context, userID, computerID, 
 }
 
 func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
+	facts := toFacts(row)
 	return pairing.Computer{
 		ID: row.ID, UserID: row.UserID, Kind: harness.Kind(row.Kind), Name: row.Name, ServerURL: row.ServerUrl, BearerToken: row.BearerToken,
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
@@ -632,10 +650,12 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 			ModelOptions: decodeJSON(row.SetupModelOptions, map[string][]harness.OptionSetting{}), Folder: row.SetupFolder,
 		},
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
-		Tunnel: toComputerTunnel(row), Facts: toFacts(row), FactsAt: unixPtrFromNull(row.FactsAt),
+		Tunnel: toComputerTunnel(row), Facts: facts, FactsAt: unixPtrFromNull(row.FactsAt),
 		Position: int(row.Position), RunsAtOnce: int(row.RunsAtOnce), ChatProjectID: row.ChatProjectID,
-		ShellEnabled: row.ShellEnabled != 0,
-		PlaysOff:     row.PlaysOff != 0,
+		ShellEnabled:  row.ShellEnabled != 0,
+		PlaysOff:      row.PlaysOff != 0,
+		Labels:        decodeJSON(row.Labels, []string{}),
+		DerivedLabels: pairing.DerivedLabels(facts),
 	}
 }
 

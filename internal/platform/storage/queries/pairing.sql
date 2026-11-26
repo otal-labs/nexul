@@ -203,3 +203,6 @@ DELETE FROM pairing_order_shares WHERE user_id = ? AND computer_id = ?;
 
 -- name: SetPairingOrderSharePosition :execrows
 UPDATE pairing_order_shares SET position = ? WHERE user_id = ? AND computer_id = ?;
+
+-- name: SetPairingComputerLabels :execrows
+UPDATE pairing_computers SET labels = ?, updated_at = ? WHERE id = ? AND user_id = ?;

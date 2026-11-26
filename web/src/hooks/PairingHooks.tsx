@@ -307,6 +307,7 @@ export interface ComputerSettingsInput {
   chat_project_id?: string;
   shell_enabled?: boolean;
   plays_off?: boolean;
+  labels?: string[];
 }
 
 // A computer's runs at once, chat folder and commands switch apply the moment they are picked, like the appearance settings.
@@ -323,7 +324,7 @@ export const useUpdateComputerSettings = (computerId: string) => {
   });
 };
 
-const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id, shell_enabled: c.shell_enabled, plays_off: c.plays_off ?? false });
+const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id, shell_enabled: c.shell_enabled, plays_off: c.plays_off ?? false, labels: c.labels ?? [] });
 
 // Pairing frames name the computer they are about (internal/pairing/events.go).
 interface ComputerPayload {

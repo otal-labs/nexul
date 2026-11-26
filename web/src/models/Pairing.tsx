@@ -40,6 +40,9 @@ export interface Computer {
   shell_enabled: boolean;
   // Its owner's switch keeping every play, auto play and @Agent turn off it (ADR 0211); absent on an older server.
   plays_off?: boolean;
+  // What its owner set, and what its facts give it (docker, its OS); a play's needs match both (ADR 0197).
+  labels?: string[];
+  derived_labels?: string[];
 }
 
 // Mirrors pairing.PassOver: one computer a run could not land on, with the line every surface shows as is.

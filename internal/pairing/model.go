@@ -57,6 +57,9 @@ type Computer struct {
 	ShellEnabled bool `json:"shell_enabled"`
 	// PlaysOff is its owner's switch keeping every run off it; commands, logs and setup stay (ADR 0211).
 	PlaysOff bool `json:"plays_off"`
+	// Labels are what its owner set on it; DerivedLabels come from its facts (ADR 0197). A play's needs match both.
+	Labels        []string `json:"labels"`
+	DerivedLabels []string `json:"derived_labels"`
 }
 
 // SharedComputer is whose a shared computer is and what the caller holds on it.
@@ -78,7 +81,7 @@ func (c Computer) SharedName() string {
 
 // sharedView is c with only its name, who shares it and its runner's connection: whether it is connected, and since when it last was.
 func sharedView(c Computer) Computer {
-	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared, RunsAtOnce: c.RunsAtOnce}
+	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared, RunsAtOnce: c.RunsAtOnce, Labels: c.Labels, DerivedLabels: c.DerivedLabels}
 	if c.Runner != nil {
 		out.Runner = &ComputerRunner{Connected: c.Runner.Connected, LastSeen: c.Runner.LastSeen, Reconnecting: c.Runner.Reconnecting}
 	}
