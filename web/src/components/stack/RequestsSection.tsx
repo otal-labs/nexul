@@ -24,7 +24,7 @@ const Summary = ({ requests }: { requests: StackRequests }) => {
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <p className="font-mono text-sm tabular-nums">
             <span className="text-2xl font-medium tracking-tight">{total.toLocaleString()}</span>{" "}
-            <span className="text-muted-foreground">requests in the last hour</span>
+            <span className="text-muted-foreground">{total === 1 ? "request" : "requests"} in the last hour</span>
           </p>
           <p className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
             {errors > 0 && <span aria-hidden className="size-2 shrink-0 self-center rounded-full bg-warning-mark" />}
