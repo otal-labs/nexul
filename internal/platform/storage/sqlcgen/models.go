@@ -1099,6 +1099,7 @@ type Play struct {
 	UpdatedAt          int64
 	BuiltinKey         string
 	Repository         string
+	Needs              string
 }
 
 type PlayChange struct {

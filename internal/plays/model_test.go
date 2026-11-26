@@ -3,6 +3,7 @@ package plays
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -25,6 +26,7 @@ func TestPlay_Validate(t *testing.T) {
 		{"doc play with stage", Play{Label: "Doc", Type: TypeDoc, ShowWhenStage: &progress}, true},
 		{"valid interview play", Play{Label: "Interview", Type: TypeInterview, Repository: RepositoryApp}, false},
 		{"a repository that is neither role", Play{Label: "Doc", Type: TypeDoc, Repository: "docs"}, true},
+		{"a need outside the label rule", Play{Label: "Doc", Type: TypeDoc, Repository: RepositoryApp, Needs: []string{"staging keys"}}, true},
 		{"interview play with stage", Play{Label: "Interview", Type: TypeInterview, ShowWhenStage: &progress}, true},
 	}
 	for _, tt := range tests {
@@ -37,4 +39,13 @@ func TestPlay_Validate(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestPlay_Validate_NormalizesNeeds(t *testing.T) {
+	t.Parallel()
+	progress := StageProgress
+	p := Play{Label: "Fix", Type: TypeTicket, ShowWhenStage: &progress, Repository: RepositoryApp, Needs: []string{" GPU ", "gpu", "windows-vm"}}
+
+	require.NoError(t, p.Validate())
+	assert.Equal(t, []string{"gpu", "windows-vm"}, p.Needs)
 }

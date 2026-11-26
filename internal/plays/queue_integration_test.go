@@ -1206,3 +1206,28 @@ func TestHandleAutoPlayComputersChanged_LeavesTheQueueAloneWhenNothingMoves(t *t
 		})
 	}
 }
+
+func TestHandlePlayUpdated_RetriesThatPlaysHeldRunsAtOnce(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.ticket("t-1")
+	r.unblock(t, "t-1")
+	r.Refuse("no_computer_ready")
+	r.dispatch(t)
+	r.Refuse("")
+	r.Kicked()
+
+	other, err := json.Marshal(plays.UpdatedEvent{Play: plays.Play{ID: "another-play"}})
+	require.NoError(t, err)
+	require.NoError(t, r.Runner.HandlePlayUpdated(t.Context(), eventbus.Event{ID: ids.New(), Topic: plays.TopicUpdated, Payload: other}))
+	r.dispatch(t)
+	assert.Equal(t, plays.QueueQueued, r.only(t, "t-1").Status, "another play's save wakes nothing of this one")
+
+	saved, err := json.Marshal(plays.UpdatedEvent{Play: *fix})
+	require.NoError(t, err)
+	require.NoError(t, r.Runner.HandlePlayUpdated(t.Context(), eventbus.Event{ID: ids.New(), Topic: plays.TopicUpdated, Payload: saved}))
+	assert.True(t, r.Kicked())
+	r.dispatch(t)
+	assert.Equal(t, plays.QueueStarted, r.only(t, "t-1").Status, "a saved play's held run looks again at once")
+}

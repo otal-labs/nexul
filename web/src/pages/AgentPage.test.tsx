@@ -171,6 +171,7 @@ describe("an open play", () => {
         enabled: false,
         show_when_stage: "progress",
         excluded_project_ids: ["p-1"],
+        needs: [],
       }),
     );
   });

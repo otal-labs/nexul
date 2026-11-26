@@ -770,3 +770,18 @@ func (q *Queries) WakePlayQueuePerson(ctx context.Context, arg WakePlayQueuePers
 	_, err := q.db.ExecContext(ctx, wakePlayQueuePerson, arg.Now, arg.PersonID)
 	return err
 }
+
+const wakePlayQueuePlay = `-- name: WakePlayQueuePlay :exec
+UPDATE play_queue SET not_before = ?1
+WHERE status = 'queued' AND play_id = ?2 AND not_before > ?1
+`
+
+type WakePlayQueuePlayParams struct {
+	Now    int64
+	PlayID string
+}
+
+func (q *Queries) WakePlayQueuePlay(ctx context.Context, arg WakePlayQueuePlayParams) error {
+	_, err := q.db.ExecContext(ctx, wakePlayQueuePlay, arg.Now, arg.PlayID)
+	return err
+}

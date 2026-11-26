@@ -7,6 +7,7 @@ import { PLAY_STAGE_LABELS, PLAY_STAGES } from "@nexul/client-core/plays";
 import { PermissionCheckRow } from "@/components/access/PermissionCheckRow";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
+import { PlayNeedsField } from "@/components/play/PlayNeedsField";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,6 +105,8 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
       )}
 
       <FormSelect control={control} name="repository" label="Works in" options={REPOSITORY_OPTIONS} />
+
+      <PlayNeedsField control={control} />
 
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">

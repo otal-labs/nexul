@@ -59,7 +59,7 @@ type QueueItem struct {
 	QueuedAt      time.Time    `json:"queued_at"`
 	DecidedAt     *time.Time   `json:"decided_at"`
 	NotBefore     time.Time    `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
-	ComputerIDs   []string     `json:"computer_ids" jsonschema:"The computers its auto play names for run_on computer, in order, the run going to the first that can take it; empty when the run goes to its person's own computers in their usual order."`
+	ComputerIDs   []string     `json:"computer_ids" jsonschema:"Computers its auto play names for run_on computer, in order; empty uses its person's own order."`
 	ComputerID    string       `json:"computer_id" jsonschema:"The first of computer_ids, for readers that predate the list; empty when it is empty."`
 	Service       string       `json:"service" jsonschema:"For a stack moment, the service that went down or came back; empty otherwise."`
 	OutageID      string       `json:"outage_id" jsonschema:"For a stack moment, the outage it opened or closed; empty otherwise."`

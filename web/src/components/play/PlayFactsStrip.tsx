@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { PLAY_STAGE_LABELS } from "@nexul/client-core/plays";
 
 import { Microheader } from "@/components/Microheader";
+import { LabelChip } from "@/components/LabelChip";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { type Play } from "@/models/Play";
@@ -40,6 +41,15 @@ export const PlayFactsStrip = ({ play }: PlayFactsStripProps) => {
           </span>
         )}
       </Fact>
+      {(play.needs ?? []).length > 0 && (
+        <Fact label="Needs">
+          <span className="flex flex-wrap gap-1.5">
+            {play.needs?.map((need) => (
+              <LabelChip key={need} label={need} />
+            ))}
+          </span>
+        </Fact>
+      )}
       {play.builtin_key && (
         <Fact label="Template">
           <PlayTemplateLine play={play} />

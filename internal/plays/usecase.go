@@ -141,6 +141,7 @@ type CreateInput struct {
 	ExcludedProjectIDs []string
 	// Repository is app when empty.
 	Repository Repository
+	Needs      []string
 }
 
 // UpdateInput is the owner-edited surface of an existing play; type is immutable after create (not included here).
@@ -153,6 +154,8 @@ type UpdateInput struct {
 	ExcludedProjectIDs []string
 	// Repository keeps the play's when empty.
 	Repository Repository
+	// Needs replaces the play's when set; nil keeps them.
+	Needs *[]string
 }
 
 // List returns the plays of workspaceID the caller can see, sorted by label, each saying whether they can run it and
@@ -244,6 +247,7 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 		ShowWhenStage:      in.ShowWhenStage,
 		ExcludedProjectIDs: normalizeIDs(in.ExcludedProjectIDs),
 		Repository:         cmp.Or(in.Repository, RepositoryApp),
+		Needs:              in.Needs,
 		CreatedBy:          actorID(ctx),
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -296,6 +300,9 @@ func (s *Service) update(ctx context.Context, workspaceID, id string, in UpdateI
 	p.ShowWhenStage = in.ShowWhenStage
 	p.ExcludedProjectIDs = normalizeIDs(slices.Concat(in.ExcludedProjectIDs, s.unseenExclusions(ctx, p)))
 	p.Repository = cmp.Or(in.Repository, p.Repository)
+	if in.Needs != nil {
+		p.Needs = *in.Needs
+	}
 	p.UpdatedAt = s.now().UTC()
 	if err := p.Validate(); err != nil {
 		return nil, err

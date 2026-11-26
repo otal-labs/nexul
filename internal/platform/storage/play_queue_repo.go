@@ -190,6 +190,12 @@ func (r *PlayQueueRepo) WakePerson(ctx context.Context, personID string, now tim
 	})
 }
 
+func (r *PlayQueueRepo) WakePlay(ctx context.Context, playID string, now time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		return r.q.WithTx(tx).WakePlayQueuePlay(ctx, sqlcgen.WakePlayQueuePlayParams{Now: now.Unix(), PlayID: playID})
+	})
+}
+
 func (r *PlayQueueRepo) RecoverDispatching(ctx context.Context) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		return r.q.WithTx(tx).RecoverDispatchingPlayQueue(ctx)

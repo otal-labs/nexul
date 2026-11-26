@@ -2,40 +2,10 @@ package pairing
 
 import (
 	"context"
-	"fmt"
-	"regexp"
 	"slices"
-	"strings"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 )
-
-// MaxLabels and maxLabelLength bound the labels an owner sets on one computer (ADR 0197).
-const (
-	MaxLabels      = 20
-	maxLabelLength = 32
-)
-
-var labelPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
-
-// normalizeLabels lowercases and trims each label, drops blanks and repeats, and refuses one outside the rule.
-func normalizeLabels(labels []string) ([]string, error) {
-	out := make([]string, 0, len(labels))
-	for _, label := range labels {
-		label = strings.ToLower(strings.TrimSpace(label))
-		if label == "" || slices.Contains(out, label) {
-			continue
-		}
-		if len(label) > maxLabelLength || !labelPattern.MatchString(label) {
-			return nil, fmt.Errorf("%w: label %q: use lowercase letters, digits and dashes, up to %d characters", apperrs.ErrInvalid, label, maxLabelLength)
-		}
-		out = append(out, label)
-	}
-	if len(out) > MaxLabels {
-		return nil, fmt.Errorf("%w: a computer takes up to %d labels", apperrs.ErrInvalid, MaxLabels)
-	}
-	return out, nil
-}
 
 // DerivedLabels are the labels a computer has from its facts alone: docker while Docker answers, and its OS.
 func DerivedLabels(f *Facts) []string {
@@ -56,12 +26,12 @@ func DerivedLabels(f *Facts) []string {
 }
 
 // SetLabels replaces the labels on one of the caller's own computers; waiting runs look again, since a play's needs may now match.
-func (s *Service) SetLabels(ctx context.Context, userID, computerID string, labels []string) (*Computer, error) {
+func (s *Service) SetLabels(ctx context.Context, userID, computerID string, in []string) (*Computer, error) {
 	c, err := s.ownComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
 	}
-	clean, err := normalizeLabels(labels)
+	clean, err := labels.Normalize(in)
 	if err != nil {
 		return nil, err
 	}
@@ -72,4 +42,14 @@ func (s *Service) SetLabels(ctx context.Context, userID, computerID string, labe
 	c.Labels = clean
 	c.BearerToken = ""
 	return c, nil
+}
+
+// missingNeed is the first of needs c lacks among its own and its facts' labels; empty when it has them all.
+func missingNeed(c Computer, needs []string) string {
+	for _, need := range needs {
+		if !slices.Contains(c.Labels, need) && !slices.Contains(DerivedLabels(c.Facts), need) {
+			return need
+		}
+	}
+	return ""
 }

@@ -62,6 +62,7 @@ func TestUpdate_ASave_WritesAVersionOnlyForInstructionsAndAChangePerOtherChanged
 		{"stage", func(in *UpdateInput) { in.ShowWhenStage = &review }, false, []string{ChangedShowWhenStage}},
 		{"excluded projects", func(in *UpdateInput) { in.ExcludedProjectIDs = []string{"proj-1"} }, false, []string{ChangedExcluded}},
 		{"repository", func(in *UpdateInput) { in.Repository = RepositoryTests }, false, []string{ChangedRepository}},
+		{"needs", func(in *UpdateInput) { in.Needs = &[]string{"gpu"} }, false, []string{ChangedNeeds}},
 		{"everything at once", func(in *UpdateInput) {
 			in.Label, in.Description, in.Instructions, in.Enabled, in.ShowWhenStage, in.ExcludedProjectIDs = "Fix it", "x", "Second.", false, &review, nil
 		}, true, []string{ChangedLabel, ChangedDescription, ChangedEnabled, ChangedShowWhenStage, ChangedExcluded}},

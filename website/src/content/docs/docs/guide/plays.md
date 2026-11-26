@@ -68,6 +68,7 @@ Open **Agent** in the sidebar. Its list holds your plays, grouped by type, above
 - **Type**: ticket, doc, interview, or stack. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
 - **Works in**, the project repository its runs use: **App repository**, or **Tests repository** for a project that keeps its tests in a separate one. A project without one runs it in the app's. A run an automation starts from a git event works in that event's repository instead. See [Choose where turns run](/docs/guide/paired-computers/#choose-where-turns-run).
+- **Needs**, the [labels](/docs/guide/paired-computers/#choose-where-turns-run) a computer must have to take its runs, such as `gpu` or `windows-vm`. Type one and press Enter; the box suggests the labels on your computers. A run, pressed or automatic, goes to the first computer in its person's order that has every one, and a computer missing one is passed over with "laptop doesn't have gpu". With none, any computer can take it. Saving a play lets its waiting runs try again at once.
 - **Description**, shown as the button's tooltip.
 - **Instructions**, what the agent should do on every run.
 - **Enabled**, and **Excluded projects** where it never shows. The **Enabled** switch also sits beside **Edit** at the top of the play's page and saves as soon as you flip it.

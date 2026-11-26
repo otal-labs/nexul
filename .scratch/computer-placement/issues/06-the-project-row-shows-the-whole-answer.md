@@ -1,7 +1,7 @@
 # 06 — The project row shows the whole answer
 
 **Status:** ready-for-agent
-**Blocked by:** 01, 04
+**Blocked by:** None — can start immediately
 
 Spec: `../spec.md`, decision 7.
 

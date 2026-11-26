@@ -49,6 +49,7 @@ const PlayHarness = ({ editing }: { editing?: Play }) => {
         show_when_stage: editing.show_when_stage ?? "",
         excluded_project_ids: editing.excluded_project_ids,
         repository: editing.repository,
+        needs: editing.needs ?? [],
       }
     : {
         label: "",
@@ -59,6 +60,7 @@ const PlayHarness = ({ editing }: { editing?: Play }) => {
         show_when_stage: "progress",
         excluded_project_ids: [],
         repository: "app",
+        needs: [],
       };
   return (
     <div>
@@ -123,6 +125,21 @@ describe("PlayForm", () => {
       type: "ticket",
       show_when_stage: "progress",
     }));
+  });
+
+  it("saves the labels a computer needs, lowercased, and takes one back out", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "play-1" } });
+    renderHarness();
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(screen.getByLabelText("Label"), "Test on Windows");
+    await user.type(screen.getByLabelText("Needs"), "Windows-VM{Enter}");
+    await user.type(screen.getByLabelText("Needs"), "gpu{Enter}");
+    await user.click(screen.getByRole("button", { name: "Remove gpu" }));
+    await user.click(screen.getByRole("button", { name: "Create play" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/workspaces/ws-1/plays", expect.objectContaining({ needs: ["windows-vm"] }));
   });
 
   it("rejects an empty label", async () => {

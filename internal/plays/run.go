@@ -105,7 +105,9 @@ type HarnessChoice struct {
 	// Repository is the repository the run works on, as owner/name; empty takes the play's (ADR 0204).
 	Repository string
 	// Tests is a run of a play that works on the project's tests repository.
-	Tests        bool
+	Tests bool
+	// Needs are the play's labels every computer that takes the run must have (ADR 0197).
+	Needs        []string
 	Provider     string
 	Model        string
 	ModelOptions []harness.OptionSetting

@@ -261,6 +261,7 @@ A run that none of your computers can take says why for each one:
 | T3 Code isn't answering on laptop | Check T3 Code is running on it. |
 | laptop is full (2 of 2 running) | Wait for a run to end, or raise its **Runs at once**. |
 | desk is switched off for plays | Turn **Takes plays** back on in its details, or let the next computer take it. |
+| laptop doesn't have gpu | Give a computer that label, or take the need off the play. |
 | laptop isn't set up for claude | Run setup for that provider on it. |
 | laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |
 | laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add** it from the project under **Projects** on the Agent page. |

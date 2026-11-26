@@ -45,6 +45,8 @@ export interface Play {
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
   repository: PlayRepository;
+  // The labels a computer must have to take its runs (ADR 0197); absent from an older server.
+  needs?: string[];
   // How many of its auto plays are switched on; the list sends it only to someone who reads auto plays.
   auto_plays_on?: number;
   // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, update-doc, audit, decisions-check, investigate-crash), kept through renames; "" for a play a person made.
@@ -74,6 +76,7 @@ export const SavePlayFormSchema = z
     show_when_stage: z.string(),
     excluded_project_ids: z.array(z.string()),
     repository: z.enum(PLAY_REPOSITORIES),
+    needs: z.array(z.string()),
   })
   .refine(
     (data) =>
@@ -97,6 +100,7 @@ export const emptyPlayForm = (): SavePlayFormData => ({
   show_when_stage: "progress",
   excluded_project_ids: [],
   repository: "app",
+  needs: [],
 });
 
 export const playToFormData = (play: Play): SavePlayFormData => ({
@@ -108,6 +112,7 @@ export const playToFormData = (play: Play): SavePlayFormData => ({
   show_when_stage: play.show_when_stage ?? "",
   excluded_project_ids: play.excluded_project_ids,
   repository: play.repository,
+  needs: play.needs ?? [],
 });
 
 // The wire shape the gateway accepts: show_when_stage travels as null, never "".
@@ -120,6 +125,7 @@ export interface SavePlayRequest {
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
   repository: PlayRepository;
+  needs: string[];
 }
 
 export const toSavePlayRequest = (data: SavePlayFormData): SavePlayRequest => ({

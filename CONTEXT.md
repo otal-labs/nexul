@@ -302,6 +302,12 @@ digits and dashes, up to 32 characters, up to 20), and the ones its facts give i
 its OS as `linux`, `macos` or `windows`. A play's needs match them (ADR 0197).
 _Avoid_: Tag, capability, trait
 
+**Need**:
+A label a play names that a computer must have to take its runs, its owner's or from its facts (ADR 0197); a run goes
+to the first computer in its person's order that has every need, and one missing a need is passed over as
+`missing_need`. A play with none runs anywhere. Needs belong to the play, so pressed and auto runs follow the same rule.
+_Avoid_: Requirement, constraint, selector
+
 **Takes plays**:
 A computer's switch, set by its owner and on by default: off, no play, auto play or `@Agent` turn runs there and
 placement passes it over as `no_plays`, while commands, logs and setup keep working (ADR 0211). Stored as `plays_off`.
