@@ -66,7 +66,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
   // Beside the sources the meter takes the grid's first row, so the first section and the rail start on one line.
   return (
     <div className="min-w-0 space-y-6 @min-[60rem]:row-span-2 @min-[60rem]:grid @min-[60rem]:grid-rows-subgrid @min-[60rem]:space-y-0">
-      <InterviewProgress sections={sections} current={current} onJump={() => move(rows.find((r) => rowProgress(r) === "drafted" || rowProgress(r) === "waiting")?.key ?? null)} />
+      <InterviewProgress sections={sections} onJump={() => move(rows.find((r) => rowProgress(r) === "drafted" || rowProgress(r) === "waiting")?.key ?? null)} />
       <div className="min-w-0 space-y-6">
         {memoryWithoutAnswers && (
           <p className="text-sm text-muted-foreground">

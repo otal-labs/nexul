@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleCheck, CircleMinus } from "lucide-react";
 
-import { CurrentRowEdge, currentRowFillClass } from "@/components/CurrentRow";
+import { currentRowFillClass } from "@/components/CurrentRow";
 import { answerLine, rowProgress, type ChecklistRow, type RowProgress } from "@nexul/client-core/questionChecklist";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,7 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
       <RowMarker progress={progress} open={open} number={number} />
       <span className="sr-only">{STATUS_LABEL[progress]}: </span>
       <span className="min-w-0 flex-1">
-        <span className={cn("block text-sm text-balance", waiting || open ? "font-medium text-foreground" : "text-muted-foreground")}>
+        <span className={cn("block text-sm text-balance", progress === "skipped" ? "text-muted-foreground" : "text-foreground", (waiting || open) && "font-medium")}>
           {row.item.text}
         </span>
         {!open && progress === "answered" && <span className="block truncate text-xs text-muted-foreground">{answerLine(row.answer)}</span>}
@@ -74,11 +74,11 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
   );
 
   return (
-    <li className="border-b border-border">
-      {/* The edge marks the title row alone; running it down the open form turned the accent into a block. */}
+    <li className={cn("border-b border-border", open && "rounded-md bg-surface-2")}>
+      {/* The open row is a well with a neutral edge; the brand tint stays for a row something else points at. */}
       <div className="relative">
-      {open && <CurrentRowEdge />}
-      {readOnly && <div className={cn("flex min-h-11 items-start gap-3 rounded-md px-2.5 py-3", (open || lit) && currentRowFillClass)}>{summary}</div>}
+      {open && <span aria-hidden className="pointer-events-none absolute inset-y-2 left-0 w-0.5 rounded-full bg-foreground/40" />}
+      {readOnly && <div className={cn("flex min-h-11 items-start gap-3 rounded-md px-2.5 py-3", lit && !open && currentRowFillClass)}>{summary}</div>}
       {!readOnly && (
         <button
           type="button"
@@ -86,7 +86,7 @@ export const QuestionChecklistRow = ({ row, number, open, lit = false, readOnly,
           onClick={onToggle}
           className={cn(
             "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md px-2.5 py-3 text-left inset-focus",
-            (open || lit) && currentRowFillClass,
+            lit && !open && currentRowFillClass,
             !open && "transition-colors duration-150 ease-standard hover:bg-accent",
           )}
         >

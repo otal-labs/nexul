@@ -92,14 +92,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           />
         }
         meta={
-          <>
-            <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
-            {switchable && (
-              <div className="ml-auto">
-                <DocViewSwitch view={view} ticketCount={ticketCount} questions={questions} waiting={waiting} onChange={setView} />
-              </div>
-            )}
-          </>
+          <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
         }
         actions={
           <>
@@ -122,7 +115,8 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
       {/* The rail needs 50rem: a 35rem body, the gap and its 13rem; spare width sits between the body and the rail. */}
       <div className="mt-6 @min-[50rem]:flex @min-[50rem]:justify-between @min-[50rem]:gap-8">
         <div className="min-w-0 max-w-[42rem] flex-1 space-y-4">
-          {canThread && <DocTicketsRunLine workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />}
+          {switchable && <DocViewSwitch view={view} ticketCount={ticketCount} questions={questions} waiting={waiting} onChange={setView} />}
+          {canThread && (view === "tickets" || !switchable) && <DocTicketsRunLine workspaceId={workspaceId} docId={doc.id} projectId={doc.project_id} />}
           {view === "tickets" && <DocTicketsView docId={doc.id} projectId={doc.project_id} />}
           {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
           {/* Hidden, not unmounted, behind the other views so the editor keeps its session. */}

@@ -9,16 +9,18 @@ interface PRRowProps {
   pr: PRLink;
 }
 
-// The mark and number, the title on up to two lines, then the state in words beside its hue.
+// The title on one line, the mark, number and state in words under it.
 export const PRRow = ({ ticketId, pr }: PRRowProps) => (
-  <li className="group flex min-w-0 items-start gap-2 text-xs">
-    <PRChip pr={pr} />
-    <span dir="auto" className="min-w-0 flex-1 line-clamp-2 text-muted-foreground" title={pr.title}>
-      {pr.title}
+  <li className="group flex min-w-0 items-center gap-2 text-xs">
+    <span className="min-w-0 flex-1">
+      <span dir="auto" className="block truncate text-foreground" title={pr.title}>
+        {pr.title}
+      </span>
+      <span className="mt-0.5 flex items-center gap-2 text-muted-foreground">
+        <PRChip pr={pr} />
+        <span>{stateWords[pr.state]}</span>
+      </span>
     </span>
-    <span className="shrink-0 text-muted-foreground">{stateWords[pr.state]}</span>
-    <span className="flex self-center">
-      <UnlinkPRButton ticketId={ticketId} pr={pr} />
-    </span>
+    <UnlinkPRButton ticketId={ticketId} pr={pr} />
   </li>
 );

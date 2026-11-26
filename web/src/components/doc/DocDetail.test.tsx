@@ -352,7 +352,7 @@ describe("DocDetail", () => {
     expect(screen.queryByTestId("doc-title-input")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Body")).not.toBeInTheDocument();
     expect(socket.send).not.toHaveBeenCalled();
-    expect(screen.getByText("Locked")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Locked" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Doc actions" }));
     await user.click(await screen.findByRole("button", { name: "Unlock" }));
@@ -394,7 +394,7 @@ describe("DocDetail", () => {
     );
     await renderDetail(new FakeSocket(), { ...doc, locked: true });
 
-    expect(await screen.findByText("Locked")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Locked" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Doc actions" }));
     expect(screen.queryByRole("button", { name: "Unlock" })).not.toBeInTheDocument();
   });
