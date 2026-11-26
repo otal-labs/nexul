@@ -300,7 +300,7 @@ func (h *Handler) enrollment(r *http.Request, req enrollComputerRequest) (*Compu
 	return h.svc.AddComputer(r.Context(), actorID(r), req.Name)
 }
 
-// updateComputer patches a computer's name, runs at once and chat folder; an omitted field keeps its value.
+// updateComputer patches a computer's name, runs at once, chat folder and switches; an omitted field keeps its value.
 func (h *Handler) updateComputer(w http.ResponseWriter, r *http.Request) {
 	var req updateComputerRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -320,6 +320,7 @@ type updateComputerRequest struct {
 	RunsAtOnce    *int    `json:"runs_at_once"`
 	ChatProjectID *string `json:"chat_project_id"`
 	ShellEnabled  *bool   `json:"shell_enabled"`
+	PlaysOff      *bool   `json:"plays_off"`
 }
 
 type reorderRequest struct {

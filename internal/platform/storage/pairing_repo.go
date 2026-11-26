@@ -211,6 +211,19 @@ func (r *PairingRepo) ReorderComputers(ctx context.Context, userID string, ids [
 	})
 }
 
+func (r *PairingRepo) SetComputerPlaysOff(ctx context.Context, userID, computerID string, off bool, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerPlaysOff(ctx, sqlcgen.SetPairingComputerPlaysOffParams{PlaysOff: boolToInt(off), UpdatedAt: at.Unix(), ID: computerID, UserID: userID})
+		if err != nil {
+			return fmt.Errorf("set plays of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set plays of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *PairingRepo) SetComputerPlacement(ctx context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetPairingComputerPlacement(ctx, sqlcgen.SetPairingComputerPlacementParams{
@@ -615,6 +628,7 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		Tunnel: toComputerTunnel(row), Facts: toFacts(row), FactsAt: unixPtrFromNull(row.FactsAt),
 		Position: int(row.Position), RunsAtOnce: int(row.RunsAtOnce), ChatProjectID: row.ChatProjectID,
 		ShellEnabled: row.ShellEnabled != 0,
+		PlaysOff:     row.PlaysOff != 0,
 	}
 }
 

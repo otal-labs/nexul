@@ -185,3 +185,6 @@ SELECT t.id, t.play_label, t.starter_id, COALESCE(NULLIF(u.name, ''), u.login, '
 FROM play_trails t LEFT JOIN users u ON u.id = t.starter_id
 WHERE t.computer_id = sqlc.arg(computer_id) AND t.starter_id != sqlc.arg(owner_id)
 ORDER BY t.started_at DESC, t.id DESC LIMIT sqlc.arg(lim);
+
+-- name: SetPairingComputerPlaysOff :execrows
+UPDATE pairing_computers SET plays_off = ?, updated_at = ? WHERE id = ? AND user_id = ?;

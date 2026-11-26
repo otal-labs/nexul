@@ -295,6 +295,11 @@ A queued run waits when no ready computer has room; a pressed run never waits
 (ADR 0166).
 _Avoid_: Slots per person, concurrency limit
 
+**Takes plays**:
+A computer's switch, set by its owner and on by default: off, no play, auto play or `@Agent` turn runs there and
+placement passes it over as `no_plays`, while commands, logs and setup keep working (ADR 0211). Stored as `plays_off`.
+_Avoid_: Disabled computer, paused computer
+
 **Project checkout**:
 The T3 project on one computer that a project's runs in one of its
 repositories use there: the one the person picked for that repository, else

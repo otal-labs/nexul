@@ -66,8 +66,9 @@ type computerPairIn struct {
 	RunsAtOnce    *int              `json:"runs_at_once,omitempty" jsonschema:"Play runs the computer takes at a time, 1 to 5; a queued auto run waits while every computer is full."`
 	ChatProjectID *string           `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 	ShellEnabled  *bool             `json:"shell_enabled,omitempty" jsonschema:"Whether command_run may run commands on it; false also stops the ones running."`
+	PlaysOff      *bool             `json:"plays_off,omitempty" jsonschema:"true keeps every play, auto play and @Agent turn off it; commands still run."`
 	Restart       bool              `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer, so it starts with the PATH saved since, such as after installing git; its connection drops for a few seconds."`
-	InstallTool   string            `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools; ask the person first, since it runs their package manager there. Where sudo wants a password it refuses, since only the Install button in Settings → Computers takes one."`
+	InstallTool   string            `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools; ask the person first, since it runs their package manager there. Where sudo wants a password it refuses: only the web's Install button takes one."`
 	GitIdentity   bool              `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none; it never replaces a name or email already set."`
 	Checkout      *computerCheckout `json:"checkout,omitzero" jsonschema:"The T3 project runs in one repository of a project use here, replacing that repository's pick."`
 }
@@ -138,6 +139,7 @@ type computerResult struct {
 	Commands         []shelljob.Job         `json:"commands,omitempty"`
 	SharedRuns       []SharedRun            `json:"shared_runs,omitempty"`
 	ShellEnabled     bool                   `json:"shell_enabled"`
+	PlaysOff         bool                   `json:"plays_off,omitempty"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`
 	Position         int                    `json:"position"`
 	RunsAtOnce       int                    `json:"runs_at_once"`
@@ -151,7 +153,7 @@ func toComputerResult(c Computer) computerResult {
 	r := computerResult{
 		ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner,
 		PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt, Position: c.Position, RunsAtOnce: c.RunsAtOnce, Running: c.Running,
-		ChatProjectID: c.ChatProjectID, ShellEnabled: c.ShellEnabled,
+		ChatProjectID: c.ChatProjectID, ShellEnabled: c.ShellEnabled, PlaysOff: c.PlaysOff,
 	}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
@@ -395,7 +397,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 		}
 		return s.ownComputer(ctx, userID, in.ID)
 	}
-	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil && in.ShellEnabled == nil {
+	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil && in.ShellEnabled == nil && in.PlaysOff == nil {
 		return s.PairComputer(ctx, userID, in.ID)
 	}
 	if in.Position != nil {
@@ -403,7 +405,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 			return nil, err
 		}
 	}
-	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID, ShellEnabled: in.ShellEnabled}
+	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID, ShellEnabled: in.ShellEnabled, PlaysOff: in.PlaysOff}
 	if in.Name != "" {
 		patch.Name = &in.Name
 	}

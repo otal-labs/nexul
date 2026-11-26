@@ -527,3 +527,44 @@ func TestSetProjectLink_DropsAPickForARepositoryTheProjectNoLongerHas(t *testing
 	err = f.svc.PickCheckout(t.Context(), "u1", "proj-1", picks[1])
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a new pick for it is refused")
 }
+
+func TestPlaysOff_PassesTheComputerOverAndSwitchingItBackWakesTheQueue(t *testing.T) {
+	t.Parallel()
+	bus := &fakeBus{}
+	f := newPlacementFixture(t)
+	f.svc.bus = bus
+	f.add(t, "desk", func(c *Computer) { c.PlaysOff = true })
+	f.add(t, "laptop", nil)
+
+	target, err := f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
+	require.NoError(t, err)
+	assert.Equal(t, "laptop", target.Computer.ID)
+	assert.Equal(t, []PassOver{{ComputerID: "desk", Name: "desk", Why: PassOverNoPlays, Text: "desk is switched off for plays"}}, target.PassedOver)
+
+	_, err = f.svc.SetPlaysOff(t.Context(), "u1", "laptop", true)
+	require.NoError(t, err)
+	_, err = f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc, "no computer takes plays")
+	assert.Len(t, nc.PassedOver, 2)
+
+	got, err := f.svc.SetPlaysOff(t.Context(), "u1", "desk", false)
+	require.NoError(t, err)
+	assert.False(t, got.PlaysOff)
+	target, err = f.svc.PreviewTarget(t.Context(), "u1", "proj-1", false)
+	require.NoError(t, err)
+	assert.Equal(t, "desk", target.Computer.ID)
+	one := PlacementChangedEvent{UserID: "u1", MembersOnly: true}
+	assert.Equal(t, []PlacementChangedEvent{one, one}, bus.placements, "each switch wakes the waiting runs")
+}
+
+func TestSetPlaysOff_OnlyOnYourOwnComputer(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "desk", nil)
+
+	_, err := f.svc.SetPlaysOff(t.Context(), "u2", "desk", true)
+
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.False(t, f.repo.computers["desk"].PlaysOff)
+}

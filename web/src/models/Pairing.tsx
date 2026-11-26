@@ -38,13 +38,15 @@ export interface Computer {
   skills_outdated: boolean;
   // Its owner's switch for commands from Nexul; the computer's own opt-in is facts.shell.
   shell_enabled: boolean;
+  // Its owner's switch keeping every play, auto play and @Agent turn off it (ADR 0211); absent on an older server.
+  plays_off?: boolean;
 }
 
 // Mirrors pairing.PassOver: one computer a run could not land on, with the line every surface shows as is.
 export interface PassOver {
   computer_id: string;
   name: string;
-  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed";
+  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed" | "no_plays";
   text: string;
 }
 

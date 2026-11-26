@@ -35,7 +35,7 @@ export const AgentComputerRow = ({ computer, rank, sortable, selected }: AgentCo
     <ListPaneRow
       to={wsPath(agentPath("computers", computer.id))}
       title={name}
-      muted={!computer.name}
+      muted={!computer.name || !!computer.plays_off}
       leading={lane && <span aria-label={lane.text} role="img" className={cn("size-1.5 rounded-full", statusDotClass[lane.tone])} />}
       meta={<span className="font-mono text-micro text-muted-foreground tabular-nums">#{rank}</span>}
       dense

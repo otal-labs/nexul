@@ -295,9 +295,12 @@ func (s *Service) tryOption(ctx context.Context, p *plan, o option, live bool) (
 	return gated, nil, err
 }
 
-// check is what Nexul last heard about c, in the order a gap is named: reachable, set up for the run's provider,
+// check is what Nexul last heard about c, in the order a gap is named: taking plays at all, reachable, set up for the run's provider,
 // offering its model, holding the project's checkout, and with room.
 func (s *Service) check(ctx context.Context, p *plan, c Computer, running int) (*option, *miss, error) {
+	if c.PlaysOff {
+		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverNoPlays, Text: c.Name + " is switched off for plays"}}, nil
+	}
 	if m := s.reachable(ctx, c); m != nil {
 		return nil, m, nil
 	}
@@ -597,6 +600,21 @@ func (s *Service) SetComputerPlacement(ctx context.Context, userID, computerID s
 	return c, nil
 }
 
+// SetPlaysOff switches one of the caller's own computers off or back on for runs; either way its waiting runs look again.
+func (s *Service) SetPlaysOff(ctx context.Context, userID, computerID string, off bool) (*Computer, error) {
+	c, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetComputerPlaysOff(ctx, userID, c.ID, off, s.now().UTC()); err != nil {
+		return nil, err
+	}
+	s.placementChanged(ctx, userID)
+	c.PlaysOff = off
+	c.BearerToken = ""
+	return c, nil
+}
+
 // placementChanged tells the queue a person's runs may land somewhere new; a failed publish waits out the queue's retry.
 func (s *Service) placementChanged(ctx context.Context, userID string) {
 	if s.bus == nil {
@@ -631,6 +649,7 @@ type ComputerPatch struct {
 	RunsAtOnce    *int
 	ChatProjectID *string
 	ShellEnabled  *bool
+	PlaysOff      *bool
 }
 
 // UpdateComputer renames the caller's own computer and sets its runs at once and chat folder, each only when given.
@@ -646,6 +665,11 @@ func (s *Service) UpdateComputer(ctx context.Context, userID, computerID string,
 	}
 	if patch.ShellEnabled != nil {
 		if c, err = s.SetShellEnabled(ctx, userID, computerID, *patch.ShellEnabled); err != nil {
+			return nil, err
+		}
+	}
+	if patch.PlaysOff != nil {
+		if c, err = s.SetPlaysOff(ctx, userID, computerID, *patch.PlaysOff); err != nil {
 			return nil, err
 		}
 	}

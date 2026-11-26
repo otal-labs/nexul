@@ -170,3 +170,21 @@ func TestMachines_SetShell(t *testing.T) {
 	assert.True(t, m.ShellEnabled)
 	require.ErrorIs(t, s.Machines.SetShell(ctx, "m-gone", true), apperrs.ErrNotFound)
 }
+
+func TestPairingRepo_SetComputerPlaysOff_OwnerOnlyAndTakesPlaysByDefault(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
+
+	got, err := s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.False(t, got.PlaysOff)
+	require.NoError(t, s.Pairing.SetComputerPlaysOff(ctx, "u1", "c1", true, time.Now()))
+	got, err = s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.True(t, got.PlaysOff)
+	require.ErrorIs(t, s.Pairing.SetComputerPlaysOff(ctx, "u2", "c1", false, time.Now()), apperrs.ErrNotFound)
+}
