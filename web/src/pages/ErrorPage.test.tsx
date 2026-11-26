@@ -24,6 +24,7 @@ describe("ErrorPage", () => {
     render(<RouterProvider router={router} />);
     expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go home" })).toBeInTheDocument();
+    expect(screen.getByText(/\$ curl \/missing/)).toBeInTheDocument();
   });
 
   it("navigates back when Go back is clicked", async () => {
