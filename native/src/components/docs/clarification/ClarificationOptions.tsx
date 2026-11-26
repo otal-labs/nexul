@@ -28,7 +28,7 @@ const OptionRow = ({ option, first, checked, multi, onPress }: OptionRowProps) =
     aria-checked={checked}
     aria-label={option.label}
     onPress={onPress}
-    className={cn("min-h-12 flex-row items-start gap-3 px-3 py-3 active:bg-accent", !first && "border-t border-border", checked && "bg-accent")}
+    className={cn("-mx-3 min-h-12 flex-row items-start gap-3 rounded-md px-3 py-3 active:bg-accent", !first && "border-t border-border", checked && "bg-accent")}
   >
     <View pointerEvents="none" importantForAccessibility="no-hide-descendants" className="mt-0.5">
       {multi && <Checkbox checked={checked} onCheckedChange={() => {}} className="size-5" />}
@@ -59,7 +59,7 @@ export const ClarificationOptions = ({ item, draft, onDraft }: ClarificationOpti
   return (
     <View>
       {hasOptions && (
-        <View className="mt-2 overflow-hidden rounded-md border border-border">
+        <View className="mt-2">
           {multi && rows}
           {!multi && (
             <RadioGroup value={selected[0] ?? ""} onValueChange={() => {}} className="gap-0">

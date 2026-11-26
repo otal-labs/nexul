@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView, View } from "react-native";
+import { ScrollView } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -13,7 +14,7 @@ export const ScheduledMessagesSheet = () => {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const { data: scheduled, error, isPending } = useFetchScheduledMessages(conversationId);
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title="Scheduled messages" className="px-0 pb-0" />
       {isPending && <LoadingDisplay message="Loading scheduled messages" />}
       {error && <ErrorDisplay error={error} className="px-0" />}
@@ -23,6 +24,6 @@ export const ScheduledMessagesSheet = () => {
           {scheduled.map((s) => <ScheduledMessageRow key={s.id} scheduled={s} />)}
         </ScrollView>
       )}
-    </View>
+    </SheetBody>
   );
 };

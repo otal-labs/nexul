@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
@@ -18,7 +18,7 @@ export const CancelDeploySheet = () => {
   const cancel = useCancelDeploy();
 
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={stack ? `Cancel the deploy of ${stack.name}?` : "Cancel this deploy?"} className="px-0 pb-0" />
       <Text className="text-body leading-[22px] text-muted-foreground">
         The runner stops this deploy where it is. Start a new deploy from the stack when you want to try again.
@@ -39,6 +39,6 @@ export const CancelDeploySheet = () => {
       <Button variant="outline" disabled={cancel.isPending} onPress={() => router.back()}>
         <Text>Keep deploying</Text>
       </Button>
-    </View>
+    </SheetBody>
   );
 };

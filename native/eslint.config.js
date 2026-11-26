@@ -8,6 +8,9 @@ const sdkTypesOnly = { name: "@otal-labs/nexul-sdk/events", message: "Import the
 const noElse = { selector: "IfStatement[alternate]", message: "Early return, no else." };
 const arbitraryTextSize = String.raw`/(^|[\s"'\x60:])text-\[\d+(\.\d+)?(px|rem)\]/`;
 const typeScaleMessage = "Use a step of the type scale in global.css (text-micro, text-row, text-body…), not an arbitrary text size.";
+const buttonClassName = String.raw`JSXOpeningElement[name.name=/^(Button|ActionButton|LockedActionButton)$/] > JSXAttribute[name.name="className"]`;
+const opacityClass = String.raw`/(^|[\s"'\x60:])opacity-/`;
+const opacityMessage = "Button draws its disabled look without fill in muted-foreground; a lower opacity drops the label near 1.5:1.";
 
 module.exports = defineConfig([
   expoConfig,
@@ -36,6 +39,8 @@ module.exports = defineConfig([
       "no-restricted-syntax": ["error", noElse,
         { selector: `Literal[value=${arbitraryTextSize}]`, message: typeScaleMessage },
         { selector: `TemplateElement[value.raw=${arbitraryTextSize}]`, message: typeScaleMessage },
+        { selector: `${buttonClassName} Literal[value=${opacityClass}]`, message: opacityMessage },
+        { selector: `${buttonClassName} TemplateElement[value.raw=${opacityClass}]`, message: opacityMessage },
       ],
     },
   },

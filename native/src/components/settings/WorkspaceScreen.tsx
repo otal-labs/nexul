@@ -2,6 +2,7 @@ import { useNavigation, useRouter } from "expo-router";
 import type { NavigationProp, ParamListBase } from "expo-router/react-navigation";
 import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -28,7 +29,7 @@ export const WorkspaceScreen = () => {
   };
 
   return (
-    <View role="radiogroup" className="bg-popover pb-6">
+    <SheetBody role="radiogroup">
       <SheetTitle title="Switch workspace" />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -43,6 +44,6 @@ export const WorkspaceScreen = () => {
             onPress={() => choose(workspace.id)}
           />
         ))}
-    </View>
+    </SheetBody>
   );
 };

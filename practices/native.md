@@ -93,7 +93,9 @@ as written. In particular:
   back gesture; a push into another tab passes `{ withAnchor: true }` so that
   tab's list stays underneath. Pickers and confirms open with `sheetOptions`
   (`src/lib/sheetOptions.ts`: a fitted form sheet with the native header
-  hidden) and name what they act on with `SheetTitle`. Their route files live
+  hidden), sit in `SheetBody` (the drag handle Android's form sheet lacks, and
+  the bottom safe-area inset plus 16pt under the last control) and name what
+  they act on with `SheetTitle`. Their route files live
   under `src/app/(sheets)/`, mirroring the URL of the tab they belong to, and
   are registered on the root stack in `RootNavigator`, never on a tab's
   stack: a sheet on a tab's stack opens under the tab bar, which stays bright

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export const SignOutSheet = () => {
   };
 
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={title} className="px-0 pb-0" />
       <Text className="text-body leading-[22px] text-muted-foreground">{body}</Text>
       {action.error && <ErrorDisplay error={action.error} />}
@@ -46,6 +46,6 @@ export const SignOutSheet = () => {
       <Button variant="outline" disabled={action.isPending} onPress={() => router.back()}>
         <Text>Cancel</Text>
       </Button>
-    </View>
+    </SheetBody>
   );
 };
