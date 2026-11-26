@@ -1,4 +1,4 @@
-import { Check, EyeOff } from "lucide-react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -7,7 +7,7 @@ interface AccessGridCellProps {
   on: boolean;
   // Unsaved: differs from what the server holds.
   changed: boolean;
-  // Public channels mark only the exception: a hidden cell is an ink eye-off, a seen one is empty.
+  // Public channels lead with the exception: a hidden cell is an ink eye-off, a seen one a quiet eye that still reads as a control.
   marks: "ticks" | "hidden";
   label: string;
   onToggle: () => void;
@@ -30,7 +30,8 @@ export const AccessGridCell = ({ on, changed, marks, label, onToggle }: AccessGr
           marks === "hidden" && !on && "bg-foreground/[0.06] group-hover/cell:bg-foreground/10",
         )}
       >
-        {marks === "hidden" && <EyeOff className={cn("size-3.5 text-foreground", on && "opacity-0 group-hover/cell:opacity-40")} aria-hidden />}
+        {marks === "hidden" && on && <Eye className="size-3.5 text-muted-foreground/60 group-hover/cell:text-foreground" aria-hidden />}
+        {marks === "hidden" && !on && <EyeOff className="size-3.5 text-foreground" aria-hidden />}
         {marks === "ticks" && <Check className={cn("size-4 text-foreground", !on && "opacity-0 group-hover/cell:opacity-25")} strokeWidth={2.25} aria-hidden />}
       </span>
     </CheckboxPrimitive.Root>
