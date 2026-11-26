@@ -50,11 +50,11 @@ const InstanceVersionStatus = () => {
 const InstanceVersionFacts = ({ data }: { data: InstanceUpgrade }) => {
   return (
     <dl className="grid grid-cols-3 gap-x-6 gap-y-4">
-      <Fact label="Running">
+      <Fact plain label="Running">
         <span className="font-mono break-all">{data.version}</span>
       </Fact>
-      <Fact label="Channel">{data.channel}</Fact>
-      <Fact label="Newest">
+      <Fact plain label="Channel">{data.channel}</Fact>
+      <Fact plain label="Newest">
         {!data.latest && <span className="text-muted-foreground">None</span>}
         {data.latest && (
           <a

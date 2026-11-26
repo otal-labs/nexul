@@ -42,6 +42,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
     <SettingsCard
       id="instance"
       title="Address"
+      description="The one address people, computers and OAuth apps use for this instance."
       footer={
         <GatedSaveBar
           permission="instance:write"
@@ -60,6 +61,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
             label="Instance URL"
             description="Where people reach this instance. Changing it issues new connection tokens."
             htmlFor="instance_url"
+            stacked
           >
             <div className="w-full">
               <FormInput
@@ -73,7 +75,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
               />
             </div>
           </SettingsRow>
-          <SettingsRow label="OAuth callback" description="Register it as the callback of the GitHub OAuth app.">
+          <SettingsRow label="OAuth callback" description="Register it as the callback of the GitHub OAuth app." stacked>
             <CopyValue value={settings.oauth_callback} label="Copy OAuth callback" />
           </SettingsRow>
         </SettingsRows>

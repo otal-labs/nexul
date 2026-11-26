@@ -34,10 +34,10 @@ const LicenseStatus = () => {
 
 const LicenseFacts = ({ license }: { license: License }) => (
   <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
-    <Fact label="Licensee">{license.licensee}</Fact>
-    <Fact label="Expires">{license.expires_at && formatExpiry(license.expires_at)}</Fact>
+    <Fact plain label="Licensee">{license.licensee}</Fact>
+    <Fact plain label="Expires">{license.expires_at && formatExpiry(license.expires_at)}</Fact>
     <div className="col-span-2">
-      <Fact label="Instance">
+      <Fact plain label="Instance">
         <span className="font-mono break-all">{license.instance_url}</span>
       </Fact>
     </div>
@@ -98,10 +98,12 @@ const RemoveLicenseButton = () => {
   );
 };
 
-const LicenseFooter = ({ license }: { license: License }) => {
+// The card's state and its actions share the header, as the Version card's do.
+const LicenseActions = ({ license }: { license: License }) => {
   const held = license.state !== LicenseState.None;
   return (
     <>
+      <LicenseStatus />
       {held && <RemoveLicenseButton />}
       <LicenseKeyDialog replacing={held} />
     </>
@@ -116,8 +118,7 @@ export const LicenseSection = () => {
       id="license"
       title="License"
       description="A license key unlocks the enterprise features on this instance. It's checked here, without contacting anyone."
-      aside={<LicenseStatus />}
-      footer={data && <LicenseFooter license={data} />}
+      aside={data && <LicenseActions license={data} />}
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

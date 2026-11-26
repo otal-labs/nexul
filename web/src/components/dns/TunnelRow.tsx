@@ -1,6 +1,7 @@
 import { CloudIcon } from "lucide-react";
 
 import { TunnelDeleteDetails } from "@/components/dns/TunnelDeleteDetails";
+import { destroyActionClass, destroyActionLiveClass } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useDeleteTunnel } from "@/hooks/DnsHooks";
@@ -41,11 +42,11 @@ export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
         permission="dns:delete"
         verb="delete tunnels"
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
         aria-label={`Delete tunnel ${tunnel.name}`}
-        className="-mt-1.5 text-foreground"
-        liveClassName="hover:text-destructive"
+        className={`-mt-1.5 ${destroyActionClass}`}
+        liveClassName={destroyActionLiveClass}
         loading={deleteTunnel.isPending}
         onClick={() => void onDelete()}
       >
