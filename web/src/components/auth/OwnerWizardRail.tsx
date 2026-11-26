@@ -22,7 +22,6 @@ export const OwnerWizardRail = ({ step }: OwnerWizardRailProps) => (
         label={s.label}
         mark={markOf(i, step)}
         ordinal={String(i + 1).padStart(2, "0")}
-        total={OWNER_STEPS.length}
         last={i === OWNER_STEPS.length - 1}
       />
     ))}

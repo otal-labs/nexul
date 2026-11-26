@@ -1,3 +1,4 @@
+import { GripVerticalIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
@@ -45,6 +46,13 @@ export const SettingsListRow = ({ lead, name, meta, count, control, actions, sho
             handleProps && "cursor-grab select-none active:cursor-grabbing",
           )}
         >
+          {/* A sortable row shows its grip at rest, in the card's gutter, so the text keeps the card's content edge. */}
+          {handleProps && (
+            <GripVerticalIcon
+              aria-hidden
+              className="absolute top-1/2 -left-5 size-3.5 -translate-y-1/2 text-muted-foreground/50 transition-colors duration-150 ease-standard group-hover/row:text-muted-foreground"
+            />
+          )}
           {lead !== undefined && <span className="flex size-4 shrink-0 items-center justify-center">{lead}</span>}
           {/* Name, meta and count share one baseline; centred as boxes, the 12px mono count sits a pixel above the name. */}
           <span className="flex min-w-0 flex-1 items-baseline gap-2">

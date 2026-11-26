@@ -42,14 +42,16 @@ const renderNav = (sections: SettingsSection[], active: SettingsSection = "dange
   );
 
 describe("SettingsNav", () => {
-  it("lists the workspace sections under /configuration with no group label, and none of the instance ones", () => {
+  it("lists the workspace sections under /configuration in their groups, and none of the instance ones", () => {
     renderNav(workspaceSections(everything));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "Workspace",
       "General",
+      "Import",
+      "Templates",
       "Interview template",
       "Mention chips",
-      "Import",
       "Danger zone",
     ]);
     expect(nav.getByRole("link", { name: "General" })).toHaveAttribute("href", "/acme/configuration/general");

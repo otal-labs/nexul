@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { ActionButton } from "@/components/action/ActionButton";
 import { FormInput } from "@/components/FormInput";
@@ -22,6 +22,8 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
     defaultValues: { name: "", prefix: "", icon: "" },
     resolver: zodResolver(SaveProjectFormSchema),
   });
+
+  const prefix = useWatch({ control: form.control, name: "prefix" }).trim() || "BE";
 
   const onSubmit = async (data: SaveProjectFormData) => {
     try {
@@ -47,10 +49,18 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
         name="prefix"
         label="Prefix"
         placeholder="e.g. BE"
-        className="font-mono"
+        className="font-mono placeholder:font-sans"
         maxLength={5}
         transform={(value) => value.toUpperCase()}
       />
+      <dl className="col-span-2 mt-2 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-t border-border pt-5 text-xs">
+        <dt className="text-muted-foreground">Ticket keys</dt>
+        <dd className="font-mono text-foreground">
+          {prefix}-1, {prefix}-2, {prefix}-3
+        </dd>
+        <dt className="text-muted-foreground">Next</dt>
+        <dd className="text-pretty text-muted-foreground">Who can open it, the repository it builds from, and how it deploys.</dd>
+      </dl>
       <WizardFooter onBack={onBack}>
         <ActionButton permission="projects:create" type="submit" form={formId} loading={form.formState.isSubmitting}>
           Continue

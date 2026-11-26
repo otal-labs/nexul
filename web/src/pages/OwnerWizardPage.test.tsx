@@ -134,7 +134,7 @@ describe("OwnerWizardPage", () => {
 
     expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     expect(screen.getByText(/cloudflare is optional/i)).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "Owner setup steps" })).getByText("Step 3 of 3")).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Owner setup steps" })).getByText("03 · Now")).toBeInTheDocument();
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
     // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });

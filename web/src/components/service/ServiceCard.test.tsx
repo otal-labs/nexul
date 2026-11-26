@@ -57,7 +57,8 @@ describe("ServiceCard", () => {
         build_source: { repo_owner: "onik97", repo_name: "api", branch: "main" },
       }),
     );
-    expect(screen.getByText("prod-eu-west-01 · onik97/api")).toBeInTheDocument();
+    expect(screen.getByText("prod-eu-west-01").parentElement).toHaveTextContent("on prod-eu-west-01");
+    expect(screen.getByText("onik97/api").parentElement).toHaveTextContent("from onik97/api");
     expect(screen.getByLabelText("compose")).toBeInTheDocument();
   });
 

@@ -1219,7 +1219,7 @@ counts by what its run recorded and Done counts on its own screen. Then one
 done: a `success` check; skipped and later: a dashed ring with a dash; to do:
 a hollow ring; locked: a fainter ring) over a connector that runs node edge to
 node edge, the label, and under it an 11px mono caps line on every row, `Step
-4 of 6` on the current one, its ordinal (`05`, `5.2` for a sub-step) on one
+04 · Now` (its ordinal and the word) on the current one, its ordinal (`05`, `5.2` for a sub-step) on one
 to do, otherwise the mark's word (Done, Skipped, Later, Locked). A row is a
 button only where its flow can open that step: every Welcome and project step,
 every unlocked DNS rung, no owner or import step (a later owner step needs the
@@ -1377,8 +1377,8 @@ footer, whose hint states how it recovers. A stack whose rule is off still shows
 is counted and a link to Alerts, and no footer. The settings nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, a stack's Settings);
-a nav with two jobs (Your settings' You and Instance settings)
-labels each group with a mono microheader in the side column and a hairline
+a nav with two jobs (Your settings' You and Instance settings, Configuration's Workspace and Templates, Project
+settings' Project, Board and Delivery) labels each group with a mono microheader in the side column and a hairline
 between the groups in the top row, which fades over 48px on each side that has more to scroll to, and a group
 with nothing the viewer may open shows no label. Danger zone is set apart the
 same way: a hairline above it in the side column, with even space either side,
@@ -1490,16 +1490,17 @@ shows the value picked while it saves, and only a failed save says so, in an
 error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
 button. The page header's meta line carries the open section's facts
-(`SettingsHeaderMeta`: Nexul theme, Dark; 2 gateways, 3 hostnames), each fact 16px from the next with no dot between, and marks
+(`SettingsHeaderMeta`: Nexul theme, Dark; 2 gateways, 3 hostnames), each fact 16px from the next with no dot between
+(`HeaderFacts`, in the UI sans on Your settings, Configuration and Project settings alike, only an id such as the prefix in mono), and marks
 instance sections Instance-wide. On Your settings, Configuration and a project's settings the open section is the page
 title ("Security" or "Labels" under a `Settings` crumb, "Mention chips" under the workspace and
 `Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
 card that only named the section names its job instead (Name and picture,
-People, Starting questions, Ticket mentions). A template a workspace can follow or edit marks only an edit: Edited here (`info`) above its card's
-description, and on the card's right a ghost Reset to instance template beside the outline Clone to…; following the
-instance template is the default and goes unsaid. The Interview template card lists its questions as the interview
-asks them (a mono number, the question, its hint, its options as small neutral chips after "Any of" or "One of"), each
-row's Edit opening that question's own markdown in place with Remove and Done, an Add question under the list, and a
+People, Starting questions, Ticket mentions). A template a workspace can follow or edit marks only an edit: a muted "Edited here" line under its card's
+description with a Reset to instance template link beside it, and Clone to… the one action on the card's right;
+following the instance template is the default and goes unsaid. The Interview template card lists its questions as the interview
+asks them (a mono number, the question, its hint, its options as plain muted text joined by middots after "Any of:" or "One of:"), each
+row's Edit, always in view, opening that question's own markdown in place with Remove and Done, an Add question under the list, and a
 segmented Questions | Markdown control over it for editing the whole text at once.
 A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
 that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
@@ -1625,8 +1626,13 @@ count that says what it counts ("8 tickets", "No tickets", from the project's
 grouped ticket counts), and the `⋯`, shown on hover or keyboard focus where the
 device can hover, taking the count's place so the row keeps no empty column at its end, and always where it can't. The
 row's text and its hairlines share the card's content edge; it lifts on hover inside its hairlines, the lift reaching
-8px past them on each side. A control a row keeps in view (a repository's Issues switch, its state said beside it as
-"Issues on" or "Issues off") ends the row on that edge. A service row ends in a chevron, the whole row opening its stack.
+8px past them on each side. A control a row keeps in view (a repository's Issues switch, labelled "Issues" and leaving its state to the switch) ends
+the row on that edge. A repository's role is a neutral chip (the label chip's pill, no dot) with its service count after
+it in the meta, so the count column stays free for the switch. A service row names where it runs ("on" the machine,
+"from" the repository, each id in mono) and ends in a
+chevron, the whole row opening its stack. Repositories and Services carry their Add in the card head, not a footer. A
+sortable row (statuses, categories) shows a quiet grip in the card's gutter at rest, so the drag its description offers
+is visible before the pointer finds it.
 The leading slot is a colour's dot, or a hollow ring with "No color"
 beside the name when none is set (never the hue the board falls back to); a status's icon or its stage's
 dot; the GitHub mark on a repository; a service's strategy icon. A ticket

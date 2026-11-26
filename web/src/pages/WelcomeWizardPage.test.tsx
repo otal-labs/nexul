@@ -80,7 +80,7 @@ describe("WelcomeWizardPage", () => {
     progress = { first_run_done: false, steps: [step("github", "done"), step("phone", "left")], dot: true, in_a_project: true };
     renderWizard();
     expect(await screen.findByRole("heading", { name: "Introduce yourself" })).toBeInTheDocument();
-    expect(await railSteps()).toEqual(["Profile, Step 1 of 3", "Connect GitHub, Done", "Get the phone app, 03"]);
+    expect(await railSteps()).toEqual(["Profile, 01 · Now", "Connect GitHub, Done", "Get the phone app, 03"]);
   });
 
   it("opens a later visit on the first step not done", async () => {

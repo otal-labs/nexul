@@ -7,7 +7,6 @@ interface WizardRailRowProps {
   mark: WizardRailMark;
   // The step's place among the rail's top-level steps, "04", or "5.2" for a sub-step.
   ordinal: string;
-  total: number;
   // Only a step its flow can open is a button.
   onOpen?: (() => void) | undefined;
   // A sub-step sits one indent in, its connector on its own nodes.
@@ -18,14 +17,14 @@ interface WizardRailRowProps {
   last: boolean;
 }
 
-const metaLine = (mark: WizardRailMark, ordinal: string, total: number): string => {
-  if (mark === "current") return `Step ${ordinal.replace(/^0/, "")} of ${total}`;
+const metaLine = (mark: WizardRailMark, ordinal: string): string => {
+  if (mark === "current") return `${ordinal} · Now`;
   if (mark === "left") return ordinal;
   return RAIL_MARK_WORD[mark];
 };
 
 // One step of any wizard's rail: its label over a mono line saying where it stands; the connector runs node edge to node edge.
-export const WizardRailRow = ({ label, mark, ordinal, total, onOpen, nested = false, nextNested = false, spine = false, last }: WizardRailRowProps) => {
+export const WizardRailRow = ({ label, mark, ordinal, onOpen, nested = false, nextNested = false, spine = false, last }: WizardRailRowProps) => {
   const current = mark === "current";
   const Tag = onOpen ? "button" : "div";
 
@@ -57,7 +56,7 @@ export const WizardRailRow = ({ label, mark, ordinal, total, onOpen, nested = fa
           </span>
           <span className="font-mono text-micro leading-4 tracking-[0.06em] text-muted-foreground uppercase tabular-nums">
             <span className="sr-only">, </span>
-            {metaLine(mark, ordinal, total)}
+            {metaLine(mark, ordinal)}
           </span>
         </span>
       </Tag>

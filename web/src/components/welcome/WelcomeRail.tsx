@@ -15,7 +15,6 @@ export const WelcomeRail = () => {
           label={STEP_NAMES[step]}
           mark={step === view ? "current" : marks[step]}
           ordinal={String(i + 1).padStart(2, "0")}
-          total={steps.length}
           onOpen={() => open(step)}
           last={i === steps.length - 1}
         />

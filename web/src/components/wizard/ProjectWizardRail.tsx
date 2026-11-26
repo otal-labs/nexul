@@ -60,7 +60,6 @@ export const ProjectWizardRail = ({ step }: ProjectWizardRailProps) => {
           label={wizardStepLabel(row.id, door)}
           mark={marks[index] ?? "left"}
           ordinal={ordinals[index] ?? ""}
-          total={counted.length}
           onOpen={() => goTo(row.id)}
           nested={row.nested}
           nextNested={rows[index + 1]?.nested ?? false}

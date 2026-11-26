@@ -12,11 +12,25 @@ interface ServiceCardProps {
   service: ServiceDef;
 }
 
-// The machine it runs on, then the repository it builds from; the list endpoint carries no deploy image.
-const sourceLine = (service: ServiceDef): string => {
+// The machine it runs on, then the repository it builds from, each named, since two mono ids side by side read as one.
+const SourceLine = ({ service }: ServiceCardProps) => {
   const repo = service.build_source;
   const built = repo?.repo_owner && repo?.repo_name ? `${repo.repo_owner}/${repo.repo_name}` : "";
-  return [service.machine || service.target, built].filter(Boolean).join(" · ");
+  const machine = service.machine || service.target;
+  return (
+    <span className="flex min-w-0 items-baseline gap-3">
+      {machine && (
+        <span className="truncate">
+          on <span className="font-mono">{machine}</span>
+        </span>
+      )}
+      {built && (
+        <span className="truncate">
+          from <span className="font-mono">{built}</span>
+        </span>
+      )}
+    </span>
+  );
 };
 
 // One service, opening its stack; a right-click opens the stack's Permissions… for whoever may set its rules.
@@ -40,7 +54,7 @@ export const ServiceCard = ({ service }: ServiceCardProps) => {
             {!canOpen && name}
           </>
         }
-        meta={<span className="font-mono">{sourceLine(service)}</span>}
+        meta={<SourceLine service={service} />}
         control={canOpen && <ChevronRightIcon className="pointer-events-none size-4 text-muted-foreground" aria-hidden />}
       />
     </RowContextMenu>

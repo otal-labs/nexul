@@ -48,7 +48,7 @@ export const StartImportCard = () => {
     <SettingsCard
       id="import-start"
       title="Import into a project"
-      description="Brings another tool's records in as tickets or docs. A scan counts them and shows how people and statuses map before anything is written; a re-run skips what came in before."
+      description="Another tool's records come in as tickets or docs. Scan writes nothing: it counts them and shows how people and statuses map."
       footer={
         <>
           {needs && <SettingsHint>{needs} to scan.</SettingsHint>}
