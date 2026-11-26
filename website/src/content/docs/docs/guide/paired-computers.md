@@ -264,7 +264,7 @@ A run that none of your computers can take says why for each one:
 | laptop doesn't have gpu | Give a computer that label, or take the need off the play. |
 | laptop isn't set up for claude | Run setup for that provider on it. |
 | laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |
-| laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add** it from the project under **Projects** on the Agent page. |
-| laptop has several checkouts of this project, or of acme/acme-e2e; pick one | **Pick a checkout** from the project under **Projects** on the Agent page. |
+| laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add it to** the computer under the waiting run, or from the project under **Projects** on the Agent page. |
+| laptop has several checkouts of this project, or of acme/acme-e2e; pick one | **Pick a checkout** under the waiting run, or from the project under **Projects** on the Agent page. |
 | laptop has no chat folder | Set its **Chat folder**. |
 | laptop needs pairing again | Press **Re-pair now** on its row. |

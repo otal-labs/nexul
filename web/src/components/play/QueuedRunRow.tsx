@@ -6,12 +6,14 @@ import { waitingLines } from "@nexul/client-core/playQueue";
 
 import { Button } from "@/components/ui/button";
 import { ReadinessFixLink } from "@/components/pairing/ReadinessFixLink";
+import { WaitingCheckoutFix } from "@/components/play/WaitingCheckoutFix";
 import { signalActionClass, signalRowClass } from "@/components/play/signalRowClass";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useCancelQueuedRun } from "@/hooks/PlayQueueHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useActionState } from "@/hooks/useActionState";
+import { checkoutPasses } from "@/models/Pairing";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
 import { waitingLink } from "@/utils/PlayQueueUtility";
@@ -30,7 +32,8 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
   const mine = me?.user.id === item.person_id;
-  const link = waitingLink(item);
+  const fixes = mine && item.status === "queued" ? checkoutPasses(item.waiting_on ?? []) : [];
+  const link = fixes.length === 0 ? waitingLink(item) : undefined;
   const lines = waitingLines(item);
   const canCancel = item.status === "queued" && (mine || canWrite);
 
@@ -56,6 +59,9 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
               </>
             )}
           </p>
+        ))}
+        {fixes.map((pass) => (
+          <WaitingCheckoutFix key={pass.computer_id} projectId={item.project_id} pass={pass} />
         ))}
       </div>
       {canCancel && (
