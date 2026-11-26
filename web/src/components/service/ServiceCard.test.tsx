@@ -9,12 +9,9 @@ import { DeployStrategy, type ServiceDef } from "@/models/Service";
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 const manage = vi.hoisted(() => ({ stack: false }));
 vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { type: string }) => entity?.type === "stack" && manage.stack }));
-const history = vi.hoisted(() => ({ deploys: undefined as unknown[] | undefined }));
-vi.mock("@/hooks/StackHooks", () => ({ useFetchStackDeploys: () => ({ data: history.deploys }) }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
-  history.deploys = undefined;
   access.areas = ["stacks"];
   manage.stack = false;
 });
@@ -39,20 +36,6 @@ const renderCard = (service: ServiceDef) =>
   );
 
 describe("ServiceCard", () => {
-  it("says how the latest deploy went, or that there has been none", () => {
-    history.deploys = [
-      { id: "d-1", status: "failed", created_at: "2026-01-01T00:00:00Z" },
-      { id: "d-2", status: "healthy", created_at: "2026-01-02T00:00:00Z" },
-    ];
-    const { unmount } = renderCard(baseService());
-    expect(screen.getByText("Succeeded")).toBeInTheDocument();
-    unmount();
-
-    history.deploys = [];
-    renderCard(baseService());
-    expect(screen.getByText("Never deployed")).toBeInTheDocument();
-  });
-
   it("opens Permissions… on a right-click for whoever may set the stack's rules, and keeps the browser's menu otherwise", async () => {
     const user = userEvent.setup();
     const { unmount } = renderCard(baseService());

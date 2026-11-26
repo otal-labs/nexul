@@ -1563,8 +1563,8 @@ grouped ticket counts), and the `⋯`, shown on hover or keyboard focus where th
 device can hover, taking the count's place so the row keeps no empty column at its end, and always where it can't. The
 row's text and its hairlines share the card's content edge; it lifts on hover inside its hairlines, the lift reaching
 8px past them on each side. A control a row keeps in view (a repository's Issues switch, its state said beside it as
-"Issues on" or "Issues off") ends the row on that edge. A service row ends in its latest deploy's outcome as a status
-with when it ran ("Succeeded" then "2d ago", or "Never deployed") and a chevron, the whole row opening its stack. The leading slot is a colour's dot, or a hollow ring with "No color"
+"Issues on" or "Issues off") ends the row on that edge. A service row ends in a chevron, the whole row opening its stack.
+The leading slot is a colour's dot, or a hollow ring with "No color"
 beside the name when none is set (never the hue the board falls back to); a status's icon or its stage's
 dot; the GitHub mark on a repository; a service's strategy icon. A ticket
 type's dot and a label's pill are the colour button itself; a label has no
