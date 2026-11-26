@@ -12,7 +12,7 @@ import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { LabelColorRow } from "@/components/settings/LabelColorRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { useCreateLabel, useFetchAllLabels, useFetchLabelColors } from "@/hooks/LabelHooks";
 import { SaveLabelFormSchema, type SaveLabelFormData } from "@/models/Ticket";
@@ -50,7 +50,7 @@ export const BoardLabelColorsSection = ({ projectId }: BoardLabelColorsSectionPr
       {error && <ErrorDisplay error={error} />}
       {allLabels && allLabels.length === 0 && !adding && <EmptyRow>No labels yet. Add one here or on a ticket.</EmptyRow>}
       {allLabels && allLabels.length > 0 && (
-        <EnterList className={settingsRowListClass}>
+        <EnterList className={settingsListClass}>
           {allLabels.map((label) => (
             <LabelColorRow key={label} label={label} color={labelColors?.[label] ?? ""} projectId={projectId} />
           ))}

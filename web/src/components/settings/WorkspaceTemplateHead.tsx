@@ -19,29 +19,27 @@ export const useWorkspaceTemplateHead = ({ kind, name, workspaceId, edited, desc
   const openClone = useCloneTemplateDialog();
   const at = { scope: "workspace" as const, workspace_id: workspaceId };
   return {
+    // Following the instance template is the default and goes unsaid; only an edit is marked.
     description: (
       <span className="flex flex-col gap-2">
-        <span className="flex items-center gap-3">
-          <SettingsStatus tone={edited ? "info" : "muted"}>{edited ? "Edited here" : "Instance template"}</SettingsStatus>
-          {edited && (
-            <TemplateResetButton kind={kind} templateKey="" at={at} className="text-foreground underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground" />
-          )}
-        </span>
+        {edited && <SettingsStatus tone="info">Edited here</SettingsStatus>}
         <span>{description}</span>
       </span>
     ),
     aside: (
-      <ActionButton
-        permission={clonePermission}
-        verb="clone this template"
-        type="button"
-        variant="outline"
-        size="sm"
-        className="-mt-1"
-        onClick={() => void openClone({ kind, key: "", name, from: at })}
-      >
-        Clone to…
-      </ActionButton>
+      <span className="-mt-1 flex items-center gap-2">
+        {edited && <TemplateResetButton kind={kind} templateKey="" at={at} variant="ghost" />}
+        <ActionButton
+          permission={clonePermission}
+          verb="clone this template"
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void openClone({ kind, key: "", name, from: at })}
+        >
+          Clone to…
+        </ActionButton>
+      </span>
     ),
   };
 };

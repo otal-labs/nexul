@@ -21,46 +21,59 @@ interface SettingsListRowProps extends Omit<ComponentProps<"li">, "children"> {
   handleProps?: HTMLAttributes<HTMLSpanElement> | undefined;
 }
 
-// One row for every project settings list: the board's grammar, a hairline apart, lifting on hover inside its rules.
-export const SettingsListRow = ({ lead, name, meta, count, control, actions, showActions = false, handleRef, handleProps, className, ...props }: SettingsListRowProps) => (
-  <li
-    className={cn(
-      "group/row relative flex min-h-11 items-center gap-2 text-sm px-2 before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40",
-      className,
-    )}
-    {...props}
-  >
-    <span
-      ref={handleRef}
-      {...handleProps}
+// Where the device can hover, a row's actions take the count's place instead of holding an empty column after it.
+const hoverOnly = "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:group-has-[[data-state=open]]/row:opacity-100";
+const givesWay = "[@media(hover:hover)]:group-focus-within/row:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-0 [@media(hover:hover)]:group-has-[[data-state=open]]/row:opacity-0";
+
+// One row for every project settings list: the board's grammar, a hairline apart, its text on the card's edge and its hover lift reaching 8px past it.
+export const SettingsListRow = ({ lead, name, meta, count, control, actions, showActions = false, handleRef, handleProps, className, ...props }: SettingsListRowProps) => {
+  const overlay = !!count && !!actions && !showActions;
+  return (
+    <li
       className={cn(
-        "relative flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md",
-        handleProps && "cursor-grab select-none active:cursor-grabbing",
+        "group/row relative flex min-h-11 items-center gap-2 text-sm before:pointer-events-none before:absolute before:-inset-x-2 before:inset-y-1 before:rounded-md before:transition-colors before:duration-150 before:ease-standard hover:before:bg-accent/40",
+        className,
       )}
+      {...props}
     >
-      {lead !== undefined && <span className="flex size-4 shrink-0 items-center justify-center">{lead}</span>}
-      {/* Name, meta and count share one baseline; centred as boxes, the 12px mono count sits a pixel above the name. */}
-      <span className="flex min-w-0 flex-1 items-baseline gap-2">
-        {/* The meta keeps its width up to half the line and the count stays whole; the name truncates in what is left. */}
-        <span className="flex min-w-0">{name}</span>
-        {meta && <span className="max-w-1/2 shrink-0 truncate text-xs text-muted-foreground">{meta}</span>}
-        {count && <span className="ml-auto shrink-0 pl-2 font-mono text-xs text-muted-foreground tabular-nums">{count}</span>}
-      </span>
-    </span>
-    {control && <span className="relative flex shrink-0 items-center">{control}</span>}
-    {actions && (
-      <span
-        className={cn(
-          "relative flex shrink-0",
-          !showActions &&
-            "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[state=open]:opacity-100",
+      <span className="relative flex min-w-0 flex-1 items-center gap-2 self-stretch">
+        <span
+          ref={handleRef}
+          {...handleProps}
+          className={cn(
+            "relative flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md",
+            handleProps && "cursor-grab select-none active:cursor-grabbing",
+          )}
+        >
+          {lead !== undefined && <span className="flex size-4 shrink-0 items-center justify-center">{lead}</span>}
+          {/* Name, meta and count share one baseline; centred as boxes, the 12px mono count sits a pixel above the name. */}
+          <span className="flex min-w-0 flex-1 items-baseline gap-2">
+            {/* The meta keeps its width up to half the line and the count stays whole; the name truncates in what is left. */}
+            <span className="flex min-w-0">{name}</span>
+            {meta && <span className="max-w-1/2 shrink-0 truncate text-xs text-muted-foreground">{meta}</span>}
+            {count && (
+              <span className={cn("ml-auto shrink-0 pl-2 font-mono text-xs text-muted-foreground tabular-nums transition-opacity duration-150 ease-standard", overlay && givesWay)}>
+                {count}
+              </span>
+            )}
+          </span>
+        </span>
+        {actions && (
+          <span
+            className={cn(
+              "relative flex shrink-0 items-center transition-opacity duration-150 ease-standard",
+              !showActions && hoverOnly,
+              overlay && "[@media(hover:hover)]:absolute [@media(hover:hover)]:inset-y-0 [@media(hover:hover)]:right-0",
+            )}
+          >
+            {actions}
+          </span>
         )}
-      >
-        {actions}
       </span>
-    )}
-  </li>
-);
+      {control && <span className="relative flex shrink-0 items-center">{control}</span>}
+    </li>
+  );
+};
 
 // The leading slot's colour: a configured hue's dot, or the hollow ring that says no colour is set.
 export const ColorDot = ({ className }: { className?: string | undefined }) => (

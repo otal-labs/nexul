@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from "react";
 
+import { errorMessage } from "@/api/client";
+import { InterviewQuestionList } from "@/components/settings/InterviewQuestionList";
 import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWorkspaceTemplateHead } from "@/components/settings/WorkspaceTemplateHead";
 import { useSaveInterviewTemplate } from "@/hooks/MemoryHooks";
 import { useFlash } from "@/hooks/useFlash";
@@ -23,6 +26,7 @@ interface InterviewTemplateFormProps {
 
 export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateFormProps) => {
   const [body, setBody] = useState(template.body);
+  const [view, setView] = useState<"questions" | "markdown">("questions");
   const saveTemplate = useSaveInterviewTemplate();
   const [saved, flash] = useFlash();
   const head = useWorkspaceTemplateHead({
@@ -58,16 +62,35 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
       }
     >
       <form id={FORM_ID} onSubmit={onSubmit} className="space-y-3">
-        <InterviewTemplateField
-          id="interview-template-body"
-          value={body}
-          onChange={setBody}
-          questionCount={template.questions.length}
-          error={saveTemplate.error}
-          readOnly={!canWrite}
-          hideLabel
-          grow
-        />
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="xs"
+          aria-label="Template view"
+          value={view}
+          onValueChange={(next) => next && setView(next as typeof view)}
+        >
+          <ToggleGroupItem value="questions">Questions</ToggleGroupItem>
+          <ToggleGroupItem value="markdown">Markdown</ToggleGroupItem>
+        </ToggleGroup>
+        {view === "questions" && <InterviewQuestionList body={body} onChange={setBody} readOnly={!canWrite} />}
+        {view === "questions" && saveTemplate.error && (
+          <p role="alert" className="font-mono text-xs text-destructive">
+            {errorMessage(saveTemplate.error)}
+          </p>
+        )}
+        {view === "markdown" && (
+          <InterviewTemplateField
+            id="interview-template-body"
+            value={body}
+            onChange={setBody}
+            questionCount={template.questions.length}
+            error={saveTemplate.error}
+            readOnly={!canWrite}
+            hideLabel
+            grow
+          />
+        )}
       </form>
     </SettingsCard>
   );

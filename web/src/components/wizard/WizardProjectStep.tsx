@@ -34,13 +34,12 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
   };
 
   return (
-    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-[1fr_8rem] items-start gap-4">
       <FormInput
         control={form.control}
         name="name"
         label="Project name"
         placeholder="e.g. Backend platform"
-        className="max-w-80"
         autoFocus
       />
       <FormInput
@@ -48,7 +47,7 @@ export const WizardProjectStep = ({ onDone, onBack }: WizardProjectStepProps) =>
         name="prefix"
         label="Prefix"
         placeholder="e.g. BE"
-        className="max-w-80"
+        className="font-mono"
         maxLength={5}
         transform={(value) => value.toUpperCase()}
       />

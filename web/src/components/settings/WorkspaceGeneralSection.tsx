@@ -69,12 +69,12 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
       <FormProvider {...form}>
         <form id="workspace-general" onSubmit={form.handleSubmit(onSubmit)}>
           <SettingsRows>
-            <SettingsRow label="Name" description="In the sidebar and the switcher." stacked>
+            <SettingsRow label="Name" description="In the sidebar and the switcher.">
               <div className="w-full">
                 <FormInput control={form.control} name="name" label="Name" hideLabel className="text-ellipsis" />
               </div>
             </SettingsRow>
-            <SettingsRow label="URL" description="Every link uses it. Old links stop working when it changes." stacked>
+            <SettingsRow label="URL" description="Every link uses it. Old links stop working when it changes.">
               <WorkspaceUrlField />
             </SettingsRow>
           </SettingsRows>

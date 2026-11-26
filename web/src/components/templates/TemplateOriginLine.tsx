@@ -19,10 +19,12 @@ interface TemplateResetButtonProps {
   templateKey: string;
   at: TemplateLocation;
   className?: string;
+  // A card head's quiet action beside Clone to… is a ghost button; inside a line of text it stays a link.
+  variant?: "link" | "ghost";
 }
 
 // Puts the instance template's text back here, after asking.
-export const TemplateResetButton = ({ kind, templateKey, at, className }: TemplateResetButtonProps) => {
+export const TemplateResetButton = ({ kind, templateKey, at, className, variant = "link" }: TemplateResetButtonProps) => {
   const reset = useResetTemplate();
   const { open: confirm } = useConfirmationDialog();
 
@@ -40,9 +42,9 @@ export const TemplateResetButton = ({ kind, templateKey, at, className }: Templa
       permission="templates:write"
       verb="reset templates"
       type="button"
-      variant="link"
+      variant={variant}
       size="sm"
-      className={cn("h-auto p-0 text-xs", className)}
+      className={cn(variant === "link" && "h-auto p-0 text-xs", className)}
       loading={reset.isPending}
       onClick={() => void onReset()}
     >

@@ -5,7 +5,7 @@ import { Microheader } from "@/components/Microheader";
 import { WaitingRepositoryRow } from "@/components/project/WaitingRepositoryRow";
 import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { AddServiceLink } from "@/components/wizard/AddServiceLink";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 import { useWaitingRepos } from "@/hooks/useWaitingRepos";
@@ -38,7 +38,7 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
       {services && waiting && waiting.length > 0 && (
         <section aria-label="Not deployed" className="not-first:mt-6">
           <Microheader className="flex h-8 items-center">Not deployed</Microheader>
-          <ul className={settingsRowListClass}>
+          <ul className={settingsListClass}>
             {waiting.map((repo) => (
               <WaitingRepositoryRow key={repo.full_name} projectId={projectId} repo={repo} />
             ))}

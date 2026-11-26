@@ -17,7 +17,8 @@ export const RepoIssuesSwitch = ({ projectId, repo }: RepoIssuesSwitchProps) => 
   const missing = useIssuesPermissionMissing([repo.owner]).length > 0;
   const on = issueSyncOf(syncs, repo.owner, repo.name)?.enabled ?? false;
   return (
-    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      Issues {on ? "on" : "off"}
       <Switch
         size="sm"
         aria-label={`Sync ${repo.full_name}'s GitHub issues to tickets`}
@@ -25,7 +26,6 @@ export const RepoIssuesSwitch = ({ projectId, repo }: RepoIssuesSwitchProps) => 
         disabled={action.state !== "live" || !syncs || (missing && !on)}
         onCheckedChange={(enabled) => setSync.mutate({ owner: repo.owner, repo: repo.name, enabled })}
       />
-      Issues
     </label>
   );
 };

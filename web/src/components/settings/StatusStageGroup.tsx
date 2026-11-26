@@ -7,7 +7,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { Microheader } from "@/components/Microheader";
 import { NewStatusForm } from "@/components/settings/NewStatusForm";
 import { StatusRow } from "@/components/settings/StatusRow";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useRowSortSensors } from "@/hooks/useRowSortSensors";
 import type { BoardStatus, StatusKind } from "@/models/Status";
@@ -36,13 +36,13 @@ export const StatusStageGroup = ({ projectId, kind, label, statuses, adding, onT
         <ActionButton permission="projects:write" projectId={projectId} verb="add a status" variant="ghost" size="sm" icon={PlusIcon} className="w-8 px-0" aria-label={`Add ${kind} status`} onClick={onToggleAdding} />
       </div>
       {statuses.length === 0 && (
-        <EmptyRow className="-mx-2 flex min-h-11 items-center border-t border-border px-2 py-0">No {kind} statuses, so the board skips this stage.</EmptyRow>
+        <EmptyRow className="flex min-h-11 items-center border-t border-border py-0">No {kind} statuses, so the board skips this stage.</EmptyRow>
       )}
       {statuses.length > 0 && (
         // Named for assistive tech since the header states kind once and rows don't repeat it.
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={statuses.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-            <EnterList aria-label={`${label} statuses`} className={settingsRowListClass}>
+            <EnterList aria-label={`${label} statuses`} className={settingsListClass}>
               {statuses.map((status, index) => (
                 <StatusRow
                   key={status.id}

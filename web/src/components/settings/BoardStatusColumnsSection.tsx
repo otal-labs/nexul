@@ -38,7 +38,7 @@ export const BoardStatusColumnsSection = ({ projectId }: BoardStatusColumnsSecti
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {statuses && (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {STATUS_STAGES.map(({ kind, label }) => (
             <StatusStageGroup
               key={kind}

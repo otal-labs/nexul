@@ -19,7 +19,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -91,7 +91,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         <div ref={glideRef}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-              <EnterList className={settingsRowListClass}>
+              <EnterList className={settingsListClass}>
                 {categories.map((category, index) => (
                   <CategoryRow
                     key={category.id}

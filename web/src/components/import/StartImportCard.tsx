@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsHint } from "@/components/settings/SettingsHint";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
 import { ImportTextRow } from "@/components/import/ImportTextRow";
 import { LinearImportRows } from "@/components/import/LinearImportRows";
@@ -32,6 +33,13 @@ export const StartImportCard = () => {
   const ready = asksRepository
     ? projectId !== "" && !!repos && repos.length > 0 && repository !== ""
     : projectId !== "" && token.trim() !== "";
+  // What still holds Scan back, said under it one step at a time.
+  const needs = [
+    projectId === "" && "Pick a project",
+    asksRepository && repos?.length === 0 && "Attach a repository to the project",
+    asksRepository && repos && repos.length > 1 && repository === "" && "Pick a repository",
+    !asksRepository && token.trim() === "" && `Add the ${(sourceInfo?.credential?.label ?? "token").toLowerCase()}`,
+  ].find(Boolean);
   const input = asksRepository
     ? { source, project_id: projectId, from: repository }
     : { source, project_id: projectId, from: { team, pages, link, repository: "" }[asks ?? "repository"].trim(), credential: token.trim() };
@@ -42,14 +50,12 @@ export const StartImportCard = () => {
       title="Import into a project"
       description="Brings another tool's records in as tickets or docs. A scan counts them and shows how people and statuses map before anything is written; a re-run skips what came in before."
       footer={
-        <Button
-          className="ml-auto"
-          disabled={!ready}
-          loading={start.isPending}
-          onClick={() => start.mutate(input)}
-        >
-          Scan
-        </Button>
+        <>
+          {needs && <SettingsHint>{needs} to scan.</SettingsHint>}
+          <Button className="ml-auto" disabled={!ready} loading={start.isPending} onClick={() => start.mutate(input)}>
+            Scan
+          </Button>
+        </>
       }
     >
       <SettingsRows>
