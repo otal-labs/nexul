@@ -27,7 +27,7 @@ export const AutomationHostsSection = () => {
         summary={
           <>
             {hosts && hosts.length > 0 && (
-              <span className="font-mono tabular-nums">
+              <span className="tabular-nums">
                 {hosts.length} {hosts.length === 1 ? "host" : "hosts"} ·{" "}
               </span>
             )}
