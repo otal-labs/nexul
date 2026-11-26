@@ -191,7 +191,9 @@ export interface TopologySummary {
 export const summarize = (w: Wiring): TopologySummary => {
   const deployed = w.nodes.filter((n) => n.type === NodeType.Service || n.type === "gateway");
   const count = (status: string) => deployed.filter((n) => n.data.status === status).length;
-  return { services: deployed.length, failed: count("failed"), stopped: count("stopped"), hostnames: w.hosts.length };
+  // A gateway is a deployed service too, but it draws in its own lane, so the count names only the Services lane's cards.
+  const services = deployed.filter((n) => n.type === NodeType.Service).length;
+  return { services, failed: count("failed"), stopped: count("stopped"), hostnames: w.hosts.length };
 };
 
 export interface Trace {

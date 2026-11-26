@@ -1,8 +1,8 @@
 import { Fragment } from "react";
 import { useOptionsStore, useReactFlow, useReactFlowStoreApi, useViewport, useViewportStore } from "@xyflow/react";
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   LayoutGridIcon,
   LockIcon,
   LockOpenIcon,
@@ -40,18 +40,15 @@ interface Tool {
   onClick: () => void;
   // A word beside the icon on a wide bar, for a tool whose icon alone does not say what it does.
   word?: string;
-  // Back points the way it goes, so its arrow leads the word.
-  iconFirst?: boolean;
   disabled?: boolean;
 }
 
-const ToolButton = ({ label, icon: Icon, onClick, word, iconFirst, disabled, className }: Tool & { className?: string }) => (
+const ToolButton = ({ label, icon: Icon, onClick, word, disabled, className }: Tool & { className?: string }) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <Button variant="ghost" size={word ? "sm" : "icon"} className={cn(word ? "h-8 px-2" : "size-8", className)} aria-label={label} onClick={onClick} disabled={disabled}>
-        {iconFirst && <Icon />}
         {word && <span>{word}</span>}
-        {!iconFirst && <Icon />}
+        <Icon />
       </Button>
     </TooltipTrigger>
     <TooltipContent>{label}</TooltipContent>
@@ -112,21 +109,19 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
   const beyond = laneBeyond(lanes, viewport, width);
   const before = laneBefore(lanes, viewport);
   const rare: Tool[] = [
+    // Named by the lane they pan to, so the pair reads as a canvas control rather than page history.
     {
-      label: "Show earlier lanes",
-      word: "Back",
-      iconFirst: true,
+      label: before?.label ? `Pan to ${before.label}` : "Pan to the previous lane",
       shownFrom: "@2xl" as const,
-      icon: ArrowLeftIcon,
+      icon: ChevronLeftIcon,
       disabled: !before,
       onClick: () => before && void setViewport(panBackTo(before, viewport)),
     },
     // Always in the bar, so the tools beside it never shift; at the last lane it rests disabled.
     {
-      label: "Show more lanes",
-      word: "More",
+      label: beyond?.label ? `Pan to ${beyond.label}` : "Pan to the next lane",
       shownFrom: "@2xl" as const,
-      icon: ArrowRightIcon,
+      icon: ChevronRightIcon,
       disabled: !beyond,
       onClick: () => beyond && void setViewport(panTo(beyond, viewport, width)),
     },
