@@ -35,8 +35,8 @@ export const DeployHistorySection = ({ deploys, lastHealthy, isLoading, error = 
       {shown.length > 0 && (
         // Pulled out by the rows' own padding, so a row's hover and focus fill exactly the space between its hairlines.
         <EnterList className="-mx-2 divide-y divide-border">
-          {shown.slice(0, limit).map((deploy) => (
-            <DeployRow key={deploy.id} deploy={deploy} current={deploy.id === lastHealthy?.id} />
+          {shown.slice(0, limit).map((deploy, i) => (
+            <DeployRow key={deploy.id} deploy={deploy} current={deploy.id === lastHealthy?.id} aboveTriggeredBy={shown[i - 1]?.triggered_by} />
           ))}
         </EnterList>
       )}

@@ -1,16 +1,15 @@
-import { CheckCircle2, Circle, Clock, MinusCircle, XCircle, type LucideIcon } from "lucide-react";
+import { Circle } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
 import { ContainerStatus, type ContainerStatus as ContainerStatusType } from "@/models/Stack";
 
-// Colored icon beside plain text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
-const config: Record<ContainerStatusType, { icon: LucideIcon; color: string; iconClassName?: string; textClassName?: string }> = {
-  [ContainerStatus.Pending]: { icon: Clock, color: "text-warning" },
-  // Up with no healthcheck to pass: a steady state, so a still dot in the healthy hue, never a spinner.
-  [ContainerStatus.Running]: { icon: Circle, color: "text-success", iconClassName: "fill-current p-0.5" },
-  [ContainerStatus.Healthy]: { icon: CheckCircle2, color: "text-success" },
-  [ContainerStatus.Exited]: { icon: XCircle, color: "text-destructive", textClassName: "text-foreground" },
-  [ContainerStatus.Stopped]: { icon: MinusCircle, color: "text-muted-foreground" },
+// One still dot in the status hue beside the word, so every state of a service reads as one family of marks.
+const config: Record<ContainerStatusType, { color: string; textClassName?: string }> = {
+  [ContainerStatus.Pending]: { color: "text-warning-mark" },
+  [ContainerStatus.Running]: { color: "text-success" },
+  [ContainerStatus.Healthy]: { color: "text-success" },
+  [ContainerStatus.Exited]: { color: "text-destructive", textClassName: "text-foreground" },
+  [ContainerStatus.Stopped]: { color: "text-muted-foreground" },
 };
 
 interface ContainerStatusBadgeProps {
@@ -19,9 +18,9 @@ interface ContainerStatusBadgeProps {
 
 export const ContainerStatusBadge = ({ status }: ContainerStatusBadgeProps) => {
   // The server stores whatever word a runner reports, so one the app doesn't know yet still renders.
-  const { icon, color, iconClassName, textClassName } = config[status] ?? config[ContainerStatus.Stopped];
+  const { color, textClassName } = config[status] ?? config[ContainerStatus.Stopped];
   return (
-    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName} className={textClassName}>
+    <NoFillBadge icon={Circle} color={color} iconClassName="fill-current p-0.5" className={textClassName}>
       {status}
     </NoFillBadge>
   );

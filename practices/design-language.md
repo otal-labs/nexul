@@ -546,7 +546,7 @@ outlined in `ring` when selected. Connection handles show only on hover. A
 service card is 288px wide: the name on its own line (wrapping after a
 hyphen, never truncated), under it the status as a dot and word with the
 strategy in mono at the right, then the machine in mono under a rule. Status
-colours only the status, and stopped is `warning`.
+colours only the status: running and healthy are both `success`, as on the stack page, and stopped is `warning`.
 
 Traffic reads left to right in lanes, each kind in its own column under a mono
 microheader over its leftmost card: Hostnames, Gateways, Services, then the
@@ -1306,17 +1306,17 @@ under a hairline, the last healthy image with Rollback; a stack with no way to
 deploy and nothing to roll back to shows Deploy in its disabled look with the
 reason in its tooltip, still reachable by keyboard.
 
-Under the header on Overview, Deploys and Logs is one live status strip
-(`StackLiveHero`; Settings leaves it out, so its forms start under the tabs), a `surface-2`
+Under the header, line tabs on a hairline (below). Under the tabs on Overview, Deploys and Logs is one live status strip
+(`StackLiveHero`; Settings leaves it out, so its forms start under the tabs, and the tab row sits at one height on every tab), a `surface-2`
 well with a microheader over each value: Health, Last deploy, Requests and
 Hostnames, four equal columns from a 48rem strip and two by two below. Health is "No
-issues" behind a `success` dot over the mono "N up", or one line per problem
+issues" behind a `success` dot over one mono line, "3 of 3 up", or one line per problem
 behind a dot in its status hue: an open outage is `destructive` ("api down",
 or "3 of 8 down", which lists the names when pressed), an error rate over its rule is
 `warning` ("5xx 7.2% · last 5 min" in the line's own weight, then the time it
 began in muted mono), and a recovery within the hour reads `success` ("5xx
 recovered"). When the runner's newest observation of the stack is over an hour
-old, Health closes with a muted "last observed 17d ago". Last deploy is the
+old, the count's line ends with it ("3 of 3 up · observed 14d ago"), or under a problem a muted "last observed 17d ago" closes Health. Last deploy is the
 newest attempt's `HealthDot` and outcome in deploy words (Succeeded, Failed,
 Running or Pending; never "Healthy", which is how a service is doing), a
 running one with its elapsed time ("Running · 27m"), over that attempt's own
@@ -1331,20 +1331,20 @@ with an arrow, cut in the middle so its domain stays whole, then a "+2 more"
 that opens every hostname in a popover. The strip names a problem; the card
 below it explains it, so no incident list or banner sits between them.
 
-Under the strip, line tabs on a hairline: Overview, Deploys (with its mono
+The tabs: Overview, Deploys (with its mono
 count), Logs (for whoever holds `stacks:logs`) and Settings, each its own path
 (`/stacks/:id`, `/deploys`, `/logs/:service?`, `/settings/:section?`).
 Overview is Services, then Requests (a stack with a hostname: the mono totals
-for the last hour with the 5xx share behind its hue, per-minute bars in a
-`surface-2` well with the 5xx part in the status hue, a quiet minute a 2px mark
-on the floor and a minute nobody counted a faint full-height track, and the error-rate rule
+for the last hour with the 5xx share behind its hue, per-minute bars straight
+on the card over a hairline floor, the 5xx part in the status hue, a quiet minute leaving the
+floor bare and a minute nobody counted a faint full-height track, and the error-rate rule
 in the footer). The Services card has no column headers and one line per
 service, rows sorted down first, then on their way, healthy, then stopped: the
 name, the image by its last segment cut in the middle, how it is reached (the
 first public hostname as a link, else `service:port`, then a "+N" that lists the other
 addresses when pressed; dropped below a 48rem card, where the strip carries the
-hostnames), the status (an icon in its hue and the word; running, a steady state with no
-healthcheck, is a still `success` dot, never a spinner) in a fixed column, and
+hostnames), the status (one still dot in its hue and the word, the same mark for every state, so
+running, a steady state with no healthcheck, and healthy are both a `success` dot, never a check or a spinner) in a fixed column, and
 a ghost Logs icon at the end. The name's tooltip holds the container name and
 every address. The 14px name sits 1px higher than its box centre so the row's
 texts share one baseline. A service's open outage replaces its status and is
@@ -1352,16 +1352,16 @@ one line under the row: a `destructive` icon and "Down since 10:42" in plain
 text, then the exit code, "out of memory" and the restart count. One muted line
 under the rows names the count, the networks and how the next deploy treats each
 service (swapped, or restarted in place and why); it is information, so it is
-not a footer strip. A quiet hour draws no bars: the well holds one muted
+not a footer strip. A quiet hour draws no bars: the chart holds one muted
 sentence over its floor hairline, and the totals line above it is left out.
 Deploys is one untitled card (the tab names it) with All / Failed on the
-tab row's right, then one hairline row per deploy straight on the card: the outcome (a
-running one with its elapsed time) in a 7.5rem column, what was deployed (the
+tab row's right, then one hairline row per deploy straight on the card: the outcome in ink at row size (a
+running one with its elapsed time) in a 6.5rem column, what was deployed (the
 image by its last segment, or a branch icon with the ref and the short commit
 for a build), a neutral `live` chip with a `success` dot on the deploy whose
 image runs now, with who and why under it in muted mono (the actor by name,
-pull request, rule; nothing, not a dash, when there is none), and the time
-("29 Oct 14:02") right, with the relative age in its tooltip. The newest 25 show,
+pull request, rule; nothing, not a dash, when there is none, and the actor only when the row above had another), how long a settled deploy took in mono ("1m 12s"), the time
+("29 Oct 14:02") with the relative age in its tooltip, and a trailing chevron on a row that opens. The newest 25 show,
 the rest behind "Show 11 older". Logs is the Logs view below.
 
 Settings is the settings shell: `SettingsSectionNav` driving a `/:section`
@@ -1942,7 +1942,9 @@ at its right; the lines scroll under that bar behind the `scroll-edge` fade. Eac
 `success` check once done (the rail below it in `success` at 50%), a spinner
 ringed in `info` while active, a filled `destructive` cross on failure, a
 hollow ring while pending and a dashed one when skipped, the label, and the
-mono duration trailing. The log names each phase above its first line
+mono duration trailing; once the deploy settles, a hairline under the last step and its Total.
+A line holding only its timestamp is left out of the well (Copy and Download keep it), and the one
+space compose pads its status lines with is dropped so they start on the column. The log names each phase above its first line
 (11px uppercase mono, muted), so it reads against the steps. The steps move
 rail-led (Motion baseline). `DeployProgressSection` is the reference; the instance upgrade uses the
 same step list.
@@ -1956,7 +1958,7 @@ mono timestamp column and the raw line, wrapped lines indented under the text
 and an indented line's wrap hung under its own first character, a long dotted
 or slashed token breaking after a dot or slash rather than mid-word,
 dense rows. The block reaches down to the panel's bottom, never shorter than
-30rem, its lines fading at the top edge once scrolled (`scroll-edge`), and while it has no lines its one sentence (and a Details disclosure
+30rem, its lines fading at the top edge once scrolled (`scroll-edge`), and while it has no lines its one sentence under a muted terminal mark (and a Details disclosure
 with the server's words) sits centred in it. The toolbar runs the service picker, then All / Errors, then
 one mono status marker pushed right, always one word with the reason in its tooltip: Live while following,
 Paused after the button, Scrolled up once scrolling released following, and

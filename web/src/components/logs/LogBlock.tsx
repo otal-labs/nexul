@@ -1,4 +1,4 @@
-import { ArrowDownIcon } from "lucide-react";
+import { ArrowDownIcon, SquareTerminalIcon } from "lucide-react";
 
 import {
   MessageScroller,
@@ -22,6 +22,7 @@ export const LogBlock = ({ lines, empty }: LogBlockProps) => (
   <div ref={fillToBottom} className="relative overflow-hidden rounded-lg border border-border bg-surface-2">
     {lines.length === 0 && (
       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <SquareTerminalIcon aria-hidden className="mb-3 size-5 text-muted-foreground" />
         <p role="status" className="max-w-md text-sm text-balance text-muted-foreground">{empty.text}</p>
         {empty.detail && (
           <details className="mt-2 max-w-md text-xs text-muted-foreground">
