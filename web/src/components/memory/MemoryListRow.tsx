@@ -3,13 +3,13 @@ import { useMemo, useState } from "react";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
-import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { memoryFolderOptions } from "@/components/memory/memoryGroups";
+import { MemoryRowPreview } from "@/components/memory/MemoryRowPreview";
 import { useSetMemoryFlag } from "@/hooks/MemoryHooks";
 import { useConfirmDeleteMemory } from "@/hooks/useConfirmDeleteMemory";
 import { useRowGates } from "@/hooks/useRowGates";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { Memory } from "@/models/Memory";
+import { isDecisionsLogMemory, isInterviewMemory, type Memory } from "@/models/Memory";
 import { memoryPath } from "@/models/Project";
 import { bodySnippet } from "@/utils/BodySnippet";
 
@@ -31,6 +31,8 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
   const confirmDelete = useConfirmDeleteMemory();
   const wsPath = useWorkspacePath();
   const snippet = useMemo(() => bodySnippet(memory.body), [memory.body]);
+  // The interview is always sent whatever the flag says, and the decisions log never is.
+  const alwaysIncluded = isInterviewMemory(memory) || (memory.always_included && !isDecisionsLogMemory(memory));
   const onClone = offered("onClone") ? () => setCloneOpen(true) : undefined;
   const onDelete = offered("onDelete") ? () => void confirmDelete(memory, selected) : undefined;
   const moveTo =
@@ -48,13 +50,11 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
       <ListPaneRow
         to={wsPath(memoryPath(projectToken, memory.id))}
         title={memory.title}
-        snippet={snippet}
-        detail={memory.last_read_at && <span className="font-mono tabular-nums">Read by a run {formatUpdatedAgo(memory.last_read_at)}</span>}
+        detail={(alwaysIncluded || snippet !== "") && <MemoryRowPreview alwaysIncluded={alwaysIncluded} snippet={snippet} />}
         selected={selected}
         metaOnTitleLine
         meta={<span className="font-mono text-xs text-muted-foreground tabular-nums">{formatUpdatedAgo(memory.updated_at)}</span>}
         menu={{ moveTo, onClone, onDelete, gates, deleteGate }}
-        trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} />}
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
     </>

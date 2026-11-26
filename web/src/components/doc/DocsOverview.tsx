@@ -39,7 +39,7 @@ export const DocsOverview = ({ docs, project, query }: DocsOverviewProps) => {
   const newDoc = useNewDoc(project);
   const token = projectToken(project);
   return (
-    <section aria-label="Docs overview" className="@container flex flex-1 flex-col px-6 pt-3 pb-8">
+    <section aria-label="Docs overview" className="@container flex flex-1 flex-col px-6 pt-5 pb-8">
       {empty && (
         <EmptyState
           icon={FileTextIcon}

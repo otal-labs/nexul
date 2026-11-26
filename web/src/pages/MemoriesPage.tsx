@@ -1,12 +1,11 @@
-import { BrainIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useParams } from "react-router";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
-import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoriesListPane } from "@/components/memory/MemoriesListPane";
+import { MemoriesPlaceholder } from "@/components/memory/MemoriesPlaceholder";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
@@ -34,14 +33,7 @@ export const MemoriesPage = () => {
           hasSelection={!!memoryId}
           stableGutter
           list={<MemoriesListPane memories={memories} project={current} selectedId={memoryId} />}
-          placeholder={
-            <ListDetailPlaceholder
-              icon={BrainIcon}
-              title={memories.length === 0 ? "Nothing to open yet" : "Select a memory"}
-              summary={memories.length === 0 ? `${current.name} has no memories.` : `${memories.length} ${memories.length === 1 ? "memory" : "memories"} in ${current.name}`}
-              searchable={memories.length > 0}
-            />
-          }
+          placeholder={<MemoriesPlaceholder memories={memories} project={current} />}
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <MemoryPage key={memoryId} />

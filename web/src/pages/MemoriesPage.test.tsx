@@ -72,8 +72,6 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
   );
 };
 
-const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Always include ${title}` });
-
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   vi.mocked(api.get).mockReset();
@@ -87,7 +85,8 @@ describe("MemoriesPage", () => {
     const main = await screen.findByRole("region", { name: "Main" });
     const [first, second] = within(main).getAllByRole("link");
     expect(first).toHaveAccessibleName(/Deploy quirks/);
-    expect(await rowSwitch("Deploy quirks")).toBeChecked();
+    expect(first?.closest("li")).toHaveTextContent("Always included");
+    expect(second?.closest("li")).not.toHaveTextContent("Always included");
     expect(second).toHaveAttribute("aria-current", "page");
     const footer = screen.getByRole("region", { name: "Footer" });
     expect(within(footer).getByRole("link", { name: /Where tickets go/ })).toBeInTheDocument();
@@ -110,40 +109,35 @@ describe("MemoriesPage", () => {
     );
   });
 
-  it("the row switch saves always-included at once and rolls back when the save fails", async () => {
+  it("moves a row to the Footer at once and back when the save fails", async () => {
     const user = userEvent.setup();
     let failSave: (error: Error) => void = () => {};
     vi.mocked(api.put).mockReturnValue(new Promise((_, reject) => (failSave = reject)));
     renderPage("/memories", ["memories:read", "memories:write"]);
 
-    await vi.waitFor(async () => expect(await rowSwitch("Naming rules")).toBeEnabled());
-    const toggle = await rowSwitch("Naming rules");
-    // Every later list read hangs, so the switch below shows the cache's own state, never a refetch's.
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Naming rules") });
+    // Every later list read hangs, so the folders below show the cache's own state, never a refetch's.
     const loaded = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation((url: string) =>
       url === "/api/memories" ? new Promise(() => {}) : (loaded?.(url) ?? Promise.resolve({ data: [] })),
     );
-    await user.click(toggle);
+    await user.click(await screen.findByRole("menuitem", { name: "Move to" }));
+    (await screen.findByRole("menuitemradio", { name: "Footer" })).focus();
+    await user.keyboard("{Enter}");
 
-    expect(await rowSwitch("Naming rules")).toBeChecked();
-    expect(api.put).toHaveBeenCalledWith(
-      "/api/memories/mem-2",
-      expect.objectContaining({ title: "Naming rules", body: memories[1]?.body, always_included: true }),
-    );
+    const footer = screen.getByRole("region", { name: "Footer" });
+    expect(await within(footer).findByRole("link", { name: /Naming rules/ })).toBeInTheDocument();
     failSave(new Error("conflict"));
-    await vi.waitFor(async () => expect(await rowSwitch("Naming rules")).not.toBeChecked());
+    await vi.waitFor(() => expect(within(screen.getByRole("region", { name: "Main" })).getByRole("link", { name: /Naming rules/ })).toBeInTheDocument());
   });
 
-  it("disables the row switch and leaves Clone out of the menu for a role without memories:write and memories:clone", async () => {
+  it("leaves Clone out of the menu for a role without memories:clone", async () => {
     const user = userEvent.setup();
     renderPage("/memories", ["memories:read", "memories:delete"]);
 
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Naming rules") });
     expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Clone" })).not.toBeInTheDocument();
-    // Delete showing means the role has loaded, so the switch's state is the role's answer, not a pending fetch's.
-    await user.keyboard("{Escape}");
-    expect(await rowSwitch("Naming rules")).toBeDisabled();
   });
 
   it("offers Clone in the row menu to a role with memories:clone", async () => {
@@ -158,7 +152,7 @@ describe("MemoriesPage", () => {
     renderPage("/memories", ["memories:read", "memories:write"], { "/api/memories": [] });
 
     expect(await screen.findByText("No memories yet")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "New memory" })).toBeInTheDocument();
+    expect((await screen.findAllByRole("button", { name: "New memory" })).length).toBeGreaterThan(0);
   });
 
   it("shows the shared error display when the list fails", async () => {

@@ -37,6 +37,7 @@ export const MemoriesListPane = ({ memories, project, selectedId }: MemoriesList
         newVerb="create memories"
         projectId={project.id}
         onNew={openCreateMemory}
+        {...(!selectedId && { newClassName: "lg:hidden" })}
         search={search}
         onSearch={setSearch}
       />

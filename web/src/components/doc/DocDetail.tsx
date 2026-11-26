@@ -91,13 +91,19 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             inputRef={titleInputRef}
           />
         }
-        meta={<DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />}
-        afterCrumbs={
-          switchable && <DocViewSwitch view={view} ticketCount={ticketCount} questions={questions} waiting={waiting} onChange={setView} />
+        meta={
+          <>
+            <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
+            {switchable && (
+              <div className="ml-auto">
+                <DocViewSwitch view={view} ticketCount={ticketCount} questions={questions} waiting={waiting} onChange={setView} />
+              </div>
+            )}
+          </>
         }
         actions={
           <>
-            {doc.locked && <DocLockedSignal docId={doc.id} />}
+            {doc.locked && <DocLockedSignal />}
             {/* Kept in place off the doc view, so the actions never shift as the view changes. */}
             <DocTocButton headings={headings} className={cn("size-7 @min-[50rem]:hidden", view !== "doc" && "invisible")} />
             <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />

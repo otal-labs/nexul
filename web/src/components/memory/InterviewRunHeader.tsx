@@ -26,7 +26,7 @@ export const InterviewRunHeader = ({ project }: InterviewRunHeaderProps) => {
   const stale = changed > 0 && !active;
 
   return (
-    <header className="flex flex-wrap items-center gap-x-8 gap-y-2">
+    <header className="flex flex-wrap items-center gap-x-2 gap-y-2">
       <div className="flex min-h-9 min-w-0 grow basis-md items-center gap-3">
         <InterviewRunLine projectId={project.id} memory={memory} changed={changed} />
         {((memory && !active) || followUpActive) && (
@@ -37,7 +37,7 @@ export const InterviewRunHeader = ({ project }: InterviewRunHeaderProps) => {
           />
         )}
       </div>
-      <div className="flex min-h-9 min-w-0 grow items-center justify-end gap-3 empty:hidden has-[>p]:basis-full">
+      <div className="flex min-h-9 min-w-0 items-center justify-end gap-3 empty:hidden has-[>p]:grow has-[>p]:basis-full">
         <InterviewAuditLine project={project} />
         {((memory && !active) || auditActive) && <InterviewAuditButton projectId={project.id} />}
       </div>

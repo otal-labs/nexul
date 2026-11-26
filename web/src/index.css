@@ -935,7 +935,6 @@ body {
 
 .prose-rich code {
   background: var(--muted);
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono-stack);
   font-size: 0.85em;
