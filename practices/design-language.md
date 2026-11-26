@@ -441,7 +441,8 @@ with the same hairline ring. The panel is the `panel` utility in `index.css`,
 applied once by the layout. A single page gets one panel for its whole content
 (`.app-frame` in `Layout.tsx`); a page built from panes marks its root
 `data-pane-layout`, which turns the frame off, and gives each pane its own
-`panel` with an 8px (`gap-2`) gutter; the open record's pane clips its shadow
+`panel` with an 8px (`gap-2`) gutter (a tab under a page's own header, Access's
+Roles and people, keeps the frame and draws its panes as cards instead); the open record's pane clips its shadow
 at its left edge, which otherwise reached past the gutter and drew a strip
 down the list's edge. Never a panel inside a panel.
 
@@ -1409,25 +1410,31 @@ are the reference.
 
 Access grid. The Projects and Public channels tabs of the Access page are one
 grid each, rows by roles, and the card fills the panel's height: the grid is
-the one scroller, both ways, with a stable scrollbar gutter so nothing moves
-when rows start to overflow, and it snaps sideways a whole role column at a
+the one scroller, both ways, with a stable scrollbar gutter on both edges, so
+nothing moves when rows start to overflow and the rows' strips and rules stop
+the same 10px short of each side (the name column and the last column pad
+14px, keeping the names under the card's title), and it snaps sideways a whole role column at a
 time. Its head row is sticky on top and its name column (240px, 200px below
 1024px, the name truncating inside it) sticky on the left, casting its edge
 (`edge-shade`) once scrolled sideways; the save strip sits under it, always in
 view. A role column is 72px: the name at 12px medium in up to three lines, cut
 at a whole word with its ellipsis when longer (`headName`), over its holder
-count in mono ("nobody" at none). Spare width goes to a filler between the role
-columns and the right edge, so the ticks start beside the names and People
-stays flush right. Rows are one 44px line, the project's 24px mark and name.
+count in mono ("nobody" at none). The card is only as wide as its grid (or
+its title and description, if wider), up to the panel's: People follows the
+last role column and any spare width goes to a filler after it, so the ticks
+start beside the names and no empty band runs between the roles and People. Rows are one 44px line, the project's 24px mark and name.
 The whole 72x44 cell is the box: on Projects a tick is a `foreground` check on
 a `foreground` 6% tint inset 2px, and an empty cell is unticked; on Public
-channels, where every member sees a channel, the exception is marked instead,
-a muted eye-off on a role the channel is hidden from. The ticks are ink, not
+channels, where every member sees a channel, the exception is marked instead:
+an ink eye-off on the same tint on a role the channel is hidden from, and a
+seen cell a faint eye (`muted-foreground` at 45%), so every cell shows its
+state and the hidden ones stand out. The ticks are ink, not
 the accent: a grid of them would put the ember on most of the page, so the
 ember rings an unsaved cell's tint (2px, inset) and the footer counts them
 ("3 changes"); keyboard focus rings the cell's own edge, outside the tint. The
 lead row on the muted strip sets a role on every row shown and says how many
-have it, in every state ("9/15", "15/15", "0/15"). People sits in a column pinned right, casting its edge while
+have it, in every state ("9/15", "15/15", "0/15"); on Public channels how
+many see it, after an eye while all do and an eye-off once one is hidden. People sits in a column pinned right, casting its edge while
 columns lie under it, its add button showing on the row's hover or focus; a
 grid with nothing pinned ends in a 16px column that fades what passes under
 it. The bottom of every scroller fades over 24px while rows lie past it.
@@ -1489,7 +1496,11 @@ and the words between names stay in the UI sans. A row's state sits on its secon
 row's presence, a connector's, which drops the word its tab already says.
 
 Roles and people. The Access page's Roles and people tab is a list pane (List
-pane, above) inside the tab: the roles, the Owner first with a muted crown after its name, every role
+pane, above) inside the tab, kept in the page's panel like the other Access
+tabs so the header and tab row never move between them: the list and the open
+role are cards 16px apart (`ListDetailLayout` with `framed`), the bands pinned
+in them painting the card's fill, and below 1024px the list card is only as
+tall as its rows. Compare roles sits straight on the panel, its matrix the one card. The list holds the roles, the Owner first with a muted crown after its name, every role
 in the header's count as in the page header's, each row its name over its
 description with the holder count in mono on the title's baseline (left out at
 none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
@@ -1538,8 +1549,8 @@ further down than the gaps above it and 12px over its first section: one microhe
 editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more, 8px over the next section rather than a section's full gap. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
-own once the pane is 36rem wide (a two-line row never stretches its neighbour), the name on the left with the extra verbs held on a
-muted line under it, and the level as its word in a fixed 80px slot on the right,
+own once the pane is 36rem wide, every row one line so the two columns' rows meet: the name on the left with the extra verbs held
+muted after it on its line, cut before the name is, and the level as its word in a fixed 80px slot on the right,
 on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
 permission reads Yes with a check in the glyph's slot, or a muted No. The areas a role has no
 access to fold under one ghost line ("Show 2 with no access"), which opens them
@@ -2169,6 +2180,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | The Roles tab is a matrix of every area by every role (2026-10-29) | Replaces one row per role with a tally of levels ("Delete 16 · Write 6 · Read 3 · None 10") and a chevron for the areas: the counts changed which levels they listed from row to row and never named an area, and one role opened at a time, so two roles could not be compared. The owner picked the matrix over the tally kept in four fixed columns, as two lines or one, from screenshots on the worst-case workspace |
 | Access grid ticks are ink and the ember marks an unsaved cell (2026-10-29) | An ember box per tick put 150 ember marks on a worst-case Public channels tab and buried its few exceptions, and an ember ring on an ember box could not show a change. Picked from screenshots over a hairline box and a bare check: an ink check on a 6% cell tint. Public channels marks the hidden role (eye-off) and leaves a seen cell empty |
+| The Access grids sized to their columns, a seen channel cell a faint eye (2026-11-26) | A grid spanning the panel left a 600 to 750px empty band between two role columns and People, and a Public channels grid of empty seen cells read as unrendered. Sized to its columns with People after the last role, and every cell showing its state, the grid reads as one compact table; the ticks stay ink on a tint as picked |
 | The Access grids fill the panel and scroll in one box (2026-10-29) | The card used to scroll inside the page, two scrollbars, the save strip below the fold and the names scrolling away with the boxes. A sticky head inside a box that scrolls sideways sticks to that box, so the box became the only scroller rather than syncing a separate head; it is paint-contained, because its sticky cells otherwise widened the page by 210px at 768 |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |

@@ -1,10 +1,12 @@
 import { ProjectsCard } from "@/components/accessgrid/ProjectsCard";
+import { gridCardStyle, gridCardWidth } from "@/components/accessgrid/gridStyles";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useSaveAccessGrid } from "@/hooks/AccessGridHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useFlash } from "@/hooks/useFlash";
 import { countLabel, type AccessGrid } from "@/models/AccessGrid";
+import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface AccessProjectsTabProps {
@@ -28,7 +30,8 @@ export const AccessProjectsTab = ({ grid }: AccessProjectsTabProps) => {
   return (
     <form
       id={FORM}
-      className="flex min-h-0 flex-col"
+      className={cn("flex min-h-0 flex-col", gridCardWidth)}
+      style={gridCardStyle(grid.roles.length, true)}
       onSubmit={(event) => {
         event.preventDefault();
         void submit().catch(() => undefined);
@@ -37,7 +40,7 @@ export const AccessProjectsTab = ({ grid }: AccessProjectsTabProps) => {
       <ProjectsCard
         grid={grid}
         fill
-        aside={setup.finished && <SettingsStatus tone="success" detail={by || undefined}>Set up</SettingsStatus>}
+        aside={setup.finished && <SettingsStatus tone="success" detail={by || undefined}>Setup finished</SettingsStatus>}
         footer={
           <SettingsSaveBar
             form={FORM}

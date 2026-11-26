@@ -1,4 +1,4 @@
-import { Check, EyeOff, Minus } from "lucide-react";
+import { Check, Eye, EyeOff, Minus } from "lucide-react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 
 import { leadStrip } from "@/components/accessgrid/gridStyles";
@@ -33,12 +33,9 @@ export const AccessGridLeadCell = ({ on, rows, marks, label, onSetAll }: AccessG
         {marks === "ticks" && state === true && <Check className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && state === "indeterminate" && <Minus className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && `${on}/${rows}`}
-        {marks === "hidden" && hidden > 0 && (
-          <>
-            <EyeOff className="size-3.5 -translate-y-px" aria-hidden />
-            {hidden}
-          </>
-        )}
+        {marks === "hidden" && hidden === 0 && <Eye className="size-3.5 -translate-y-px" aria-hidden />}
+        {marks === "hidden" && hidden > 0 && <EyeOff className={mark} aria-hidden />}
+        {marks === "hidden" && `${on}/${rows}`}
         </span>
       </CheckboxPrimitive.Root>
     </td>

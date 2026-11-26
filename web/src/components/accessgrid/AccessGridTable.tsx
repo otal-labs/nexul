@@ -25,11 +25,11 @@ interface AccessGridTableProps {
 
 const TALL_FROM = 12;
 
-// Rows by roles in one scroller (paint-contained: without it its sticky cells widened the page at 768), its head row sticky on top and its name column sticky on the left.
+// Rows by roles in one scroller, sized to its columns with any spare width after the last (paint-contained: without it its sticky cells widened the page at 768), its head row sticky on top and its name column sticky on the left.
 export const AccessGridTable = ({ label, leadLabel, rows, roles, marks, isOn, isChanged, onToggle, onSetAll, trailingHead, fill = false }: AccessGridTableProps) => (
   <div
     className={cn(
-      "-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint] [scrollbar-gutter:stable]",
+      "-mx-6 -mb-6 min-h-0 overflow-auto overscroll-contain [contain:paint] [scrollbar-gutter:stable_both-edges]",
       snapScroller,
       !fill && rows.length > TALL_FROM && "max-h-[min(60vh,40rem)]",
     )}
@@ -37,19 +37,19 @@ export const AccessGridTable = ({ label, leadLabel, rows, roles, marks, isOn, is
     <table className="w-full border-separate border-spacing-0 text-sm [&_tbody_tr:last-child>*]:border-b-0">
       <thead>
         <tr>
-          <th scope="col" className={cn(stickyCell, microheaderClass, "top-0 z-30 border-b border-border pr-3 pb-2 pl-6 text-left align-bottom")}>
+          <th scope="col" className={cn(stickyCell, microheaderClass, "top-0 z-30 border-b border-border pr-3 pb-2 pl-3.5 text-left align-bottom")}>
             {label}
           </th>
           {roles.map((role) => (
             <RoleColumnHead key={role.id} role={role} />
           ))}
-          <th aria-hidden className={cn(fillerCell, "sticky top-0 z-20 bg-card")} />
           {trailingHead !== undefined && (
-            <th scope="col" className={cn(microheaderClass, "grid-edge-end sticky top-0 right-0 z-20 w-32 min-w-32 border-b border-border bg-card pr-6 pb-2 pl-3 text-left align-bottom")}>
+            <th scope="col" className={cn(microheaderClass, "grid-edge-end sticky top-0 right-0 z-20 w-32 min-w-32 border-b border-border bg-card pr-3.5 pb-2 pl-3 text-left align-bottom")}>
               {trailingHead}
             </th>
           )}
           {trailingHead === undefined && <th aria-hidden className={cn(fadeEndCell, "top-0 z-20 bg-card")} />}
+          <th aria-hidden className={cn(fillerCell, "sticky top-0 z-20 bg-card")} />
         </tr>
       </thead>
       <tbody>
