@@ -152,3 +152,51 @@ func trim(p *string, keep string) string {
 	}
 	return strings.TrimSpace(*p)
 }
+
+// MoveAccount is one account as moving sign-ins shows it: Email is the one its single sign-on brought, or the one an
+// expected sign-in waits for.
+type MoveAccount struct {
+	ID        string    `json:"id"`
+	Login     string    `json:"login"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// OldSignIn is someone still signing in through the other protocol, with the account a first sign-in through the saved
+// one made under the same email, and the email an expected sign-in of theirs waits for, if either.
+type OldSignIn struct {
+	MoveAccount
+	Match         *MoveAccount `json:"match"`
+	ExpectedEmail string       `json:"expected_email"`
+}
+
+// ExpectedLink is an expected sign-in: the first sign-in through the provider that brings Account.Email lands on Account.
+type ExpectedLink struct {
+	Account   MoveAccount `json:"account"`
+	CreatedBy string      `json:"created_by"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+// SignInMoves is what moving people from one protocol to the other reads: who is still on the other one, the accounts
+// whose one sign-in is the saved provider's and match nobody, and the expected sign-ins waiting.
+type SignInMoves struct {
+	// Protocol and ProviderName are the saved provider's; empty when none is saved, and then the lists are too.
+	Protocol     string         `json:"protocol"`
+	ProviderName string         `json:"provider_name"`
+	People       []OldSignIn    `json:"people"`
+	Unmatched    []MoveAccount  `json:"unmatched"`
+	Expected     []ExpectedLink `json:"expected"`
+}
+
+// MovePair is one sign-in to move: from the account a first sign-in made onto the person's own.
+type MovePair struct {
+	FromAccountID string `json:"from_account_id"`
+	ToAccountID   string `json:"to_account_id"`
+}
+
+// MoveResult is one pair's outcome; Err is nil when it moved.
+type MoveResult struct {
+	MovePair
+	Err error
+}

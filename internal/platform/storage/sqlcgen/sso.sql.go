@@ -7,7 +7,36 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
+
+const countSSOIdentitiesOfProvider = `-- name: CountSSOIdentitiesOfProvider :one
+SELECT COUNT(*) FROM user_identities WHERE user_id = ? AND provider = ?
+`
+
+type CountSSOIdentitiesOfProviderParams struct {
+	UserID   string
+	Provider string
+}
+
+func (q *Queries) CountSSOIdentitiesOfProvider(ctx context.Context, arg CountSSOIdentitiesOfProviderParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSSOIdentitiesOfProvider, arg.UserID, arg.Provider)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteSSOExpectedLink = `-- name: DeleteSSOExpectedLink :execrows
+DELETE FROM sso_expected_links WHERE user_id = ?
+`
+
+func (q *Queries) DeleteSSOExpectedLink(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteSSOExpectedLink, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
 
 const deleteSSOSettings = `-- name: DeleteSSOSettings :exec
 DELETE FROM sso_settings WHERE id = 1
@@ -34,6 +63,33 @@ func (q *Queries) FindUserByEmailIdentity(ctx context.Context, login string) (Fi
 	var i FindUserByEmailIdentityRow
 	err := row.Scan(&i.ID, &i.AccountStatus)
 	return i, err
+}
+
+const getSSOExpectedLinkByEmail = `-- name: GetSSOExpectedLinkByEmail :one
+SELECT u.id, u.account_status FROM sso_expected_links e JOIN users u ON u.id = e.user_id WHERE e.email = ?
+`
+
+type GetSSOExpectedLinkByEmailRow struct {
+	ID            string
+	AccountStatus string
+}
+
+func (q *Queries) GetSSOExpectedLinkByEmail(ctx context.Context, email string) (GetSSOExpectedLinkByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, getSSOExpectedLinkByEmail, email)
+	var i GetSSOExpectedLinkByEmailRow
+	err := row.Scan(&i.ID, &i.AccountStatus)
+	return i, err
+}
+
+const getSSOExpectedLinkEmail = `-- name: GetSSOExpectedLinkEmail :one
+SELECT email FROM sso_expected_links WHERE user_id = ?
+`
+
+func (q *Queries) GetSSOExpectedLinkEmail(ctx context.Context, userID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getSSOExpectedLinkEmail, userID)
+	var email string
+	err := row.Scan(&email)
+	return email, err
 }
 
 const getSSOJoinRole = `-- name: GetSSOJoinRole :one
@@ -71,6 +127,147 @@ func (q *Queries) GetSSOSettings(ctx context.Context) (SsoSetting, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listSSOExpectedLinks = `-- name: ListSSOExpectedLinks :many
+SELECT e.user_id, e.email, e.created_by, e.created_at, u.login, u.name, u.display_name
+FROM sso_expected_links e JOIN users u ON u.id = e.user_id
+ORDER BY e.email, e.user_id
+`
+
+type ListSSOExpectedLinksRow struct {
+	UserID      string
+	Email       string
+	CreatedBy   string
+	CreatedAt   int64
+	Login       string
+	Name        string
+	DisplayName sql.NullString
+}
+
+func (q *Queries) ListSSOExpectedLinks(ctx context.Context) ([]ListSSOExpectedLinksRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSSOExpectedLinks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSSOExpectedLinksRow
+	for rows.Next() {
+		var i ListSSOExpectedLinksRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Email,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.Login,
+			&i.Name,
+			&i.DisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSSOOldSignIns = `-- name: ListSSOOldSignIns :many
+SELECT u.id, u.login, u.name, u.display_name, u.created_at, i.login AS email
+FROM user_identities i JOIN users u ON u.id = i.user_id
+WHERE i.provider IN ('oidc', 'saml') AND i.provider <> ?1 AND u.account_status = 'active'
+  AND NOT EXISTS (SELECT 1 FROM user_identities c WHERE c.user_id = u.id AND c.provider = ?1)
+ORDER BY i.login COLLATE NOCASE, u.id
+`
+
+type ListSSOOldSignInsRow struct {
+	ID          string
+	Login       string
+	Name        string
+	DisplayName sql.NullString
+	CreatedAt   int64
+	Email       string
+}
+
+func (q *Queries) ListSSOOldSignIns(ctx context.Context, currentProvider string) ([]ListSSOOldSignInsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSSOOldSignIns, currentProvider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSSOOldSignInsRow
+	for rows.Next() {
+		var i ListSSOOldSignInsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Login,
+			&i.Name,
+			&i.DisplayName,
+			&i.CreatedAt,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSSOOnlyAccounts = `-- name: ListSSOOnlyAccounts :many
+SELECT u.id, u.login, u.name, u.display_name, u.created_at, i.login AS email
+FROM user_identities i JOIN users u ON u.id = i.user_id
+WHERE i.provider = ?1 AND u.account_status = 'active'
+  AND NOT EXISTS (SELECT 1 FROM user_identities o WHERE o.user_id = u.id AND o.provider <> ?1)
+ORDER BY i.login COLLATE NOCASE, u.id
+`
+
+type ListSSOOnlyAccountsRow struct {
+	ID          string
+	Login       string
+	Name        string
+	DisplayName sql.NullString
+	CreatedAt   int64
+	Email       string
+}
+
+func (q *Queries) ListSSOOnlyAccounts(ctx context.Context, currentProvider string) ([]ListSSOOnlyAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSSOOnlyAccounts, currentProvider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSSOOnlyAccountsRow
+	for rows.Next() {
+		var i ListSSOOnlyAccountsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Login,
+			&i.Name,
+			&i.DisplayName,
+			&i.CreatedAt,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const moveSSOIdentity = `-- name: MoveSSOIdentity :execrows
@@ -119,6 +316,28 @@ func (q *Queries) SetSSOSettings(ctx context.Context, arg SetSSOSettingsParams) 
 		arg.SsoOnly,
 		arg.UpdatedBy,
 		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertSSOExpectedLink = `-- name: UpsertSSOExpectedLink :exec
+INSERT INTO sso_expected_links (user_id, email, created_by, created_at) VALUES (?, ?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET email = excluded.email, created_by = excluded.created_by, created_at = excluded.created_at
+`
+
+type UpsertSSOExpectedLinkParams struct {
+	UserID    string
+	Email     string
+	CreatedBy string
+	CreatedAt int64
+}
+
+func (q *Queries) UpsertSSOExpectedLink(ctx context.Context, arg UpsertSSOExpectedLinkParams) error {
+	_, err := q.db.ExecContext(ctx, upsertSSOExpectedLink,
+		arg.UserID,
+		arg.Email,
+		arg.CreatedBy,
+		arg.CreatedAt,
 	)
 	return err
 }

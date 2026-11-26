@@ -20,8 +20,8 @@ import (
 // The rules below are practices/mcp.md sections 4 to 6, checked so they cannot drift.
 // advertisedBudget caps the characters tools/list sends, which every session pays for; it sits just above today's
 // size, so new text has to earn its place (ADR 0171, raised by ADR 0174, ADR 0179, ADR 0185, ADR 0186, which branding raised
-// again, ADR 0189, ADR 0190, ADR 0191, ADR 0201, ADR 0207 and ADR 0209, which commands on machines raised again).
-const advertisedBudget = 201_000
+// again, ADR 0189, ADR 0190, ADR 0191, ADR 0201, ADR 0207 and ADR 0209, which commands on machines raised again, and ADR 0189 again for moving sign-ins).
+const advertisedBudget = 201_500
 
 var (
 	toolName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,51}$`)

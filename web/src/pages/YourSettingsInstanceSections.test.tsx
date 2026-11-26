@@ -25,6 +25,7 @@ vi.mock("@/components/settings/OAuthProviderSection", () => ({
 }));
 vi.mock("@/components/settings/ConnectorAppConfigSection", () => ({ ConnectorAppConfigSection: () => <p>App card</p> }));
 vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team card</p> }));
+vi.mock("@/ee/components/SignInMovesPanel", () => ({ SignInMovesPanel: () => <p>moves card</p> }));
 
 const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
 
@@ -84,6 +85,7 @@ describe("Settings page instance sections", () => {
     { held: ["connectors:read"], shown: ["Connectors"] },
     { held: ["dns:read"], shown: ["DNS"] },
     { held: ["accounts:read"], shown: ["Team"] },
+    { held: ["sign_ins:move"], shown: ["Sign-in providers"] },
   ])("with $held the Instance settings group lists $shown", async ({ held, shown }) => {
     renderPage("/settings", held);
 
@@ -143,6 +145,23 @@ describe("Settings page instance sections", () => {
     await selectedTab("Discord");
     expect(screen.getByText("discord card")).toBeInTheDocument();
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
+  });
+
+  it("opens Move sign-ins from its path, under a crumb back to the providers", async () => {
+    renderPage("/settings/sign-in/move");
+
+    expect(await screen.findByText("moves card")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Move sign-ins" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Sign-in providers" }), "the section nav and the crumb").toHaveLength(2);
+    expect(screen.queryByText("discord card")).not.toBeInTheDocument();
+  });
+
+  it("opens Sign-in providers on Move sign-ins for a holder of sign_ins:move alone", async () => {
+    renderPage("/settings/sign-in", ["sign_ins:move"]);
+
+    expect(await screen.findByText("moves card")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Move sign-ins" })).toBeInTheDocument();
+    expect(screen.queryByText("discord card")).not.toBeInTheDocument();
   });
 
   it("opens the Google sign-in tab from its path", async () => {

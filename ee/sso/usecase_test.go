@@ -201,6 +201,7 @@ type harness struct {
 	accounts *fakeAccounts
 	idp      *fakeIdP
 	saml     *fakeSAMLRepo
+	moves    *fakeMoves
 	// secrets seen by Connect, in order.
 	connected []ConnectConfig
 }
@@ -216,9 +217,10 @@ func newHarness(t *testing.T, licensed bool) *harness {
 		accounts: newAccounts(),
 		idp:      &fakeIdP{claims: Claims{Subject: "sub-1", Email: "alice@example.com", EmailVerified: true, Name: "Alice"}},
 		saml:     &fakeSAMLRepo{},
+		moves:    newMoves(),
 	}
 	h.svc = NewService(Config{
-		Repo: h.repo, SAML: h.saml, Accounts: h.accounts, Licenses: fakeLicenses{on: licensed}, Gate: fakeGate{},
+		Repo: h.repo, SAML: h.saml, Accounts: h.accounts, Moves: h.moves, Licenses: fakeLicenses{on: licensed}, Gate: fakeGate{},
 		InstanceURL:     func(context.Context) (string, error) { return "https://nexul.example.com/", nil },
 		OwnerHasPasskey: func(context.Context) (bool, error) { return true, nil },
 		InstanceOwners:  func(context.Context) ([]string, error) { return []string{"owner-1"}, nil },

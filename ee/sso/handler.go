@@ -61,7 +61,8 @@ func (h *Handler) PublicRoutes() http.Handler {
 	return mux
 }
 
-// Routes are the Owner's settings for either protocol: read them, check them, save them, remove them.
+// Routes are the Owner's settings for either protocol (read them, check them, save them, remove them) and moving
+// people's sign-ins between accounts.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/instance/sso", h.get)
@@ -69,6 +70,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/instance/sso", h.remove)
 	mux.HandleFunc("POST /api/instance/sso/verify", h.verify)
 	mux.HandleFunc("POST /api/instance/sso/move", h.move)
+	mux.HandleFunc("GET /api/instance/sso/moves", h.moves)
+	mux.HandleFunc("POST /api/instance/sso/moves", h.linkMatched)
+	mux.HandleFunc("PUT /api/instance/sso/expected/{account_id}", h.expect)
+	mux.HandleFunc("DELETE /api/instance/sso/expected/{account_id}", h.unexpect)
 	mux.HandleFunc("GET /api/instance/saml", h.getSAML)
 	mux.HandleFunc("PUT /api/instance/saml", h.updateSAML)
 	mux.HandleFunc("DELETE /api/instance/saml", h.removeSAML)
@@ -90,6 +95,72 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.MoveSignIn(r.Context(), b.FromAccountID, b.ToAccountID); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) moves(w http.ResponseWriter, r *http.Request) {
+	v, err := h.svc.SignInMoves(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+type moveResultJSON struct {
+	MovePair
+	Moved bool `json:"moved"`
+	// Message is why the pair did not move; empty when it moved.
+	Message string `json:"message"`
+}
+
+// linkMatched moves every pair sent and answers 200 with each pair's outcome, since one that fails leaves the rest moved.
+func (h *Handler) linkMatched(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Pairs []MovePair `json:"pairs"`
+	}
+	if err := httpx.DecodeJSON(r, &b); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	results, err := h.svc.LinkMatched(r.Context(), b.Pairs)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	out := make([]moveResultJSON, 0, len(results))
+	for _, res := range results {
+		row := moveResultJSON{MovePair: res.MovePair, Moved: res.Err == nil}
+		if res.Err != nil {
+			row.Message = httpx.Message(res.Err)
+			logging.FromCtx(r.Context()).Warn("sign-in not moved", "from", res.FromAccountID, "to", res.ToAccountID, "error", res.Err)
+		}
+		out = append(out, row)
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": out})
+}
+
+func (h *Handler) expect(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Email string `json:"email"`
+	}
+	if err := httpx.DecodeJSON(r, &b); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	link, err := h.svc.ExpectSignIn(r.Context(), r.PathValue("account_id"), b.Email)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, link)
+}
+
+func (h *Handler) unexpect(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveExpected(r.Context(), r.PathValue("account_id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

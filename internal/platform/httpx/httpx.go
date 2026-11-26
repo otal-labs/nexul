@@ -70,6 +70,13 @@ func DecodeJSON(r *http.Request, v any) error {
 	return nil
 }
 
+// Message is the text WriteError would send for err, "internal error" for one that is not a known sentinel; for a
+// result that carries a failure per item.
+func Message(err error) string {
+	_, _, message := mapSentinel(err)
+	return message
+}
+
 func mapError(err error) (status int, code, message string) {
 	status, code, message = mapSentinel(err)
 	var coded *apperrs.Coded

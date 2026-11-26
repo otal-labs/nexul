@@ -5242,6 +5242,44 @@
       "changed_at"
     ]
   },
+  "instance.sso_expected_changed": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string",
+        "description": "The account the expected sign-in lands on."
+      },
+      "email": {
+        "type": "string",
+        "description": "The email the first sign-in through the provider brings."
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "True when the expected sign-in was removed without being used."
+      },
+      "used": {
+        "type": "boolean",
+        "description": "True when a first sign-in used it, which deletes it."
+      },
+      "changed_by": {
+        "type": "string",
+        "description": "The account that saved or removed it; the account signing in when used."
+      },
+      "changed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id",
+      "email",
+      "removed",
+      "used",
+      "changed_by",
+      "changed_at"
+    ]
+  },
   "instance.upgrade_changed": {
     "type": "object",
     "properties": {

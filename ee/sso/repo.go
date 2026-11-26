@@ -48,3 +48,21 @@ type Accounts interface {
 	// sessions; ErrInvalid when fromID signs in another way too, ErrConflict when toID already has one.
 	MoveSignIn(ctx context.Context, fromID, toID, actorID string) error
 }
+
+// Moves is what moving people between the provider's protocols reads and writes; implemented in internal/platform/storage.
+type Moves interface {
+	// OldSignIns lists the active accounts with a single sign-on of another protocol than current and none of current's.
+	OldSignIns(ctx context.Context, current string) ([]MoveAccount, error)
+	// OnlyOn lists the active accounts whose one sign-in is current's single sign-on.
+	OnlyOn(ctx context.Context, current string) ([]MoveAccount, error)
+	ExpectedLinks(ctx context.Context) ([]ExpectedLink, error)
+	// Expect saves the account's expected sign-in, replacing its earlier one; ErrNotFound for no account, ErrInvalid for
+	// a removed one, ErrConflict when it signs in through current already or another account expects that email.
+	Expect(ctx context.Context, link ExpectedLink, current string, evts ...eventbus.OutboxEvent) error
+	// Unexpect deletes the account's expected sign-in; ErrNotFound when it has none.
+	Unexpect(ctx context.Context, userID string, evts ...eventbus.OutboxEvent) error
+	// ByExpected finds the account an expected sign-in names for email; ErrNotFound when none.
+	ByExpected(ctx context.Context, email string) (Account, error)
+	// LinkExpected attaches the subject to the account and deletes its expected sign-in, in one transaction.
+	LinkExpected(ctx context.Context, userID string, id Identity, evts ...eventbus.OutboxEvent) error
+}

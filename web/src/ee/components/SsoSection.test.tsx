@@ -91,6 +91,14 @@ describe("SsoSection", () => {
     expect(await screen.findByRole("button", { name: "Set up OpenID Connect" })).toBeInTheDocument();
     expect(screen.getByText("Off")).toBeInTheDocument();
     expect(screen.getByText("https://nexul.example.com/auth/oidc/callback")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Move sign-ins" }), "nobody is moved onto a provider that is not saved").not.toBeInTheDocument();
+  });
+
+  it("links to Move sign-ins once a provider is saved", async () => {
+    serve(sso());
+    renderSection();
+
+    expect(await screen.findByRole("link", { name: "Move sign-ins" })).toHaveAttribute("href", "/settings/sign-in/move");
   });
 
   it("saves only after both checks pass, never sends the saved secret, and shows what the server refuses", async () => {

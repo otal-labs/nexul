@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/otal-labs/nexul/ee/sso"
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -27,14 +29,17 @@ type Team interface {
 	RemoveMember(ctx context.Context, actorID, workspaceID, userID string) error
 }
 
-// SignInMover is the single sign-on use-case account_update joins a duplicate account through.
+// SignInMover is the single sign-on use-case the account tools move people's sign-ins through.
 type SignInMover interface {
 	MoveSignIn(ctx context.Context, fromID, toID string) error
+	SignInMoves(ctx context.Context) (sso.SignInMoves, error)
+	ExpectSignIn(ctx context.Context, accountID, email string) (sso.ExpectedLink, error)
+	RemoveExpected(ctx context.Context, accountID string) error
 }
 
 // AccountTools are the account tools that carry workspace access, which the tenancy domain owns.
 func AccountTools(a AccountStatusSetter, t Team, m SignInMover) []mcptool.Tool {
-	return []mcptool.Tool{accountListTool(t), accountUpdateTool(a, t, m)}
+	return []mcptool.Tool{accountListTool(t, m), accountUpdateTool(a, t, m)}
 }
 
 // accountResult is one person on the Team: the account with the providers it signs in through but none of their identities, plus its workspace access.
@@ -63,7 +68,18 @@ type membershipResult struct {
 }
 
 type accountListIn struct {
+	OldSignIn bool `json:"old_sign_in,omitempty" jsonschema:"True lists instead the accounts still on the other single sign-on protocol, with email, match (a duplicate for sso_from) and expected_sign_in."`
 	mcptool.PageArgs
+}
+
+// oldSignInResult is one person still on the other single sign-on protocol, as account_list's old_sign_in lists them.
+type oldSignInResult struct {
+	ID             string           `json:"id"`
+	Login          string           `json:"login"`
+	Name           string           `json:"name"`
+	Email          string           `json:"email"`
+	Match          *sso.MoveAccount `json:"match"`
+	ExpectedSignIn string           `json:"expected_sign_in"`
 }
 
 type accountWorkspaceIn struct {
@@ -78,6 +94,7 @@ type accountUpdateIn struct {
 	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Roles to change per workspace."`
 	RemoveWorkspaceIDs []string             `json:"remove_workspace_ids,omitempty" jsonschema:"Workspaces to take the account out of; its account and authored content stay."`
 	SSOFrom            string               `json:"sso_from,omitempty" jsonschema:"A duplicate account whose only sign-in is single sign-on: it moves here and the duplicate is disabled."`
+	ExpectSignIn       *string              `json:"expect_sign_in,omitempty" jsonschema:"An email whose first single sign-on sign-in lands here instead of making an account; empty removes it."`
 }
 
 type accountUpdateResult struct {
@@ -85,7 +102,7 @@ type accountUpdateResult struct {
 	Account *accountResult `json:"account,omitempty"`
 }
 
-func accountListTool(t Team) mcptool.Tool {
+func accountListTool(t Team, m SignInMover) mcptool.Tool {
 	return mcptool.New("account_list", "List accounts",
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
 			"when they were last seen, providers (the sign-in accounts linked), and their workspace access, one entry per workspace with roles "+
@@ -97,6 +114,9 @@ func accountListTool(t Team) mcptool.Tool {
 			"account_delete to remove it.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountListIn) (any, error) {
+			if in.OldSignIn {
+				return listOldSignIns(ctx, m, in.PageArgs)
+			}
 			team, err := t.ListTeam(ctx, accountActor(ctx))
 			if err != nil {
 				return nil, err
@@ -123,8 +143,8 @@ func accountUpdateTool(a AccountStatusSetter, t Team, m SignInMover) mcptool.Too
 			"Returns the fields applied and the account as account_list shows it to you.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountUpdateIn) (any, error) {
-			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 && in.SSOFrom == "" {
-				return nil, fmt.Errorf("%w: send status, workspaces, remove_workspace_ids, or sso_from", apperrs.ErrInvalid)
+			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 && in.SSOFrom == "" && in.ExpectSignIn == nil {
+				return nil, fmt.Errorf("%w: send status, workspaces, remove_workspace_ids, sso_from, or expect_sign_in", apperrs.ErrInvalid)
 			}
 			actor := accountActor(ctx)
 			applied, err := runSteps(ctx, accountUpdateSteps(a, t, m, actor, in))
@@ -142,6 +162,11 @@ func accountUpdateSteps(a AccountStatusSetter, t Team, m SignInMover, actor stri
 			return m.MoveSignIn(ctx, in.SSOFrom, in.ID)
 		}})
 	}
+	if in.ExpectSignIn != nil {
+		steps = append(steps, step{field: "expect_sign_in", run: func(ctx context.Context) error {
+			return expectSignIn(ctx, m, in.ID, *in.ExpectSignIn)
+		}})
+	}
 	if in.Status != "" {
 		steps = append(steps, step{field: "status", run: func(ctx context.Context) error {
 			return a.UpdateAccountStatus(ctx, actor, in.ID, in.Status)
@@ -156,6 +181,27 @@ func accountUpdateSteps(a AccountStatusSetter, t Team, m SignInMover, actor stri
 		}})
 	}
 	return steps
+}
+
+// expectSignIn saves the account's expected sign-in, or removes it for an empty email.
+func expectSignIn(ctx context.Context, m SignInMover, accountID, email string) error {
+	if strings.TrimSpace(email) == "" {
+		return m.RemoveExpected(ctx, accountID)
+	}
+	_, err := m.ExpectSignIn(ctx, accountID, email)
+	return err
+}
+
+func listOldSignIns(ctx context.Context, m SignInMover, page mcptool.PageArgs) (any, error) {
+	moves, err := m.SignInMoves(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]oldSignInResult, 0, len(moves.People))
+	for _, p := range moves.People {
+		out = append(out, oldSignInResult{ID: p.ID, Login: p.Login, Name: p.Name, Email: p.Email, Match: p.Match, ExpectedSignIn: p.ExpectedEmail})
+	}
+	return mcptool.Paginate(out, page), nil
 }
 
 // workspaceSteps sets one workspace entry's membership and roles.

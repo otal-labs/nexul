@@ -10,6 +10,7 @@ import { InstanceVersionSection } from "@/components/settings/InstanceVersionSec
 import { AuditLogSection } from "@/ee/components/AuditLogSection";
 import { BrandingSection } from "@/ee/components/BrandingSection";
 import { LicenseSection } from "@/ee/components/LicenseSection";
+import { SignInMovesPanel } from "@/ee/components/SignInMovesPanel";
 import { SsoSection } from "@/ee/components/SsoSection";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
@@ -61,14 +62,17 @@ const SignInPanel = () => {
 
 interface InstanceSettingsContentProps {
   section: SettingsSection;
+  // Sign-in providers opens its Move sign-ins page instead of the providers.
+  moving?: boolean;
 }
 
 // No permission gate here: the Settings page only selects a section the viewer may open. Connectors keeps Access in a tab.
-export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProps) => (
+export const InstanceSettingsContent = ({ section, moving = false }: InstanceSettingsContentProps) => (
   <>
     {section === "instance" && <InstancePanel />}
     {section === "instance" && <ArchivedWorkspacesSection />}
-    {section === "sign-in" && <SignInPanel />}
+    {section === "sign-in" && !moving && <SignInPanel />}
+    {section === "sign-in" && moving && <SignInMovesPanel />}
     {section === "connectors" && <ConnectorsSettingsPanel />}
     {section === "dns" && <GatewaysSection />}
     {section === "dns" && <TunnelsSection />}

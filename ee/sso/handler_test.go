@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 type fakeBrowser struct{ minted []string }
@@ -156,4 +158,35 @@ func TestHandler_Move_JoinsTheTwoAccountsNamedInTheBody(t *testing.T) {
 
 	rec = serve(t, routes, http.MethodPost, "/api/instance/sso/move", `{"from_account_id":"u-alice","to_account_id":"u-alice"}`)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestHandler_Moves_ReadsLinksAndExpectsSignIns(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, true)
+	h.moves.old = []MoveAccount{{ID: "u-alice", Login: "alice", Name: "Alice", Email: "alice@example.com"}}
+	routes := NewHandler(h.svc, &fakeBrowser{}).Routes()
+
+	rec := serve(t, routes, http.MethodGet, "/api/instance/sso/moves", "")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"protocol":"oidc","provider_name":"Acme SSO","unmatched":[],"expected":[],"people":[
+		{"id":"u-alice","login":"alice","name":"Alice","email":"alice@example.com","created_at":"0001-01-01T00:00:00Z","match":null,"expected_email":""}]}`, rec.Body.String())
+
+	rec = serve(t, routes, http.MethodPost, "/api/instance/sso/moves", `{"pairs":[{"from_account_id":"u-dup","to_account_id":"u-alice"},{"from_account_id":"u-x","to_account_id":"u-x"}]}`)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"results":[{"from_account_id":"u-dup","to_account_id":"u-alice","moved":true,"message":""},
+		{"from_account_id":"u-x","to_account_id":"u-x","moved":false,"message":"single sign-on moves between two different accounts"}]}`, rec.Body.String())
+	assert.Equal(t, http.StatusBadRequest, serve(t, routes, http.MethodPost, "/api/instance/sso/moves", `{"pairs":[]}`).Code)
+	assert.Equal(t, http.StatusBadRequest, serve(t, routes, http.MethodPost, "/api/instance/sso/moves", `{`).Code)
+
+	rec = serve(t, routes, http.MethodPut, "/api/instance/sso/expected/u-bob", `{"email":"bob@example.com"}`)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"email":"bob@example.com"`)
+	assert.Equal(t, http.StatusBadRequest, serve(t, routes, http.MethodPut, "/api/instance/sso/expected/u-bob", `{"email":"nope"}`).Code)
+	assert.Equal(t, http.StatusBadRequest, serve(t, routes, http.MethodPut, "/api/instance/sso/expected/u-bob", `{`).Code)
+
+	assert.Equal(t, http.StatusNoContent, serve(t, routes, http.MethodDelete, "/api/instance/sso/expected/u-bob", "").Code)
+	assert.Equal(t, http.StatusNotFound, serve(t, routes, http.MethodDelete, "/api/instance/sso/expected/u-bob", "").Code)
+
+	h.svc.cfg.Gate = fakeGate{err: apperrs.ErrForbidden}
+	assert.Equal(t, http.StatusForbidden, serve(t, routes, http.MethodGet, "/api/instance/sso/moves", "").Code)
 }

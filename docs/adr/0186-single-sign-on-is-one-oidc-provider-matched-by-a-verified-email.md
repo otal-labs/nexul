@@ -16,7 +16,9 @@ Provisioning people from the provider and several providers at once are out; SAM
   identity, which are verified emails already, links to that account. Otherwise it makes an account, which joins the
   default workspace with the role the Owner chose, as an invitation's redemption would, with the same events. A
   provider that sends no verified email is refused. A GitHub-only account has no email on record, so it is never matched. The instance Owner joins the second account such a sign-in makes onto the person's own: the
-  sign-in moves over, and the second account is disabled with what it made kept (`account_update` `sso_from`).
+  sign-in moves over, and the second account is disabled with what it made kept (`account_update` `sso_from`). ADR 0189's
+  amendment adds an expected sign-in that a first sign-in matches before the email, and moves this join to its own
+  permission, `sign_ins:move`.
 - **SSO-only.** The switch hides every other method on the sign-in page and refuses them on the server too: the GitHub,
   Google and Discord callbacks, and passkeys other than an instance Owner's. It can be turned on only while an instance
   Owner holds a passkey, so a provider that breaks never locks the instance out. Invitations keep the provider the person

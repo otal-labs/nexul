@@ -4,15 +4,18 @@ import { AREA_PERMISSION, type Area } from "@nexul/client-core/permissions";
 
 import type { InstanceArea } from "@/models/Permission";
 
-// The Settings page's instance sections and the permission each opens with, held in any workspace (/me's
+// The Settings page's instance sections and the permissions any one of which opens each, held in any workspace (/me's
 // instance_permissions). Team is not here: it opens on accounts:read or members:write.
 export const INSTANCE_SECTION_PERMISSION = {
-  instance: "instance:read",
-  "sign-in": "instance:read",
-  connectors: "connectors:read",
-  dns: "dns:read",
-  templates: "templates:write",
+  instance: ["instance:read"],
+  "sign-in": ["instance:read", "sign_ins:move"],
+  connectors: ["connectors:read"],
+  dns: ["dns:read"],
+  templates: ["templates:write"],
 } as const;
+
+// Sign-in providers' Move sign-ins page, which is all of the section a holder of sign_ins:move alone opens.
+export const MOVE_SIGN_INS_TAB = "move";
 
 export type InstanceSection = keyof typeof INSTANCE_SECTION_PERMISSION;
 
@@ -46,7 +49,7 @@ export const canOpenWizard = (can: (area: Area) => boolean): boolean => canRunWi
 
 // The areas an instance Settings entry hands out; one with no entry of its own (machines, the audit log) sits under Instance.
 const ENTRY_AREAS: Record<string, (key: string) => boolean> = {
-  "sign-in": (key) => key === "sign_in_providers",
+  "sign-in": (key) => key === "sign_in_providers" || key === "sign_ins",
   connectors: (key) => key.startsWith("connector:"),
   dns: (key) => key === "dns",
   templates: (key) => key === "templates",
