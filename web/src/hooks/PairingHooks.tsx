@@ -26,7 +26,7 @@ import {
   passOverLines,
 } from "@/models/Pairing";
 import { missingToolOf } from "@/models/ComputerTools";
-import { ownComputers } from "@/models/SharedComputer";
+import { orderComputers, ownComputers } from "@/models/SharedComputer";
 import { notViewing } from "@/stores/viewAsStore";
 import { followEach, type LiveFollower } from "@/lib/live";
 import type { RunFrame } from "@/models/Trail";
@@ -76,6 +76,9 @@ export const computersQuery = queryOptions({
 });
 
 export const useListComputers = () => useQuery({ ...computersQuery, select: ownComputers, enabled: notViewing });
+
+// The run order: your own computers and the shared ones you added (ADR 0211).
+export const useListOrderComputers = () => useQuery({ ...computersQuery, select: orderComputers, enabled: notViewing });
 
 // The field each failure belongs to, from the error envelope's errors map; empty when the failure has no field.
 export const pairFieldErrors = (error: unknown): [PairField, string][] => {
@@ -281,7 +284,7 @@ export const useReorderComputers = () => {
       await client.cancelQueries({ queryKey: [getComputersKey] });
       const before = client.getQueryData<Computer[]>([getComputersKey]);
       client.setQueryData<Computer[]>([getComputersKey], (old) =>
-        old && [...old].sort((a, b) => rank(ids, a.id) - rank(ids, b.id)).map((c) => (c.shared ? c : { ...c, position: ids.indexOf(c.id) })),
+        old && [...old].sort((a, b) => rank(ids, a.id) - rank(ids, b.id)).map((c) => (ids.includes(c.id) ? { ...c, position: ids.indexOf(c.id) } : c)),
       );
       return { before };
     },
@@ -293,7 +296,7 @@ export const useReorderComputers = () => {
   });
 };
 
-// Shared computers sort after the person's own, as the server lists them.
+// Shared computers outside the order sort after it, as the server lists them.
 const rank = (ids: string[], id: string) => {
   const i = ids.indexOf(id);
   return i < 0 ? ids.length : i;
@@ -370,4 +373,17 @@ export const pairingFollower: LiveFollower = {
   ...followEach(["personal_access_token.minted", "personal_access_token.revoked"], ({ computer_id }: Partial<ComputerPayload>, { client }) =>
     computer_id && client.invalidateQueries({ queryKey: [getMCPTokenKey, computer_id], exact: true }),
   ),
+};
+
+// Puts a computer shared with you in your run order, or takes it out; it stays shared either way.
+export const useSetInOrder = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (inOrder: boolean) => {
+      const url = `/api/pairing/computers/${computerId}/order`;
+      await (inOrder ? api.post(url) : api.delete(url));
+    }),
+    onSettled: () => Promise.all([client.invalidateQueries({ queryKey: [getComputersKey] }), client.invalidateQueries({ queryKey: [getHarnessResolveKey] })]),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
 };

@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -126,4 +128,39 @@ func TestPairingRepo_ListComputersFor_OwnThenShared(t *testing.T) {
 	require.NoError(t, err)
 	_, err = s.Access.Get(ctx, "computer", "laptop", "bob")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a computer's rules go with it")
+}
+
+func TestPairingRepo_OrderShares_PlaceASharedComputerInTheOrderAndGoWithIt(t *testing.T) {
+	t.Parallel()
+	s, db := newSharingStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("desk", "bob", "desk")))
+
+	require.NoError(t, s.Pairing.AddOrderShare(ctx, "bob", "laptop", 1, time.Now()))
+	require.NoError(t, s.Pairing.AddOrderShare(ctx, "bob", "laptop", 7, time.Now()), "adding it twice keeps its place")
+	got, err := s.Pairing.ListComputersFor(ctx, "bob")
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.True(t, got[1].Shared.InOrder)
+	assert.Equal(t, 1, got[1].Position)
+
+	require.NoError(t, s.Pairing.ReorderComputers(ctx, "bob", []string{"laptop", "desk"}, time.Now()))
+	shares, err := s.Pairing.ListOrderShares(ctx, "bob")
+	require.NoError(t, err)
+	assert.Equal(t, []pairing.OrderShare{{ComputerID: "laptop", Position: 0}}, shares)
+	require.ErrorIs(t, s.Pairing.ReorderComputers(ctx, "bob", []string{"nobodys"}, time.Now()), apperrs.ErrNotFound)
+
+	removed, err := s.Pairing.RemoveOrderShare(ctx, "bob", "laptop")
+	require.NoError(t, err)
+	assert.True(t, removed)
+	removed, err = s.Pairing.RemoveOrderShare(ctx, "bob", "laptop")
+	require.NoError(t, err)
+	assert.False(t, removed)
+
+	require.NoError(t, s.Pairing.AddOrderShare(ctx, "bob", "laptop", 1, time.Now()))
+	_, err = db.Exec(`DELETE FROM pairing_computers WHERE id = 'laptop'`)
+	require.NoError(t, err)
+	shares, err = s.Pairing.ListOrderShares(ctx, "bob")
+	require.NoError(t, err)
+	assert.Empty(t, shares, "a removed computer leaves every order")
 }

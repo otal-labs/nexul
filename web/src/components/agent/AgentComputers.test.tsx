@@ -78,6 +78,42 @@ describe("the computers on the Agent page", () => {
     expect(screen.queryByRole("button", { name: "Actions for Bob's Laptop" })).not.toBeInTheDocument();
   });
 
+  it("offers adding a shared computer to your order only where its owner allows Run agents", async () => {
+    const user = userEvent.setup();
+    const agents = { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see", "computers:run_agents"] };
+    serveComputers([pairedBefore(), { id: "c-bob", name: "Laptop", runner: { connected: true }, position: 0, shared: agents }]);
+    mocks.post.mockResolvedValue({ data: {} });
+    renderAgent(openComputer("c-bob"));
+
+    await user.click(await screen.findByRole("button", { name: "Add to your order" }));
+    expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c-bob/order");
+  });
+
+  it("lists a shared computer you added among yours, in its place, marked shared, and takes it out again", async () => {
+    const user = userEvent.setup();
+    const added = { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see", "computers:run_agents"], in_order: true };
+    serveComputers([pairedBefore({ position: 1 }), { id: "c-bob", name: "Laptop", runner: { connected: true }, position: 0, shared: added }]);
+    mocks.del.mockResolvedValue({ data: {} });
+    renderAgent(openComputer("c-bob"));
+
+    const yours = await screen.findByRole("region", { name: "Your computers" });
+    const rows = within(yours).getAllByRole("link");
+    expect(rows.map((row) => row.textContent)).toEqual(["Bob's Laptop", "Home"]);
+    expect(within(rows[0]!).getByRole("img", { name: "Shared with you" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Shared with you" }), "it leaves the shared group while it is in your order").not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Remove from your order" }));
+    expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/c-bob/order");
+  });
+
+  it("offers no place in your order for a share without Run agents", async () => {
+    serveComputers([{ id: "c-bob", name: "Laptop", runner: { connected: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see", "computers:run_commands"] } }]);
+    renderAgent(openComputer("c-bob"));
+
+    expect(await pane("Bob's Laptop")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to your order" })).not.toBeInTheDocument();
+  });
+
   it("shows a shared computer that just dropped as reconnecting, not offline", async () => {
     serveComputers([{ id: "c-bob", name: "Laptop", runner: { connected: false, reconnecting: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:see"] } }]);
     renderAgent(openComputer("c-bob"));

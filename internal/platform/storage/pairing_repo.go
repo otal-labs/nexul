@@ -88,7 +88,7 @@ func (r *PairingRepo) ListComputers(ctx context.Context, userID string) ([]pairi
 }
 
 func (r *PairingRepo) ListComputersFor(ctx context.Context, userID string) ([]pairing.Computer, error) {
-	rows, err := r.q.ListPairingComputersFor(ctx, nullString(userID))
+	rows, err := r.q.ListPairingComputersFor(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list computers for %s: %w", userID, err)
 	}
@@ -100,7 +100,8 @@ func (r *PairingRepo) ListComputersFor(ctx context.Context, userID string) ([]pa
 			if err != nil {
 				return nil, fmt.Errorf("decode the rule on computer %s for %s: %w", c.ID, userID, err)
 			}
-			c.Shared = &pairing.SharedComputer{OwnerID: c.UserID, OwnerName: row.OwnerName, Permissions: allow}
+			c.Shared = &pairing.SharedComputer{OwnerID: c.UserID, OwnerName: row.OwnerName, Permissions: allow, InOrder: row.OrderPosition.Valid}
+			c.Position = int(row.OrderPosition.Int64)
 		}
 		out = append(out, c)
 	}
@@ -202,6 +203,12 @@ func (r *PairingRepo) ReorderComputers(ctx context.Context, userID string, ids [
 			n, err := q.SetPairingComputerPosition(ctx, sqlcgen.SetPairingComputerPositionParams{Position: int64(i), ID: id, UserID: userID})
 			if err != nil {
 				return fmt.Errorf("move computer %s: %w", id, err)
+			}
+			if n == 0 {
+				n, err = q.SetPairingOrderSharePosition(ctx, sqlcgen.SetPairingOrderSharePositionParams{Position: int64(i), UserID: userID, ComputerID: id})
+			}
+			if err != nil {
+				return fmt.Errorf("move shared computer %s: %w", id, err)
 			}
 			if n == 0 {
 				return fmt.Errorf("move computer %s: %w", id, apperrs.ErrNotFound)
@@ -697,4 +704,41 @@ func decodePassedOver(raw string) []plays.PassedOver {
 		return nil
 	}
 	return out
+}
+
+// ListOrderShares is the shared computers userID put in their order, with each one's place there.
+func (r *PairingRepo) ListOrderShares(ctx context.Context, userID string) ([]pairing.OrderShare, error) {
+	rows, err := r.q.ListPairingOrderShares(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list order shares of %s: %w", userID, err)
+	}
+	out := make([]pairing.OrderShare, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, pairing.OrderShare{ComputerID: row.ComputerID, Position: int(row.Position)})
+	}
+	return out, nil
+}
+
+func (r *PairingRepo) AddOrderShare(ctx context.Context, userID, computerID string, position int, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).InsertPairingOrderShare(ctx, sqlcgen.InsertPairingOrderShareParams{UserID: userID, ComputerID: computerID, Position: int64(position), CreatedAt: at.Unix()})
+		if err != nil {
+			return fmt.Errorf("add shared computer %s to the order of %s: %w", computerID, userID, err)
+		}
+		return nil
+	})
+}
+
+// RemoveOrderShare reports whether the computer was in userID's order.
+func (r *PairingRepo) RemoveOrderShare(ctx context.Context, userID, computerID string) (bool, error) {
+	var removed bool
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).DeletePairingOrderShare(ctx, sqlcgen.DeletePairingOrderShareParams{UserID: userID, ComputerID: computerID})
+		if err != nil {
+			return fmt.Errorf("remove shared computer %s from the order of %s: %w", computerID, userID, err)
+		}
+		removed = n > 0
+		return nil
+	})
+	return removed, err
 }

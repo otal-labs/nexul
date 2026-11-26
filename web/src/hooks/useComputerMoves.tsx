@@ -1,11 +1,11 @@
 import { arrayMove } from "@dnd-kit/sortable";
 
 import type { RowAction } from "@/components/settings/RowActionsMenu";
-import { useListComputers, useReorderComputers } from "@/hooks/PairingHooks";
+import { useListOrderComputers, useReorderComputers } from "@/hooks/PairingHooks";
 
 // Move up and Move down for one of your computers: the keyboard's way to change the run order the list drags.
 export const useComputerMoves = (computerId: string): RowAction[] => {
-  const { data: computers } = useListComputers();
+  const { data: computers } = useListOrderComputers();
   const { mutate: reorder } = useReorderComputers();
   const ids = computers?.map((c) => c.id) ?? [];
   const index = ids.indexOf(computerId);

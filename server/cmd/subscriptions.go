@@ -285,7 +285,7 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// A computer added without a name takes the hostname its runner reports when it enrolls.
 	mustSubscribe(ctx, bus, "pairing.computer_name", runner.TopicPersonalChanged, "", svc.pairingSvc.HandleRunnerChanged)
 	mustSubscribe(ctx, bus, "pairing.through_runner", runner.TopicFactsReported, "", svc.pairingSvc.HandleFactsReported)
-	// A person whose share of a computer no longer gives Run commands loses the commands they had queued or running there.
+	// A share that loses Run commands stops its person's commands there; one that loses Run agents leaves their order.
 	mustSubscribe(ctx, bus, "pairing.commands_access", access.TopicComputerGrantChanged, "", svc.pairingSvc.HandleComputerGrantChanged)
 	// A computer rule ends for good once its two people share no workspace or either account closes (ADR 0148).
 	for _, topic := range []string{tenancy.TopicWorkspaceMemberRemoved, auth.TopicAccountDisabled, auth.TopicAccountRemoved} {

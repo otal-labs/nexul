@@ -244,6 +244,8 @@ var routePermissions = map[string][]string{
 	"POST /api/pairing/computers/tunnel":                                none,
 	"DELETE /api/pairing/computers/{id}":                                none,
 	"PATCH /api/pairing/computers/{id}":                                 none,
+	"POST /api/pairing/computers/{id}/order":                            none,
+	"DELETE /api/pairing/computers/{id}/order":                          none,
 	"DELETE /api/pairing/computers/{id}/mcp-token":                      none,
 	"POST /api/pairing/computers/{id}/mcp-token":                        none,
 	"POST /api/pairing/computers/{id}/pair":                             none,

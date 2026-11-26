@@ -980,6 +980,13 @@ type PairingMoveNotice struct {
 	NotifiedAt int64
 }
 
+type PairingOrderShare struct {
+	UserID     string
+	ComputerID string
+	Position   int64
+	CreatedAt  int64
+}
+
 type PairingProjectCheckout struct {
 	UserID           string
 	ProjectID        string

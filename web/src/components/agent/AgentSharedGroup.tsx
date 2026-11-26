@@ -9,11 +9,11 @@ interface AgentSharedGroupProps {
   query: string;
 }
 
-// Other people's computers shared with you by name; absent while there are none.
+// Other people's computers shared with you and not in your order; absent while there are none.
 export const AgentSharedGroup = ({ query }: AgentSharedGroupProps) => {
   const { kind, id } = useParams();
   const { data: shared } = useListSharedComputers();
-  const shown = shared?.filter((c) => query === "" || sharedComputerName(c).toLowerCase().includes(query));
+  const shown = shared?.filter((c) => !c.shared?.in_order && (query === "" || sharedComputerName(c).toLowerCase().includes(query)));
   if (!shown || shown.length === 0) return null;
 
   return (

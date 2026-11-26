@@ -19,6 +19,9 @@ type Repo interface {
 	GetComputer(ctx context.Context, userID, id string) (*Computer, error)
 	// ListComputers returns userID's paired computers in their order.
 	ListComputers(ctx context.Context, userID string) ([]Computer, error)
+	ListOrderShares(ctx context.Context, userID string) ([]OrderShare, error)
+	AddOrderShare(ctx context.Context, userID, computerID string, position int, at time.Time) error
+	RemoveOrderShare(ctx context.Context, userID, computerID string) (bool, error)
 	// ListComputersFor returns userID's own computers in their order, then those a live rule naming them shares with
 	// them, each with Shared set, in one read (ADR 0148).
 	ListComputersFor(ctx context.Context, userID string) ([]Computer, error)

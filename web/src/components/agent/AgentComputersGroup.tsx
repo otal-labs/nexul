@@ -8,8 +8,9 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneGroup } from "@/components/listpane/ListPaneGroup";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { OpenComputerCodes } from "@/components/settings/OpenComputerCodes";
-import { useListComputers, useReorderComputers } from "@/hooks/PairingHooks";
+import { useListOrderComputers, useReorderComputers } from "@/hooks/PairingHooks";
 import { useRowSortSensors } from "@/hooks/useRowSortSensors";
+import { sharedComputerName } from "@/models/SharedComputer";
 
 interface AgentComputersGroupProps {
   query: string;
@@ -18,11 +19,11 @@ interface AgentComputersGroupProps {
 // Your computers in run order (ADR 0165); a filtered list can't say where a dropped row lands, so a search stops dragging.
 export const AgentComputersGroup = ({ query }: AgentComputersGroupProps) => {
   const { kind, id } = useParams();
-  const { data: computers, isPending, error } = useListComputers();
+  const { data: computers, isPending, error } = useListOrderComputers();
   const { mutate: reorder } = useReorderComputers();
   const sensors = useRowSortSensors();
   const ids = computers?.map((c) => c.id) ?? [];
-  const shown = computers?.filter((c) => query === "" || c.name.toLowerCase().includes(query));
+  const shown = computers?.filter((c) => query === "" || sharedComputerName(c).toLowerCase().includes(query));
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     const from = ids.indexOf(String(active.id));

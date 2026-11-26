@@ -64,6 +64,8 @@ type SharedComputer struct {
 	OwnerID     string          `json:"owner_id"`
 	OwnerName   string          `json:"owner_name"`
 	Permissions permissions.Set `json:"permissions"`
+	// InOrder is whether the caller put it in their own run order; Position on the computer is then its place there.
+	InOrder bool `json:"in_order"`
 }
 
 // SharedName is how a person a computer is shared with reads it: "<owner>'s <computer> (shared)".
