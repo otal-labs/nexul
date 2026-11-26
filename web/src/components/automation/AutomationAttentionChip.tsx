@@ -19,17 +19,16 @@ interface AutomationAttentionChipProps {
   className?: string;
 }
 
-// Amber only while the row is in Needs attention, so the amber chips and that count name the same set.
+// The amber mark only while the row is in Needs attention, so the marked chips and that count name the same set; otherwise a plain muted note.
 export const AutomationAttentionChip = ({ automation, attention, muted = false, className }: AutomationAttentionChipProps) => {
   if (!attention) return null;
   const chip = chips[attention];
+  const chipClass = cn("shrink-0 items-baseline leading-5 whitespace-nowrap", chip.mono && "font-mono", className);
+  if (!automation.enabled || muted) {
+    return <span className={cn("inline-flex text-xs text-muted-foreground", chipClass)}>{chip.label(automation)}</span>;
+  }
   return (
-    <NoFillBadge
-      icon={chip.icon}
-      iconClassName="self-center"
-      color={automation.enabled && !muted ? "text-warning" : "text-muted-foreground"}
-      className={cn("shrink-0 items-baseline leading-5 whitespace-nowrap", chip.mono && "font-mono", className)}
-    >
+    <NoFillBadge icon={chip.icon} iconClassName="self-center" color="text-warning" className={chipClass}>
       {chip.label(automation)}
     </NoFillBadge>
   );

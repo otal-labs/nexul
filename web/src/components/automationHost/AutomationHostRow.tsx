@@ -1,5 +1,5 @@
 import { AutomationHostManagers } from "@/components/automationHost/AutomationHostManagers";
-import { RemoveAutomationHostButton } from "@/components/automationHost/RemoveAutomationHostButton";
+import { AutomationHostMenu } from "@/components/automationHost/AutomationHostMenu";
 import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import type { AutomationHost } from "@/models/AutomationHost";
 import type { Machine } from "@/models/Runner";
@@ -11,24 +11,22 @@ interface AutomationHostRowProps {
   machine?: Pick<Machine, "actions"> | undefined;
 }
 
-// The runner row's columns: the connection dot, the name over its facts, and the state in words.
+// The name over its facts, then the state as a dot beside its word, then the row's menu.
 export const AutomationHostRow = ({ host, machine }: AutomationHostRowProps) => (
-  <li className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto_2rem] items-start gap-x-3 px-2 py-2.5">
-    <span className="flex h-5 items-center justify-center">
-      <RunnerStatusDot connected={host.connected} />
-    </span>
+  <li className="grid grid-cols-[minmax(0,1fr)_auto_1.75rem] items-start gap-x-4 px-4 py-2.5">
     <div className="min-w-0">
-      <span title={host.name} className={cn("block truncate text-sm font-medium", !host.connected && "text-muted-foreground")}>{host.name}</span>
+      <span title={host.name} className={cn("block truncate text-sm leading-5 font-medium", !host.connected && "text-muted-foreground")}>{host.name}</span>
       <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
         {[host.machine, host.version || "unknown version", `seen ${formatRelativeTime(host.last_seen)}`].filter(Boolean).join(" · ")}
       </p>
       <AutomationHostManagers managers={host.managers} />
     </div>
-    <span className={cn("text-sm leading-5", !host.connected && "text-muted-foreground")}>
+    <span className={cn("flex h-5 items-center gap-2 text-row", host.connected ? "text-foreground" : "text-muted-foreground")}>
+      <RunnerStatusDot connected={host.connected} />
       {host.connected ? "online" : "offline"}
     </span>
     <span className="flex h-5 items-center justify-center">
-      <RemoveAutomationHostButton host={host} machine={machine} />
+      <AutomationHostMenu host={host} machine={machine} />
     </span>
   </li>
 );

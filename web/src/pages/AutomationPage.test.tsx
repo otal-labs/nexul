@@ -190,10 +190,13 @@ describe("AutomationPage", () => {
     expect(await screen.findByRole("button", { name: /delete automation/i })).toBeDisabled();
   });
 
-  it("opens the version history from the header", async () => {
+  it("opens the version history from the active version on the Versions tab", async () => {
     const user = userEvent.setup();
     const only = { id: "v1", version: 1, created_at: "2026-08-01T00:00:00Z", name: "", editor_ids: [], via: "Nexul", current: true, status: "active" };
-    renderPage({ ...baseEndpoints, "/api/automations/a1/history": { versions: [only], changes: [] } });
+    renderPage(
+      { ...baseEndpoints, ...versionBodies, "/api/automations/a1/versions/diff": { active: pendingDiff.active, pending: null }, "/api/automations/a1/history": { versions: [only], changes: [] } },
+      "/automations/a1/versions",
+    );
 
     await user.click(await screen.findByRole("button", { name: "History" }));
 

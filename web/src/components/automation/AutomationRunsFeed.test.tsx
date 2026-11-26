@@ -86,14 +86,14 @@ describe("AutomationRunsFeed", () => {
     expect(screen.getByText("Today")).toBeInTheDocument();
     expect(screen.getByText("Success")).toBeInTheDocument();
     expect(screen.getByText(formatClockTime("2026-08-27T12:00:00Z"))).toBeInTheDocument();
-    expect(screen.getByText("1 run")).toBeInTheDocument();
+    expect(screen.getByText("1 run · 0 failed · median 340ms")).toBeInTheDocument();
   });
 
   it("puts a failed run's error on its second line", async () => {
     serve([run({ outcome: AutomationRunOutcome.Failure, error: "403: tickets:write missing" })]);
     renderFeed();
     expect(await screen.findByText("403: tickets:write missing")).toBeInTheDocument();
-    expect(screen.getByText("1 run · 1 failed")).toBeInTheDocument();
+    expect(screen.getByText(/^1 run · 1 failed · median/)).toBeInTheDocument();
   });
 
   it("asks the server for failures only under Failures, and says when there are none", async () => {

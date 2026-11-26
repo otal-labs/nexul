@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RemoveAutomationHostButton } from "@/components/automationHost/RemoveAutomationHostButton";
+import { AutomationHostMenu } from "@/components/automationHost/AutomationHostMenu";
 import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ delete: vi.fn(), confirm: vi.fn() }));
@@ -27,11 +27,16 @@ const host = {
 const renderButton = (connected: boolean, actions: string[] = ["machines:see", "machines:write"]) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RemoveAutomationHostButton host={{ ...host, connected }} machine={{ actions }} />
+      <AutomationHostMenu host={{ ...host, connected }} machine={{ actions }} />
     </QueryClientProvider>,
   );
 
-describe("RemoveAutomationHostButton", () => {
+const remove = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole("button", { name: "More actions for jobs-1" }));
+  return screen.findByRole("menuitem", { name: /Remove host/ });
+};
+
+describe("AutomationHostMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetViewer();
@@ -43,7 +48,7 @@ describe("RemoveAutomationHostButton", () => {
     const user = userEvent.setup();
     renderButton(true);
 
-    await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
+    await user.click(await remove(user));
 
     expect(mocks.confirm).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Remove jobs-1?", confirmLabel: "Remove automations host" }),
@@ -56,7 +61,7 @@ describe("RemoveAutomationHostButton", () => {
     const user = userEvent.setup();
     renderButton(false);
 
-    await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
+    await user.click(await remove(user));
 
     expect(mocks.confirm).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.stringMatching(/next time it comes online.*move to the instance host/) }),
@@ -68,7 +73,7 @@ describe("RemoveAutomationHostButton", () => {
     const user = userEvent.setup();
     renderButton(true);
 
-    await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
+    await user.click(await remove(user));
 
     await waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/automation-hosts/h-1"));
   });
@@ -76,7 +81,7 @@ describe("RemoveAutomationHostButton", () => {
   it("is hidden from someone who only sees or deploys to the machine", () => {
     renderButton(true, ["machines:see", "machines:deploy"]);
 
-    expect(screen.queryByRole("button", { name: "Remove jobs-1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for jobs-1" })).not.toBeInTheDocument();
   });
 
   it("is locked, with the reason, for a role that shows locked actions", async () => {
@@ -84,20 +89,23 @@ describe("RemoveAutomationHostButton", () => {
     const user = userEvent.setup();
     renderButton(true, ["machines:see"]);
 
-    await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
+    const item = await remove(user);
+    await user.click(item);
 
-    expect(screen.getByRole("button", { name: "Remove jobs-1" })).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveTextContent("Your role can't remove automations hosts");
     expect(mocks.confirm).not.toHaveBeenCalled();
   });
 
-  it("answers to the instance Owner for a host on a machine Nexul doesn't know", () => {
+  it("answers to the instance Owner for a host on a machine Nexul doesn't know", async () => {
     viewer.instanceOwner = true;
+    const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RemoveAutomationHostButton host={host} />
+        <AutomationHostMenu host={host} />
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "Remove jobs-1" })).not.toHaveAttribute("aria-disabled");
+    expect(await remove(user)).not.toHaveAttribute("aria-disabled");
   });
 });

@@ -1,4 +1,4 @@
-import { Sparkles, User } from "lucide-react";
+import { Code, Sparkles } from "lucide-react";
 
 import { NoFillBadge } from "@/components/ui/badge";
 import { AutomationKind } from "@/enums/Automation";
@@ -17,7 +17,7 @@ export const AutomationKindBadge = ({ kind }: AutomationKindBadgeProps) => {
     );
   }
   return (
-    <NoFillBadge icon={User} color="text-muted-foreground">
+    <NoFillBadge icon={Code} color="text-muted-foreground">
       Custom
     </NoFillBadge>
   );

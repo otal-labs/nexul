@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationRun } from "@/models/AutomationRun";
-import { RUNS_PAGE, automationLogLine, automationRunDays, automationRunsLine } from "@/utils/AutomationRunUtility";
+import { RUNS_PAGE, automationLogLine, automationRunDays, automationRunSummary, automationRunsLine } from "@/utils/AutomationRunUtility";
 
 const run = (id: string, started_at: string, outcome: AutomationRunOutcome = AutomationRunOutcome.Success): AutomationRun => ({
   id,
@@ -34,12 +34,30 @@ describe("automationRunDays", () => {
 describe("automationRunsLine", () => {
   it("names a full page as the newest runs, never as a total", () => {
     const full = Array.from({ length: RUNS_PAGE }, (_, i) => run(`r${i}`, "2026-10-30T10:00:00Z", i < 7 ? AutomationRunOutcome.Failure : AutomationRunOutcome.Success));
-    expect(automationRunsLine(full, false)).toBe("Newest 50 runs · 7 failed");
+    expect(automationRunsLine(full, false)).toBe("Newest 50 runs · 7 failed · median 1ms");
     expect(automationRunsLine(full, true)).toBe("Newest 50 failures");
   });
 
   it("counts a short list as it is", () => {
     expect(automationRunsLine([run("a", "2026-10-30T10:00:00Z", AutomationRunOutcome.Crash)], true)).toBe("1 failure");
+  });
+
+  it("says none failed and takes the lower middle duration of an even list", () => {
+    const runs = [5, 1, 40, 3].map((ms, i) => ({ ...run(`r${i}`, "2026-10-30T10:00:00Z"), duration_ms: ms }));
+    expect(automationRunsLine(runs, false)).toBe("4 runs · 0 failed · median 3ms");
+  });
+});
+
+describe("automationRunSummary", () => {
+  it.each([
+    { logs: "", want: null },
+    { logs: "plain text\n", want: { message: "plain text", fields: "" } },
+    {
+      logs: '{"message":"first"}\n{"ts":"2026-11-24T18:23:21Z","run_id":"01a2","message":"queued the review","pr":6,"ticketId":"01a1","state":"queued","reason":"","tags":["a"]}\n',
+      want: { message: "queued the review", fields: "pr=6 state=queued" },
+    },
+  ])("$logs", ({ logs, want }) => {
+    expect(automationRunSummary(logs)).toEqual(want);
   });
 });
 
