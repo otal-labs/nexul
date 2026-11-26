@@ -15,7 +15,7 @@ A computer someone adds for their own agent work runs a runner of its own too. I
 
 The line under the title counts the fleet: runners online out of all of them, how many are busy, how many are offline, how many runner codes are still unused, and how many jobs wait. While a job waits, **Waiting for a runner** lists the queue in order, each job with its kind, why it waits on the machine it needs (**no runner online**, **all runners busy**, or **next in line**), how long it has waited and who started it. A narrow window shows the first three, a wide one the first five; **Show more** lists the rest.
 
-Below it, every machine you are on is one band in a single list, with its runners under it, one line each: the name, the version, and what the runner is doing (the job it runs, with how long it has run and who started it, **idle**, or **offline** with when it was last seen). In a narrow window the page leaves out who started a job. A name too long for its column keeps its end, and hovering it shows the whole name. A runner on an older release than the instance shows **↑** after its version. A code made for a machine and not used yet sits under that machine, and runners and codes that belong to no machine are listed last, under **No machine**.
+Below it, every machine you are on is one band in a single list, with its runners under it, one line each, stepped in under the machine's name: the name, what the runner is doing (the job it runs, with how long it has run and who started it, **idle**, or **offline** with when it was last seen), and its version at the end of the line. In a narrow window the page leaves out who started a job. A name too long for its column keeps its end, and hovering it shows the whole name. A runner on an older release than the instance shows **↑** after its version. A code made for a machine and not used yet sits under that machine, and runners and codes that belong to no machine are listed last, under **No machine**.
 
 A machine's band stays at the top of the page while you scroll through its runners. Its arrow folds the machine to its band and shows how many rows it hides; a machine whose runners are all offline starts folded.
 
@@ -74,7 +74,7 @@ An [automations host](/docs/guide/automations/#where-automations-run) follows it
 
 ## Adding a runner
 
-1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add runner** on that machine's band instead (a **+** in a narrow window, or **Add runner** under a machine with no runners yet). A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
+1. Open **Runners** and click **Add runner**. To add one to an existing machine, open the **⋯** on that machine's band and pick **Add runner…** instead (or click **Add runner** under a machine with no runners yet). A runner on a machine that exists takes **Manage** on it; one that makes a new machine takes the **Add machines** permission (`machines:create`), which stays with the instance Owner until they hand it out from **Settings → Instance → Access**.
 2. Type a **Runner name**: lower case letters, digits and dashes, up to 32 characters. The runner joins a machine named after the computer's hostname, so runners on one computer share a machine.
 3. Click **Create install command** and copy the command for the machine's system:
 

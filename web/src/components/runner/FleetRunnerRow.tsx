@@ -12,17 +12,19 @@ interface FleetRunnerRowProps {
   machine?: Machine | undefined;
 }
 
-// One line on the list's shared tracks.
+// One line on the list's shared tracks, stepped in under its band so its dot sits under the machine's name.
 export const FleetRunnerRow = ({ runner, machine }: FleetRunnerRowProps) => (
-  <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
+  <li className={cn(fleetTracks, "items-baseline gap-x-4 py-2.5 pr-4 pl-11 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
     <span className="flex min-w-0 items-baseline gap-3">
       <span className="flex self-center">
         <RunnerStatusDot connected={runner.connected} />
       </span>
       <RunnerName name={runner.name} muted={!runner.connected} />
     </span>
-    <RunnerVersion version={runner.version} />
     <RunnerActivity runner={runner} />
+    <span className="flex min-w-0 justify-end">
+      <RunnerVersion version={runner.version} />
+    </span>
     <RunnerMenu runner={runner} machine={machine} />
   </li>
 );

@@ -18,17 +18,17 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
   const revoke = useRevokeEnrollment();
   const until = formatClockTime(code.expires_at);
   return (
-    <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
+    <li className={cn(fleetTracks, "items-baseline gap-x-4 py-2.5 pr-4 pl-11 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
       <span className="flex min-w-0 items-baseline gap-3">
         <span className="flex self-center" title="Not added yet">
           <span aria-hidden className="size-2 rounded-full border border-dashed border-muted-foreground" />
         </span>
         <RunnerName name={code.name} muted />
       </span>
-      <span />
       <span className="truncate text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
         unused code · until {until}
       </span>
+      <span />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="-my-1 size-7 self-center justify-self-end" aria-label={`More actions for the code for ${code.name}`} loading={revoke.isPending}>

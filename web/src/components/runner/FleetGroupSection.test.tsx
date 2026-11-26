@@ -92,9 +92,7 @@ describe("FleetGroupSection on a machine the viewer only sees", () => {
     const user = userEvent.setup();
     renderGroup(["machines:see"], [runner("builder", true)]);
 
-    for (const name of ["Add runner to this machine", "Edit stack root /data/nexul"]) {
-      expect(await screen.findByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
-    }
+    expect(await screen.findByRole("button", { name: "Edit stack root /data/nexul" })).toHaveAttribute("aria-disabled", "true");
 
     await user.click(screen.getByRole("button", { name: "More actions for builder" }));
     const remove = await screen.findByRole("menuitem", { name: /Remove runner/ });
@@ -103,7 +101,8 @@ describe("FleetGroupSection on a machine the viewer only sees", () => {
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "More actions for edge-box" }));
-    expect(await screen.findByRole("menuitem", { name: /Import from this machine/ })).toHaveAttribute("aria-disabled", "true");
+    expect(await screen.findByRole("menuitem", { name: /Add runner…/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("menuitem", { name: /Import from this machine/ })).toHaveAttribute("aria-disabled", "true");
     const del = screen.getByRole("menuitem", { name: /Delete/ });
     expect(del).toHaveAttribute("aria-disabled", "true");
     expect(del).toHaveTextContent("Your role can't delete machines");
@@ -121,6 +120,16 @@ describe("FleetGroupSection import", () => {
     await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
     await user.click(await screen.findByRole("menuitem", { name: "Import from this machine" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("adds a runner to this machine from the ⋯, never from a second button beside the page's", async () => {
+    const user = userEvent.setup();
+    renderGroup(["machines:see", "machines:write"], [runner("builder", true)]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for edge-box" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Add runner…" }));
+    expect(await screen.findByRole("dialog", { name: "Add a runner" })).toHaveTextContent("run its install command on edge-box");
+    expect(screen.queryByRole("button", { name: "Add runner to this machine" })).not.toBeInTheDocument();
   });
 
   it.each([

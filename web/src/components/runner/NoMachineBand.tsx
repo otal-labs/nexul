@@ -1,4 +1,4 @@
-import { GroupDot } from "@/components/runner/GroupDot";
+import { MachineMark } from "@/components/runner/MachineMark";
 import type { GroupTone } from "@/utils/RunnerFleetUtility";
 import type { ReactNode } from "react";
 
@@ -10,7 +10,7 @@ interface NoMachineBandProps {
 // The last group's band, two lines tall like a machine's so the bands keep one rhythm.
 export const NoMachineBand = ({ state, toggle }: NoMachineBandProps) => (
   <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-border group-has-[>ul[hidden]]/fleet:border-b-0 bg-card bg-linear-to-b from-well-shade to-well-shade px-4 py-2.5">
-    <GroupDot tone={state.tone} />
+    <MachineMark tone={state.tone} none />
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-baseline gap-x-2.5">
         <h2 id="machine-none" className="text-sm/5 font-semibold">

@@ -12,7 +12,7 @@ interface WaitingRowProps {
   className?: string;
 }
 
-// On the runner list's tracks, so the kind sits under Version and why it waits under Doing, wrapping rather than cut.
+// On the runner list's tracks, so why it waits sits where a runner says what it is doing, wrapping rather than cut, and the kind where its version trails.
 export const WaitingRow = ({ job, position, reason, className }: WaitingRowProps) => (
   <li className={cn(fleetTracks, "items-baseline gap-x-4 px-4 py-2.5 text-row leading-5 transition-colors duration-150 ease-standard hover:bg-accent", className)}>
     <span className="flex min-w-0 items-baseline gap-1.5">
@@ -21,11 +21,12 @@ export const WaitingRow = ({ job, position, reason, className }: WaitingRowProps
       </span>
       <JobName name={job.service || job.kind} />
     </span>
-    <span className="font-mono text-xs text-muted-foreground">{job.kind}</span>
-    <span className="@container/doing col-span-2 min-w-0 text-muted-foreground">
+    <span className="@container/doing min-w-0 text-muted-foreground">
       {reason} on {job.target && <span className="font-mono text-xs whitespace-nowrap">{job.target}</span>}
       {!job.target && "any machine"}
       <JobMeta at={job.requested_at} by={job.triggered_by} inline />
     </span>
+    <span className="text-right font-mono text-xs text-muted-foreground">{job.kind}</span>
+    <span />
   </li>
 );

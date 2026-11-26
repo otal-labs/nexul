@@ -23,37 +23,42 @@ interface AddRunnerDialogProps {
   machine?: Pick<Machine, "name" | "actions">;
   triggerSize?: "default" | "sm";
   triggerVariant?: "default" | "outline" | "ghost" | "link";
-  // A machine's band names the + from 44rem of list; below it the + is named by its tooltip.
-  compact?: boolean;
+  // Opened from a machine's ⋯, the dialog has no trigger of its own.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Closing the dialog drops the enrollment, so reopening always starts from a fresh form and a fresh code.
-export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVariant = "default", compact = false }: AddRunnerDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const AddRunnerDialog = ({ machine, triggerSize = "default", triggerVariant = "default", ...controlled }: AddRunnerDialogProps) => {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = controlled.open ?? ownOpen;
   const machineName = machine?.name;
   const enroll = useCreateRunnerEnrollment();
   const onOpenChange = (next: boolean) => {
-    setOpen(next);
+    setOwnOpen(next);
+    controlled.onOpenChange?.(next);
     if (!next) enroll.reset();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <ActionButton
-          permission={machine ? "machines:write" : "machines:create"}
-          answer={machine && machineAnswer(machine, "machines:write")}
-          verb="add runners"
-          type="button"
-          size={triggerSize}
-          variant={triggerVariant}
-          icon={Plus}
-          className={cn(triggerVariant === "ghost" && "font-normal text-muted-foreground", triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-row leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
-          {...(machineName && { "aria-label": "Add runner to this machine", title: "Add runner to this machine" })}
-        >
-          <span className={cn(machineName && "hidden @lg:inline", compact && "@lg:hidden @[44rem]:inline")}>Add runner</span>
-        </ActionButton>
-      </DialogTrigger>
+      {controlled.open === undefined && (
+        <DialogTrigger asChild>
+          <ActionButton
+            permission={machine ? "machines:write" : "machines:create"}
+            answer={machine && machineAnswer(machine, "machines:write")}
+            verb="add runners"
+            type="button"
+            size={triggerSize}
+            variant={triggerVariant}
+            icon={Plus}
+            className={cn(triggerVariant === "ghost" && "font-normal text-muted-foreground", triggerVariant === "link" && "h-auto items-baseline gap-1 p-0 text-row leading-5 has-[>svg]:px-0 [&_svg]:self-center")}
+            {...(machineName && { "aria-label": "Add runner to this machine", title: "Add runner to this machine" })}
+          >
+            <span className={cn(machineName && "hidden @lg:inline")}>Add runner</span>
+          </ActionButton>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a runner</DialogTitle>

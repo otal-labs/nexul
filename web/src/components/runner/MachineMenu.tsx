@@ -1,4 +1,4 @@
-import { DownloadIcon, MoreHorizontalIcon, TerminalIcon } from "lucide-react";
+import { DownloadIcon, MoreHorizontalIcon, PlusIcon, TerminalIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -7,6 +7,7 @@ import { machineAnswer } from "@nexul/client-core/actionState";
 import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { RowActionItems } from "@/components/listpane/RowActionItems";
 import { dropdownParts, offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
+import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 import { MachineCommandsSheet } from "@/components/runner/MachineCommandsSheet";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,14 +19,18 @@ interface MachineMenuProps {
   machine: Machine;
   menu: RowMenu;
   manages: boolean;
+  // Left out while the machine has no rows, whose empty row offers it.
+  addsRunners: boolean;
 }
 
-// Import and Commands… first, then the menu every row shares: Permissions… and Delete. A viewer offered none of them
-// gets no ⋯.
-export const MachineMenu = ({ machine, menu, manages }: MachineMenuProps) => {
+// Add runner…, Import and Commands… first, then the menu every row shares: Permissions… and Delete. A viewer offered
+// none of them gets no ⋯.
+export const MachineMenu = ({ machine, menu, manages, addsRunners }: MachineMenuProps) => {
   const wsPath = useWorkspacePath();
   const navigate = useNavigate();
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const addGate = { permission: "machines:write", answer: machineAnswer(machine, "machines:write"), verb: "add runners" } as const;
   const importGate = {
     permission: ["machines:write", "stacks:write"],
     answer: machineAnswer(machine, "machines:write"),
@@ -38,7 +43,8 @@ export const MachineMenu = ({ machine, menu, manages }: MachineMenuProps) => {
   } as const;
   const imports = useActionState(importGate).state !== "hidden";
   const commands = useActionState(commandsGate).state !== "hidden";
-  if (!imports && !commands && !offersMenu(menu, manages)) return null;
+  const adds = useActionState(addGate).state !== "hidden" && addsRunners;
+  if (!adds && !imports && !commands && !offersMenu(menu, manages)) return null;
   return (
     <>
       <DropdownMenu>
@@ -48,6 +54,11 @@ export const MachineMenu = ({ machine, menu, manages }: MachineMenuProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-48">
+          {addsRunners && (
+            <ActionMenuItem ui={dropdownParts} {...addGate} icon={PlusIcon} onSelect={() => setAddOpen(true)}>
+              Add runner…
+            </ActionMenuItem>
+          )}
           <ActionMenuItem
             ui={dropdownParts}
             {...importGate}
@@ -59,11 +70,12 @@ export const MachineMenu = ({ machine, menu, manages }: MachineMenuProps) => {
           <ActionMenuItem ui={dropdownParts} {...commandsGate} icon={TerminalIcon} onSelect={() => setCommandsOpen(true)}>
             Commands…
           </ActionMenuItem>
-          {(imports || commands) && offersMenu(menu, manages) && <DropdownMenuSeparator />}
+          {(adds || imports || commands) && offersMenu(menu, manages) && <DropdownMenuSeparator />}
           {offersMenu(menu, manages) && <RowActionItems ui={dropdownParts} {...menu} />}
         </DropdownMenuContent>
       </DropdownMenu>
       <MachineCommandsSheet machine={machine} open={commandsOpen} onOpenChange={setCommandsOpen} />
+      <AddRunnerDialog machine={machine} open={addOpen} onOpenChange={setAddOpen} />
     </>
   );
 };
