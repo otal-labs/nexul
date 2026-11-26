@@ -209,8 +209,9 @@ Everything about where turns run is on the **Agent** page in the sidebar, beside
 
 Under **Defaults** in **Projects**, one line says where `@Agent` chats outside a project start, or why they can't, such as "Chats outside a project can't start: laptop is offline; build-box has no chat folder." It is only about those chats: each computer's own page says whether it can take a project's runs.
 
-Each computer's details set two things for it:
+Each computer's details set three things for it:
 
+- **Takes plays**, on by default: off, no play, auto play or `@Agent` turn runs there, pressed or picked, and a run passes it over as "desk is switched off for plays". Commands, logs and setup still work, so it suits a machine you only want a shell on. Turning it back on lets waiting runs try it at once.
 - **Runs at once**, 1 to 5: how many play runs it takes side by side. Its page says how many are going, such as "1 of 2 play runs". A full computer is passed over like an offline one. Only play runs count; chats never fill a computer. Lowering it stops no run already going: new runs wait until fewer than the new number are running.
 - **Chat folder**: the T3 project `@Agent` works in from a channel or direct message, where there is no project to find.
 
@@ -258,6 +259,7 @@ A run that none of your computers can take says why for each one:
 | laptop is offline | Start the computer, or check the Nexul app is running on it. |
 | T3 Code isn't answering on laptop | Check T3 Code is running on it. |
 | laptop is full (2 of 2 running) | Wait for a run to end, or raise its **Runs at once**. |
+| desk is switched off for plays | Turn **Takes plays** back on in its details, or let the next computer take it. |
 | laptop isn't set up for claude | Run setup for that provider on it. |
 | laptop doesn't offer the model | Pick a model the computer has, or leave the model empty. |
 | laptop doesn't have this project, or acme/acme-e2e for a project with several repositories | **Add** it from the project under **Projects** on the Agent page. |

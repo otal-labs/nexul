@@ -106,7 +106,7 @@ A migration, then `make sqlc`, run against a seeded copy in the migration test.
 - `play_queue.computer_ids` and `computer_id` are dropped after the move. A queued item keeps its person.
 - Each auto play that named computers: `run_on = person`, `run_as` kept. Shared computers it named, which its picker
   still holds Run agents on, join the picker's order after their own computers (decision 11); one they lost is dropped.
-- `pairing_computers.takes_plays INTEGER NOT NULL DEFAULT 1`, and a `pairing_order_shares` row per shared computer a
+- `pairing_computers.plays_off INTEGER NOT NULL DEFAULT 0`, and a `pairing_order_shares` row per shared computer a
   person added to their order, with its position in the same sequence as their own computers.
 - Fix with AI's auto play on mini becomes Run as its picker, which lands on mini first, since it heads the order.
 

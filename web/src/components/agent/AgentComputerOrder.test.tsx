@@ -113,4 +113,18 @@ describe("Your computers", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });
     expect(await screen.findByText("1 of 4 play runs")).toBeInTheDocument();
   });
+
+  it("switches a computer off for plays from its details, saying what still works there", async () => {
+    const user = userEvent.setup();
+    mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
+    renderAgent("/acme/agent/computers/c-laptop");
+
+    const takes = await screen.findByRole("switch", { name: "Plays, auto plays and @Agent run here" });
+    expect(takes).toBeChecked();
+    await user.click(takes);
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { plays_off: true });
+    expect(await screen.findByText("Commands, logs and setup still work.")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Plays, auto plays and @Agent run here" })).not.toBeChecked();
+  });
 });

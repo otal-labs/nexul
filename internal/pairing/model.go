@@ -55,6 +55,8 @@ type Computer struct {
 	SkillsOutdated bool `json:"skills_outdated"`
 	// ShellEnabled is its owner's switch for commands from Nexul; the computer's own opt-in is in its facts.
 	ShellEnabled bool `json:"shell_enabled"`
+	// PlaysOff is its owner's switch keeping every run off it; commands, logs and setup stay (ADR 0211).
+	PlaysOff bool `json:"plays_off"`
 }
 
 // SharedComputer is whose a shared computer is and what the caller holds on it.
@@ -518,6 +520,7 @@ const (
 	PassOverNoChatFolder      PassOverReason = "no_chat_folder"
 	PassOverFull              PassOverReason = "full"
 	PassOverCloneFailed       PassOverReason = "clone_failed"
+	PassOverNoPlays           PassOverReason = "no_plays"
 )
 
 // PassOver is one computer a run passed over and why; Text says it in a line every client shows as is.

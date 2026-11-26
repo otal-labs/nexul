@@ -1,5 +1,6 @@
 import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
@@ -11,8 +12,7 @@ interface ComputerRunFactsProps {
   computer: Computer;
 }
 
-// What a computer takes: how many play runs at once (ADR 0166), and the T3 project @Agent chats outside any project run
-// in. Both apply the moment they are picked.
+// What a computer takes: plays at all (ADR 0211), how many at once (ADR 0166), and where chats outside a project run.
 export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
   const update = useUpdateComputerSettings(computer.id);
   const projects = computer.facts?.projects ?? [];
@@ -21,6 +21,13 @@ export const ComputerRunFacts = ({ computer }: ComputerRunFactsProps) => {
 
   return (
     <>
+      <Fact label="Takes plays">
+        <label className="flex items-center gap-2 text-xs">
+          <Switch size="sm" checked={!computer.plays_off} disabled={update.isPending} onCheckedChange={(on) => update.mutate({ plays_off: !on })} />
+          <span className="text-foreground">Plays, auto plays and @Agent run here</span>
+        </label>
+        {computer.plays_off && <p className="mt-1.5 text-muted-foreground">Commands, logs and setup still work.</p>}
+      </Fact>
       <Fact label="Runs at once">
         <ToggleGroup
           type="single"
