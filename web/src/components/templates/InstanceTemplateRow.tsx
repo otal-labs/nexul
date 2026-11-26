@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { InstanceTemplateEditor } from "@/components/templates/InstanceTemplateEditor";
@@ -15,12 +16,15 @@ interface InstanceTemplateRowProps {
   onLeave: () => void;
 }
 
+// The Interview template is its questions; the play of the same name is told apart by its group.
+const KIND_SUFFIX: Partial<Record<Template["kind"], string>> = { ticket_body: " body", interview: " questions" };
+
 export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowProps) => {
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const remove = useDeleteInstanceTemplate();
   const { open: confirm } = useConfirmationDialog();
-  const label = `${template.name}${template.kind === "ticket_body" ? " body" : ""}`;
+  const label = `${template.name}${KIND_SUFFIX[template.kind] ?? ""}`;
   // The Interview play shares its name with the Interview template, so its button names the instructions.
   const editLabel = `Edit ${label}${template.kind === "play_instructions" ? " instructions" : ""}`;
 
@@ -37,33 +41,32 @@ export const InstanceTemplateRow = ({ template, onLeave }: InstanceTemplateRowPr
   };
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "group/row py-2")}>
-      <div className="flex min-h-9 items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium first-letter:uppercase">{label}</p>
-          <TemplateEditedLine template={template} />
-        </div>
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "py-1")}>
+      <div className="flex min-h-11 items-center gap-1">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={editLabel}
+          onClick={() => setOpen(!open)}
+          className="-mx-2 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left transition-[background-color] duration-150 ease-standard hover:bg-accent"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium first-letter:uppercase">{label}</span>
+            <TemplateEditedLine template={template} />
+          </span>
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-[rotate] duration-200 ease-out",
+              open && "rotate-90",
+            )}
+          />
+        </button>
         {template.added && (
           <Button type="button" variant="ghost" size="sm" aria-label={`Delete ${label}`} onClick={() => void onDelete()}>
             Delete
           </Button>
         )}
-        {/* Quiet until the row is pointed at, where something can hover; an open editor keeps its Close. */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-expanded={open}
-          aria-label={editLabel}
-          onClick={() => setOpen(!open)}
-          className={cn(
-            "-mr-3",
-            !open &&
-              "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100",
-          )}
-        >
-          {open ? "Close" : "Edit"}
-        </Button>
       </div>
       {open && <InstanceTemplateEditor key={`${template.body}:${template.updated_at ?? ""}`} template={template} />}
     </li>

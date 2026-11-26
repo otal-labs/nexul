@@ -47,11 +47,11 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   const connectorBy = status.connected_by && personLabel(connectedBy);
   const connectedDetail = [
     // The owner wizard connects as "setup", which reads as a person's name after "by".
-    connectorBy && (connectorBy === "setup" ? "during setup" : `by ${connectorBy}`),
+    connectorBy && (connectorBy === "setup" ? "at setup" : `by ${connectorBy}`),
     status.connected_at && formatRelativeTime(status.connected_at),
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(", ");
 
   const onDisconnect = async () => {
     const ok = await confirm({
@@ -67,17 +67,15 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
         <Icon className="size-4" />
       </span>
-      {/* The name with what it is for, then its state; under the Not connected label that state goes without saying. */}
+      {/* The name with when it was connected, what it is for under it, and a status only for a problem. */}
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="flex min-w-0 items-baseline gap-2">
-          <span className="shrink-0 text-sm font-medium">{connector.name}</span>
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{connector.description}</span>
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="text-sm font-medium">{connector.name}</span>
+          {status.configured && !status.secret && connectedDetail && (
+            <span className="text-xs text-muted-foreground">Connected {connectedDetail}</span>
+          )}
         </p>
-        {status.configured && !status.secret && (
-          <SettingsStatus tone="success" detail={connectedDetail || undefined}>
-            Connected
-          </SettingsStatus>
-        )}
+        <p className="text-xs text-pretty text-muted-foreground">{connector.description}</p>
         {!available && <SettingsStatus tone="muted">Coming soon</SettingsStatus>}
         {status.secret && (
           <SettingsStatus tone={status.secret.state === "unreachable" ? "warning" : "destructive"} detail={status.secret.error}>

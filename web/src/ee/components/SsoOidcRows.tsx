@@ -1,5 +1,5 @@
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
-import { SsoCopyValue } from "@/ee/components/SsoCopyValue";
+import { CopyValue } from "@/components/settings/CopyValue";
 import { SsoJoinRole } from "@/ee/components/SsoJoinRole";
 import { SsoOnlyRow } from "@/ee/components/SsoOnlyRow";
 import { useSetSsoOnly } from "@/ee/hooks/SsoHooks";
@@ -11,7 +11,7 @@ export const SsoOidcRows = ({ sso }: { sso: SsoSettings }) => {
   return (
     <SettingsRows>
       <SettingsRow label="Redirect URI" description="Register this as the redirect URI for this instance at your provider.">
-        <SsoCopyValue value={sso.redirect_uri} label="Copy redirect URI" />
+        <CopyValue value={sso.redirect_uri} label="Copy redirect URI" />
       </SettingsRow>
       {sso.configured && (
         <>

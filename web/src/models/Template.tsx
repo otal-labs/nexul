@@ -41,24 +41,15 @@ export interface Template {
 
 export const INSTANCE: TemplateLocation = { scope: "instance" };
 
-export const TEMPLATE_GROUP_LABELS: Record<TextTemplateKind, string> = {
-  interview: "Interview",
-  mention_chip: "Mention chip",
-  play_instructions: "Play instructions",
-  ticket_body: "Ticket bodies",
-  agent_prompt: "Agent prompt",
-  memory: "Memories",
-};
-
-// How each kind reaches workspaces and projects, under its group on the instance's Templates.
-export const TEMPLATE_GROUP_HINTS: Record<TextTemplateKind, string> = {
-  interview: "Every workspace follows it until it edits its own.",
-  mention_chip: "Every workspace follows it until it edits its own.",
-  play_instructions: "Copied into each workspace when it is created.",
-  ticket_body: "Copied into each project when it is created.",
-  agent_prompt: "Opens and closes every Agent prompt.",
-  memory: "Copied into each project when it is created.",
-};
+// The instance's Templates groups, each with how its kinds reach workspaces and projects; single templates that
+// reach them the same way share a group.
+export const TEMPLATE_GROUPS: { label: string; hint: string; kinds: TextTemplateKind[] }[] = [
+  { label: "Workspace defaults", hint: "Every workspace follows these until it edits its own.", kinds: ["interview", "mention_chip"] },
+  { label: "Play instructions", hint: "Copied into each workspace when it is created.", kinds: ["play_instructions"] },
+  { label: "Ticket bodies", hint: "Copied into each project when it is created.", kinds: ["ticket_body"] },
+  { label: "Agent prompt", hint: "Opens and closes every Agent prompt.", kinds: ["agent_prompt"] },
+  { label: "Memories", hint: "Copied into each project when it is created.", kinds: ["memory"] },
+];
 
 // The layer under the instance, or null when the kind lives only at the instance and can never be cloned below it.
 export const BELOW_SCOPE: Record<TemplateKind, "workspace" | "project" | null> = {

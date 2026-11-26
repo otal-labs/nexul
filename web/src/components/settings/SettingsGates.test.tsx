@@ -48,7 +48,7 @@ const reason = (what: string) => `Your role can't ${what}`;
 const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]; instance?: string[] }[] = [
   { name: "the instance address", ui: <InstanceUrlSection settings={settings} />, controls: [{ role: "button", name: "Save", reason: reason("change the instance address") }] },
   { name: "the version", ui: <InstanceVersionSection />, controls: [{ role: "button", name: /^Upgrade to/, reason: reason("upgrade the instance") }] },
-  { name: "a sign-in provider", ui: <OAuthProviderSection provider="google" settings={settings} />, controls: [{ role: "button", name: /^Enable Google sign-in/, reason: reason("change sign-in providers") }] },
+  { name: "a sign-in provider", ui: <OAuthProviderSection provider="google" settings={settings} />, controls: [{ role: "button", name: /^Set up/, reason: reason("change sign-in providers") }] },
   { name: "an archived workspace", ui: <ArchivedWorkspaceRow workspace={workspace} />, controls: [{ role: "button", name: "Restore", reason: reason("restore workspaces") }] },
   { name: "the danger zone", ui: <DangerZoneSection />, controls: [{ role: "button", name: "Archive workspace", reason: reason("archive workspaces") }] },
   {

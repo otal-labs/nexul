@@ -23,7 +23,7 @@ export const PasskeysSection = () => {
       id="passkeys"
       title="Passkeys"
       description="Sign in with your fingerprint, face, or security key. Your linked accounts keep working."
-      aside={
+      footer={
         canAdd && (
           <Button variant="outline" size="sm" loading={add.isPending} onClick={() => add.mutate()}>
             <KeyRound className="size-4" />

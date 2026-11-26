@@ -42,7 +42,7 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
           <span className="ml-2.5 truncate font-mono tabular-nums">{session.ip}</span>
         </p>
       </div>
-      {session.current && <span className="text-xs text-muted-foreground">This device</span>}
+      {session.current && <span className="text-xs font-medium text-foreground">This device</span>}
       {/* Quiet until the row is pointed at, so seven rows don't stack seven buttons; always shown where nothing hovers. */}
       {!session.current && onSignOut && (
         <span className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:transition-opacity [@media(hover:hover)]:duration-150 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:has-data-[variant=destructive]:opacity-100">

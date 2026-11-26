@@ -55,7 +55,16 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
             No hostnames yet
           </SettingsStatus>
         )}
-        {hostnames && hostnames.length > 0 && <p className="font-mono text-xs break-all text-foreground/80">{hostnames.join(" · ")}</p>}
+        {hostnames && hostnames.length > 0 && (
+          // Each hostname wraps as a whole token, never inside its name.
+          <p className="flex flex-wrap gap-x-3 font-mono text-xs text-foreground/80">
+            {hostnames.map((hostname) => (
+              <span key={hostname} className="max-w-full truncate">
+                {hostname}
+              </span>
+            ))}
+          </p>
+        )}
       </div>
       <span className="-mt-1.5">
         <ConfirmDestroyButton
