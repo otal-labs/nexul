@@ -140,9 +140,16 @@ export const externalHeight = (name: string, url?: string): number => {
   return CARD_BORDER + 24 + 20 * nameLines + LINE * urlLines + LINE;
 };
 
-// The box's microheader is mono 11px with 0.12em tracking, across the box less its 12px insets and the count.
-const NETWORK_LABEL_CHARS = Math.floor((SERVICE_W + 48 - 24 - 24) / (MONO_11 + 1.32));
+// The box's microheader across the box less its 12px insets and the count: "network · " in mono 11px tracked
+// 0.12em, then the name untracked, which moves whole to the next line before it breaks after a hyphen or underscore.
+const NETWORK_LABEL_W = SERVICE_W + 48 - 24 - 24;
+const NETWORK_PREFIX_W = "network · ".length * (MONO_11 + 1.32);
+
+export const networkLabelLines = (name: string): number => {
+  if (NETWORK_PREFIX_W + name.length * MONO_11 <= NETWORK_LABEL_W) return 1;
+  return 1 + lineCount(name.split(/(?<=[-_])/), Math.floor(NETWORK_LABEL_W / MONO_11));
+};
 
 // Room above a network box's first card: its padding, the microheader's lines, and the machine its members share.
 export const networkBoxTop = (name: string, machine?: string): number =>
-  24 + 24 + LINE * (lineCount(`network · ${name}`.split(/(?<=[-_ ])/), NETWORK_LABEL_CHARS) - 1) + (machine ? LINE : 0);
+  24 + 24 + LINE * (networkLabelLines(name) - 1) + (machine ? LINE : 0);
