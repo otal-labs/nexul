@@ -24,7 +24,7 @@ export const WorkspaceOverviewHeader = ({ project }: { project: Project | undefi
       meta={
         <HeaderFacts
           parts={[
-            project && <span className="text-foreground">{project.name}</span>,
+            project?.name,
             mine && <Count n={mine.length} label={mine.length === 1 ? "ticket on you" : "tickets on you"} />,
             unread && <Count n={unread.count} label="unread" />,
           ]}

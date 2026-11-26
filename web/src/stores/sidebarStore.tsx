@@ -7,6 +7,8 @@ export type SidebarStore = {
   toggleCollapsed: () => void;
   workspaceNavOpen: boolean;
   toggleWorkspaceNav: () => void;
+  voiceNavOpen: boolean;
+  toggleVoiceNav: () => void;
   threadsNavOpen: boolean;
   toggleThreadsNav: () => void;
 };
@@ -19,15 +21,21 @@ export const useSidebarStore = create<SidebarStore>()(
       toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
       workspaceNavOpen: true,
       toggleWorkspaceNav: () => set((s) => ({ workspaceNavOpen: !s.workspaceNavOpen })),
+      voiceNavOpen: false,
+      toggleVoiceNav: () => set((s) => ({ voiceNavOpen: !s.voiceNavOpen })),
       threadsNavOpen: false,
       toggleThreadsNav: () => set((s) => ({ threadsNavOpen: !s.threadsNavOpen })),
     }),
     {
       name: "sidebar",
-      // Version 1 opened Workspace and folded Threads by default, so every browser starts once from the new defaults.
-      version: 1,
-      migrate: () => ({ workspaceNavOpen: true, threadsNavOpen: false }),
-      partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen, threadsNavOpen: s.threadsNavOpen }),
+      // Version 2 folds Voice channels by default; the Workspace and Threads choices a browser made carry over.
+      version: 2,
+      migrate: (persisted, version) => {
+        const kept = persisted as Partial<SidebarStore> | undefined;
+        if (version < 1) return { workspaceNavOpen: true, threadsNavOpen: false, voiceNavOpen: false };
+        return { workspaceNavOpen: kept?.workspaceNavOpen ?? true, threadsNavOpen: kept?.threadsNavOpen ?? false, voiceNavOpen: false };
+      },
+      partialize: (s) => ({ workspaceNavOpen: s.workspaceNavOpen, voiceNavOpen: s.voiceNavOpen, threadsNavOpen: s.threadsNavOpen }),
     },
   ),
 );

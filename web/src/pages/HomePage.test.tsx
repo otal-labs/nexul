@@ -82,19 +82,19 @@ describe("HomePage", () => {
     expect(screen.getByText("ticket on you")).toBeInTheDocument();
   });
 
-  it("says nothing waits on the viewer and the inbox is read when both are empty", async () => {
+  it("says nothing waits on the viewer and the inbox is empty when both are", async () => {
     signInWith(["tickets:read"]);
     renderHome();
 
     expect(await screen.findByText("Nothing is waiting on you in Atlas.")).toBeInTheDocument();
-    expect(await screen.findByText("You're all caught up.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing has reached your inbox yet.")).toBeInTheDocument();
   });
 
   it("leaves the tickets and plays out for a member who reads neither", async () => {
     signInWith(["docs:read"]);
     renderHome();
 
-    expect(await screen.findByText("You're all caught up.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing has reached your inbox yet.")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your tickets" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Plays running" })).not.toBeInTheDocument();
   });

@@ -110,7 +110,7 @@ describe("CalendarPage", () => {
     data.range = { meetings: many, occurrences: many.map((m) => occurrenceOf(m)) };
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole("button", { name: "+1, show the week" }));
+    await user.click(await screen.findByRole("button", { name: /^\+\d, show the week$/ }));
     expect(useCalendarStore.getState().view).toBe("week");
     expect(await screen.findAllByRole("button", { name: /Sync/ })).toHaveLength(5);
   });

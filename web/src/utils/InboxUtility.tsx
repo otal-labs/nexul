@@ -36,6 +36,8 @@ export interface InboxRow {
   unreadIds: string[];
   /** Every notification the row holds, a doc or ticket row counting each of its own. */
   count: number;
+  /** A play on the row's ticket asked something; it marks the title's line instead of a summary. */
+  needsAnswer?: boolean;
 }
 
 /** The doc rows of one non-default folder, placed by the newest of them. */
@@ -81,10 +83,9 @@ const ticketSummary = (ns: Notification[]) => {
   const mentions = count(NotificationKind.TicketMentioned);
   const changes = count(NotificationKind.TicketStatusChanged);
   const runs = ns.filter((n) => n.kind === NotificationKind.PlayRunFinished);
-  // A row of play runs alone says nothing its title does not, so it takes the one-line row.
-  if (runs.length === ns.length) return "";
+  // A row of play runs alone says nothing its title and its answer mark do not, so it takes the one-line row.
+  if (runs.length + count(NotificationKind.PlayRunWaiting) === ns.length) return "";
   const parts = [
-    count(NotificationKind.PlayRunWaiting) > 0 && kindLabels[NotificationKind.PlayRunWaiting],
     mentions === 1 && "mentioned you",
     mentions > 1 && `mentioned you ${mentions} times`,
     count(NotificationKind.TicketDueSoon) > 0 && kindLabels[NotificationKind.TicketDueSoon],
@@ -125,7 +126,8 @@ const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => 
   const unreadIds = ns.filter((n) => !n.read).map((n) => n.id);
   const title = (ns.find((n) => !titleWorded.includes(n.kind)) ?? newest).subject_title;
   if (newest.subject_type === SubjectType.Ticket) {
-    return { type: "ticket", key: `ticket:${newest.subject_id}`, notification: newest, title, summary: ticketSummary(ns), unreadIds, count: ns.length };
+    const needsAnswer = ns.some((n) => n.kind === NotificationKind.PlayRunWaiting);
+    return { type: "ticket", key: `ticket:${newest.subject_id}`, notification: newest, title, summary: ticketSummary(ns), unreadIds, count: ns.length, needsAnswer };
   }
   if (newest.subject_type !== SubjectType.Doc) {
     return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: newest.kind === NotificationKind.PlayRunFinished ? "" : kindLabels[newest.kind], unreadIds, count: ns.length };

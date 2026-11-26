@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import type { PermissionAction } from "@nexul/client-core/permissionActions";
 
 import { ActionButton } from "@/components/action/ActionButton";
+import { SidebarFoldHeader } from "@/components/sidebar/SidebarFoldHeader";
 import { sectionLabelClass } from "@/components/SidebarNav";
 import { cn } from "@/lib/utils";
 
@@ -14,12 +15,13 @@ interface SidebarSectionHeaderProps {
   permission: PermissionAction;
   verb: string;
   onAction: () => void;
+  // Makes the label fold the group, the + staying beside its chevron.
+  fold?: { open: boolean; onToggle: () => void };
 }
 
 // A sidebar section label with its create action; the + is never hover-only, since that hides the way in.
-export const SidebarSectionHeader = ({ label, actionLabel, permission, verb, onAction }: SidebarSectionHeaderProps) => (
-  <div className={cn(sectionLabelClass, "flex items-center justify-between pr-1")}>
-    <span>{label}</span>
+export const SidebarSectionHeader = ({ label, actionLabel, permission, verb, onAction, fold }: SidebarSectionHeaderProps) => {
+  const action = (
     <ActionButton
       permission={permission}
       verb={verb}
@@ -31,5 +33,16 @@ export const SidebarSectionHeader = ({ label, actionLabel, permission, verb, onA
       title={actionLabel}
       className="size-5 rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
     />
-  </div>
-);
+  );
+  return (
+    <>
+      {fold && <SidebarFoldHeader label={label} open={fold.open} onToggle={fold.onToggle} action={action} />}
+      {!fold && (
+        <div className={cn(sectionLabelClass, "flex items-center justify-between pr-1")}>
+          <span>{label}</span>
+          {action}
+        </div>
+      )}
+    </>
+  );
+};

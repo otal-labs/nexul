@@ -8,8 +8,8 @@ import { formatWeekday, sameDay } from "@/utils/CalendarUtility";
 
 const COLUMNS = "grid grid-cols-7";
 
-// The line budget comes from the week count, never a measurement: a six-week month's shorter rows hold one line fewer.
-const linesFor = (weeks: number) => (weeks > 5 ? 4 : 5);
+// The line budget comes from the week count, never a measurement: a six-week month's shorter rows hold one line fewer, and both fit a 768px-tall panel.
+const linesFor = (weeks: number) => (weeks > 5 ? 3 : 4);
 
 interface CalendarMonthProps {
   days: Date[];

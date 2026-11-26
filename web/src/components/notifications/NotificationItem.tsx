@@ -7,7 +7,7 @@ import { docQuery } from "@/hooks/DocHooks";
 import { useMarkNotificationUnread, useOpenInboxRow, useSelectedInboxRow } from "@/hooks/NotificationHooks";
 import { ticketQuery } from "@/hooks/TicketHooks";
 import { useHoverPrefetch } from "@/hooks/useHoverPrefetch";
-import { SubjectType } from "@/models/Notification";
+import { NotificationKind, SubjectType } from "@/models/Notification";
 import type { InboxRow } from "@/utils/InboxUtility";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,8 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
   const markUnread = useMarkNotificationUnread();
   const unread = row.unreadIds.length > 0;
   const { icon: MarkIcon, tone, label } = notificationMark(row.notification);
-  const { subject_type, subject_id } = row.notification;
+  const { subject_type, subject_id, kind } = row.notification;
+  const playWorded = row.title === row.notification.subject_title && (kind === NotificationKind.PlayRunFinished || kind === NotificationKind.PlayRunWaiting);
   // The detail pane reads a ticket or a doc by its id; the other subjects load nothing worth fetching early.
   const prefetch = useHoverPrefetch((client) => {
     if (subject_type === SubjectType.Ticket) return client.prefetchQuery(ticketQuery(subject_id));
@@ -62,8 +63,14 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
               title={row.title}
               className={cn("line-clamp-2 min-w-0 flex-1 break-words text-pretty text-foreground", unread && "font-semibold", !unread && selected && "font-medium")}
             >
-              <KeyedTitle title={row.title} />
+              <KeyedTitle title={row.title} quiet={playWorded} />
             </span>
+            {row.needsAnswer && (
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-xs leading-5 text-foreground">
+                <span className="size-1.5 rounded-full bg-warning-mark" aria-hidden />
+                Needs your answer
+              </span>
+            )}
             <span className="shrink-0 font-mono text-micro leading-5 text-muted-foreground tabular-nums">{formatShortAgo(row.notification.created_at)}</span>
           </span>
           {row.summary && (

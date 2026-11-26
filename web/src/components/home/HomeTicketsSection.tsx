@@ -1,5 +1,6 @@
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { HomeMoreLink } from "@/components/home/HomeMoreLink";
 import { HomeRowsSkeleton } from "@/components/home/HomeRowsSkeleton";
 import { HomeSection } from "@/components/home/HomeSection";
 import { HomeTicketRow } from "@/components/home/HomeTicketRow";
@@ -25,11 +26,7 @@ export const HomeTicketsSection = ({ project }: { project: Project }) => {
           ))}
         </ul>
       )}
-      {hidden > 0 && (
-        <p className="pt-2 text-xs text-muted-foreground">
-          <span className="font-mono tabular-nums">{hidden}</span> more on the board
-        </p>
-      )}
+      {hidden > 0 && <HomeMoreLink to={wsPath(boardPath(project))} count={hidden} label="more on the board" />}
     </HomeSection>
   );
 };

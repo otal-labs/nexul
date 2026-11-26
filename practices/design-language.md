@@ -759,7 +759,7 @@ is its own row, and all of them
 interleave by newest activity under day microheaders (Today, Yesterday, Last
 7 days, Earlier, by calendar day; a group with nothing is left out), pinned
 like the list pane's groups. Until a row is picked the list fills the page
-as one centred 56rem column, header included, so a row's time stays beside
+as one centred 56rem column under a page header (the workspace crumb, "Inbox" in the display face, the unread count as its meta, the controls on the right), so a row's time stays beside
 its title, with no open pane beside it; picking one opens the record beside the list, at
 the list pane's width.
 
@@ -876,7 +876,7 @@ A mark that names the record (the board's project mark) goes in the
 `leading` slot, centred on the title and meta pair. Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
-A list pane (Docs, Memories, Agent, Inbox) keeps its pane title bar instead of a page
+A list pane (Docs, Memories, Agent, and the Inbox once a row is open) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
 to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
 is three lines with no closing hairline (`actionsOn="crumbs"`): the
@@ -1018,15 +1018,15 @@ name, and a Month | Week segmented control at the right, every control 32px;
 the header drops its hairline here, and the view fills the rest of the panel.
 The month is a hairline grid of seven equal columns, a week to a row; the rows share the panel's
 height above a floor that fits a cell's head and its lines, so nothing clips
-and a short screen scrolls. A cell holds five lines in a five-week month and
-four in a six-week one, a number taken from the week count, never measured.
+and a short screen scrolls. A cell holds four lines in a five-week month and
+three in a six-week one, a number taken from the week count, never measured, so a 768px-tall panel shows every week.
 Its head is the day number in 13px mono (today in a 24px ink disc, never the
 accent, and today's whole cell tinted `foreground` at 4%) and, at the
 right, what had no line, counted by kind in mono (`+1 due · +3`, the total
 alone under 880px), a button that opens that day's week. Days of the
 neighbouring months mute their text on the same surface, and the grid ends in 8px
 corners. A period with nothing in it says so in the toolbar after its name
-("No meetings or due tickets this month"), muted. Due tickets lead as outlined
+("Nothing scheduled", the period named beside it), muted and truncated before the toolbar wraps, so Month | Week stays on its line at 768. Due tickets lead as outlined
 boxes (4px, `foreground` at 4%, a hairline ring, the calendar-clock icon and
 the title, the key in the tooltip), giving lines to the meetings while they
 need them; a meeting is one 20px line, its zero-padded start in mono on a lead
@@ -1124,12 +1124,12 @@ Workspace home. A signed-in member with a role opens a workspace on their own
 work in the project the sidebar shows, never a pitch: the page header (the
 workspace's name, then as facts the project, how many open tickets wait on them
 and how many inbox rows are unread), then Your tickets beside a column of
-Unread and Plays running from 1024px, stacked below it. Each section is a
+Inbox and Plays running from 1024px, stacked below it. Each section is a
 microheader with a muted link to the full list (Open board, Open inbox) and at
-most eight, five and five rows: a ticket row is the overview row of Docs with
-the status mark in its slot, the key in mono and the status under the title,
+most eight, six and five rows: a ticket row is the overview row of Docs with
+the status mark in its slot (a status without an icon takes its stage's: dashed for backlog), the key in mono and the status under the title,
 in stage order (in progress, review, testing, backlog) and newest first; the
-unread rows are the inbox's own `NotificationItem`; a run is its ticket with a
+inbox rows are the inbox's own `NotificationItem`, unread first, then the latest read, so a quiet inbox still shows what happened; what a section leaves out is a muted link with its count and an arrow ("9 more on the board"); a run is its ticket with a
 `status-pulse` `info` dot, or a still `warning-mark` one while it waits for an
 answer. "Waits on you" is the board card's person (the tester while testing,
 else the developer). Each section loads in its own row shape and says it is
@@ -1139,7 +1139,7 @@ empty in one `EmptyRow` sentence. `WorkspaceOverview` in
 Error page. The not-found and crash screen (`ErrorScreen`) is the empty state at
 the showcase size: the orbit mark around `Unplug` (a crash, `CircleAlert`) with
 its entrance, the 32px headline, the console lines in 12px mono with the code
-in `destructive`, then the actions, set a little above centre. No eyebrow and no
+in ink (red beside the ember action read as a second accent), then the actions, set a little above centre. No eyebrow and no
 illustration: a drawn scene was a second art style beside the orbit.
 
 Showcase surfaces. The signed-out pages (home, sign in, invitation), the
@@ -1876,7 +1876,7 @@ waiting on an answer or a ticket due tomorrow `warning`); a play run that
 ended shows how, a check in `success`, a cross in `destructive` for failed, a
 stop in `warning` for interrupted, named by its label. The title is ink in
 both states, semibold while unread, two lines at most, a ticket key inside it
-in mono, and the short mono time ("3d", "18 Nov") ends its first line. Under
+in mono, and the short mono time ("3d", "18 Nov") ends its first line. A ticket a play is waiting on carries "Needs your answer" after its title, a `warning-mark` dot beside ink text, never a second line; a play's notice title mutes its repeated wording and leaves the key in ink. Under
 it a muted summary line only when it says what the title does not. Its focus ring draws inside the row (`inset-focus`), where the list's
 clip cannot cut it off.
 
@@ -2086,7 +2086,7 @@ icon's corner), and a muted Being set up line for whoever cannot change the
 project; while the workspace's access setup is open, an Owner keeps the
 project and its pages with a Set up access row trailing them, and a member,
 who sees no project until it is done, gets one Projects being set up line), the foldable Workspace section (open until a browser folds it, so the sidebar lists the same pages the rail shows), and last the conversations:
-Channels, Voice channels, Direct messages and Threads, which starts folded and, folded, keeps only the open thread and any with unread messages. Places come before
+Channels, Voice channels, which starts folded and, folded, keeps the ones someone is in, the one you are in and any with unread messages, its `+` beside the chevron, then Direct messages and Threads, which starts folded and, folded, keeps only the open thread and any with unread messages. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are 12px medium sans in
 sentence case at 80% of `muted-foreground`, with their create `+` trailing; a direct message with one other person leads with
@@ -2218,6 +2218,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Sidebar rows at 13px, about 28px tall, in a 224px sidebar, with sentence-case labels (2026-10-28) | Against 14px rows near 34px tall in 240px under mono uppercase labels: the labels were the most tracked-out, most technical-looking text in the chrome for the least important words, and the tall rows pushed Voice channels to the fold at 900px; the compact rows sit level with the board's 13px card titles and give the panel 16px |
 | Sidebar counts and tags are neutral | Against the solid ink pill and a warning-coloured WIP tag (the brightest things in the sidebar for the least important facts); the number being present says unread, and the sidebar keeps its colour for where you are |
 | Sidebar: the Workspace section starts folded (2026-10-28) — reversed 2026-11-26: Workspace starts open and Threads starts folded | Folded, the workspace's seven pages hid behind a chevron while the rail showed all of them, and the current one hung under the header as an orphan row; the long Threads list of truncated doc titles was what filled the fold. Before that, against it starting open: with the project's pages listed, the seven workspace pages (Calendar to Configuration, visited a few times a week) pushed every channel under the account row at 900px, where the last one faded half-drawn into the footer; folded, the project and the conversations fit, and a browser that opens it keeps it open |
+| Sidebar: Voice channels starts folded, keeping the occupied ones (2026-11-26) | With Workspace open, Channels and Voice channels filled the rest of a 900px sidebar and Direct messages fell below the fold behind a fading "voice channel 1"; an empty voice channel is a place you join, not news, so folded it shows only where someone is |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
