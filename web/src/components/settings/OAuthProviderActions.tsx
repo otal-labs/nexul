@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { OAuthProviderForm } from "@/components/settings/OAuthProviderForm";
 import { ActionButton } from "@/components/action/ActionButton";
+import { destroyActionClass, destroyActionLiveClass } from "@/components/settings/ConfirmDestroyButton";
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,16 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
     if (ok) update.mutate({ client_id: "", client_secret: "" });
   };
 
-  // Peers, so one shape and one side: both outline, Disable turning red only on hover.
+  // Disable takes the quiet destructive treatment every settings row shares; Edit stays the outline peer.
   return (
     <span className="flex items-center gap-2">
       <ActionButton
         permission="instance:write"
         verb="change sign-in providers"
-        variant="outline"
+        variant="ghost"
         size="sm"
-        liveClassName="hover:text-destructive"
+        className={destroyActionClass}
+        liveClassName={destroyActionLiveClass}
         loading={update.isPending}
         onClick={() => void disable()}
       >

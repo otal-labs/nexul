@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useFlash } from "@/hooks/useFlash";
 import { useProfileForm } from "@/hooks/useProfileForm";
 import type { User } from "@/models/User";
+import { destroyActionClass, destroyActionLiveClass } from "@/components/settings/ConfirmDestroyButton";
+import { cn } from "@/lib/utils";
 
 const FORM_ID = "profile-form";
 
@@ -38,7 +40,7 @@ export const ProfileCard = ({ user }: { user: User }) => {
               <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 Upload
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={removeAvatar} disabled={!avatarOverrideUrl}>
+              <Button type="button" variant="ghost" size="sm" className={cn(destroyActionClass, destroyActionLiveClass)} onClick={removeAvatar} disabled={!avatarOverrideUrl}>
                 Remove
               </Button>
               <input
