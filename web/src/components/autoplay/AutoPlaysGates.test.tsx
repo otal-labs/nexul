@@ -30,8 +30,6 @@ const autoPlay: AutoPlay = {
   once_within_minutes: 1440,
   run_on: "developer",
   run_as: "",
-  computer_ids: [],
-  computer_id: "",
   memory_ids: [],
   created_by: "u1",
   created_at: "",

@@ -48,12 +48,9 @@ describe("waitingWhy and waitingLines", () => {
     expect([waitingWhy(item), waitingLink(item)]).toEqual(["computers busy", undefined]);
   });
 
-  it("sends a run held on its auto play's own computers to that auto play, not to the person's computers", () => {
-    const picked = { run_on: "computer" as const, computer_ids: ["c-1"], computer_id: "c-1" };
-    expect(waitingLink(queueItem({ ...picked, reason: "offline" }))).toEqual({ to: "/agent/plays/play-1", label: "Auto play's computers" });
-    expect(waitingLink(queueItem({ ...picked, reason: "no_computer_ready" }))?.to).toBe("/agent/plays/play-1");
-    expect(waitingLink(queueItem({ ...picked, reason: "setup_required" }))?.label).toBe("Run setup");
-    expect(waitingLink(queueItem({ reason: "offline" }))).toEqual({ to: "/agent", label: "Your computers" });
+  it("sends a run held on its person's computers to the Agent page like any other", () => {
+    expect(waitingLink(queueItem({ run_on: "person", reason: "offline" }))).toEqual({ to: "/agent", label: "Your computers" });
+    expect(waitingLink(queueItem({ run_on: "person", reason: "setup_required" }))?.label).toBe("Run setup");
   });
 
   it("links nothing for a hold settings can't fix", () => {

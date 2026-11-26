@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 
 import { personLabel } from "@nexul/client-core/person";
-import { autoPlayTitle, LEVEL_LABELS, RUN_ON_PHRASES, ruleText, type AutoPlayGroup, type AutoPlayMatch, type AutoPlayRule, type AutoPlaySubject } from "@nexul/client-core/autoPlayText";
+import { autoPlayTitle, LEVEL_LABELS, runOnPhrase, ruleText, type AutoPlayGroup, type AutoPlayMatch, type AutoPlayRule, type AutoPlaySubject } from "@nexul/client-core/autoPlayText";
 
 import { useAutoPlayValues } from "@/hooks/AutoPlayValueHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useComputerNames } from "@/hooks/ComputerHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
-import { storedComputerIds, type AutoPlay } from "@/models/AutoPlay";
+import type { AutoPlay } from "@/models/AutoPlay";
 import { DEFAULT_SWEEP_RUNS } from "@/models/Schedule";
 import { cn } from "@/lib/utils";
 
@@ -16,18 +15,10 @@ const Part = ({ children, className }: { children: ReactNode; className?: string
   <span className={cn("text-foreground group-data-off/row:text-foreground/80", className)}>{children}</span>
 );
 
-// The computers a chosen-computer auto play tries, in order, named as the viewer reads them; its person's own order when it names none.
-const ComputersPhrase = ({ autoPlay }: { autoPlay: AutoPlay }) => {
-  const ids = storedComputerIds(autoPlay);
-  const names = useComputerNames(ids);
-  const person = usePersonLookup(autoPlay.workspace_id);
-  const { data: me } = useFetchMe();
-  const yours = me?.user.id === autoPlay.run_as;
-  const owner = yours ? "Your" : `${personLabel(person(autoPlay.run_as))}'s`;
-
-  if (autoPlay.run_as === "") return "A computer nobody has picked yet";
-  if (ids.length === 0) return `${owner} computers in ${yours ? "your" : "their"} order`;
-  return names.map((name, i) => name || `${i === 0 ? "A" : "a"} computer you can't see`).join(", then ");
+// Whose computers a person auto play runs on, "Your computers" or "Sam's computers"; nobody's until someone is picked.
+const runOnOwner = (runAs: string, me: string | undefined, name: string) => {
+  if (runAs === "") return "";
+  return me === runAs ? "Your" : `${name}'s`;
 };
 
 // One rule in words, "Type is Bug or Incident"; each reads its own field's values. A short rule never breaks across lines.
@@ -73,6 +64,8 @@ const sweepPhrase = (autoPlay: AutoPlay) => {
 
 // The moment as the title, then If, Priority and Runs on as labelled lines, every condition and priority rule in full.
 export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => {
+  const { data: me } = useFetchMe();
+  const person = usePersonLookup(autoPlay.workspace_id);
   const groups = autoPlay.conditions.groups.filter((group) => group.rules.length > 0);
   const priority = autoPlay.priority.rules.filter((rule) => rule.when.rules.length > 0);
 
@@ -112,8 +105,7 @@ export const AutoPlayClauses = ({ autoPlay, subject }: AutoPlayClausesProps) => 
         )}
         <Clause label="Runs on">
           <Part>
-            {autoPlay.run_on !== "computer" && RUN_ON_PHRASES[autoPlay.run_on]}
-            {autoPlay.run_on === "computer" && <ComputersPhrase autoPlay={autoPlay} />}
+            {runOnPhrase(autoPlay.run_on, runOnOwner(autoPlay.run_as, me?.user.id, personLabel(person(autoPlay.run_as))))}
           </Part>
         </Clause>
       </span>
