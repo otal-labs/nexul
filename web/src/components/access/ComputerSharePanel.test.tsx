@@ -95,7 +95,7 @@ describe("sharing a computer", () => {
 
   it("sets each permission to Allow or Fallback, Run bringing See along, and saves them for the person", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /^dave/ }));
+    await user.click(await screen.findByRole("button", { name: /^dave/ }));
     expect(await control("See this computer").findByRole("radio", { name: "Allow" })).toBeChecked();
     expect(control("Run agents").queryByRole("radio", { name: "Deny" })).not.toBeInTheDocument();
     expect(screen.getAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not shared with dave")).toHaveLength(3);
@@ -112,7 +112,7 @@ describe("sharing a computer", () => {
 
   it("offers Read logs, off by default, saying what it covers, and it brings See along and goes with it", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /^dave/ }));
+    await user.click(await screen.findByRole("button", { name: /^dave/ }));
     expect(await control("Read logs").findByRole("radio", { name: "Fallback" })).toBeChecked();
     expect(screen.getByText("This runner's logs and its Docker containers' logs")).toBeInTheDocument();
 
@@ -127,7 +127,7 @@ describe("sharing a computer", () => {
 
   it("takes Read logs off with See", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: /^dave/ }));
+    await user.click(await screen.findByRole("button", { name: /^dave/ }));
     await user.click(await control("Read logs").findByRole("radio", { name: "Allow" }));
     await user.click(control("See this computer").getByRole("radio", { name: "Fallback" }));
     expect(control("Read logs").getByRole("radio", { name: "Fallback" })).toBeChecked();

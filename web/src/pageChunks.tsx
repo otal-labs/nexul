@@ -4,6 +4,7 @@ import { matchRoutes, type RouteObject } from "react-router";
 
 import { whenIdle } from "@/lib/idle";
 import type { RouteAccess } from "@/models/Access";
+import { loadChannelSettingsDialog, loadPermissionsPanel } from "@/utils/loadAccessDialogs";
 import { loadTicketForm } from "@/utils/loadTicketForm";
 
 // Every page is its own chunk: a cold start loads the shell and the page it opens on, the rest once the first screen settles.
@@ -81,6 +82,8 @@ const warmed: (() => Promise<unknown>)[] = [
   WorkspaceEntryPage.preload,
   YourSettingsPage.preload,
   loadTicketForm,
+  loadPermissionsPanel,
+  loadChannelSettingsDialog,
 ];
 
 const pagesIn = (node: ReactNode): PageChunk[] => {

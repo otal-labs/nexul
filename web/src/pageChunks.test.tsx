@@ -14,6 +14,8 @@ vi.mock("@/pages/CalendarPage", watch("CalendarPage"));
 vi.mock("@/pages/ChatPage", watch("ChatPage"));
 vi.mock("@/pages/DocsPage", watch("DocsPage"));
 vi.mock("@/pages/LoginPage", watch("LoginPage"));
+vi.mock("@/components/access/PermissionsPanel", watch("PermissionsPanel"));
+vi.mock("@/components/chat/ChannelSettingsDialog", watch("ChannelSettingsDialog"));
 vi.mock("@tiptap/core", watch("@tiptap/core"));
 vi.mock("@xyflow/react", watch("@xyflow/react"));
 vi.mock("livekit-client", watch("livekit-client"));
@@ -23,7 +25,7 @@ vi.mock("shaders/react", watch("shaders/react"));
 const shellImport = 30_000;
 
 describe("cold start graph", () => {
-  it("loads the shell without any page, the rich text editor, the canvas, voice or the shader", async () => {
+  it("loads the shell without any page, the permissions panel, channel settings, the rich text editor, the canvas, voice or the shader", async () => {
     await import("@/App");
     expect([...evaluated]).toEqual([]);
   }, shellImport);
