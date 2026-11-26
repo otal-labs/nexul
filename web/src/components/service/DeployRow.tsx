@@ -58,7 +58,8 @@ export const DeployRow = ({ deploy, current }: DeployRowProps) => {
   const actorName = useActorNamer();
   const source = sourceOf(deploy, actorName(deploy.triggered_by));
   const took = inFlight ? "" : formatStepDuration(Date.parse(deploy.updated_at) - Date.parse(deploy.created_at));
-  const rowClass = "grid min-h-11 grid-cols-[6.5rem_minmax(0,1.2fr)_minmax(0,1fr)_4rem_7rem_1rem] items-center gap-x-4 py-2.5 text-sm";
+  // Below lg the actor column steps aside so the version and commit keep their room; the deploy page names the actor.
+  const rowClass = "grid min-h-11 grid-cols-[6.5rem_minmax(0,1fr)_4rem_7rem_1rem] items-center gap-x-4 py-2.5 text-sm lg:grid-cols-[6.5rem_minmax(0,1.2fr)_minmax(0,1fr)_4rem_7rem_1rem]";
   const time = (
     <time dateTime={deploy.created_at} title={formatRelativeTime(deploy.created_at)} className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
       {formatColumnTime(deploy.created_at)}
@@ -73,7 +74,7 @@ export const DeployRow = ({ deploy, current }: DeployRowProps) => {
       </span>
       <What deploy={deploy} current={current} />
       {/* Who and why on every row, in its own column, so each row reads across at one height. */}
-      <span className="truncate font-mono text-xs text-muted-foreground" title={source}>
+      <span className="hidden truncate font-mono text-xs text-muted-foreground lg:block" title={source}>
         {source}
       </span>
       <span title={took && `Took ${took}`} className="text-right font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
