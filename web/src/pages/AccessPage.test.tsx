@@ -176,7 +176,7 @@ describe("AccessPage", () => {
     expect(screen.getByText("2 projects")).toBeInTheDocument();
     expect(screen.getByText("1 public channel")).toBeInTheDocument();
     expect(screen.getByText("3 roles")).toBeInTheDocument();
-    expect(screen.getByText("Set up")).toBeInTheDocument();
+    expect(screen.getByText("Setup finished")).toBeInTheDocument();
     expect(screen.getByText(/by alice, just now/)).toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Client in Storefront" }));
     await user.click(screen.getByRole("checkbox", { name: "Client in Marketing site" }));

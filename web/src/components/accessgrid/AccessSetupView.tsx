@@ -52,7 +52,7 @@ export const AccessSetupView = ({ grid }: AccessSetupViewProps) => {
             alignWithProjects
             footer={
               <>
-                <span className="text-sm text-muted-foreground">Leave every cell empty to keep channels as they are.</span>
+                <span className="text-sm text-muted-foreground">Hide nothing to keep channels as they are.</span>
                 <Button size="sm" loading={save.isPending} onClick={() => void finish().catch(() => undefined)}>
                   Finish setup
                 </Button>

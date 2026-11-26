@@ -12,22 +12,29 @@ interface ListDetailLayoutProps {
   placeholder?: ReactNode;
   /** Reserves the record's scrollbar so it never shifts the record; the record then gives that width back from its right padding. */
   stableGutter?: boolean;
+  /** Sits inside the page's own panel (a tab under its header), so the panes are cards, and below lg the list is only as tall as its rows. */
+  framed?: boolean;
 }
 
+// Bands pinned inside (crumbs, group heads) paint the pane's fill, so on a card they take the card's.
+const card = "rounded-lg border border-border bg-card shadow-card [--panel-opaque:var(--card)]";
+
 // The app sidebar, a list, and the open record, for an editor: below lg one pane shows at a time, since the editor needs the width.
-export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stableGutter = false }: ListDetailLayoutProps) => {
+export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stableGutter = false, framed = false }: ListDetailLayoutProps) => {
   const width = useListPaneStore((s) => s.width);
   const split = hasSelection || placeholder !== undefined;
 
   return (
-    <div data-pane-layout className="flex h-full gap-2">
+    <div data-pane-layout={framed ? undefined : ""} className={cn("flex h-full", framed ? "gap-4" : "gap-2")}>
       {/* The max-width keeps the open record readable whatever width was saved on a wider window; the bottom inset keeps the list's scrollbar off the rounded corner. */}
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "panel relative min-h-0 pb-[calc(var(--radius-xl)+var(--radius-gap))]",
+          framed ? card : "panel",
+          "relative min-h-0 pb-[calc(var(--radius-xl)+var(--radius-gap))]",
           split && "lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
           hasSelection ? "hidden" : "block w-full",
+          framed && !hasSelection && "flex max-h-full flex-col self-start lg:max-h-none lg:self-stretch",
         )}
       >
         {list}
@@ -36,7 +43,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder, stab
       {/* A palette with square panels (radius 0) puts back in padding what the radius inset would have taken, so content sits at one height in every palette. */}
       {/* The inner box scrolls, inset by the panel's radius so its scrollbar clears the rounded corners; relative keeps sr-only file inputs inside the clip. */}
       {/* The clip keeps the record's shadow off the list's edge, where it drew a strip under the resize handle; the ring stays. */}
-      <div className={cn("panel min-w-0 flex-1 overflow-hidden [clip-path:inset(-4rem_-4rem_-4rem_-1px)]", split && "lg:block", hasSelection ? "block" : "hidden")}>
+      <div className={cn(framed ? card : "panel [clip-path:inset(-4rem_-4rem_-4rem_-1px)]", "min-w-0 flex-1 overflow-hidden", split && "lg:block", hasSelection ? "block" : "hidden")}>
         <div className={cn("scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto py-(--radius-gap)", stableGutter && "[scrollbar-gutter:stable]")}>
           {hasSelection && detail}
           {!hasSelection && <div className="flex min-h-full flex-col">{placeholder}</div>}

@@ -42,18 +42,15 @@ export const RolesAndPeopleSection = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {roles && roleId === COMPARE_ROLES && (
-        <div data-pane-layout className="h-full">
-          <div className="panel h-full min-h-0 overflow-hidden">
-            <div className="scroll-edge relative my-(--radius-xl) h-[calc(100%-2*var(--radius-xl))] overflow-y-auto [scrollbar-gutter:stable]">
-              <RolesCompareDetail />
-            </div>
-          </div>
+        <div className="scroll-edge relative -mx-4 h-full overflow-y-auto [scrollbar-gutter:stable] sm:-mx-6">
+          <RolesCompareDetail />
         </div>
       )}
       {roles && roleId !== COMPARE_ROLES && (
         <ListDetailLayout
           hasSelection={!!roleId}
           stableGutter
+          framed
           list={<RolesListPane roles={roles} selectedId={roleId} />}
           placeholder={
             <ListDetailPlaceholder icon={ShieldIcon} title="Select a role" summary={`${count} ${count === 1 ? "role" : "roles"} in ${workspace?.name ?? "this workspace"}`} />
