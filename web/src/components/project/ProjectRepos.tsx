@@ -7,7 +7,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -55,7 +55,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
       {repos && repos.length === 0 && <EmptyRow>No repositories yet. Add one to link its pull requests to tickets.</EmptyRow>}
       {repos && repos.length > 0 && (
         <div ref={glideRef}>
-          <EnterList className={settingsRowListClass}>
+          <EnterList className={settingsListClass}>
             {repos.map((repo) => (
               <RepoRow key={`${repo.owner}/${repo.name}`} projectId={projectId} repo={repo} services={buildsFrom(repo)} onLeave={prepareGlide} />
             ))}

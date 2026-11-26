@@ -1440,9 +1440,12 @@ instance sections Instance-wide. On Your settings, Configuration and a project's
 title ("Security" or "Labels" under a `Settings` crumb, "Mention chips" under the workspace and
 `Configuration`), with a facts line on every section so the header keeps its height, and no card or tab restates it: a
 card that only named the section names its job instead (Name and picture,
-People, Starting questions, Ticket mentions). A template a workspace can follow or edit says which, once,
-above its card's description: a status dot and word (Instance template, muted; Edited here, `info`) with
-an underlined Reset to instance template beside it, and Clone to… as an outline button on the card's right.
+People, Starting questions, Ticket mentions). A template a workspace can follow or edit marks only an edit: Edited here (`info`) above its card's
+description, and on the card's right a ghost Reset to instance template beside the outline Clone to…; following the
+instance template is the default and goes unsaid. The Interview template card lists its questions as the interview
+asks them (a mono number, the question, its hint, its options as small neutral chips after "Any of" or "One of"), each
+row's Edit opening that question's own markdown in place with Remove and Done, an Add question under the list, and a
+segmented Questions | Markdown control over it for editing the whole text at once.
 A card whose body outgrows the view keeps its footer stuck to the bottom (`stickyFooter`), fading the text
 that scrolls under it. Security is one page in the order of the job: Signed-in devices (this
 device first, a ghost Sign out on each other row, and an outline Sign out everywhere else that turns
@@ -1557,8 +1560,11 @@ medium with its muted meta on the same line (a template state, a machine, a
 repository's role; the meta gives way before the name), a right-aligned mono
 count that says what it counts ("8 tickets", "No tickets", from the project's
 grouped ticket counts), and the `⋯`, shown on hover or keyboard focus where the
-device can hover and always where it can't. The row lifts on hover inside its
-hairlines. The leading slot is a colour's dot, or a hollow ring with "No color"
+device can hover, taking the count's place so the row keeps no empty column at its end, and always where it can't. The
+row's text and its hairlines share the card's content edge; it lifts on hover inside its hairlines, the lift reaching
+8px past them on each side. A control a row keeps in view (a repository's Issues switch, its state said beside it as
+"Issues on" or "Issues off") ends the row on that edge. A service row ends in a chevron, the whole row opening its stack.
+The leading slot is a colour's dot, or a hollow ring with "No color"
 beside the name when none is set (never the hue the board falls back to); a status's icon or its stage's
 dot; the GitHub mark on a repository; a service's strategy icon. A ticket
 type's dot and a label's pill are the colour button itself; a label has no

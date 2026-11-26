@@ -59,9 +59,9 @@ describe("InterviewTemplateSection", () => {
     vi.mocked(api.put).mockResolvedValue({ data: { ...template, body: "## Mine!" } });
     renderSection();
 
-    const field = await screen.findByLabelText("Template (markdown)");
+    await user.click(await screen.findByRole("button", { name: "Edit question 1" }));
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    await user.type(field, "!");
+    await user.type(screen.getByLabelText("Question 1 as markdown"), "!");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(api.put).toHaveBeenCalledWith("/api/memories/interview-template", { workspace_id: "ws-1", body: "## Mine!" });
   });
@@ -70,8 +70,8 @@ describe("InterviewTemplateSection", () => {
     vi.mocked(api.get).mockResolvedValue({ data: { ...template, body: "## Instance", default_body: "## Instance", edited: false } });
     renderSection();
 
-    expect(await screen.findByText("Instance template")).toBeInTheDocument();
-    expect(screen.getByLabelText("Template (markdown)")).toHaveValue("## Instance");
+    expect(await screen.findByText("Instance")).toBeInTheDocument();
+    expect(screen.queryByText("Edited here")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reset to instance template" })).not.toBeInTheDocument();
   });
 
@@ -90,9 +90,14 @@ describe("InterviewTemplateSection", () => {
     });
   });
 
-  it("counts the saved template's questions", async () => {
+  it("adds a question that opens for editing at the end of the list", async () => {
+    const user = userEvent.setup();
     renderSection();
-    expect(await screen.findByText("1 question")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Add question" }));
+    expect(screen.getByLabelText("Question 2 as markdown")).toHaveValue("## New question\n");
+    await user.click(screen.getByRole("radio", { name: "Markdown" }));
+    expect(screen.getByLabelText("Template (markdown)")).toHaveValue("## Mine\n\n## New question\n");
   });
 
   it("shows a refused save inline, naming the line", async () => {
@@ -101,7 +106,8 @@ describe("InterviewTemplateSection", () => {
     vi.mocked(errorMessage).mockReturnValue("line 1: text before the first ## question heading");
     renderSection();
 
-    await user.type(await screen.findByLabelText("Template (markdown)"), "!");
+    await user.click(await screen.findByRole("radio", { name: "Markdown" }));
+    await user.type(screen.getByLabelText("Template (markdown)"), "!");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("line 1: text before the first ## question heading");
   });

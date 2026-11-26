@@ -9,7 +9,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { settingsRowListClass } from "@/components/settings/SettingsRow";
+import { settingsListClass } from "@/components/settings/SettingsRow";
 import { TicketTypeRow } from "@/components/settings/TicketTypeRow";
 import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export const BoardTicketTypesSection = ({ projectId }: BoardTicketTypesSectionPr
       {error && <ErrorDisplay error={error} />}
       {ticketTypes && ticketTypes.length === 0 && !adding && <EmptyRow>No ticket types yet. Add one to sort tickets by kind.</EmptyRow>}
       {ticketTypes && ticketTypes.length > 0 && (
-        <EnterList className={settingsRowListClass}>
+        <EnterList className={settingsListClass}>
           {ticketTypes.map((type) => (
             <TicketTypeRow key={type.id} type={type} projectId={projectId} />
           ))}

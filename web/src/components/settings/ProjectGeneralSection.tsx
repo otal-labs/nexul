@@ -35,7 +35,7 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
           </SettingsHint>
         </div>
       </div>
-      <SettingsRows className="-mx-2 [&>*]:px-2">
+      <SettingsRows>
         <SettingsRow label="Created">
           <span className="font-mono text-xs text-muted-foreground tabular-nums">{created}</span>
         </SettingsRow>

@@ -1,4 +1,4 @@
-import { BoxIcon, LayersIcon } from "lucide-react";
+import { BoxIcon, ChevronRightIcon, LayersIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
@@ -41,6 +41,7 @@ export const ServiceCard = ({ service }: ServiceCardProps) => {
           </>
         }
         meta={<span className="font-mono">{sourceLine(service)}</span>}
+        control={canOpen && <ChevronRightIcon className="pointer-events-none size-4 text-muted-foreground" aria-hidden />}
       />
     </RowContextMenu>
   );

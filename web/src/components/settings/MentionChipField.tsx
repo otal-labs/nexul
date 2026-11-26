@@ -1,4 +1,4 @@
-import { TicketIcon } from "lucide-react";
+import { CheckIcon, PlusIcon, TicketIcon } from "lucide-react";
 
 import { mentionChipText, type MentionChipData } from "@nexul/client-core/mention";
 
@@ -41,6 +41,31 @@ const MentionPreview = ({ template }: { template: string }) => (
   </div>
 );
 
+interface TokenButtonProps {
+  token: (typeof TEMPLATE_TOKENS)[number];
+  value: string;
+  onChange: (value: string) => void;
+}
+
+// A field already in the format reads as added, a check in full ink, rather than fading out of reach.
+const TokenButton = ({ token, value, onChange }: TokenButtonProps) => {
+  const field = `{ticket.${token}}`;
+  const used = value.includes(field);
+  const Icon = used ? CheckIcon : PlusIcon;
+  return (
+    <button
+      type="button"
+      aria-label={used ? `${field} is in the format` : `Add ${field}`}
+      disabled={used}
+      onClick={() => onChange(`${value}${value && !value.endsWith(" ") ? " " : ""}${field}`)}
+      className="inline-flex h-6 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 text-xs text-muted-foreground transition-colors duration-150 ease-standard enabled:hover:bg-muted enabled:hover:text-foreground disabled:cursor-default disabled:text-foreground"
+    >
+      <Icon className="size-3" aria-hidden />
+      {token}
+    </button>
+  );
+};
+
 interface MentionChipFieldProps {
   id: string;
   value: string;
@@ -69,16 +94,7 @@ export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps)
       />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {TEMPLATE_TOKENS.map((token) => (
-          <button
-            key={token}
-            type="button"
-            aria-label={`Add {ticket.${token}}`}
-            disabled={value.includes(`{ticket.${token}}`)}
-            onClick={() => onChange(`${value}${value && !value.endsWith(" ") ? " " : ""}{ticket.${token}}`)}
-            className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard enabled:hover:bg-muted enabled:hover:text-foreground disabled:opacity-50"
-          >
-            + {token}
-          </button>
+          <TokenButton key={token} token={token} value={value} onChange={onChange} />
         ))}
       </div>
     </div>
