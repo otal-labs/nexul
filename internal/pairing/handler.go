@@ -28,6 +28,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/pairing/computers/enrollments", h.enrollComputer)
 	mux.HandleFunc("PATCH /api/pairing/computers/{id}", h.updateComputer)
 	mux.HandleFunc("PUT /api/pairing/computers/order", h.reorderComputers)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/order", h.addToOrder)
+	mux.HandleFunc("DELETE /api/pairing/computers/{id}/order", h.removeFromOrder)
 	mux.HandleFunc("POST /api/pairing/computers/tunnel", retired)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", retired)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", retired)
@@ -325,6 +327,23 @@ type updateComputerRequest struct {
 
 type reorderRequest struct {
 	ComputerIDs []string `json:"computer_ids"`
+}
+
+// addToOrder puts a computer shared with the caller under Run agents at the end of their run order (ADR 0211).
+func (h *Handler) addToOrder(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.AddToOrder(r.Context(), actorID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) removeFromOrder(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveFromOrder(r.Context(), actorID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) reorderComputers(w http.ResponseWriter, r *http.Request) {

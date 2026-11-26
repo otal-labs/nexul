@@ -96,6 +96,23 @@ func (q *Queries) DeletePairingComputer(ctx context.Context, arg DeletePairingCo
 	return result.RowsAffected()
 }
 
+const deletePairingOrderShare = `-- name: DeletePairingOrderShare :execrows
+DELETE FROM pairing_order_shares WHERE user_id = ? AND computer_id = ?
+`
+
+type DeletePairingOrderShareParams struct {
+	UserID     string
+	ComputerID string
+}
+
+func (q *Queries) DeletePairingOrderShare(ctx context.Context, arg DeletePairingOrderShareParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePairingOrderShare, arg.UserID, arg.ComputerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deletePairingProjectLink = `-- name: DeletePairingProjectLink :exec
 DELETE FROM pairing_project_links WHERE user_id = ? AND project_id = ?
 `
@@ -244,6 +261,28 @@ func (q *Queries) InsertPairingMoveNotice(ctx context.Context, arg InsertPairing
 	return result.RowsAffected()
 }
 
+const insertPairingOrderShare = `-- name: InsertPairingOrderShare :exec
+INSERT INTO pairing_order_shares (user_id, computer_id, position, created_at) VALUES (?, ?, ?, ?)
+ON CONFLICT(user_id, computer_id) DO NOTHING
+`
+
+type InsertPairingOrderShareParams struct {
+	UserID     string
+	ComputerID string
+	Position   int64
+	CreatedAt  int64
+}
+
+func (q *Queries) InsertPairingOrderShare(ctx context.Context, arg InsertPairingOrderShareParams) error {
+	_, err := q.db.ExecContext(ctx, insertPairingOrderShare,
+		arg.UserID,
+		arg.ComputerID,
+		arg.Position,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const listPairingComputers = `-- name: ListPairingComputers :many
 SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC
 `
@@ -302,9 +341,11 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 
 const listPairingComputersFor = `-- name: ListPairingComputersFor :many
 SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, c.position, c.runs_at_once, c.chat_project_id, c.shell_enabled, c.plays_off, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
-    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name
+    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name,
+    s.position AS order_position
 FROM pairing_computers c
 JOIN users o ON o.id = c.user_id
+LEFT JOIN pairing_order_shares s ON s.user_id = ?1 AND s.computer_id = c.id
 LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
     AND po.user_id = ?1
 WHERE c.user_id = ?1
@@ -320,10 +361,11 @@ type ListPairingComputersForRow struct {
 	PairingComputer PairingComputer
 	RuleAllow       string
 	OwnerName       string
+	OrderPosition   sql.NullInt64
 }
 
-// A person's own computers, then those a live rule naming them shares with See (ADR 0148), each with its owner's name.
-func (q *Queries) ListPairingComputersFor(ctx context.Context, userID sql.NullString) ([]ListPairingComputersForRow, error) {
+// Own computers, then those a live rule shares with See (ADR 0148), with the owner's name and any place in the order.
+func (q *Queries) ListPairingComputersFor(ctx context.Context, userID string) ([]ListPairingComputersForRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPairingComputersFor, userID)
 	if err != nil {
 		return nil, err
@@ -363,6 +405,7 @@ func (q *Queries) ListPairingComputersFor(ctx context.Context, userID sql.NullSt
 			&i.PairingComputer.PlaysOff,
 			&i.RuleAllow,
 			&i.OwnerName,
+			&i.OrderPosition,
 		); err != nil {
 			return nil, err
 		}
@@ -438,6 +481,38 @@ func (q *Queries) ListPairingComputersWithOutdatedSkills(ctx context.Context, ar
 			return nil, err
 		}
 		items = append(items, computer_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPairingOrderShares = `-- name: ListPairingOrderShares :many
+SELECT computer_id, position FROM pairing_order_shares WHERE user_id = ? ORDER BY position, created_at
+`
+
+type ListPairingOrderSharesRow struct {
+	ComputerID string
+	Position   int64
+}
+
+func (q *Queries) ListPairingOrderShares(ctx context.Context, userID string) ([]ListPairingOrderSharesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingOrderShares, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPairingOrderSharesRow
+	for rows.Next() {
+		var i ListPairingOrderSharesRow
+		if err := rows.Scan(&i.ComputerID, &i.Position); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1217,6 +1292,24 @@ type SetPairingComputerSetupMCPTokenParams struct {
 
 func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPairingComputerSetupMCPTokenParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setPairingComputerSetupMCPToken, arg.SetupMcpToken, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setPairingOrderSharePosition = `-- name: SetPairingOrderSharePosition :execrows
+UPDATE pairing_order_shares SET position = ? WHERE user_id = ? AND computer_id = ?
+`
+
+type SetPairingOrderSharePositionParams struct {
+	Position   int64
+	UserID     string
+	ComputerID string
+}
+
+func (q *Queries) SetPairingOrderSharePosition(ctx context.Context, arg SetPairingOrderSharePositionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingOrderSharePosition, arg.Position, arg.UserID, arg.ComputerID)
 	if err != nil {
 		return 0, err
 	}

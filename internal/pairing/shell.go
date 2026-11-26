@@ -216,7 +216,15 @@ func (s *Service) HandleComputerGrantChanged(ctx context.Context, ev eventbus.Ev
 	if err := json.Unmarshal(ev.Payload, &p); err != nil {
 		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
 	}
-	if p.UserID == "" || slices.Contains(p.Permissions, string(permissions.ComputersCommands)) {
+	if p.UserID == "" {
+		return nil
+	}
+	if !slices.Contains(p.Permissions, string(permissions.ComputersAgents)) {
+		if err := s.endOrderShare(ctx, p.UserID, p.ComputerID); err != nil {
+			return apperrs.Retryable(err)
+		}
+	}
+	if slices.Contains(p.Permissions, string(permissions.ComputersCommands)) {
 		return nil
 	}
 	s.cancelComputerJobs(ctx, p.ComputerID, p.UserID, "access revoked")

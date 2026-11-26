@@ -22,6 +22,7 @@ import (
 // fakeRepo is an in-memory pairing.Repo for use-case tests.
 type fakeRepo struct {
 	mu           sync.Mutex
+	orderShares  map[string][]OrderShare
 	computers    map[string]Computer
 	defaults     map[string]Defaults
 	projectLinks map[string]ProjectLink
@@ -112,6 +113,10 @@ func (f *fakeRepo) ReorderComputers(_ context.Context, userID string, ids []stri
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for i, id := range ids {
+		if j := slices.IndexFunc(f.orderShares[userID], func(s OrderShare) bool { return s.ComputerID == id }); j >= 0 {
+			f.orderShares[userID][j].Position = i
+			continue
+		}
 		c, ok := f.computers[id]
 		if !ok || c.UserID != userID {
 			return apperrs.ErrNotFound
@@ -552,4 +557,31 @@ func pairAt(svc *Service, ctx context.Context, userID string, kind harness.Kind,
 
 func (f *fakeRepo) ListSharedRuns(context.Context, string, string, int) ([]SharedRun, error) {
 	return nil, nil
+}
+
+func (f *fakeRepo) ListOrderShares(_ context.Context, userID string) ([]OrderShare, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.orderShares[userID]), nil
+}
+
+func (f *fakeRepo) AddOrderShare(_ context.Context, userID, computerID string, position int, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.orderShares == nil {
+		f.orderShares = map[string][]OrderShare{}
+	}
+	if slices.ContainsFunc(f.orderShares[userID], func(s OrderShare) bool { return s.ComputerID == computerID }) {
+		return nil
+	}
+	f.orderShares[userID] = append(f.orderShares[userID], OrderShare{ComputerID: computerID, Position: position})
+	return nil
+}
+
+func (f *fakeRepo) RemoveOrderShare(_ context.Context, userID, computerID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	before := len(f.orderShares[userID])
+	f.orderShares[userID] = slices.DeleteFunc(f.orderShares[userID], func(s OrderShare) bool { return s.ComputerID == computerID })
+	return len(f.orderShares[userID]) < before, nil
 }

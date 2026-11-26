@@ -148,16 +148,16 @@ func (s *Service) planRun(ctx context.Context, req RunRequest) (*plan, error) {
 
 // candidates are the computers a run may land on, in order: its own list, else the project's, else the person's.
 func (s *Service) candidates(ctx context.Context, p *plan) ([]Computer, error) {
-	own, err := s.repo.ListComputers(ctx, p.req.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("list computers: %w", err)
-	}
 	ids := p.req.ComputerIDs
 	if len(ids) == 0 {
 		ids = p.link.Computers
 	}
 	if len(ids) == 0 {
-		return own, nil
+		return s.orderedComputers(ctx, p.req.UserID)
+	}
+	own, err := s.repo.ListComputers(ctx, p.req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("list computers: %w", err)
 	}
 	out := make([]Computer, 0, len(ids))
 	for _, id := range ids {
@@ -557,22 +557,22 @@ func (s *Service) ReorderComputers(ctx context.Context, userID string, ids []str
 	if strings.TrimSpace(userID) == "" {
 		return fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
 	}
-	own, err := s.repo.ListComputers(ctx, userID)
+	slots, err := s.order(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("list computers: %w", err)
+		return err
 	}
 	trimmed := make([]string, 0, len(ids))
 	for _, id := range ids {
 		trimmed = append(trimmed, strings.TrimSpace(id))
 	}
 	sorted := slices.Sorted(slices.Values(trimmed))
-	mine := make([]string, 0, len(own))
-	for _, c := range own {
-		mine = append(mine, c.ID)
+	mine := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		mine = append(mine, slot.id)
 	}
 	slices.Sort(mine)
 	if !slices.Equal(sorted, mine) {
-		return fmt.Errorf("%w: the order must name each of your computers once", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: the order must name each computer in it once", apperrs.ErrInvalid)
 	}
 	if err := s.repo.ReorderComputers(ctx, userID, trimmed, s.now().UTC()); err != nil {
 		return err
@@ -687,22 +687,22 @@ func (s *Service) UpdateComputer(ctx context.Context, userID, computerID string,
 	return s.SetComputerPlacement(ctx, userID, computerID, runs, chat)
 }
 
-// MoveComputer puts one of the caller's own computers at position in their order, 0 first, clamped to the order's ends.
+// MoveComputer puts a computer in the caller's order at position, 0 first, clamped to the order's ends.
 func (s *Service) MoveComputer(ctx context.Context, userID, computerID string, position int) error {
-	c, err := s.ownComputer(ctx, userID, computerID)
+	slots, err := s.order(ctx, userID)
 	if err != nil {
 		return err
 	}
-	own, err := s.repo.ListComputers(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("list computers: %w", err)
+	computerID = strings.TrimSpace(computerID)
+	if !slices.ContainsFunc(slots, func(slot orderSlot) bool { return slot.id == computerID }) {
+		return fmt.Errorf("%w: computer %s is not in your order", apperrs.ErrNotFound, computerID)
 	}
-	ids := make([]string, 0, len(own))
-	for _, o := range own {
-		if o.ID != c.ID {
-			ids = append(ids, o.ID)
+	ids := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		if slot.id != computerID {
+			ids = append(ids, slot.id)
 		}
 	}
 	at := min(max(position, 0), len(ids))
-	return s.ReorderComputers(ctx, userID, slices.Insert(ids, at, c.ID))
+	return s.ReorderComputers(ctx, userID, slices.Insert(ids, at, computerID))
 }

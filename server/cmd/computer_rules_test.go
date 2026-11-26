@@ -129,7 +129,7 @@ func TestComputerRules_ANamedPersonHoldsExactlyWhatIsGranted(t *testing.T) {
 	require.Len(t, listed.Computers, 1)
 	shared := listed.Computers[0]
 	assert.Equal(t, "Alice laptop", shared["name"])
-	assert.Equal(t, map[string]any{"owner_id": "u-alice", "owner_name": "alice", "permissions": []any{"computers:run_commands", "computers:see"}}, shared["shared"])
+	assert.Equal(t, map[string]any{"in_order": false, "owner_id": "u-alice", "owner_name": "alice", "permissions": []any{"computers:run_commands", "computers:see"}}, shared["shared"])
 	for _, private := range []string{"server_url", "harness_version", "kind", "facts", "tunnel", "pair_error"} {
 		assert.Empty(t, shared[private], "a shared computer never shows its %s", private)
 	}

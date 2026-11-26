@@ -159,11 +159,13 @@ ORDER BY c.user_id, c.created_at, c.id;
 INSERT INTO pairing_move_notices (user_id, notified_at) VALUES (?, ?) ON CONFLICT(user_id) DO NOTHING;
 
 -- name: ListPairingComputersFor :many
--- A person's own computers, then those a live rule naming them shares with See (ADR 0148), each with its owner's name.
+-- Own computers, then those a live rule shares with See (ADR 0148), with the owner's name and any place in the order.
 SELECT sqlc.embed(c), CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
-    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name
+    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name,
+    s.position AS order_position
 FROM pairing_computers c
 JOIN users o ON o.id = c.user_id
+LEFT JOIN pairing_order_shares s ON s.user_id = sqlc.arg(user_id) AND s.computer_id = c.id
 LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
     AND po.user_id = sqlc.arg(user_id)
 WHERE c.user_id = sqlc.arg(user_id)
@@ -188,3 +190,16 @@ ORDER BY t.started_at DESC, t.id DESC LIMIT sqlc.arg(lim);
 
 -- name: SetPairingComputerPlaysOff :execrows
 UPDATE pairing_computers SET plays_off = ?, updated_at = ? WHERE id = ? AND user_id = ?;
+
+-- name: ListPairingOrderShares :many
+SELECT computer_id, position FROM pairing_order_shares WHERE user_id = ? ORDER BY position, created_at;
+
+-- name: InsertPairingOrderShare :exec
+INSERT INTO pairing_order_shares (user_id, computer_id, position, created_at) VALUES (?, ?, ?, ?)
+ON CONFLICT(user_id, computer_id) DO NOTHING;
+
+-- name: DeletePairingOrderShare :execrows
+DELETE FROM pairing_order_shares WHERE user_id = ? AND computer_id = ?;
+
+-- name: SetPairingOrderSharePosition :execrows
+UPDATE pairing_order_shares SET position = ? WHERE user_id = ? AND computer_id = ?;

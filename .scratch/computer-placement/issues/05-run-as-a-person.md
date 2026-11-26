@@ -1,7 +1,7 @@
 # 05 — Run as a person, and the auto play computer list goes
 
 **Status:** ready-for-agent
-**Blocked by:** 04, 09
+**Blocked by:** 04
 
 Spec: `../spec.md`, decisions 3 and 4; Moving over. ADR 0197.
 

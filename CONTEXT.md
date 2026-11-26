@@ -260,7 +260,8 @@ is not found. A rule ends for good when the two share no workspace or either
 account is disabled or removed. The person it is shared with sees it as
 "<owner>'s <computer> (shared)", by its name and whether it is online only,
 and with Read logs also its Docker containers and the logs of the runner and
-the containers (Runner log).
+the containers (Runner log). With Run agents they may also put it in their own run order, where their
+runs land on it in its place, until the rule loses Run agents (ADR 0211).
 _Avoid_: lend, delegate, borrow
 
 **Runner log**:

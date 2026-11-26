@@ -67,6 +67,7 @@ type computerPairIn struct {
 	ChatProjectID *string           `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 	ShellEnabled  *bool             `json:"shell_enabled,omitempty" jsonschema:"Whether command_run may run commands on it; false also stops the ones running."`
 	PlaysOff      *bool             `json:"plays_off,omitempty" jsonschema:"true keeps every play, auto play and @Agent turn off it; commands still run."`
+	InOrder       *bool             `json:"in_order,omitempty" jsonschema:"For a computer shared with you under Run agents: true puts it in your order, at position if given, so your runs may land there; false takes it out."`
 	Restart       bool              `json:"restart,omitempty" jsonschema:"Restart the Nexul app on the computer, so it starts with the PATH saved since, such as after installing git; its connection drops for a few seconds."`
 	InstallTool   string            `json:"install_tool,omitempty" enum:"git,gh" jsonschema:"Install this tool on the computer, git or gh, with the command computer_list shows under its facts' tools; ask the person first, since it runs their package manager there. Where sudo wants a password it refuses: only the web's Install button takes one."`
 	GitIdentity   bool              `json:"git_identity,omitempty" jsonschema:"Give git on the computer your GitHub name and no-reply email where it has none; it never replaces a name or email already set."`
@@ -232,6 +233,9 @@ func addComputerReads(ctx context.Context, s *Service, userID string, c Computer
 func listedComputer(ctx context.Context, s *Service, userID string, c Computer, live bool) (computerResult, error) {
 	if c.Shared != nil {
 		r := computerResult{ID: c.ID, Name: c.SharedName(), Runner: c.Runner, Shared: c.Shared}
+		if c.Shared.InOrder {
+			r.Position = c.Position
+		}
 		if live && c.Shared.Permissions.Has(permissions.ComputersLogs) {
 			r.Containers, r.ContainersError = listedContainers(ctx, s, userID, c)
 		}
@@ -385,12 +389,18 @@ func computerPairTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
+			if c.Shared != nil {
+				return listedComputer(ctx, s, mcpActorID(ctx), *c, false)
+			}
 			return toComputerResult(*c), nil
 		})
 }
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
 	userID := mcpActorID(ctx)
+	if in.InOrder != nil {
+		return placeShared(ctx, s, userID, in)
+	}
 	if act := computerAction(s, userID, in); act != nil {
 		if err := act(ctx); err != nil {
 			return nil, err
@@ -600,4 +610,23 @@ func mcpActorID(ctx context.Context) string {
 		return a.ID
 	}
 	return ""
+}
+
+// placeShared puts a computer shared with userID in their order or takes it out, and returns it as they see it.
+func placeShared(ctx context.Context, s *Service, userID string, in computerPairIn) (*Computer, error) {
+	if !*in.InOrder {
+		if err := s.RemoveFromOrder(ctx, userID, in.ID); err != nil {
+			return nil, err
+		}
+		return s.sharedComputer(ctx, userID, in.ID)
+	}
+	if err := s.AddToOrder(ctx, userID, in.ID); err != nil {
+		return nil, err
+	}
+	if in.Position != nil {
+		if err := s.MoveComputer(ctx, userID, in.ID, *in.Position); err != nil {
+			return nil, err
+		}
+	}
+	return s.sharedComputer(ctx, userID, in.ID)
 }
