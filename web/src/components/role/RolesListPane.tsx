@@ -17,7 +17,7 @@ interface RolesListPaneProps {
   selectedId: string | undefined;
 }
 
-// Compare roles and No roles sit outside the scroller so they stay in view.
+// Compare roles and People without a role sit outside the scroller so they stay in view.
 export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const seesTeam = useSeesTeam();
@@ -52,7 +52,7 @@ export const RolesListPane = ({ roles, selectedId }: RolesListPaneProps) => {
         <EnterList aria-label="Overview">
           <RoleListRow id={COMPARE_ROLES} name="Compare roles" line="" dense icon={<Columns3 aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === COMPARE_ROLES} />
           {seesTeam && (
-            <RoleListRow id={NO_ROLES} name="No roles" line="" dense icon={<UserX aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
+            <RoleListRow id={NO_ROLES} name="People without a role" line="" dense icon={<UserX aria-hidden className="size-3.5 text-muted-foreground" />} selected={selectedId === NO_ROLES} count={team && roleless(team, workspaceId).length} />
           )}
         </EnterList>
       </div>

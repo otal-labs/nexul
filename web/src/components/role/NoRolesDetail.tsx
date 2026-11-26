@@ -30,7 +30,7 @@ export const NoRolesDetail = () => {
 
   return (
     <Container className="space-y-5 pt-0 pb-6 sm:pr-3.5">
-      <RoleDetailHeader title="No roles" line={`In ${name} but holding no role, so they see no projects or plays.`} />
+      <RoleDetailHeader title="People without a role" line={`In ${name} but holding no role, so they see no projects or plays.`} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {people && people.length === 0 && <EmptyRow flush>Everyone in {name} holds a role.</EmptyRow>}

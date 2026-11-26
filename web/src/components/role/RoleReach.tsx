@@ -1,4 +1,3 @@
-import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { levelName } from "@/models/PermissionLevel";
@@ -29,7 +28,6 @@ export const RoleReach = ({ catalog, permissions }: RoleReachProps) => (
           <>
             <span aria-hidden className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
             {top > 0 && <span aria-hidden>up to</span>}
-            {top > 0 && <LevelGlyph level={top} />}
             {top > 0 && <span aria-hidden className="text-foreground">{levelName(top)}</span>}
           </>
         )}

@@ -1,5 +1,7 @@
 // The name column: sticky on the left, opaque so cells scrolled under it never show, casting its edge once scrolled.
 export const stickyCell = "sticky left-0 z-10 w-50 min-w-50 max-w-50 bg-card lg:w-60 lg:min-w-60 lg:max-w-60 grid-edge";
+// Every column head, the roles' names and the name and last columns' alike, so they share one style and one baseline.
+export const headText = "text-xs leading-tight font-medium text-muted-foreground";
 export const leadStrip = "border-b border-border bg-muted/40 dark:bg-muted/80";
 // A tint laid over the sticky cell's opaque card fill, so ticks scrolled under it never show through.
 export const stickyStrip = "bg-linear-to-r from-muted/40 to-muted/40 dark:from-muted/80 dark:to-muted/80";

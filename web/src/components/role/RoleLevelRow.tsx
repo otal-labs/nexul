@@ -1,4 +1,3 @@
-import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { cn } from "@/lib/utils";
 import { levelOf, type PermissionDomain } from "@/models/PermissionLevel";
 import { extraName, rungName } from "@/models/RoleSection";
@@ -8,7 +7,7 @@ interface RoleLevelRowProps {
   permissions: string[];
 }
 
-// One area on one line, so the two columns' rows meet: its name, the extra verbs held muted after it, and its level as the matrix draws it, glyph then word, in a fixed slot on the name's baseline.
+// One area on one line, so the two columns' rows meet: its name, the extra verbs held muted after it, and its level as a word in a fixed slot on the name's baseline.
 export const RoleLevelRow = ({ domain, permissions }: RoleLevelRowProps) => {
   const level = levelOf(domain, permissions);
   const extras = domain.extras.filter((extra) => permissions.includes(extra.value)).map((extra) => extraName(extra.action));
@@ -21,7 +20,6 @@ export const RoleLevelRow = ({ domain, permissions }: RoleLevelRowProps) => {
         {extras.length > 0 && <span className="min-w-0 truncate text-xs text-muted-foreground">Also {extras.join(", ")}</span>}
       </dt>
       <dd className={cn("w-20 shrink-0 text-xs whitespace-nowrap", level === 0 ? "text-muted-foreground" : "text-foreground")}>
-        <LevelGlyph level={level} rungs={domain.levels.length} className="mr-1.5 -translate-y-px align-middle" />
         {rungName(domain.domain, level)}
       </dd>
     </div>

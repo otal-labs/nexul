@@ -59,7 +59,7 @@ Roles are given from the role. Open **Access → Roles and people** and pick a r
 
 Each change saves at once and says so. If one is refused, the message names the person and the role. You can't give a role holding more than you hold, or take one you couldn't give: its page says why, with a lock, instead of offering Add people. The Owner role is never given or taken here.
 
-**No roles**, under the roles, lists the members holding none, who see no projects or plays until they get one: **Give a role** beside each picks one of the roles you may give. Giving and taking roles takes `members:write` in the workspace.
+**People without a role**, under the roles, lists the members holding none, who see no projects or plays until they get one: **Give a role** beside each picks one of the roles you may give. Giving and taking roles takes `members:write` in the workspace.
 
 ## Check what someone can see
 
