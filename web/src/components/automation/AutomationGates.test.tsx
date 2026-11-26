@@ -94,10 +94,8 @@ const surfaces: { name: string; ui: React.ReactElement; controls: WriteControl[]
   {
     name: "the hosts",
     ui: <AutomationHostsSection />,
-    controls: [
-      { role: "button", name: "Add automations host", reason: reason("add automations hosts") },
-      { role: "button", name: "Remove builder", reason: reason("remove automations hosts") },
-    ],
+    // Remove sits in the row's menu; AutomationHostMenu.test covers its lock.
+    controls: [{ role: "button", name: "Add host", reason: reason("add automations hosts") }],
   },
   { name: "the danger zone", ui: <AutomationDeleteButton automationId="a1" onDeleted={() => {}} />, controls: [{ role: "button", name: "Delete automation", reason: reason("delete automations") }] },
 ];

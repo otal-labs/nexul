@@ -45,7 +45,7 @@ describe("AddAutomationHostDialog", () => {
   it("rejects a name the installer cannot use, without asking the server", async () => {
     const user = userEvent.setup();
     renderDialog();
-    await user.click(await screen.findByRole("button", { name: "Add automations host" }));
+    await user.click(await screen.findByRole("button", { name: "Add host" }));
 
     await user.type(screen.getByLabelText("Host name"), "Jobs One");
     await user.click(screen.getByRole("button", { name: "Create install command" }));
@@ -58,7 +58,7 @@ describe("AddAutomationHostDialog", () => {
     mocks.post.mockRejectedValue(new Error("conflict"));
     const user = userEvent.setup();
     renderDialog();
-    await user.click(await screen.findByRole("button", { name: "Add automations host" }));
+    await user.click(await screen.findByRole("button", { name: "Add host" }));
 
     await user.type(screen.getByLabelText("Host name"), "jobs-1");
     await user.click(screen.getByRole("button", { name: "Create install command" }));
@@ -70,7 +70,7 @@ describe("AddAutomationHostDialog", () => {
   it("enrolls the host and shows both one-liners", async () => {
     const user = userEvent.setup();
     renderDialog();
-    await user.click(await screen.findByRole("button", { name: "Add automations host" }));
+    await user.click(await screen.findByRole("button", { name: "Add host" }));
 
     await user.type(screen.getByLabelText("Host name"), "jobs-1");
     await user.type(screen.getByLabelText("Machine"), "prod");
@@ -86,7 +86,7 @@ describe("AddAutomationHostDialog", () => {
     viewer.instanceOwner = false;
     const user = userEvent.setup();
     renderDialog();
-    await user.click(await screen.findByRole("button", { name: "Add automations host" }));
+    await user.click(await screen.findByRole("button", { name: "Add host" }));
 
     await user.type(screen.getByLabelText("Host name"), "jobs-1");
     await user.click(screen.getByRole("button", { name: "Create install command" }));
@@ -107,6 +107,6 @@ describe("AddAutomationHostDialog", () => {
     renderDialog();
 
     await waitFor(() => expect(mocks.get).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: "Add automations host" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add host" })).not.toBeInTheDocument();
   });
 });

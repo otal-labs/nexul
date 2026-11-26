@@ -1,12 +1,8 @@
-import { useState } from "react";
-
-import { AutomationHistoryDialog } from "@/components/automation/AutomationHistoryDialog";
 import { AutomationDescription } from "@/components/automation/AutomationDescription";
 import { AutomationMetaLine } from "@/components/automation/AutomationMetaLine";
 import { AutomationProblemChips } from "@/components/automation/AutomationProblemChips";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
-import { Button } from "@/components/ui/button";
 import { useSwitchAutomation } from "@/hooks/useSwitchAutomation";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -20,7 +16,6 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
   const power = useSwitchAutomation();
   const wsPath = useWorkspacePath();
   const workspaceCrumb = useWorkspaceCrumb();
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <PageHeader
@@ -46,23 +41,17 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
         </>
       }
       actions={
-        <>
-          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-            History
-          </Button>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            {automation.enabled ? "Enabled" : "Disabled"}
-            <ActionSwitch
-              permission="automations:write"
-              verb="switch automations on or off"
-              aria-label={automation.enabled ? "Disable automation" : "Enable automation"}
-              checked={automation.enabled}
-              disabled={power.isPending}
-              onCheckedChange={(checked) => void power.switchTo(automation, checked)}
-            />
-          </label>
-          {historyOpen && <AutomationHistoryDialog automationId={automation.id} name={automation.name} onClose={() => setHistoryOpen(false)} />}
-        </>
+        <label className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+          {automation.enabled ? "Enabled" : "Disabled"}
+          <ActionSwitch
+            permission="automations:write"
+            verb="switch automations on or off"
+            aria-label={automation.enabled ? "Disable automation" : "Enable automation"}
+            checked={automation.enabled}
+            disabled={power.isPending}
+            onCheckedChange={(checked) => void power.switchTo(automation, checked)}
+          />
+        </label>
       }
     />
   );

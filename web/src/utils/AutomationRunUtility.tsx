@@ -1,6 +1,7 @@
 import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationRun } from "@/models/AutomationRun";
 import { chatDayLabel } from "@/utils/ChatDayUtility";
+import { formatDurationMs } from "@/utils/TimeUtility";
 
 // The server's page: the runs list holds at most this many, so a full list is a window, not every run.
 export const RUNS_PAGE = 50;
@@ -22,13 +23,17 @@ export const automationRunDays = (runs: readonly AutomationRun[], now = new Date
     return [...days, { label, runs: [run] }];
   }, []);
 
-// "Newest 50 runs · 7 failed" for a full page, "12 runs · 3 failed" when the list holds every kept run.
+const median = (values: readonly number[]): number => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)] ?? 0;
+};
+
+// "Newest 50 runs · 7 failed · median 12ms" for a full page, "12 runs · 0 failed · median 3ms" when the list holds every kept run.
 export const automationRunsLine = (runs: readonly AutomationRun[], failedOnly: boolean): string => {
   const shown = runs.length >= RUNS_PAGE ? `Newest ${runs.length}` : `${runs.length}`;
   if (failedOnly) return `${shown} ${runs.length === 1 ? "failure" : "failures"}`;
   const failed = runs.filter((run) => run.outcome !== AutomationRunOutcome.Success).length;
-  const total = `${shown} ${runs.length === 1 ? "run" : "runs"}`;
-  return failed === 0 ? total : `${total} · ${failed} failed`;
+  return `${shown} ${runs.length === 1 ? "run" : "runs"} · ${failed} failed · median ${formatDurationMs(median(runs.map((run) => run.duration_ms)))}`;
 };
 
 export interface AutomationLogLine {
@@ -61,4 +66,18 @@ export const automationLogLine = (raw: string): AutomationLogLine => {
       .map(([key, value]) => `${key}=${textOf(value)}`)
       .join(" "),
   };
+};
+
+// What a run reported last, for its row: the final log line's message and its short scalar fields, ids left to the run sheet.
+export const automationRunSummary = (logs: string): { message: string; fields: string } | null => {
+  const last = logs.trimEnd().split("\n").at(-1);
+  if (!last) return null;
+  const { message, fields } = automationLogLine(last);
+  if (!fields) return { message, fields: "" };
+  const entries = Object.entries(JSON.parse(last) as Record<string, unknown>);
+  const short = entries
+    .filter(([key, value]) => !/(^ts|^level|^message|^msg|id)$/i.test(key) && (typeof value === "number" || (typeof value === "string" && value.length > 0 && value.length <= 24)))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+  return { message, fields: short };
 };

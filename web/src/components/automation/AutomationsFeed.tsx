@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { AutomationGroupSection } from "@/components/automation/AutomationGroupSection";
+import { AutomationListBar } from "@/components/automation/AutomationListBar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { useOfflineAutomationHostIds } from "@/hooks/AutomationHostHooks";
@@ -35,10 +36,17 @@ export const AutomationsFeed = ({ automations }: AutomationsFeedProps) => {
   const items = automationListItems(automations, offlineHostIds);
   const shown = items.filter((item) => filter === "all" || item.state === filter);
   const count = (value: Filter) => (value === "all" ? items.length : items.filter((item) => item.state === value).length);
+  const on = items.length - count(AutomationState.Off);
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
+    <div className="space-y-1">
+      <AutomationListBar
+        summary={
+          <span className="font-mono tabular-nums">
+            {items.length} {items.length === 1 ? "automation" : "automations"} · {on} on
+          </span>
+        }
+      >
         <ToggleGroup type="single" variant="segmented" size="xs" aria-label="Show automations" value={filter} onValueChange={(value) => value && setFilter(value as Filter)}>
           {filters.map(({ value, label }) => (
             <ToggleGroupItem key={value} value={value} className="gap-1.5">
@@ -47,7 +55,7 @@ export const AutomationsFeed = ({ automations }: AutomationsFeedProps) => {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-      </div>
+      </AutomationListBar>
       {shown.length === 0 && <EmptyRow className="border-y border-border">{nothingShown[filter]}</EmptyRow>}
       {shown.length > 0 && (
         <div>
