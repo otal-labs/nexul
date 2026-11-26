@@ -99,6 +99,7 @@ type Service struct {
 	shells         Shells
 	runTokens      RunTokens
 	shellQueue     *shelljob.Queue
+	terminals      *shelljob.Terminals
 	setupMu        sync.Mutex
 	// settingUp holds a computer's drivers with a setup turn claimed, keyed by setupKey, each with the stop for its running
 	// turn, nil until that turn starts.
@@ -124,6 +125,7 @@ func NewService(cfg Config) *Service {
 		pairFailures: map[string]string{},
 	}
 	s.shellQueue = newShellQueue(s)
+	s.terminals = shelljob.NewTerminals(shelljob.Config{Store: s.repo, Event: shellJobEvent, Now: s.now, StartError: shellStartError})
 	return s
 }
 

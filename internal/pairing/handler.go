@@ -51,6 +51,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/runner/logs", h.runnerLogs)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/commands", h.runCommand)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/terminals", h.openTerminal)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/commands", h.listCommands)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/shared-runs", h.listSharedRuns)
 	mux.HandleFunc("GET /api/pairing/commands/{jobID}", h.getCommand)

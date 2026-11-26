@@ -12,6 +12,9 @@ export const buildLiveURL = (token: string) => {
 export const buildLogsURL = (token: string, path: string, tail: number) =>
   `${resolveWSBase()}/ws${path}?tail=${tail}&token=${encodeURIComponent(token)}`;
 
+// A socket with only the session token, such as a terminal's.
+export const buildSocketURL = (token: string, path: string) => `${resolveWSBase()}/ws${path}?token=${encodeURIComponent(token)}`;
+
 // What a follower gets beside each frame: the query cache, and the router as it stands when the frame lands.
 export interface Live {
   client: QueryClient;

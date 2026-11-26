@@ -65,12 +65,8 @@ func (c *Client) startShell(ctx context.Context, conn *websocket.Conn, f Frame) 
 	refuse := func(msg string) {
 		send(Frame{Type: FrameShellResult, ID: f.ID, Status: ShellStatusRefused, Error: msg})
 	}
-	if !c.cfg.ShellEnabled && c.cfg.Personal {
-		refuse("commands are turned off on this computer; `nexul shell on`, run there, turns them on")
-		return
-	}
-	if !c.cfg.ShellEnabled {
-		refuse(fmt.Sprintf("commands are off on this runner: it was installed without --allow-shell; `sudo nexul shell on %s`, run on the machine, turns them on", c.cfg.Name))
+	if off := c.shellOff(); off != "" {
+		refuse(off)
 		return
 	}
 	c.shellMu.Lock()

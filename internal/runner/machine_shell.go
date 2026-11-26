@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/containerlog"
@@ -29,6 +30,7 @@ type MachineShellJobs interface {
 type MachineShells interface {
 	RunMachineShell(ctx context.Context, runnerID string, run ShellRun, sink ShellSink) error
 	CancelShell(ctx context.Context, jobID string) error
+	OpenMachineTerminal(ctx context.Context, runnerID, id string, size shelljob.TerminalSize) (shelljob.TerminalStream, error)
 }
 
 // WithShells wires commands on machines' runners (ADR 0209); unset, none run.
@@ -37,6 +39,9 @@ func (s *Service) WithShells(jobs MachineShellJobs, shells MachineShells) *Servi
 	s.shellQueue = shelljob.NewQueue(shelljob.Config{
 		Store: jobs, Runners: machineRunners{s}, Event: machineShellJobEvent, Now: func() time.Time { return s.now() },
 		StartError: machineShellStartError, Silent: "the runner did not say how the command ended",
+	})
+	s.terminals = shelljob.NewTerminals(shelljob.Config{
+		Store: jobs, Event: machineShellJobEvent, Now: func() time.Time { return s.now() }, StartError: machineShellStartError,
 	})
 	return s
 }
@@ -162,6 +167,7 @@ func (s *Service) CancelShellJob(ctx context.Context, jobID string) (*shelljob.J
 	if _, err := s.GetShellJob(ctx, jobID); err != nil {
 		return nil, err
 	}
+	s.terminals.Cancel(jobID, "")
 	s.shellQueue.Cancel(ctx, jobID, "")
 	return s.WaitShellJob(ctx, jobID)
 }
@@ -187,8 +193,10 @@ func (s *Service) SetMachineShell(ctx context.Context, machineID string, enabled
 		return nil, err
 	}
 	if !enabled {
-		s.shellQueue.CancelWhere(ctx, func(job shelljob.Job) bool { return job.MachineID == machineID },
-			"commands from Nexul were turned off for this machine")
+		match := func(job shelljob.Job) bool { return job.MachineID == machineID }
+		why := "commands from Nexul were turned off for this machine"
+		s.shellQueue.CancelWhere(ctx, match, why)
+		s.terminals.CancelWhere(match, why)
 	}
 	return s.machines.Get(ctx, machineID)
 }
@@ -233,6 +241,12 @@ func (r machineRunners) StillAllowed(ctx context.Context, job shelljob.Job) (she
 
 // machineShellStartError is what a command that never reached its runner says.
 func machineShellStartError(err error) string {
+	if errors.Is(err, ErrCannotOpenTerminal) {
+		return "the runner is too old to open a terminal; it updates itself, then try again"
+	}
+	if errors.Is(err, apperrs.ErrConflict) {
+		return strings.TrimPrefix(err.Error(), apperrs.ErrConflict.Error()+": ")
+	}
 	if errors.Is(err, ErrCannotRunShell) {
 		return "the runner is too old to run commands; it updates itself, then try again"
 	}

@@ -313,6 +313,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /ws/pairing/computers/{id}/runner/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.RunnerLogsSocket))))
 	httpMux.Handle("GET /ws/pairing/commands/{jobID}/output", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.CommandOutputSocket))))
 	httpMux.Handle("GET /ws/runners/commands/{jobID}/output", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(runnerHTTP.CommandOutputSocket))))
+	httpMux.Handle("GET /ws/pairing/terminals/{jobID}", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(svc.pairingHandler.TerminalSocket))))
+	httpMux.Handle("GET /ws/runners/terminals/{jobID}", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(runnerHTTP.TerminalSocket))))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)
 	// A computer's stream authenticates with the runner's own credential, like /ws/runner.

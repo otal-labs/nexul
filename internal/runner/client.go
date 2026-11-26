@@ -91,7 +91,9 @@ type Client struct {
 	// streams joins every stream, openStreams counts them against maxStreams, and dial reaches T3 Code.
 	streams     sync.WaitGroup
 	openStreams atomic.Int32
-	dial        func(ctx context.Context, network, address string) (net.Conn, error)
+	// terminals counts the open terminals against shelljob.TerminalsAtOnce.
+	terminals atomic.Int32
+	dial      func(ctx context.Context, network, address string) (net.Conn, error)
 	// findT3 locates T3 Code's command for a home, "" when it is not installed.
 	findT3 func(home string) string
 	// findT3Desktop finds a Windows desktop app that has not been opened yet, so it has no launcher.
@@ -291,8 +293,8 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 		c.startLogs(ctx, conn, frame)
 	case FrameLogsCancel:
 		c.stopLogs(frame.ID)
-	case FrameHarnessDial:
-		c.startStream(streamCtx, ctx, conn, frame.ID)
+	case FrameHarnessDial, FrameTerminalOpen:
+		c.openStream(streamCtx, ctx, conn, frame)
 	case FrameT3PairTokenRequest, FrameGitClone, FrameRestart, FrameInstallTool, FrameGitIdentity, FrameShellRun, FrameShellCancel:
 		c.answerForComputer(ctx, conn, frame)
 	default:

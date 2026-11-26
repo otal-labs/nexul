@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { Suspense, useState } from "react";
+
+import { SquareTerminalIcon } from "lucide-react";
 
 import { machineAnswer } from "@nexul/client-core/actionState";
 
@@ -9,25 +11,26 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerCommandRow } from "@/components/settings/ComputerCommandRow";
 import { ComputerCommandSheet } from "@/components/settings/ComputerCommandSheet";
-import { Input } from "@/components/ui/input";
+import { LazyTerminalDialog } from "@/components/terminal/LazyTerminal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFetchMachineCommands, useRunMachineCommand, useSetMachineShell } from "@/hooks/MachineCommandHooks";
+import { useFetchMachineCommands, useOpenMachineTerminal, useSetMachineShell } from "@/hooks/MachineCommandHooks";
 import { useRunners } from "@/hooks/RunnerHooks";
-import type { ComputerCommand } from "@/models/ComputerCommand";
+import { terminalSocketPath, type ComputerCommand } from "@/models/ComputerCommand";
 import type { Machine } from "@/models/Runner";
 
 interface MachineCommandsProps {
   machine: Machine;
 }
 
-// Commands from Nexul on a machine's runners, for holders of Run commands there: the machine's switch, a command for
-// one runner, and the newest commands with who ran them and where.
+// Commands from Nexul on a machine's runners, for holders of Run commands there: the machine's switch, a terminal on
+// one runner, and the newest terminals and commands with who ran them and where.
 export const MachineCommands = ({ machine }: MachineCommandsProps) => {
   const on = !!machine.shell_enabled;
   const { data: commands, isPending, error } = useFetchMachineCommands(machine.id, true);
   const { data: allRunners } = useRunners();
   const setShell = useSetMachineShell(machine.id);
-  const run = useRunMachineCommand(machine.id);
+  const openTerminal = useOpenMachineTerminal(machine.id);
+  const [terminal, setTerminal] = useState<ComputerCommand | null>(null);
   const runners = (allRunners ?? []).filter((r) => r.machine === machine.name);
   const [picked, setPicked] = useState("");
   const runnerId = picked || runners.find((r) => r.connected)?.id || runners[0]?.id || "";
@@ -41,13 +44,7 @@ export const MachineCommands = ({ machine }: MachineCommandsProps) => {
     verb: "run commands on this machine",
   } as const;
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const command = String(new FormData(form).get("command") ?? "").trim();
-    if (!command || !runnerId) return;
-    run.mutate({ runnerId, command }, { onSuccess: () => form.reset() });
-  };
+  const runnerName = runners.find((r) => r.id === runnerId)?.name ?? machine.name;
 
   return (
     <div className="space-y-3 text-sm">
@@ -67,7 +64,7 @@ export const MachineCommands = ({ machine }: MachineCommandsProps) => {
         <span className="font-mono">nexul shell on &lt;runner&gt;</span> ran on the machine. Every command is recorded.
       </p>
       {on && runners.length > 0 && (
-        <form className="flex items-center gap-2" onSubmit={submit}>
+        <div className="flex items-center gap-2">
           {runners.length > 1 && (
             <Select value={runnerId} onValueChange={setPicked}>
               <SelectTrigger aria-label="Runner" className="w-36 shrink-0 font-mono">
@@ -82,11 +79,17 @@ export const MachineCommands = ({ machine }: MachineCommandsProps) => {
               </SelectContent>
             </Select>
           )}
-          <Input name="command" aria-label="Command" placeholder="Command" autoComplete="off" spellCheck={false} className="font-mono" />
-          <ActionButton {...gate} type="submit" variant="outline" size="sm" loading={run.isPending}>
-            Run
+          <ActionButton
+            {...gate}
+            type="button"
+            variant="outline"
+            size="sm"
+            loading={openTerminal.isPending}
+            onClick={() => openTerminal.mutate(runnerId, { onSuccess: setTerminal })}
+          >
+            <SquareTerminalIcon aria-hidden /> Open terminal
           </ActionButton>
-        </form>
+        </div>
       )}
       {isPending && <LoadingDisplay label="Loading commands" className="justify-start p-0" />}
       {error && <ErrorDisplay error={error} title="Couldn't list the commands." className="p-3" />}
@@ -104,6 +107,11 @@ export const MachineCommands = ({ machine }: MachineCommandsProps) => {
       )}
       {shown.command && (
         <ComputerCommandSheet command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
+      )}
+      {terminal && (
+        <Suspense fallback={null}>
+          <LazyTerminalDialog title={runnerName} socketPath={terminalSocketPath(terminal)} onClose={() => setTerminal(null)} />
+        </Suspense>
       )}
     </div>
   );

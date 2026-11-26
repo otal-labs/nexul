@@ -244,6 +244,13 @@ one, and the machine's switch, take Run commands on the machine (`machines:shell
 a command on a computer, its record read by whoever holds Run commands there (ADR 0209).
 _Avoid_: remote shell, terminal, exec, SSH
 
+**Terminal**:
+A live shell on a paired computer or a machine's runner, opened from Nexul in a dialog: the runner's default shell on a
+pseudo-terminal, carried over a stream of its own, taking keys until the shell exits or the dialog closes, which ends it.
+The same switches and access as a command there; recorded beside the commands with who opened it, how it ended and what
+it printed, never what was typed (ADR 0212). Agents run commands, not terminals.
+_Avoid_: console, SSH session, remote desktop
+
 **Computer activity**:
 The record of what was done on people's computers: adding, renaming, pairing or removing one, and each command run
 there with who ran it, the command, the exit code and, for 30 days, the output. Read only with Read computer activity

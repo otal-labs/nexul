@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -44,6 +45,10 @@ func (f *fakeShells) RunShell(_ context.Context, _ string, run shelljob.Run, sin
 	f.sinks[run.ID] = sink
 	f.started <- run.ID
 	return nil
+}
+
+func (f *fakeShells) OpenTerminal(context.Context, string, string, shelljob.TerminalSize) (shelljob.TerminalStream, error) {
+	return nil, errors.New("the computer's Nexul app is not connected")
 }
 
 func (f *fakeShells) CancelShell(_ context.Context, jobID string) error {
@@ -315,4 +320,32 @@ func TestCommandRoutes_AnswerNotFoundToAnyoneElse(t *testing.T) {
 	res = doRequest(h, http.MethodGet, "/api/pairing/computers/c-laptop/commands", "alice", nil)
 	require.Equal(t, http.StatusOK, res.Code)
 	assert.Contains(t, res.Body.String(), `"total":1`)
+}
+
+func TestOpenTerminal_RefusesWhatCommandsRefuse(t *testing.T) {
+	size := shelljob.TerminalSize{Cols: 80, Rows: 24}
+	t.Run("someone else's computer is not found", func(t *testing.T) {
+		s, repo, _ := newShellService(t)
+		_, err := s.OpenTerminal(t.Context(), "mallory", "c-laptop", size)
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		assert.Empty(t, repo.jobs)
+	})
+	t.Run("the owner's switch is off", func(t *testing.T) {
+		s, repo, _ := newShellService(t)
+		repo.computers["c-laptop"] = Computer{ID: "c-laptop", UserID: "alice", Name: "laptop"}
+		_, err := s.OpenTerminal(t.Context(), "alice", "c-laptop", size)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		assert.Empty(t, repo.jobs)
+	})
+	t.Run("the computer is offline", func(t *testing.T) {
+		s, repo, _ := newShellService(t)
+		_, err := s.OpenTerminal(t.Context(), "alice", "c-laptop", size)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		require.Len(t, repo.jobs, 1)
+		for _, job := range repo.jobs {
+			assert.Equal(t, shelljob.Refused, job.Status)
+			assert.Equal(t, shelljob.AdapterTerminal, job.Adapter)
+			assert.Equal(t, "the computer's Nexul app is not connected", job.Error)
+		}
+	})
 }

@@ -103,6 +103,7 @@ var verbRouteScope = map[string]Scope{
 	"GET /api/runners/latest-version":                            Scope(permissions.MachinesDeploy),
 	"DELETE /api/runners/{id}":                                   Scope(permissions.MachinesWrite),
 	"POST /api/runners/{id}/commands":                            Scope(permissions.MachinesShell),
+	"POST /api/runners/{id}/terminals":                           Scope(permissions.MachinesShell),
 	"GET /api/runners/commands/{jobID}":                          Scope(permissions.MachinesShell),
 	"POST /api/runners/commands/{jobID}/cancel":                  Scope(permissions.MachinesShell),
 	"GET /api/machines/{id}/commands":                            Scope(permissions.MachinesShell),
