@@ -9,7 +9,7 @@ interface AutomationRunRowProps {
   onSelect: (runId: string) => void;
 }
 
-// The outcome, its event and what the run last reported on one line; a failure adds its error under it.
+// The outcome's mark, its event and what the run last reported on one line; only a failure writes its outcome, leading its error under it.
 export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
   const outcome = runOutcomes[run.outcome];
   const failed = run.outcome !== AutomationRunOutcome.Success;
@@ -26,8 +26,8 @@ export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
         <Icon className={cn("mt-0.5 size-4 shrink-0", outcome.color)} aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-baseline gap-2 leading-5">
-            <span className={cn("w-16 shrink-0 text-sm", failed && "font-medium")}>{outcome.word}</span>
-            <span className="max-w-1/3 min-w-0 shrink-0 truncate font-mono text-row text-muted-foreground">{run.event_topic}</span>
+            {!failed && <span className="sr-only">{outcome.word}</span>}
+            <span className="max-w-1/3 min-w-0 shrink-0 truncate font-mono text-row text-foreground">{run.event_topic}</span>
             <span className="min-w-0 flex-1 truncate text-row" title={summary ? `${summary.message} ${summary.fields}`.trim() : undefined}>
               {summary?.message}
               {summary?.fields && <span className="ml-2 font-mono text-xs text-muted-foreground">{summary.fields}</span>}
@@ -39,9 +39,10 @@ export const AutomationRunRow = ({ run, onSelect }: AutomationRunRowProps) => {
               </time>
             </span>
           </span>
-          {failed && run.error && (
-            <span className="block truncate font-mono text-xs leading-5 text-muted-foreground" title={run.error}>
-              {run.error}
+          {failed && (
+            <span className="flex min-w-0 items-baseline gap-2 text-xs leading-5" title={run.error}>
+              <span className="shrink-0 font-medium">{outcome.word}</span>
+              {run.error && <span className="truncate font-mono text-muted-foreground">{run.error}</span>}
             </span>
           )}
         </span>

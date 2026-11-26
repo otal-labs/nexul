@@ -7,7 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { useOfflineAutomationHostIds } from "@/hooks/AutomationHostHooks";
 import { AutomationState, type Automation } from "@/models/Automation";
-import { automationGroups, automationListItems } from "@/utils/AutomationListUtility";
+import { automationGroups, automationListItems, automationNeedsAttention, type AutomationListItem } from "@/utils/AutomationListUtility";
 
 type Filter = "all" | typeof AutomationState.Failing | typeof AutomationState.Attention | typeof AutomationState.Off;
 
@@ -34,8 +34,13 @@ export const AutomationsFeed = ({ automations }: AutomationsFeedProps) => {
   const offlineHostIds = useOfflineAutomationHostIds();
   const [filter, setFilter] = useState<Filter>("all");
   const items = automationListItems(automations, offlineHostIds);
-  const shown = items.filter((item) => filter === "all" || item.state === filter);
-  const count = (value: Filter) => (value === "all" ? items.length : items.filter((item) => item.state === value).length);
+  const matches = (item: AutomationListItem, value: Filter) => {
+    if (value === "all") return true;
+    if (value === AutomationState.Attention) return automationNeedsAttention(item);
+    return item.state === value;
+  };
+  const shown = items.filter((item) => matches(item, filter));
+  const count = (value: Filter) => items.filter((item) => matches(item, value)).length;
   const on = items.length - count(AutomationState.Off);
 
   return (

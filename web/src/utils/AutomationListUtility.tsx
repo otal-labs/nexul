@@ -35,6 +35,9 @@ export const automationListItems = (automations: readonly Automation[], offlineH
     }))
     .sort((a, b) => urgency[a.state] - urgency[b.state] || a.automation.name.localeCompare(b.automation.name));
 
+// What the Needs attention filter counts: every row whose chip carries the warning mark, switched off or not.
+export const automationNeedsAttention = (item: AutomationListItem): boolean => item.attention != null && item.state !== AutomationState.Failing;
+
 const mostUrgent = (items: readonly AutomationListItem[]) => Math.min(...items.map((item) => urgency[item.state]));
 
 // Default before Custom unless Custom holds something more urgent, so a failing automation never sits under healthy ones.

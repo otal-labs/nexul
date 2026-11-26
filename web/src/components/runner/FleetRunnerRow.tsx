@@ -22,7 +22,7 @@ export const FleetRunnerRow = ({ runner, machine }: FleetRunnerRowProps) => (
       <RunnerName name={runner.name} muted={!runner.connected} />
     </span>
     <RunnerActivity runner={runner} />
-    <span className="flex min-w-0 justify-end">
+    <span className="flex min-w-0">
       <RunnerVersion version={runner.version} />
     </span>
     <RunnerMenu runner={runner} machine={machine} />

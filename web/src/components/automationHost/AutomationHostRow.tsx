@@ -16,8 +16,11 @@ export const AutomationHostRow = ({ host, machine }: AutomationHostRowProps) => 
   <li className="grid grid-cols-[minmax(0,1fr)_auto_1.75rem] items-start gap-x-4 px-4 py-2.5">
     <div className="min-w-0">
       <span title={host.name} className={cn("block truncate text-sm leading-5 font-medium", !host.connected && "text-muted-foreground")}>{host.name}</span>
-      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-        {[host.machine, host.version || "unknown version", `seen ${formatRelativeTime(host.last_seen)}`].filter(Boolean).join(" · ")}
+      <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
+        {host.machine && "on "}
+        {host.machine && <span className="font-mono">{host.machine}</span>}
+        {host.machine && " · "}
+        <span className="font-mono">{host.version || "unknown version"}</span> · seen {formatRelativeTime(host.last_seen)}
       </p>
       <AutomationHostManagers managers={host.managers} />
     </div>

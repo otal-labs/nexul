@@ -8,12 +8,12 @@ interface RunnerActivityProps {
   runner: Runner;
 }
 
-// What the runner is doing, its busy dot hung in the gutter; last seen shows only offline, worded as the band words it.
+// What the runner is doing, set against its version so the two read as one group; last seen shows only offline, worded as the band words it.
 export const RunnerActivity = ({ runner }: RunnerActivityProps) => {
   const job = runner.running_job;
   return (
-    <span className="@container/doing flex min-w-0 items-baseline gap-1 text-row tabular-nums">
-      {job && <span aria-hidden className="-ml-4 mr-1 size-2 shrink-0 self-center animate-[status-pulse_2.4s_ease-standard_infinite] rounded-full bg-info" />}
+    <span className="@container/doing flex min-w-0 items-baseline justify-end gap-1 text-row tabular-nums">
+      {job && <span aria-hidden className="mr-1 size-2 shrink-0 self-center animate-[status-pulse_2.4s_ease-standard_infinite] rounded-full bg-info" />}
       {job && <JobName name={job.service || job.kind} />}
       {job && <JobMeta at={job.started_at} by={job.triggered_by} />}
       {!job && runner.connected && <span className="text-muted-foreground">idle</span>}

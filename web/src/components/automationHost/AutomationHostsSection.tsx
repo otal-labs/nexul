@@ -9,13 +9,14 @@ import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
 import { useFetchMachines } from "@/hooks/RunnerHooks";
 import { useActionState } from "@/hooks/useActionState";
 import { useAutomationHostManagement } from "@/hooks/useAutomationHostManagement";
-import { machineOfHost } from "@/models/AutomationHost";
+import { InstanceHostName, machineOfHost } from "@/models/AutomationHost";
 
 export const AutomationHostsSection = () => {
   const { data: hosts, error, isPending } = useFetchAutomationHosts();
   const { data: machines } = useFetchMachines();
   const { answer } = useAutomationHostManagement();
   const add = useActionState({ permission: "machines:write", answer, verb: "add automations hosts" });
+  const instanceOnly = hosts?.length === 1 && hosts[0]?.name === InstanceHostName;
 
   return (
     <section aria-label="Hosts" className="space-y-1">
@@ -27,7 +28,7 @@ export const AutomationHostsSection = () => {
                 {hosts.length} {hosts.length === 1 ? "host" : "hosts"} ·{" "}
               </span>
             )}
-            Machines that run automations, besides this instance.
+            Machines that run this workspace&apos;s automations.
           </>
         }
       >
@@ -44,6 +45,9 @@ export const AutomationHostsSection = () => {
             <AutomationHostRow key={host.id} host={host} machine={machineOfHost(host, machines)} />
           ))}
         </EnterList>
+      )}
+      {instanceOnly && (
+        <EmptyRow>Every automation runs on this instance. Add a host to run them on a machine of your own, beside the secrets manager they read.</EmptyRow>
       )}
     </section>
   );
