@@ -202,6 +202,21 @@ export const overlaps = (nodes: TopologyNode[], positions: Positions, networks: 
   return false;
 };
 
+// A box's services a few pixels off its column (a drag that missed) are drawn on it, so the box has one left edge.
+// Positions only: the store keeps what was dropped until the card is moved again.
+export const snapToColumns = <T extends TopologyNode>(nodes: T[], networks: NetworkGroup[]): T[] => {
+  const column = new Map<string, number>();
+  for (const g of networks) {
+    const members = nodes.filter((n) => n.type === "service" && g.memberIds.includes(n.id) && !column.has(n.id));
+    const left = Math.min(...members.map((n) => n.position.x));
+    for (const n of members) if (n.position.x - left <= CLEARANCE) column.set(n.id, left);
+  }
+  return nodes.map((n) => {
+    const x = column.get(n.id);
+    return x === undefined || x === n.position.x ? n : { ...n, position: { ...n.position, x } };
+  });
+};
+
 export interface NetworkRect {
   name: string;
   x: number;
@@ -294,8 +309,9 @@ const CAMERA_PAD = 32;
 // Room above a lane's top card for its header.
 const HEADER_ROOM = 28;
 
-// The widest run of whole lanes from the left that reads at 0.8 to 1, top-aligned; the rest is a pan away.
-export const laneCamera = (lanes: Lane[], paneWidth: number): { x: number; y: number; zoom: number } => {
+// The widest run of whole lanes from the left that reads at 0.8 to 1, top-aligned and as tall as the pane allows
+// down to the same floor; the rest is a pan away.
+export const laneCamera = (lanes: Lane[], paneWidth: number, paneHeight = Infinity): { x: number; y: number; zoom: number } => {
   if (lanes.length === 0 || paneWidth <= 0) return { x: CAMERA_PAD, y: CAMERA_PAD, zoom: 1 };
   const left = lanes[0]!.left;
   const top = Math.min(...lanes.map((l) => l.top)) - HEADER_ROOM;
@@ -303,7 +319,8 @@ export const laneCamera = (lanes: Lane[], paneWidth: number): { x: number; y: nu
   for (let k = lanes.length; k > 0; k--) {
     const fits = (paneWidth - CAMERA_PAD * 2) / (lanes[k - 1]!.right - left);
     if (fits < MIN_FIT_ZOOM) continue;
-    zoom = Math.min(1, fits);
+    const tall = (paneHeight - CAMERA_PAD * 2) / (Math.max(...lanes.slice(0, k).map((l) => l.bottom)) - top);
+    zoom = Math.max(MIN_FIT_ZOOM, Math.min(1, fits, tall));
     break;
   }
   return { x: CAMERA_PAD - left * zoom, y: CAMERA_PAD - top * zoom, zoom };

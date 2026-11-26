@@ -529,7 +529,9 @@ is the page's header: the title in Fraunces at 20px, then the counts in
 tabular figures (services, the failed and stopped ones each after their
 status dot, hostnames), then the zoom (−, the percentage, +), Fit, Back and
 More (each disabled while there is no lane that way, so nothing shifts),
-Lock, Arrange in lanes and "+ External" as the outline button. The failed and
+Lock, Arrange in lanes and "+ External" as the outline button, a hairline
+divider between the zoom tools, Back and More, and Lock and Arrange, so the
+row reads as three groups. The failed and
 stopped counts are buttons: each press centres the next service in that state
 at a zoom that reads. The bar folds by its own width: under 64rem it keeps
 only the failed and stopped counts and Lock and Arrange fold into a "…" menu,
@@ -561,9 +563,12 @@ level. A hostname whose gateway is not on the canvas joins the same column,
 level with its service, and its wire carries the port. Services stack in their
 network boxes (`foreground` at 3.5% over an opaque `surface-2`, so the dot grid
 stops at the box, with a hairline ring and the large radius; the mono
-`network · <name>` microheader with the member count at its right, and under
+`network · <name>` microheader with the member count at its right, the name
+untracked and moving whole to a second line before it breaks after a hyphen or
+underscore, and under
 it the machine when every member runs on it, which their cards then leave out) in
-the order the gateway rows reach them, so the wires out fan without crossing;
+the order the gateway rows reach them, on one left edge (a member dropped
+within 12px of the box's column is drawn on it), so the wires out fan without crossing;
 a service on no network takes its place in that order without a box. A drawn
 node is a 240px card under an "outside Nexul" microheader, so it never reads
 as a deployed service.
@@ -578,8 +583,10 @@ end, and the relations that touch it, and dims everything else to 35% over
 150ms.
 
 The canvas opens at a zoom that reads: it fits the widest run of whole lanes
-from the left at 0.8 to 1, top-aligned, never cutting a lane mid-card, and a
-fade over the right edge says more lanes continue. A saved camera is restored
+from the left at 0.8 to 1, top-aligned and zoomed out to the pane's height down
+to the same floor, never cutting a lane mid-card. A fade over an edge says the
+drawing continues, and on the header row the next lane's name with an arrow
+("Services →", "← Hostnames") sits at that edge and pans there. A saved camera is restored
 only at the pane width it was saved at. Nothing truncates and nothing
 overlaps: an arrangement whose cards, pills or boxes come within 12px of each
 other (pills stacked at their rows' pitch excepted) is laid out in lanes

@@ -19,6 +19,7 @@ import {
   laneLayout,
   lanesOf,
   overlaps,
+  snapToColumns,
   type Positions,
 } from "@/utils/TopologyLayout";
 
@@ -51,15 +52,16 @@ export const useTopologyView = () => {
     () => deriveWiring(nodes, containers ?? [], stacks, gateways, exposures),
     [nodes, containers, stacks, gateways, exposures],
   );
+  const cards = useMemo(() => snapToColumns(wiring.nodes, wiring.networks), [wiring.nodes, wiring.networks]);
   // Pills are never dragged or stored: each follows its gateway row (or its service) wherever that card sits.
   const hosts = useMemo(() => {
-    const at = alignPillsToRows([...wiring.hosts, ...wiring.nodes], new Map(wiring.nodes.map((n) => [n.id, n.position])), wiring.edges, wiring.networks);
+    const at = alignPillsToRows([...wiring.hosts, ...cards], new Map(cards.map((n) => [n.id, n.position])), wiring.edges, wiring.networks);
     return wiring.hosts.map((h): HostnameNode => {
       const size = measured.get(h.id);
       return { ...h, draggable: false, position: at.get(h.id) ?? h.position, ...(size ? { measured: size } : {}) };
     });
-  }, [wiring, measured]);
-  const viewNodes = useMemo(() => [...hosts, ...wiring.nodes], [hosts, wiring.nodes]);
+  }, [wiring, cards, measured]);
+  const viewNodes = useMemo(() => [...hosts, ...cards], [hosts, cards]);
   const viewEdges = useMemo(
     () => [...edges.map((e): RelationEdge => (e.data?.kind === RelationKind.DependsOn ? { ...e, markerEnd: arrow } : e)), ...wiring.edges],
     [edges, wiring.edges],
@@ -105,7 +107,7 @@ export const useTopologyView = () => {
 
   const cameraFor = (positions: Positions, width: number) => {
     const placed = viewNodes.map((n) => ({ ...n, position: positions.get(n.id) ?? n.position }));
-    return laneCamera(lanesOf(placed, buildNetworkRects(wiring.networks, placed)), width);
+    return laneCamera(lanesOf(placed, buildNetworkRects(wiring.networks, placed)), width, viewportStore.getState().height);
   };
 
   // The pane is measured a frame or two after the canvas mounts; a camera set before that fits a 0px pane at 1:1.

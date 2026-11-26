@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useOptionsStore, useReactFlow, useReactFlowStoreApi, useViewport, useViewportStore } from "@xyflow/react";
 import {
   ArrowLeftIcon,
@@ -56,6 +57,9 @@ const ToolButton = ({ label, icon: Icon, onClick, word, iconFirst, disabled, cla
     <TooltipContent>{label}</TooltipContent>
   </Tooltip>
 );
+
+// Splits the bar's tools into zoom, lane panning and the map's own state, so a row of icons reads as three groups.
+const Divider = ({ className }: { className: string }) => <span className={cn("mx-1 h-4 w-px bg-border", className)} aria-hidden />;
 
 // A count that needs attention steps through those services; plain inline text keeps every count on one baseline.
 const AttentionCount = ({ n, label, dot, onClick }: { n: number; label: string; dot: string; onClick: () => void }) => (
@@ -135,7 +139,7 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
   ];
   return (
     <div className="@container border-b border-border">
-      <div className="flex min-h-12 items-center gap-x-4 px-3 py-2">
+      <div className="flex min-h-12 items-center gap-x-4 py-2 pr-4 pl-6">
       <div className="flex min-w-0 items-baseline gap-x-4">
         <h1 className="type-display shrink-0 text-xl">Topology</h1>
         <div className="flex min-w-0 items-baseline gap-x-3 text-xs text-muted-foreground">
@@ -157,8 +161,12 @@ export const TopologyToolbar = ({ summary, lanes, onAddExternal, onArrange, onFi
         </Tooltip>
         <ToolButton label="Zoom in" icon={PlusIcon} onClick={() => void zoomIn()} />
         <ToolButton label="Fit" icon={MaximizeIcon} onClick={onFit} />
-        {rare.map((t) => (
-          <ToolButton key={t.label} {...t} className={t.shownFrom === "@2xl" ? "hidden @2xl:inline-flex" : "hidden @5xl:inline-flex"} />
+        <Divider className="hidden @2xl:block" />
+        {rare.map((t, i) => (
+          <Fragment key={t.label}>
+            {i === 2 && <Divider className="hidden @5xl:block" />}
+            <ToolButton {...t} className={t.shownFrom === "@2xl" ? "hidden @2xl:inline-flex" : "hidden @5xl:inline-flex"} />
+          </Fragment>
         ))}
         <MoreTools tools={rare} />
         <ActionButton

@@ -19,9 +19,9 @@ export const NetworkBox = ({ rect }: NetworkBoxProps) => (
   >
     <span className="absolute top-2.5 right-3 left-3 flex flex-col">
       <span className={cn("flex items-start gap-2", microheaderClass)}>
-        <span className="min-w-0 break-words">
+        <span className="min-w-0">
           network ·{" "}
-          <span className="normal-case">
+          <span className="inline-block max-w-full tracking-normal break-words normal-case">
             {rect.name.split(/(?<=[-_])/).map((part, i) => (
               <span key={i}>
                 {part}

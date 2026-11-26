@@ -19,6 +19,7 @@ import {
   lanesOf,
   MIN_FIT_ZOOM,
   overlaps,
+  snapToColumns,
 } from "@/utils/TopologyLayout";
 
 const service = (id: string, x = 0, y = 0): TopologyNode => ({
@@ -189,6 +190,23 @@ describe("lanesOf and laneCamera", () => {
     // Some lane ends inside the view and the next one starts past it: no lane is cut by the fit itself.
     expect(all.some((l) => l.right <= shownRight)).toBe(true);
     expect(laneCamera(all, 200).zoom).toBe(MIN_FIT_ZOOM);
+  });
+
+  it("zooms out for a drawing taller than the pane, but never below the floor", () => {
+    const all = lanes();
+    const span = all.at(-1)!.right - all[0]!.left;
+    const tall = Math.max(...all.map((l) => l.bottom)) - Math.min(...all.map((l) => l.top)) + 28;
+    expect(laneCamera(all, span + 64, tall * 0.9 + 64).zoom).toBeCloseTo(0.9);
+    expect(laneCamera(all, span + 64, 100).zoom).toBe(MIN_FIT_ZOOM);
+  });
+});
+
+describe("snapToColumns", () => {
+  it("draws a box's services a few pixels off its column on it, and leaves one dragged well clear alone", () => {
+    const nodes = [service("a", 776, 0), service("b", 781, 100), service("c", 1000, 200), service("d", 500, 0)];
+    const snapped = snapToColumns(nodes, [{ name: "n", memberIds: ["a", "b", "c"] }]);
+    expect(snapped.map((n) => n.position.x)).toEqual([776, 776, 1000, 500]);
+    expect(snapped[0]).toBe(nodes[0]);
   });
 });
 

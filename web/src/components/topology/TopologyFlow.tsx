@@ -106,7 +106,7 @@ export const TopologyFlow = () => {
   return (
     <div className="flex h-full w-full flex-col">
       <TopologyToolbar summary={summary} lanes={lanes} onAddExternal={() => setAddingExternal(true)} onArrange={arrange} onFit={fit} onFrame={frame} />
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 bg-surface-2">
       <ReactFlow<TopologyNode, RelationEdge>
         nodes={viewNodes}
         edges={viewEdges}
