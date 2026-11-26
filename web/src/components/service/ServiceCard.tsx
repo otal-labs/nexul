@@ -2,14 +2,11 @@ import { BoxIcon, ChevronRightIcon, LayersIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
-import { formatRelativeTime } from "@/components/service/DeployTime";
-import { HealthDot } from "@/components/service/HealthDot";
 import { SettingsListRow } from "@/components/settings/SettingsListRow";
 import { useAreaAccess } from "@/hooks/AccessHooks";
-import { useFetchServiceDeploys } from "@/hooks/ServiceHooks";
 import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { DeployStrategy, latestDeploy, type ServiceDef } from "@/models/Service";
+import { DeployStrategy, type ServiceDef } from "@/models/Service";
 
 interface ServiceCardProps {
   service: ServiceDef;
@@ -36,24 +33,6 @@ const SourceLine = ({ service }: ServiceCardProps) => {
   );
 };
 
-// The newest deploy's state and age, from the query the stack page reads too.
-const LastDeploy = ({ serviceId }: { serviceId: string }) => {
-  const { data: deploys } = useFetchServiceDeploys(serviceId);
-  const latest = latestDeploy(deploys);
-  return (
-    <>
-      {deploys && !latest && "Never deployed"}
-      {latest && (
-        <span className="inline-flex items-center gap-1.5">
-          <HealthDot status={latest.status} className="size-1.5 animate-none" />
-          <span className="sr-only">{latest.status},</span>
-          deployed {formatRelativeTime(latest.created_at)}
-        </span>
-      )}
-    </>
-  );
-};
-
 // One service, opening its stack; a right-click opens the stack's Permissions… for whoever may set its rules.
 export const ServiceCard = ({ service }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
@@ -76,7 +55,6 @@ export const ServiceCard = ({ service }: ServiceCardProps) => {
           </>
         }
         meta={<SourceLine service={service} />}
-        count={canOpen && <LastDeploy serviceId={service.id} />}
         control={canOpen && <ChevronRightIcon className="pointer-events-none size-4 text-muted-foreground" aria-hidden />}
       />
     </RowContextMenu>

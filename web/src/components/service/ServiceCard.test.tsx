@@ -4,19 +4,16 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceCard } from "@/components/service/ServiceCard";
-import { DeployStatus, DeployStrategy, type Deploy, type ServiceDef } from "@/models/Service";
+import { DeployStrategy, type ServiceDef } from "@/models/Service";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 const manage = vi.hoisted(() => ({ stack: false }));
 vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { type: string }) => entity?.type === "stack" && manage.stack }));
-const deploys = vi.hoisted(() => ({ list: [] as unknown[] | undefined }));
-vi.mock("@/hooks/ServiceHooks", () => ({ useFetchServiceDeploys: () => ({ data: deploys.list }) }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
   access.areas = ["stacks"];
   manage.stack = false;
-  deploys.list = [];
 });
 
 const baseService = (overrides: Partial<ServiceDef> = {}): ServiceDef => ({
@@ -71,19 +68,6 @@ describe("ServiceCard", () => {
     unmount();
     renderCard(baseService());
     expect(screen.getByText("10.0.0.1:22")).toBeInTheDocument();
-  });
-
-  it("ends the row in the newest deploy's state, or says it never deployed", () => {
-    deploys.list = [
-      { id: "d-1", status: DeployStatus.Failed, created_at: "2020-01-01T00:00:00Z" },
-      { id: "d-2", status: DeployStatus.Healthy, created_at: new Date().toISOString() },
-    ] as Deploy[];
-    const { unmount } = renderCard(baseService());
-    expect(screen.getByText(/deployed .*ago|deployed just now/)).toHaveTextContent("healthy");
-    unmount();
-    deploys.list = [];
-    renderCard(baseService());
-    expect(screen.getByText("Never deployed")).toBeInTheDocument();
   });
 
   it("links to the service detail page", () => {

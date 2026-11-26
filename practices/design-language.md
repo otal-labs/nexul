@@ -1629,7 +1629,7 @@ row's text and its hairlines share the card's content edge; it lifts on hover in
 8px past them on each side. A control a row keeps in view (a repository's Issues switch, labelled "Issues" and leaving its state to the switch) ends
 the row on that edge. A repository's role is a neutral chip (the label chip's pill, no dot) with its service count after
 it in the meta, so the count column stays free for the switch. A service row names where it runs ("on" the machine,
-"from" the repository, each id in mono) and ends in its newest deploy's health dot and age in the count column, then a
+"from" the repository, each id in mono) and ends in a
 chevron, the whole row opening its stack. Repositories and Services carry their Add in the card head, not a footer. A
 sortable row (statuses, categories) shows a quiet grip in the card's gutter at rest, so the drag its description offers
 is visible before the pointer finds it.
