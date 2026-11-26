@@ -677,13 +677,16 @@ func (s *Service) addProgress(ctx context.Context, people []*TeamPerson) error {
 	return nil
 }
 
-// byPresence puts whoever is online first, then the most recently seen; ties keep the accounts' login order.
+// byPresence puts whoever is online first, then the most recently seen; online people keep login order, as their last-seen keeps moving.
 func byPresence(a, b *TeamPerson) int {
 	if a.Online != b.Online {
 		if a.Online {
 			return -1
 		}
 		return 1
+	}
+	if a.Online {
+		return 0
 	}
 	return lastSeen(b).Compare(lastSeen(a))
 }
