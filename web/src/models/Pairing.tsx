@@ -56,6 +56,14 @@ export interface PassOver {
 // "laptop is offline; build-box is full (2 of 2 running)".
 export const passOverLines = (passes: PassOver[]) => passes.map((p) => p.text).join("; ");
 
+// Mirrors pairing.PlacementAnswer: where a run needing these labels lands now, or the refusal and who it passed over.
+export interface PlacementAnswer {
+  needs: string[];
+  computer_id?: string;
+  reason?: string;
+  passed_over: PassOver[];
+}
+
 export const MIN_RUNS_AT_ONCE = 1;
 export const MAX_RUNS_AT_ONCE = 5;
 export const RUNS_AT_ONCE_CHOICES = Array.from({ length: MAX_RUNS_AT_ONCE - MIN_RUNS_AT_ONCE + 1 }, (_, i) => String(MIN_RUNS_AT_ONCE + i));

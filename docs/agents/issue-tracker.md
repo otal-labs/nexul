@@ -67,10 +67,6 @@ git history, and anything durable it decided is an ADR.
   first ready one, runs at once per computer, and the Computers and Projects tabs
   rebuilt around them (ADRs 0165, 0166). Left: 04, clone automatically, and 05,
   a chosen-computer auto play's ordered list.
-- `.scratch/computer-placement/` — one order decides every run: plays name the labels they need instead of computers,
-  Run on a chosen computer becomes Run as a person, the app repository wins a checkout tie, and a waiting run's fix is
-  done on the run (ADR 0197); the Agent page holds where runs go, with Takes plays and shared computers joining an
-  order (ADR 0211). Spec and tickets 01–06 written 2026-11-18, 07–09 on 2026-11-25; 01 to 05 and 07 to 09 done.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

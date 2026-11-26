@@ -3,6 +3,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
+import { ProjectPlaysPlacement } from "@/components/agent/ProjectPlaysPlacement";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { ProjectLinkForm } from "@/components/settings/ProjectLinkForm";
 import { useFetchProjectLinks, useProjectLinkSummary } from "@/hooks/PairingProjectHooks";
@@ -44,6 +45,7 @@ export const AgentProjectPane = ({ projectId }: AgentProjectPaneProps) => {
           <ProjectLinkForm projectId={project.id} projectName={project.name} link={link ?? { project_id: project.id, computers: [], checkouts: [] }} />
         </div>
       )}
+      {project && <ProjectPlaysPlacement projectId={project.id} />}
     </Container>
   );
 };

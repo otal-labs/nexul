@@ -349,3 +349,41 @@ func TestHandler_ProjectsPost_MakesAnEmptyProjectFromAName(t *testing.T) {
 	rec = doRequest(h.Routes(), http.MethodPost, "/api/pairing/computers/"+created.ID+"/projects", "u1", map[string]string{})
 	assert.Equal(t, http.StatusBadRequest, rec.Code, "neither a repository nor a name")
 }
+
+func TestHandler_ProjectPlacement_AnswersEachSetOfNeedsFromStoredFacts(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "laptop", nil)
+	f.add(t, "desk", func(c *Computer) { c.Labels = []string{"gpu"} })
+	f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+		t.Fatal("an answer asks no computer")
+		return nil, nil
+	}
+	routes := NewHandler(f.svc).Routes()
+	read := func(path string) []PlacementAnswer {
+		t.Helper()
+		rec := doRequest(routes, http.MethodGet, path, "u1", nil)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var body struct {
+			Answers []PlacementAnswer `json:"answers"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		return body.Answers
+	}
+
+	yours := read("/api/pairing/projects/proj-1/placement?needs=&needs=gpu")
+	require.Len(t, yours, 2)
+	assert.Equal(t, []any{[]string{}, "laptop", []PassOver{}}, []any{yours[0].Needs, yours[0].ComputerID, yours[0].PassedOver}, "your order: the first computer")
+	assert.Equal(t, "desk", yours[1].ComputerID, "a need the first lacks moves it on")
+	assert.Equal(t, []PassOver{{ComputerID: "laptop", Name: "laptop", Why: PassOverMissingNeed, Text: "laptop doesn't have gpu"}}, yours[1].PassedOver)
+
+	_, err := f.svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{Computers: []string{"laptop"}})
+	require.NoError(t, err)
+	own := read("/api/pairing/projects/proj-1/placement?needs=gpu")
+	require.Len(t, own, 1)
+	assert.Equal(t, []any{"", string(ReasonNoComputerReady)}, []any{own[0].ComputerID, own[0].Reason}, "the project's own list leaves out the one with the label")
+	assert.Equal(t, PassOverMissingNeed, own[0].PassedOver[0].Why)
+
+	bad := doRequest(routes, http.MethodGet, "/api/pairing/projects/proj-1/placement?needs=bad%20need", "u1", nil)
+	assert.Equal(t, http.StatusBadRequest, bad.Code)
+}
