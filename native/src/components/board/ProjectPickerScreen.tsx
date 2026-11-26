@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import { FlatList, View } from "react-native";
+import { FlatList } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectPickerRow } from "@/components/ProjectPickerRow";
@@ -17,7 +18,7 @@ export const ProjectPickerScreen = () => {
   const currentId = effectiveProject(projects, selectedProjectId)?.id;
 
   return (
-    <View className="bg-popover pb-6">
+    <SheetBody>
       <SheetTitle title="Board project" />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -37,6 +38,6 @@ export const ProjectPickerScreen = () => {
           )}
         />
       )}
-    </View>
+    </SheetBody>
   );
 };

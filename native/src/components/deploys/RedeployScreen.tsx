@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
@@ -18,7 +18,7 @@ export const RedeployScreen = () => {
   const deploy = useDeployStack();
 
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={stack ? `Redeploy ${stack.name}` : "Redeploy"} className="px-0 pb-0" />
       <Text className="text-body leading-[22px] text-muted-foreground">Pulls the image again and restarts the container.</Text>
       <Text className="rounded-md bg-surface-2 px-3 py-2.5 font-mono text-xs" numberOfLines={1}>
@@ -39,6 +39,6 @@ export const RedeployScreen = () => {
       <Button variant="outline" disabled={deploy.isPending} onPress={() => router.back()}>
         <Text>Cancel</Text>
       </Button>
-    </View>
+    </SheetBody>
   );
 };

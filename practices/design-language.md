@@ -216,7 +216,7 @@ A disabled button keeps its shape but loses its fill and shadow and takes
 label sits near 3.5:1 on a settings tray. On the web a filled button keeps its shape as a
 `border` hairline drawn inside its edge, with no tint under the label: ink at
 6% held it at 5.9:1 on a card. The web app's `Button`
-does this once for every variant, and lint rejects a `disabled:opacity-` class passed to it. A button that is busy keeps its own fill and
+does this once for every variant, and lint rejects a `disabled:opacity-` class passed to it. The phone's `Button` drops the fill for a `border` hairline when disabled, and its lint rejects any `opacity-` class passed to one. A button that is busy keeps its own fill and
 text: its spinner already says it is working, and grey would read as not allowed.
 
 A live status (a runner, an execution log, a health dot) reuses the one

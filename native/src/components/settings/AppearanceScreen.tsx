@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { PickerRow } from "@/components/PickerRow";
 import { SheetTitle } from "@/components/SheetTitle";
 import { appearanceLabel, useAppearanceStore, type Appearance } from "@/stores/appearanceStore";
@@ -18,11 +18,11 @@ export const AppearanceScreen = () => {
   };
 
   return (
-    <View role="radiogroup" className="bg-popover pb-6">
+    <SheetBody role="radiogroup">
       <SheetTitle title="Appearance" />
       {OPTIONS.map((value) => (
         <PickerRow key={value} label={appearanceLabel[value]} selected={appearance === value} onPress={() => choose(value)} />
       ))}
-    </View>
+    </SheetBody>
   );
 };

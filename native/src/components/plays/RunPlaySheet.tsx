@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { isNeedsLocation } from "@/api/errors";
 import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -36,7 +36,7 @@ export const RunPlaySheet = () => {
     );
 
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={`Run ${label}`} className="px-0 pb-0" />
       <Textarea
         aria-label="Instructions for this run"
@@ -53,6 +53,6 @@ export const RunPlaySheet = () => {
       <ActionButton permission="plays:run" projectId={projectId} verb="run plays" name={`Run ${label}`} disabled={run.isPending} onPress={start}>
         <Text>{run.isPending ? "Starting…" : "Run"}</Text>
       </ActionButton>
-    </View>
+    </SheetBody>
   );
 };

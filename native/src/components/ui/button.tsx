@@ -91,6 +91,16 @@ const buttonTextVariants = cva(
   }
 );
 
+// A disabled button loses its fill, a filled one keeping its shape as a hairline, and takes muted ink; never a lower opacity.
+const disabledFill: Record<NonNullable<VariantProps<typeof buttonVariants>['variant']>, string> = {
+  default: 'border border-border bg-transparent active:bg-transparent',
+  destructive: 'border border-border bg-transparent active:bg-transparent',
+  secondary: 'border border-border bg-transparent active:bg-transparent',
+  outline: 'bg-transparent active:bg-transparent',
+  ghost: '',
+  link: '',
+};
+
 type ButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'ref'> &
   VariantProps<typeof buttonVariants> & { ref?: React.Ref<View> };
 
@@ -102,9 +112,9 @@ function Button({ className, variant, size, onPressIn, onPressOut, ...props }: B
   const pressed = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: pressed.get() }] }));
   return (
-    <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
+    <TextClassContext.Provider value={cn(buttonTextVariants({ variant, size }), props.disabled && 'text-muted-foreground')}>
       <AnimatedPressable
-        className={cn(props.disabled && 'opacity-50', buttonVariants({ variant, size }), className)}
+        className={cn(buttonVariants({ variant, size }), className, props.disabled && disabledFill[variant ?? 'default'])}
         role="button"
         style={style}
         onPressIn={(e) => {

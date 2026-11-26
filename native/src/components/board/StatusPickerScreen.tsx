@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PickerRow } from "@/components/PickerRow";
@@ -27,7 +28,7 @@ export const StatusPickerScreen = () => {
   const updateStatus = useUpdateTicketStatus();
 
   return (
-    <View role="radiogroup" className="bg-popover pb-6">
+    <SheetBody role="radiogroup">
       <SheetTitle title={ticket ? `Status · ${ticketKey(ticket, project?.prefix)}` : "Status"} />
       {isPending && <LoadingDisplay />}
       {statusesError && <ErrorDisplay error={statusesError} />}
@@ -47,6 +48,6 @@ export const StatusPickerScreen = () => {
           )}
         />
       )}
-    </View>
+    </SheetBody>
   );
 };

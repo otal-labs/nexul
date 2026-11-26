@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export const MessageActionsSheet = () => {
   };
 
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={confirming ? "Delete this message?" : "Your message"} className="px-0 pb-0" />
       {message && (
         <Text className="rounded-md bg-surface-2 px-3 py-2.5 text-body leading-[22px]" numberOfLines={4}>
@@ -67,6 +67,6 @@ export const MessageActionsSheet = () => {
           <Text>Close</Text>
         </Button>
       )}
-    </View>
+    </SheetBody>
   );
 };

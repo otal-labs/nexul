@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import { View } from "react-native";
 
+import { SheetBody } from "@/components/SheetBody";
 import { ScheduleMessageForm } from "@/components/chat/ScheduleMessageForm";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Text } from "@/components/ui/text";
@@ -16,10 +16,10 @@ export const ScheduleMessageSheet = () => {
   const gone = !!id && !!scheduled && !editing;
   const ready = !id || !!editing;
   return (
-    <View className="gap-4 bg-popover px-5 pb-6">
+    <SheetBody className="gap-4 px-5">
       <SheetTitle title={id ? "Edit scheduled message" : "Schedule message"} className="px-0 pb-0" />
       {gone && <Text className="text-body text-muted-foreground">This scheduled message already posted or was cancelled.</Text>}
       {ready && <ScheduleMessageForm conversationId={conversationId} body={body} editing={editing} />}
-    </View>
+    </SheetBody>
   );
 };
