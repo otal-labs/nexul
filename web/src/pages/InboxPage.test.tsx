@@ -199,11 +199,11 @@ describe("InboxPage", () => {
     expect(within(list).getByRole("button", { name: /Spec.*(Aug 12|12 Aug)/ })).toBeInTheDocument();
   });
 
-  it("counts what is unread in the list's header", async () => {
+  it("counts what is unread in the page header", async () => {
     mockApi();
     renderPage();
-    const heading = await screen.findByRole("heading", { name: /Inbox/ });
-    expect(await within(heading).findByText("1")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
+    expect(await screen.findByText("unread")).toHaveTextContent("1 unread");
   });
 
   it("lists only what is unread under Unread", async () => {

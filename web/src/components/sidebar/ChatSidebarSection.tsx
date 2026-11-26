@@ -19,6 +19,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isOffered } from "@/components/listpane/rowMenu";
 import { groupConversations } from "@/models/Chat";
 import { useSidebarStore } from "@/stores/sidebarStore";
+import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface ChatSidebarSectionProps {
@@ -36,6 +37,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const wsPath = useWorkspacePath();
   const occupancy = useVoiceOccupancy(!collapsed);
   const { hiddenIds } = useHiddenThreads();
+  const voiceOpen = useSidebarStore((s) => s.voiceNavOpen);
+  const toggleVoice = useSidebarStore((s) => s.toggleVoiceNav);
+  const callId = useVoiceCallStore((s) => s.activeConversationId);
   const threadsOpen = useSidebarStore((s) => s.threadsNavOpen);
   const toggleThreads = useSidebarStore((s) => s.toggleThreadsNav);
   const openId = useMatch("/:workspace/chat/:conversationId")?.params.conversationId;
@@ -52,6 +56,10 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
 
   const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolvePerson };
   const { channels, voiceChannels, dms, docThreads } = groupConversations(conversations ?? []);
+  // Folded, Voice channels keeps the ones someone is in, the one you're in, and any with unread messages.
+  const shownVoice = voiceOpen
+    ? voiceChannels
+    : voiceChannels.filter((c) => c.id === openId || c.id === callId || (occupancy[c.id]?.length ?? 0) > 0 || (unread?.[c.id] ?? 0) > 0);
   // A removed thread comes back while it is open or has unread messages, so nothing new is missed.
   const shownThreads = docThreads.filter((c) => !hiddenIds.includes(c.id) || c.id === openId || (unread?.[c.id] ?? 0) > 0);
   // Folded, Threads keeps the open thread and any with unread messages, as the Workspace fold keeps the page you're on.
@@ -82,15 +90,20 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
             permission="channels:write"
             verb="create channels"
             onAction={() => void openNewChannel(true)}
+            fold={{ open: voiceOpen, onToggle: toggleVoice }}
           />
-          {voiceChannels.map((conversation) => (
-            <VoiceChannelSidebarRow
-              key={conversation.id}
-              conversation={conversation}
-              occupants={occupancy[conversation.id] ?? []}
-              unreadCount={unread?.[conversation.id] ?? 0}
-            />
-          ))}
+          {shownVoice.length > 0 && (
+            <div data-fold className="flex flex-col gap-0.5">
+              {shownVoice.map((conversation) => (
+                <VoiceChannelSidebarRow
+                  key={conversation.id}
+                  conversation={conversation}
+                  occupants={occupancy[conversation.id] ?? []}
+                  unreadCount={unread?.[conversation.id] ?? 0}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
       {(dms.length > 0 || canCreateDM) && (

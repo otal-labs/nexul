@@ -176,13 +176,13 @@ describe("groupInbox", () => {
     ]);
   });
 
-  it("folds a play run's notice into its ticket's row, leading with a run that waits on you", () => {
+  it("folds a play run's notice into its ticket's row and marks it as waiting on your answer", () => {
     const entries = groupInbox([
       note({ id: "p1", subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-1", subject_title: "Fix with AI waiting on Fix it", created_at: at(12) }),
       note({ id: "t1", subject_type: "ticket", kind: "ticket.assigned", subject_id: "t-1", subject_title: "Fix it", created_at: at(11) }),
     ]) as InboxRow[];
 
-    expect(entries.map((e) => [e.key, e.title, e.summary])).toEqual([["ticket:t-1", "Fix it", "needs your answer · assigned to you"]]);
+    expect(entries.map((e) => [e.key, e.title, e.summary, e.needsAnswer])).toEqual([["ticket:t-1", "Fix it", "assigned to you", true]]);
   });
 
   it("names what happened to a memory or a play run", () => {
@@ -191,7 +191,7 @@ describe("groupInbox", () => {
       note({ subject_type: "ticket", kind: "play.run_finished", subject_id: "t-1", created_at: at(11) }),
       note({ subject_type: "ticket", kind: "play.run_waiting", subject_id: "t-2", created_at: at(10) }),
     ]) as InboxRow[];
-    expect(entries.map((e) => e.summary)).toEqual(["memory updated", "", "needs your answer"]);
+    expect(entries.map((e) => [e.summary, e.needsAnswer ?? false])).toEqual([["memory updated", false], ["", false], ["", true]]);
   });
 
   it("leaves a ticket's play runs no summary of their own and words the newest outcome beside its other news", () => {

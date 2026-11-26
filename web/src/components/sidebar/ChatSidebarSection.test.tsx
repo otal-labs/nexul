@@ -65,7 +65,7 @@ beforeEach(() => {
   useVoiceCallStore.setState({ activeConversationId: null });
   useVoiceOccupancyStore.setState({ occupancy: {} });
   useHiddenThreadStore.setState({ hidden: {} });
-  useSidebarStore.setState({ threadsNavOpen: true });
+  useSidebarStore.setState({ threadsNavOpen: true, voiceNavOpen: true });
   localStorage.clear();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
@@ -271,6 +271,22 @@ describe("ChatSidebarSection", () => {
     renderSection();
     expect(await screen.findByText("Runbook c5")).toBeInTheDocument();
     expect(screen.queryByText("Runbook c4")).not.toBeInTheDocument();
+  });
+
+  it("keeps an occupied voice channel under the folded Voice channels header and hides the empty ones", async () => {
+    useSidebarStore.setState({ voiceNavOpen: false });
+    const quiet = { id: "c6", workspace_id: "ws-1", kind: "voice_channel", name: "standup", created_by: "u1", created_at: "", updated_at: "" };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") return { data: [...conversations, quiet] };
+      if (url === "/api/voice/occupancy") return { data: occupancy };
+      if (url === "/api/auth/me") return { data: meResponse };
+      return { data: {} };
+    });
+    renderSection();
+    expect(await screen.findByText("huddle")).toBeInTheDocument();
+    expect(screen.queryByText("standup")).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Voice channels" }));
+    expect(screen.getByText("standup")).toBeInTheDocument();
   });
 
   it("marks the open conversation's row as the current page", async () => {

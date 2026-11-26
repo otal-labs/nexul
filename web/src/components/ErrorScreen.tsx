@@ -21,7 +21,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
 
   return (
     <ShowcaseSurface quiet>
-      <div className="flex min-h-full items-center justify-center px-6 pt-16 pb-28 sm:px-8">
+      <div className="flex min-h-full items-center justify-center px-6 pt-16 pb-20 sm:px-8">
         <div data-size="default" className="empty-state flex max-w-md flex-col items-center text-center">
           <OrbitMark icon={isCrash ? CircleAlert : Unplug} compact={false} />
           <h1 className={cn(displayTitleClass, "mt-6 text-headline")}>
@@ -42,7 +42,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
               <>
                 $ curl {pathname}
                 <br />
-                <span className="text-destructive">404</span> No page at this address.
+                <span className="text-foreground">404</span> No page at this address.
               </>
             )}
           </p>

@@ -15,8 +15,8 @@ export const CalendarToolbar = ({ empty }: { empty: boolean }) => {
   );
   const unit = view === "month" ? "month" : "week";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-2">
         <Button variant="outline" size="icon" className="size-8" aria-label={`Previous ${unit}`} onClick={() => step(-1)}>
           <ChevronLeftIcon aria-hidden />
         </Button>
@@ -26,12 +26,13 @@ export const CalendarToolbar = ({ empty }: { empty: boolean }) => {
         <Button variant="outline" size="sm" onClick={today}>
           Today
         </Button>
-        <h2 className="ml-2 text-base font-semibold" aria-live="polite">
+        <h2 className="ml-2 shrink-0 text-base font-semibold" aria-live="polite">
           {periodTitle(view, anchor, viewDays(view, anchor))}
         </h2>
-        {empty && <p className="text-sm text-muted-foreground">No meetings or due tickets this {unit}</p>}
+        {empty && <p className="truncate text-sm text-muted-foreground">Nothing scheduled</p>}
       </div>
       <ToggleGroup
+        className="shrink-0"
         type="single"
         variant="segmented"
         size="xs"
