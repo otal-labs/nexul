@@ -23,7 +23,7 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
       id="services"
       title="Deployed"
       description="What this project deploys, each with its own deploys, logs, and hostnames."
-      footer={
+      aside={
         <AddServiceLink projectId={projectId} variant="outline" size="sm">
           New service
         </AddServiceLink>

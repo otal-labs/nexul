@@ -4,9 +4,9 @@ import type { InstanceSection } from "@/models/Access";
 
 export const SETTINGS_SECTIONS = [
   "general",
+  "import",
   "interview",
   "mentions",
-  "import",
   "danger",
   "instance",
   "team",
@@ -72,11 +72,20 @@ interface SettingsNavProps {
   sections: SettingsSection[];
 }
 
+// The workspace's own settings, then the templates it hands new projects and chat: grouped like Your settings and Project settings.
+const configurationGroups: Partial<Record<SettingsSection, string>> = {
+  general: "Workspace",
+  import: "Workspace",
+  interview: "Templates",
+  mentions: "Templates",
+};
+
 export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
   const wsPath = useWorkspacePath();
   const items: SettingsSectionNavItem[] = sections.map((section) => ({
     section,
     label: sectionLabels[section],
+    group: configurationGroups[section],
     danger: section === "danger",
   }));
 

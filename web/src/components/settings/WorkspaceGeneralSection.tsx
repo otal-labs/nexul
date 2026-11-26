@@ -55,6 +55,7 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
     <SettingsCard
       id="workspace"
       title="Workspace"
+      description="What people see it called, and the address every link to it starts with."
       footer={
         <SettingsSaveBar
           form="workspace-general"

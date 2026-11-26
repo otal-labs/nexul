@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
+
 import { hasColor } from "@/components/board/ticketTypeColor";
+import { HeaderFacts } from "@/components/HeaderFacts";
 import type { ProjectSettingsSection } from "@/components/settings/ProjectSettingsNav";
 import { useFetchProjectCategories } from "@/hooks/CategoryHooks";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -20,9 +23,14 @@ interface ProjectSettingsMetaProps {
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-const Facts = ({ parts }: { parts: (string | false | undefined)[] }) => (
-  <span className="font-mono text-xs tabular-nums">{parts.filter(Boolean).join(" · ")}</span>
+// The same facts line as Your settings and Configuration: the sans, 16px apart; only the prefix is an id, so only it is mono.
+const Facts = ({ parts }: { parts: (ReactNode | false | undefined)[] }) => (
+  <span className="tabular-nums">
+    <HeaderFacts parts={parts} />
+  </span>
 );
+
+const prefixFact = (project: Project) => !!project.prefix && <span className="font-mono">{project.prefix}</span>;
 
 // The project's size; services as the Services section lists them, without branch deploys.
 const SizeMeta = ({ project }: { project: Project }) => {
@@ -34,7 +42,7 @@ const SizeMeta = ({ project }: { project: Project }) => {
   return (
     <Facts
       parts={[
-        project.prefix,
+        prefixFact(project),
         empty && "empty",
         impact && !empty && count(impact.tickets, "ticket"),
         impact && !empty && count(impact.repos, "repo"),
@@ -83,14 +91,15 @@ const ReposMeta = ({ projectId }: { projectId: string }) => {
 
 const ServicesMeta = ({ projectId }: { projectId: string }) => {
   const { data: services } = useFetchServices(projectId);
-  return <Facts parts={[services && count(services.length, "service")]} />;
+  const machines = services && new Set(services.map((s) => s.machine || s.target).filter(Boolean)).size;
+  return <Facts parts={[!!machines && `On ${count(machines, "machine")}`, services?.length === 0 && "Nothing deployed yet"]} />;
 };
 
 // The header's facts line for the open section: what it holds right now, from the query the section already loads.
 export const ProjectSettingsMeta = ({ project, section }: ProjectSettingsMetaProps) => (
   <>
     {section === "general" && <SizeMeta project={project} />}
-    {section === "danger" && <Facts parts={[project.prefix]} />}
+    {section === "danger" && <Facts parts={[prefixFact(project)]} />}
     {section === "access" && <AccessMeta projectId={project.id} />}
     {section === "statuses" && <StatusesMeta projectId={project.id} />}
     {section === "categories" && <CategoriesMeta projectId={project.id} />}

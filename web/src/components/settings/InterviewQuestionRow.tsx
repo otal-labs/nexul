@@ -15,28 +15,22 @@ interface InterviewQuestionRowProps {
   onRemove: () => void;
 }
 
-const optionClass = "rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground";
-
 // One question as the interview asks it; Edit opens its own markdown in place, so the rest of the list stays scannable.
 export const InterviewQuestionRow = ({ number, part, readOnly, editing, onEditing, onChange, onRemove }: InterviewQuestionRowProps) => {
   const question = readQuestion(part);
   const title = question?.title || part.trim();
   return (
-    <li className="group/q flex gap-4 py-4">
+    <li className="flex gap-4 py-4">
       <span className="w-5 shrink-0 pt-px font-mono text-xs text-muted-foreground tabular-nums">{String(number).padStart(2, "0")}</span>
       {!editing && (
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium text-pretty text-foreground">{title}</p>
           {question?.hint && <SettingsHint>{question.hint}</SettingsHint>}
           {question && question.options.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-              <span className="text-xs text-muted-foreground">{question.multiSelect ? "Any of" : "One of"}</span>
-              {question.options.map((option) => (
-                <span key={option} className={optionClass}>
-                  {option}
-                </span>
-              ))}
-            </div>
+            <p className="pt-1 text-xs text-pretty text-muted-foreground">
+              {question.multiSelect ? "Any of: " : "One of: "}
+              {question.options.join(" · ")}
+            </p>
           )}
         </div>
       )}
@@ -66,7 +60,7 @@ export const InterviewQuestionRow = ({ number, part, readOnly, editing, onEditin
           variant="ghost"
           size="icon"
           aria-label={`Edit question ${number}`}
-          className="-my-1 size-8 shrink-0 text-muted-foreground transition-opacity duration-150 ease-standard [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/q:opacity-100 [@media(hover:hover)]:group-hover/q:opacity-100"
+          className="-my-1 size-8 shrink-0 text-muted-foreground"
           onClick={() => onEditing(true)}
         >
           <PencilIcon className="size-3.5" />

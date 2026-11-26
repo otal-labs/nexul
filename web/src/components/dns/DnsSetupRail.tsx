@@ -24,7 +24,6 @@ export const DnsSetupRail = ({ setup }: DnsSetupRailProps) => {
           label={rung.label}
           mark={markOf(rung.key, rung.state)}
           ordinal={String(i + 1).padStart(2, "0")}
-          total={rungs.length}
           onOpen={rung.state === "locked" ? undefined : () => open(rung.key)}
           last={i === rungs.length - 1}
         />

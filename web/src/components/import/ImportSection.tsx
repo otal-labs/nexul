@@ -12,7 +12,7 @@ export const ImportSection = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: imports, error, isPending } = useFetchImports(workspaceId);
   const open = imports?.find(importOpen);
-  const ended = imports?.filter((imp) => !importOpen(imp)) ?? [];
+  const ended = imports?.filter((imp) => !importOpen(imp));
 
   return (
     <div className="space-y-6">
@@ -20,7 +20,7 @@ export const ImportSection = () => {
       {error && <ErrorDisplay error={error} />}
       {imports && open && <ImportRunCard id={open.id} />}
       {imports && !open && <StartImportCard />}
-      {ended.length > 0 && <ImportHistoryCard imports={ended} />}
+      {ended && <ImportHistoryCard imports={ended} />}
     </div>
   );
 };

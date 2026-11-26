@@ -31,7 +31,6 @@ export const ImportRail = ({ stage }: ImportRailProps) => {
           label={s.label}
           mark={markOf(i)}
           ordinal={String(i + 1).padStart(2, "0")}
-          total={STAGES.length}
           last={i === STAGES.length - 1}
         />
       ))}
