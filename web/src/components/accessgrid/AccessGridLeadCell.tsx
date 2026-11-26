@@ -15,7 +15,7 @@ interface AccessGridLeadCellProps {
 }
 
 // Optically on the tally's cap height, which sits a pixel above the box's centre.
-const mark = "size-3.5 -translate-y-px text-foreground";
+const mark = "size-3.5 -translate-y-px";
 
 // A role on every row, some or none: a click ticks every row, or clears every row once all hold it.
 export const AccessGridLeadCell = ({ on, rows, marks, label, onSetAll }: AccessGridLeadCellProps) => {
@@ -30,16 +30,13 @@ export const AccessGridLeadCell = ({ on, rows, marks, label, onSetAll }: AccessG
         className="group/cell block h-11 w-full cursor-pointer rounded-md p-0.5 outline-none focus-visible:!-outline-offset-2"
       >
         <span
-          className={cn(
-            "flex size-full items-center justify-center gap-1.5 rounded-md font-mono text-micro text-muted-foreground tabular-nums transition-colors duration-150 ease-standard group-hover/cell:bg-accent",
-            on === rows && "bg-foreground/[0.06] text-foreground",
-          )}
+          className="flex size-full items-center justify-center gap-1.5 rounded-md font-mono text-micro text-muted-foreground tabular-nums transition-colors duration-150 ease-standard group-hover/cell:bg-accent group-hover/cell:text-foreground"
         >
         {marks === "ticks" && state === true && <Check className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && state === "indeterminate" && <Minus className={mark} strokeWidth={2.5} aria-hidden />}
         {marks === "ticks" && `${on}/${rows}`}
         {marks === "hidden" && hidden === 0 && <Eye className={mark} aria-hidden />}
-        {marks === "hidden" && hidden > 0 && <EyeOff className="size-3.5 -translate-y-px" aria-hidden />}
+        {marks === "hidden" && hidden > 0 && <EyeOff className={cn(mark, "text-foreground")} aria-hidden />}
         {marks === "hidden" && `${on}/${rows}`}
         </span>
       </CheckboxPrimitive.Root>

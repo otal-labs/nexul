@@ -1432,25 +1432,27 @@ the card's title), and it snaps sideways a whole role column at a
 time. Its head row is sticky on top and its name column (240px, 200px below
 1024px, the name truncating inside it) sticky on the left, casting its edge
 (`edge-shade`) once scrolled sideways; the save strip sits under it, always in
-view. A role column is 72px: the name at 12px medium in up to three lines, cut
+view. Every column head, the name column's, each role's and the last column's,
+is one style on one baseline: 12px medium sans in `muted-foreground`, top-aligned
+(`headText`). A role column is 72px: the name in up to three lines, cut
 at a whole word with its ellipsis when longer (`headName`), over its holder
 count in mono ("nobody" at none). The last column takes the grid's spare
 width, so it starts right after the last role and no empty band runs between
 the roles and it: People on Projects, the faces over one name or a count
 ("3 people"), and Seen by on Public channels, "Everyone" muted or "Everyone
 but Client, QA" in ink. Rows are one 44px line, the project's 24px mark and name.
-The whole 72x44 cell is the box: on Projects a tick is a `foreground` check on
-a `foreground` 6% tint inset 2px, and an empty cell is unticked; on Public
-channels a seen cell is the same tint under an ink eye and a role the channel
-is hidden from a muted eye-off with no tint, so access reads as ink on a tint
-in both grids and Seen by names the exceptions. The ticks are ink, not
+The whole 72x44 cell is the box: on Projects a tick is a plain `foreground`
+check with no fill, and an empty cell is unticked; on Public channels only the
+exception is marked, a role the channel is hidden from as an ink eye-off on a
+`foreground` 6% tint inset 2px, and a seen cell is empty (a faint eye-off on
+hover says what a click does), so Seen by and the marks both name the exceptions. The ticks are ink, not
 the accent: a grid of them would put the ember on most of the page, so the
 ember rings an unsaved cell's tint (2px, inset) and the footer counts them
 ("3 changes"); keyboard focus rings the cell's own edge, outside the tint. The
 lead row on the muted strip sets a role on every row shown and says how many
-have it, in every state ("9/15", "15/15", "0/15"), the cell taking the
-row's tint and ink once every row has it; on Public channels how
-many see it, after an eye while all do and an eye-off once one is hidden. The last column is pinned right, never under 176px, casting its edge while
+have it, in every state ("9/15", "15/15", "0/15"), in muted mono so it never
+outweighs the rows' marks; on Public channels how
+many see it, after a muted eye while all do and an ink eye-off once one is hidden. The last column is pinned right, never under 176px, casting its edge while
 columns lie under it; People's add button shows on the row's hover or focus. The bottom of every scroller fades over 24px while rows lie past it.
 `AccessGridTable` and `AccessGridCell` in `web/src/components/accessgrid/` are
 the reference.
@@ -1530,7 +1532,7 @@ in the header's count as in the page header's, each row its name over its
 description with the holder count in mono on the title's baseline (left out at
 none, and for a viewer the server shows no Team); under them, pinned below the scroller behind
 a hairline so they stay in view however many roles there are, two one-line rows at
-the list's 32px pitch and on its gutter, Compare roles and No roles, each led by a muted mark. The Owner's row
+the list's 32px pitch and on its gutter, Compare roles and People without a role, each led by a muted mark. The Owner's row
 reads "Holds everything here" under its name, so every role row is one height. The `+` in the pane's header is New role, and its search field narrows the
 roles by name and description. From 1024px the tab opens on the
 first role after the Owner, and below it the list is the page; below 1024px
@@ -1538,11 +1540,11 @@ a muted "Roles" link with a chevron leads the open pane's title line back to the
 open role is one page, its header on the list header's line and pinned to the
 pane's top on a screen at least 1024px wide and 800px tall, on `panel-opaque` (`sticky-crumbs`), so its section links stay in reach; on a smaller one it scrolls with the pane so the holders get the height. Its header is the name (16px semibold, the crown before
 the Owner's) with an outline Edit and the role's `…` menu on the same line at
-every width (none for the Owner), then the description and, 12px under it, one
-quiet link per editor section with how many of its areas the role reaches in
-mono, then "up to" and the highest level it holds as its glyph and word ("In projects 10/12 up to Delete"), so neither the count nor the level reads as every area's, worded the same wherever a role is picked, with one faint dotted rule under the whole reach, glyph included, that turns solid on hover, one section per line below 40rem, each jumping to its section below the
-holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" in
-plain words, not a link.
+every width (none for the Owner), then the description and, 12px under it, three
+stat cells in a row, one per editor section: the section's name in muted 12px with how many of its areas the role reaches in
+mono beside it, over "Up to" and the highest level it holds as a word in 14px medium ("In projects 10/12" over "Up to Delete"), so neither the count nor the level reads as every area's, the cell lifting to `accent` on hover and
+jumping to its section below the
+holders, so what the role allows is a glance away whatever the list's length; a section with no access reads "No access" muted, not a link.
 Then People, headed in 14px semibold like "What <role> can do" with its count in mono, a band that pins under the role's header from 1024px (at the pane's top on a screen under 800px tall, where the header scrolls), opaque to its edge, closed by the list's top hairline and fading over 16px from it, so a passing row's rule never doubles it and a resting row's name stays clear, while the holders are in view: the microheader with its count in mono beside it, never joined by
 a middle dot, and, for whoever may give the role, outline Add people and Invite by
 link (with a link mark, naming the role only in its accessible name, so a long
@@ -1575,14 +1577,14 @@ editor section, in the editor's order, with how many of its areas the role
 reaches in mono ("10/12"); a section it doesn't reach is that microheader with
 "No access" and a "Show 11 areas" toggle beside it, nothing more, 8px over the next section rather than a section's full gap. Its areas run as rows with a hairline above each, in two columns (a lone area keeps the first) that flow on their
 own once the pane is 36rem wide, every row one line so the two columns' rows meet: the name on the left with the extra verbs held
-muted after it on its line, cut before the name is, and the level as its word in a fixed 80px slot on the right,
-on the name's baseline, its glyph before it as the matrix draws it so levels read at a glance; a yes-or-no
-permission reads Yes with a check in the glyph's slot, or a muted No. The areas a role has no
+muted after it on its line, cut before the name is, and the level as its word alone in a fixed 80px slot on the right,
+on the name's baseline (the matrix keeps its glyph; a word reads faster beside one area); a yes-or-no
+permission reads Yes, or a muted No. The areas a role has no
 access to fold under one ghost line ("Show 2 with no access"), which opens them
-in place, instantly. No roles is the same page with only the holders, each with an
+in place, instantly. People without a role is the same page with only the holders, each with an
 outline Give a role that opens the roles the viewer may give in a popover that
 keeps to the room it has, scrolls with a fade and leads with a find field, each
-role named with its description muted beside its name on one line (whole in its tooltip) over the role's reach in three columns named once at the top of the list in muted 11px sans, quieter than the section heads (Instance, Workspace, In projects; each cell the header's count, "up to" and top level as glyph and word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
+role named with its description muted beside its name on one line (whole in its tooltip) over the role's reach in three columns named once at the top of the list in muted 11px sans, quieter than the section heads (Instance, Workspace, In projects; each cell the header's count, "up to" and top level as a word, or No access, so a section reads down the list; `RoleReach` and `RoleReachHead`), each row as tall as its content. Compare roles
 leaves the Owner out (it holds everything), takes the list pane's place too, full width with the "Roles" link back at every
 width, and holds the role matrix (below). `RolesAndPeopleSection` and
 `RoleDetail` in `web/src/components/role/` are the reference.
@@ -2238,7 +2240,8 @@ The web app's pattern decisions, each with what it was picked over.
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | The Roles tab is a matrix of every area by every role (2026-10-29) | Replaces one row per role with a tally of levels ("Delete 16 · Write 6 · Read 3 · None 10") and a chevron for the areas: the counts changed which levels they listed from row to row and never named an area, and one role opened at a time, so two roles could not be compared. The owner picked the matrix over the tally kept in four fixed columns, as two lines or one, from screenshots on the worst-case workspace |
 | Access grid ticks are ink and the ember marks an unsaved cell (2026-10-29) | An ember box per tick put 150 ember marks on a worst-case Public channels tab and buried its few exceptions, and an ember ring on an ember box could not show a change. Picked from screenshots over a hairline box and a bare check: an ink check on a 6% cell tint. Public channels marks the hidden role (eye-off) and leaves a seen cell empty |
-| The Access grids span the panel, the last column taking the spare width, a seen channel cell an ink eye (2026-11-26) | A grid spanning the panel with People pinned at its far edge left a 600 to 750px empty band between the roles and People; sizing the card to its columns instead left a 565px empty band beside the card at 1440 and stopped it short of the tab rule. Spanning the panel with People (or Seen by) starting right after the last role closes both, and a seen cell drawn as a faint eye read as empty, so seen is ink on a tint like a tick |
+| The Access grids span the panel, the last column taking the spare width (2026-11-26) | A grid spanning the panel with People pinned at its far edge left a 600 to 750px empty band between the roles and People; sizing the card to its columns instead left a 565px empty band beside the card at 1440 and stopped it short of the tab rule. Spanning the panel with People (or Seen by) starting right after the last role closes both |
+| Access grid marks are bare: a tick is a plain check, a channel marks only its hidden roles, and every head is one style (2026-11-26) | A filled tint behind every tick and an eye in every seen channel cell made the grid read as rows of identical buttons, the heaviest marks on the page for a yes-or-no state, and a hidden cell differed from a seen one only by its glyph. Plain checks and exception-only eye-offs leave the few marks that say something; mono caps over the name column beside sans role names put two styles on two baselines in one row |
 | The Access grids fill the panel and scroll in one box (2026-10-29) | The card used to scroll inside the page, two scrollbars, the save strip below the fold and the names scrolling away with the boxes. A sticky head inside a box that scrolls sideways sticks to that box, so the box became the only scroller rather than syncing a separate head; it is paint-contained, because its sticky cells otherwise widened the page by 210px at 768 |
 | Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
 | Project settings lead with the project mark | The sidebar and the board already show the seeded mark; a plain initial on a square in General made the settings look like another project |

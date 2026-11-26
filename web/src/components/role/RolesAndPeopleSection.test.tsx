@@ -209,7 +209,7 @@ describe("RolesAndPeopleSection", () => {
     expect(await screen.findByRole("dialog", { name: /Lena Fischer/ })).toBeInTheDocument();
   });
 
-  it("lists the members holding no role under No roles", async () => {
+  it("lists the members holding no role under People without a role", async () => {
     serve();
     renderAt("/acme/access/roles/none");
 
@@ -224,13 +224,13 @@ describe("RolesAndPeopleSection", () => {
     expect(await screen.findByRole("heading", { name: "Developer" })).toBeInTheDocument();
     expect(await screen.findByRole("region", { name: "In projects" })).toBeInTheDocument();
     expect(screen.queryByText(/^People/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /No roles/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /People without a role/ })).not.toBeInTheDocument();
     expect(mocks.get).not.toHaveBeenCalledWith("/api/team");
   });
 });
 
 describe("RolesAndPeopleSection, the rest of a role's page", () => {
-  it("gives a member holding no role one from No roles", async () => {
+  it("gives a member holding no role one from People without a role", async () => {
     serve();
     const user = userEvent.setup();
     renderAt("/acme/access/roles/none");

@@ -1,8 +1,7 @@
-import { microheaderClass } from "@/components/Microheader";
 import { AccessGridLeadRow } from "@/components/accessgrid/AccessGridLeadRow";
 import { AccessGridRow, type AccessGridRowModel } from "@/components/accessgrid/AccessGridRow";
 import { RoleColumnHead } from "@/components/accessgrid/RoleColumnHead";
-import { fadeEndCell, fillerCell, snapScroller, stickyCell } from "@/components/accessgrid/gridStyles";
+import { fadeEndCell, fillerCell, headText, snapScroller, stickyCell } from "@/components/accessgrid/gridStyles";
 import { ScrollEndFade } from "@/components/ScrollEndFade";
 import type { AccessGridRole } from "@/models/AccessGrid";
 import { cn } from "@/lib/utils";
@@ -37,14 +36,14 @@ export const AccessGridTable = ({ label, leadLabel, rows, roles, marks, isOn, is
     <table className="w-full border-separate border-spacing-0 text-sm [&_tbody_tr:last-child>*]:border-b-0">
       <thead>
         <tr>
-          <th scope="col" className={cn(stickyCell, microheaderClass, "top-0 z-30 border-b border-border pr-3 pb-2 pl-6 text-left align-bottom")}>
+          <th scope="col" className={cn(stickyCell, headText, "top-0 z-30 border-b border-border pr-3 pb-2 pl-6 text-left align-top")}>
             {label}
           </th>
           {roles.map((role) => (
             <RoleColumnHead key={role.id} role={role} />
           ))}
           {trailingHead !== undefined && (
-            <th scope="col" className={cn(microheaderClass, "grid-edge-end sticky top-0 right-0 z-20 min-w-44 border-b border-border bg-card pr-6 pb-2 pl-3 text-left align-bottom")}>
+            <th scope="col" className={cn(headText, "grid-edge-end sticky top-0 right-0 z-20 min-w-44 border-b border-border bg-card pr-6 pb-2 pl-3 text-left align-top")}>
               {trailingHead}
             </th>
           )}

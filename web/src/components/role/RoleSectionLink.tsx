@@ -1,4 +1,3 @@
-import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { levelName } from "@/models/PermissionLevel";
 import { roleSectionId, type RoleSection } from "@/models/RoleSection";
 
@@ -10,16 +9,15 @@ interface RoleSectionLinkProps {
   total: number;
 }
 
-const linkClass =
-  "group/link inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground";
+const cellClass = "flex min-w-0 flex-col gap-0.5 rounded-md px-3 py-2";
 
-// A section's reach, "Workspace 9/15 up to Delete": a link down to it, or plain words when the role has no access in it.
+// A section's reach as a stat cell, the section and its "9/15" over "Up to Delete": a link down to it, or plain words when the role has no access in it.
 export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkProps) => (
   <>
     {held === 0 && (
-      <span className="inline-flex h-7 items-center gap-1.5 px-2 text-xs text-muted-foreground">
-        {section.title}
-        <span>No access</span>
+      <span className={cellClass}>
+        <span className="text-xs text-muted-foreground">{section.title}</span>
+        <span className="text-sm text-muted-foreground">No access</span>
       </span>
     )}
     {held > 0 && (
@@ -29,19 +27,14 @@ export const RoleSectionLink = ({ section, held, top, total }: RoleSectionLinkPr
           event.preventDefault();
           document.getElementById(roleSectionId(section.area))?.scrollIntoView({ block: "start" });
         }}
-        className={linkClass}
+        aria-label={`${section.title}: ${held} of ${total} areas${top > 0 ? `, up to ${levelName(top)}` : ""}`}
+        className={`${cellClass} transition-colors duration-150 ease-standard hover:bg-accent`}
       >
-        {/* One dotted rule under the whole reach, glyph included, so it reads as one link. */}
-        <span className="inline-flex items-center gap-1.5 border-b border-dotted border-muted-foreground/40 group-hover/link:border-solid group-hover/link:border-foreground/50">
+        <span aria-hidden className="flex items-baseline gap-2 text-xs text-muted-foreground">
           {section.title}
-          <span className="font-mono text-foreground tabular-nums">{`${held}/${total}`}</span>
-          {top > 0 && (
-            <span>
-              up to<LevelGlyph level={top} className="mx-1.5 -translate-y-px align-middle" />
-              <span className="text-foreground">{levelName(top)}</span>
-            </span>
-          )}
+          <span className="font-mono tabular-nums">{`${held}/${total}`}</span>
         </span>
+        <span aria-hidden className="truncate text-sm font-medium text-foreground">{top > 0 ? `Up to ${levelName(top)}` : "Some access"}</span>
       </a>
     )}
   </>
