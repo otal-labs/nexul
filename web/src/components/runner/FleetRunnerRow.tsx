@@ -1,7 +1,6 @@
 import { RunnerActivity } from "@/components/runner/RunnerActivity";
 import { RunnerMenu } from "@/components/runner/RunnerMenu";
 import { RunnerName } from "@/components/runner/RunnerName";
-import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import { RunnerVersion } from "@/components/runner/RunnerVersion";
 import { fleetTracks } from "@/components/runner/fleetTracks";
 import type { Machine, Runner } from "@/models/Runner";
@@ -12,13 +11,10 @@ interface FleetRunnerRowProps {
   machine?: Machine | undefined;
 }
 
-// One line on the list's shared tracks, stepped in under its band so its dot sits under the machine's name.
+// One line on the list's shared tracks, stepped in so its name sits under the band's; its state is a dot beside its word, as the band's is.
 export const FleetRunnerRow = ({ runner, machine }: FleetRunnerRowProps) => (
   <li className={cn(fleetTracks, "items-baseline gap-x-4 py-2.5 pr-4 pl-11 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
-    <span className="flex min-w-0 items-baseline gap-3">
-      <span className="flex self-center">
-        <RunnerStatusDot connected={runner.connected} />
-      </span>
+    <span className="flex min-w-0 items-baseline">
       <RunnerName name={runner.name} muted={!runner.connected} />
     </span>
     <RunnerActivity runner={runner} />

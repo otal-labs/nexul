@@ -19,14 +19,12 @@ export const FleetCodeRow = ({ code }: FleetCodeRowProps) => {
   const until = formatClockTime(code.expires_at);
   return (
     <li className={cn(fleetTracks, "items-baseline gap-x-4 py-2.5 pr-4 pl-11 leading-5 transition-colors duration-150 ease-standard hover:bg-accent")}>
-      <span className="flex min-w-0 items-baseline gap-3">
-        <span className="flex self-center" title="Not added yet">
-          <span aria-hidden className="size-2 rounded-full border border-dashed border-muted-foreground" />
-        </span>
+      <span className="flex min-w-0 items-baseline">
         <RunnerName name={code.name} muted />
       </span>
-      <span className="col-span-2 truncate text-right text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
-        unused code · until {until}
+      <span className="col-span-2 flex min-w-0 items-baseline justify-end gap-2 text-row text-muted-foreground tabular-nums" title={`Works once, until ${until}`}>
+        <span aria-hidden className="size-2 shrink-0 self-center rounded-full border border-dashed border-muted-foreground" />
+        <span className="truncate">unused code · until {until}</span>
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
