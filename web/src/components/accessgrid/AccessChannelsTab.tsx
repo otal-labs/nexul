@@ -1,11 +1,9 @@
 import { ChannelsCard } from "@/components/accessgrid/ChannelsCard";
-import { gridCardStyle, gridCardWidth } from "@/components/accessgrid/gridStyles";
 import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { useSaveAccessGrid } from "@/hooks/AccessGridHooks";
 import { useAccessDraft } from "@/hooks/useAccessDraft";
 import { useFlash } from "@/hooks/useFlash";
 import { countLabel, type AccessGrid } from "@/models/AccessGrid";
-import { cn } from "@/lib/utils";
 
 interface AccessChannelsTabProps {
   grid: AccessGrid;
@@ -26,8 +24,7 @@ export const AccessChannelsTab = ({ grid }: AccessChannelsTabProps) => {
   return (
     <form
       id={FORM}
-      className={cn("flex min-h-0 flex-col", gridCardWidth)}
-      style={gridCardStyle(grid.roles.length, false)}
+      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         void submit().catch(() => undefined);

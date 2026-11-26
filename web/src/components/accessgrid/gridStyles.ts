@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 // The name column: sticky on the left, opaque so cells scrolled under it never show, casting its edge once scrolled.
 export const stickyCell = "sticky left-0 z-10 w-50 min-w-50 max-w-50 bg-card lg:w-60 lg:min-w-60 lg:max-w-60 grid-edge";
 export const leadStrip = "border-b border-border bg-muted/40 dark:bg-muted/80";
@@ -12,7 +10,7 @@ export const stickyHover = "group-hover/row:bg-linear-to-r group-hover/row:from-
 export const nameText = "absolute inset-x-0 top-1/2 -translate-y-1/2 truncate";
 // The empty last column of a grid with nothing pinned right: 16px that fade the columns passing under it while more lie past the edge.
 export const fadeEndCell = "grid-fade-end sticky right-0 z-10 w-4 min-w-4 border-b border-border p-0";
-// Takes the grid's spare width after the last column, so the ticks start beside the names and People follows the last role.
+// A grid with nothing pinned right takes its spare width here, after the last role.
 export const fillerCell = "border-b border-border";
 // The grid scrolls sideways a whole role column at a time, so it never rests on half a column under the sticky ones.
 export const snapScroller = "snap-x snap-proximity scroll-ps-50 lg:scroll-ps-60";
@@ -20,8 +18,3 @@ export const snapScroller = "snap-x snap-proximity scroll-ps-50 lg:scroll-ps-60"
 export const matrixFadeWidth = "w-12 min-w-12";
 // Below 1024px the matrix's area column narrows, its names wrapping to two lines, so another role column fits.
 export const matrixAreaWidth = "w-44 min-w-44 max-w-44";
-// A grid's card is as wide as its columns (the name column, 72px a role, the trailing column, the gutters and border), never under 36rem, so no empty band runs between the roles and People; the card's body is a size container, so the width is set from outside it.
-export const gridCardWidth = "[--grid-name:12.5rem] lg:[--grid-name:15rem]";
-export const gridCardStyle = (roles: number, trailing: boolean): CSSProperties => ({
-  maxWidth: `max(calc(var(--grid-name) + ${roles * 72 + (trailing ? 128 : 16) + 22}px), 36rem)`,
-});
