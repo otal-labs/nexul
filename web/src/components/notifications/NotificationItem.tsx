@@ -2,7 +2,7 @@ import { currentRowFillClass, CurrentRowEdge } from "@/components/CurrentRow";
 import { formatShortAgo } from "@/components/doc/docTime";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { KeyedTitle } from "@/components/notifications/KeyedTitle";
-import { notificationMark } from "@/components/notifications/notificationTone";
+import { notificationMark, waitingMark } from "@/components/notifications/notificationTone";
 import { docQuery } from "@/hooks/DocHooks";
 import { useMarkNotificationUnread, useOpenInboxRow, useSelectedInboxRow } from "@/hooks/NotificationHooks";
 import { ticketQuery } from "@/hooks/TicketHooks";
@@ -21,7 +21,8 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
   const open = useOpenInboxRow();
   const markUnread = useMarkNotificationUnread();
   const unread = row.unreadIds.length > 0;
-  const { icon: MarkIcon, tone, label } = notificationMark(row.notification);
+  // A row still waiting on the viewer leads with the question mark, whatever its newest notice was.
+  const { icon: MarkIcon, tone, label } = row.needsAnswer ? waitingMark : notificationMark(row.notification);
   const { subject_type, subject_id, kind } = row.notification;
   const playWorded = row.title === row.notification.subject_title && (kind === NotificationKind.PlayRunFinished || kind === NotificationKind.PlayRunWaiting);
   // The detail pane reads a ticket or a doc by its id; the other subjects load nothing worth fetching early.
@@ -43,7 +44,7 @@ export const NotificationItem = ({ row }: NotificationItemProps) => {
         )}
       >
         {selected && <CurrentRowEdge />}
-        <span className="flex h-lh w-3 shrink-0 items-center">
+        <span className="absolute top-2 left-0 flex h-lh w-3 items-center justify-center">
           <span
             {...(unread ? { role: "img", "aria-label": "Unread" } : { "aria-hidden": true })}
             data-unread={unread || undefined}

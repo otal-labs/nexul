@@ -20,6 +20,8 @@ const runMarks: Record<PlayRunOutcome, { icon: LucideIcon; tone: string; label: 
   interrupted: { icon: CircleStopIcon, tone: "text-warning", label: "Run interrupted" },
 };
 
+export const waitingMark = { icon: notificationKindIcon[NotificationKind.PlayRunWaiting] ?? CircleIcon, tone: "text-warning", label: undefined };
+
 /** The icon a row leads with, in its status hue when the notice carries a state; a play run shows how it ended. */
 export const notificationMark = (n: Notification): { icon: LucideIcon; tone: string | undefined; label: string | undefined } => {
   if (n.kind === NotificationKind.PlayRunFinished) return runMarks[playRunOutcome(n)];

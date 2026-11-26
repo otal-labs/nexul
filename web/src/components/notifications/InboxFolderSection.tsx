@@ -15,8 +15,8 @@ export const InboxFolderSection = ({ folder }: InboxFolderSectionProps) => {
   const showDot = folder.unread && !open;
   return (
     <section aria-label={folder.name}>
-      <div className="flex h-9 items-center px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:rounded-md has-[:focus-visible]:outline-(--focus)">
-        <span className="flex w-3 shrink-0 items-center">
+      <div className="relative flex h-9 items-center px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:rounded-md has-[:focus-visible]:outline-(--focus)">
+        <span className="absolute inset-y-0 left-0 flex w-3 items-center justify-center">
           <span
             {...(showDot ? { role: "img", "aria-label": "Unread" } : { "aria-hidden": true })}
             data-unread={showDot || undefined}
