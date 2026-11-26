@@ -1,37 +1,35 @@
 import { Link } from "react-router";
 
 import { AutomationAttentionChip } from "@/components/automation/AutomationAttentionChip";
-import { AutomationStatusMark } from "@/components/automation/AutomationStatusMark";
 import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { AutomationRunOutcome } from "@/enums/Automation";
 import { useSwitchAutomation } from "@/hooks/useSwitchAutomation";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { AutomationState } from "@/models/Automation";
+import { runOutcomes } from "@/models/AutomationRun";
 import { automationLastRunText, automationWeekText, type AutomationListItem } from "@/utils/AutomationListUtility";
 
 interface AutomationRowProps {
   item: AutomationListItem;
 }
 
-// The name and its one chip, then the last error while it fails, else what it does when its code says.
+// The name and its one chip, then the last error led by its outcome's mark while it fails, else what it does; the switch and the chip say the rest, and an off row dims as a whole.
 export const AutomationRow = ({ item: { automation, state, attention } }: AutomationRowProps) => {
   const power = useSwitchAutomation();
   const wsPath = useWorkspacePath();
   const failing = state === AutomationState.Failing;
   const crashed = automation.last_run?.outcome === AutomationRunOutcome.Crash;
   const week = automationWeekText(automation);
+  const FailedIcon = runOutcomes[crashed ? AutomationRunOutcome.Crash : AutomationRunOutcome.Failure].icon;
 
   return (
-    <li className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto_2.25rem] items-baseline gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent">
-      <span className="row-span-2 self-start">
-        <AutomationStatusMark automation={automation} />
-      </span>
+    <li className="grid grid-cols-[minmax(0,1fr)_auto_2.25rem] items-baseline gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent">
       <div className="flex h-5 min-w-0 items-baseline gap-3">
         <Link
           to={wsPath(`/automations/${automation.id}`)}
           title={automation.name}
-          className={cn("min-w-0 truncate text-sm font-medium hover:underline", !automation.enabled && "text-muted-foreground")}
+          className={cn("min-w-0 truncate text-sm font-medium hover:underline", !automation.enabled && "font-normal text-muted-foreground")}
         >
           {automation.name}
         </Link>
@@ -52,12 +50,16 @@ export const AutomationRow = ({ item: { automation, state, attention } }: Automa
         />
       </span>
       {failing && (
-        <p className="col-span-2 col-start-2 truncate font-mono text-xs leading-5 text-muted-foreground" title={automation.last_run?.error}>
-          {automation.last_run?.error || (crashed ? "Crashed" : "Failed")}
+        <p className="col-span-2 flex min-w-0 items-center gap-1.5 font-mono text-xs leading-5 text-muted-foreground" title={automation.last_run?.error}>
+          <FailedIcon aria-hidden className="size-3.5 shrink-0 text-destructive" />
+          <span className="truncate">
+            <span className="sr-only">{crashed ? "Crashed: " : "Failed: "}</span>
+            {automation.last_run?.error || (crashed ? "Crashed" : "Failed")}
+          </span>
         </p>
       )}
       {!failing && automation.description && (
-        <p className="col-span-2 col-start-2 truncate text-row leading-5 text-muted-foreground" title={automation.description}>
+        <p className="col-span-2 truncate text-row leading-5 text-muted-foreground" title={automation.description}>
           {automation.description}
         </p>
       )}

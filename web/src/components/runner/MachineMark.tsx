@@ -1,14 +1,15 @@
-import { ServerIcon, ServerOffIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import type { GroupTone } from "@/utils/RunnerFleetUtility";
 
-// A band's mark on the name's first line: a machine is a server glyph, not a dot, so the dots counted in the header are runners alone; it takes the warning hue only while some runners are down.
-export const MachineMark = ({ tone, none = false }: { tone: GroupTone; none?: boolean }) => {
-  const Icon = none ? ServerOffIcon : ServerIcon;
-  return (
-    <span className="flex h-5 shrink-0 items-center">
-      <Icon aria-hidden className={cn("size-4 text-muted-foreground", tone === "partial" && "text-warning")} />
-    </span>
-  );
-};
+// A band's state dot, the same grammar as a runner row's: green online, amber while some runners are down, a hollow ring offline.
+export const MachineMark = ({ tone }: { tone: GroupTone }) => (
+  <span
+    aria-hidden
+    className={cn(
+      "size-2 shrink-0 self-center rounded-full",
+      tone === "online" && "bg-success",
+      tone === "partial" && "bg-warning-mark",
+      tone === "offline" && "ring-[1.5px] ring-muted-foreground/60 ring-inset",
+    )}
+  />
+);

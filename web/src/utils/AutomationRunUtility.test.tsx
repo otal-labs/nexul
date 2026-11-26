@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { AutomationRunOutcome } from "@/enums/Automation";
 import type { AutomationRun } from "@/models/AutomationRun";
-import { RUNS_PAGE, automationLogLine, automationRunDays, automationRunSummary, automationRunsLine } from "@/utils/AutomationRunUtility";
+import { RUNS_PAGE, automationLogLine, collapseRepeatedRuns, automationRunDays, automationRunSummary, automationRunsLine } from "@/utils/AutomationRunUtility";
 
 const run = (id: string, started_at: string, outcome: AutomationRunOutcome = AutomationRunOutcome.Success): AutomationRun => ({
   id,
@@ -27,6 +27,21 @@ describe("automationRunDays", () => {
     expect(days.map((day) => [day.label, day.runs.map((r) => r.id)])).toEqual([
       ["Today", ["a"]],
       ["Yesterday", ["b", "c"]],
+    ]);
+  });
+});
+
+describe("collapseRepeatedRuns", () => {
+  it("folds a stretch of identical successes into its newest run, and keeps failures and runs that reported something else apart", () => {
+    const at = "2026-10-30T10:00:00Z";
+    const said = { ...run("d", at), logs: '{"message":"queued the review"}' };
+    const runs = [run("a", at), run("b", at), run("c", at, AutomationRunOutcome.Failure), run("e", at, AutomationRunOutcome.Failure), said, run("f", at), run("g", at)];
+    expect(collapseRepeatedRuns(runs).map((row) => [row.run.id, row.count])).toEqual([
+      ["a", 2],
+      ["c", 1],
+      ["e", 1],
+      ["d", 1],
+      ["f", 2],
     ]);
   });
 });

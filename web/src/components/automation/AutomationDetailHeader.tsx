@@ -32,7 +32,7 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
       }
       meta={
         <>
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <AutomationMetaLine automation={automation} />
           </span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">

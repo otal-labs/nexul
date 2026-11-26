@@ -53,7 +53,7 @@ export const AutoPlayRow = memo(({ autoPlay, subject, canWrite, onOpen, onLeave 
     <li
       data-leaving={leaving || undefined}
       data-off={!autoPlay.enabled || undefined}
-      className={cn(leavingRowClass, "group/row flex items-start gap-3 bg-card pr-4 hover:bg-accent")}
+      className={cn(leavingRowClass, "group/row flex items-start gap-3 pr-4 hover:bg-accent")}
     >
       <div className="flex min-w-0 flex-1 flex-col items-start">
         <button type="button" onClick={() => onOpen(autoPlay)} className="inset-focus m-0.5 mr-0 min-w-0 self-stretch rounded-md py-2.5 pl-3.5 text-left">

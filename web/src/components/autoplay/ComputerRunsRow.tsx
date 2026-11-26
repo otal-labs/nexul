@@ -3,13 +3,15 @@ import { cn } from "@/lib/utils";
 import { LimitRow } from "@/components/autoplay/LimitRow";
 import { useUpdateComputerSettings } from "@/hooks/PairingHooks";
 import { RUNS_AT_ONCE_CHOICES, type Computer } from "@/models/Pairing";
+import { formatRelativeTime } from "@/utils/TimeUtility";
 
 const RUNS_OPTIONS = RUNS_AT_ONCE_CHOICES.map((n) => ({ value: n, label: n }));
 
 // One component per computer because the update hook is bound to a single computer id; the same compact select as the daily cap above it.
 export const ComputerRunsRow = ({ computer }: { computer: Computer }) => {
   const update = useUpdateComputerSettings(computer.id);
-  const name = computer.name || "New computer";
+  // An unnamed computer is told apart by when it was added.
+  const name = computer.name || `New computer · added ${formatRelativeTime(computer.created_at)}`;
   const shown = update.isPending ? (update.variables?.runs_at_once ?? computer.runs_at_once) : computer.runs_at_once;
 
   return (
