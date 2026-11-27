@@ -1,29 +1,32 @@
-import { SparklesIcon } from "lucide-react";
-import { Navigate, useParams } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 
-import { AgentDetail } from "@/components/agent/AgentDetail";
-import { AgentListPane } from "@/components/agent/AgentListPane";
-import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
-import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
-import { useFirstPlayPath } from "@/hooks/useFirstPlayPath";
-import { isAgentKind } from "@/models/Agent";
+import { AgentHeader } from "@/components/agent/AgentHeader";
+import { AgentTabs } from "@/components/agent/AgentTabs";
+import { PlayTabFeed } from "@/components/agent/PlayTabFeed";
+import { Container } from "@/components/Container";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { agentTabPath, isAgentTab } from "@/models/Agent";
 
-// Plays, your computers, the ones shared with you, and where each project's runs go, beside the open one (ADR 0211).
+// The Agent's plays, one tab per type, each play a row that unfolds its settings and its auto plays.
 export const AgentPage = () => {
-  const { kind, id } = useParams();
-  const open = isAgentKind(kind) && !!id;
-  const first = useFirstPlayPath();
+  const { tab } = useParams();
+  const can = useAreaAccess();
+  const wsPath = useWorkspacePath();
+  const { search } = useLocation();
 
   return (
-    <div className="h-full">
-      {!open && first.to && <Navigate replace to={first.to} />}
-      <ListDetailLayout
-        hasSelection={open}
-        stableGutter
-        list={<AgentListPane />}
-        placeholder={!first.pending && !first.to && <ListDetailPlaceholder icon={SparklesIcon} title="Select a play or a computer" summary="What the Agent runs, and where" />}
-        detail={open && <AgentDetail key={`${kind}/${id}`} kind={kind} id={id} />}
-      />
-    </div>
+    <Container className="py-8 sm:pr-3.5">
+      {!isAgentTab(tab) && <Navigate replace to={{ pathname: wsPath(agentTabPath("ticket")), search }} />}
+      {isAgentTab(tab) && (
+        <div className="space-y-2">
+          <AgentHeader tab={tab} />
+          <AgentTabs active={tab} />
+          {can && !can("plays") && <NoDataDisplay message="You can't read plays here" />}
+          {can?.("plays") && <PlayTabFeed tab={tab} />}
+        </div>
+      )}
+    </Container>
   );
 };

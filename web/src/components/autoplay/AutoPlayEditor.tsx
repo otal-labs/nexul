@@ -1,33 +1,37 @@
-import { ArrowLeftIcon } from "lucide-react";
 import { FormProvider, useForm } from "react-hook-form";
 import { useLocation } from "react-router";
 
+import { UnfoldedEditor } from "@/components/agent/UnfoldedEditor";
+import { EditorFooter } from "@/components/agent/EditorFooter";
+import { ComputersSection } from "@/components/autoplay/ComputersSection";
 import { ConditionsSection } from "@/components/autoplay/ConditionsSection";
+import { LastSweepLine } from "@/components/autoplay/LastSweepLine";
 import { LimitsSection } from "@/components/autoplay/LimitsSection";
 import { MemoriesSection } from "@/components/autoplay/MemoriesSection";
 import { MomentSection } from "@/components/autoplay/MomentSection";
 import { PrioritySection } from "@/components/autoplay/PrioritySection";
 import { RunOnSection } from "@/components/autoplay/RunOnSection";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
-import { useCreateAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
+import { useCreateAutoPlay, useDeleteAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
 import { newDraft, subjectOf, toDraft, toSaveRequest, type AutoPlay, type AutoPlayDraft } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
 
 const DISCARD_MESSAGE = "Your changes to this auto play will be lost.";
 
-interface AutoPlayComposerProps {
+interface AutoPlayEditorProps {
   play: Play;
   // null composes a new one.
   autoPlay: AutoPlay | null;
   onClose: () => void;
 }
 
-// Takes the list's place under Starts by itself; Save and Cancel act on this auto play.
-export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerProps) => {
+// An auto play's flat editor, unfolded under its row; Save and Cancel act on this auto play.
+export const AutoPlayEditor = ({ play, autoPlay, onClose }: AutoPlayEditorProps) => {
   const subject = subjectOf(play);
   const can = useAreaAccess();
   const canWrite = can?.("editAutoPlays") ?? false;
@@ -40,8 +44,8 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
   const { open: confirm } = useConfirmationDialog();
   const create = useCreateAutoPlay(play.workspace_id, play.id);
   const update = useUpdateAutoPlay(play.workspace_id, play.id);
+  const remove = useDeleteAutoPlay(play.workspace_id, play.id);
 
-  // Leaving the tab (another tab, another play) with edits asks first; closing the composer itself goes back to the list.
   useLeaveGuard(isDirty, pathname, () => undefined, DISCARD_MESSAGE);
 
   const back = useLatestCallback(async () => {
@@ -55,24 +59,42 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
       if (!autoPlay) await create.mutateAsync(input);
       onClose();
     } catch {
-      // The hook toasts why the server refused; the composer stays open with the edits.
+      // The hook toasts why the server refused; the editor stays open with the edits.
     }
   });
 
+  const destroy = useLatestCallback(async () => {
+    if (!autoPlay) return;
+    const ok = await confirm({
+      title: "Delete this auto play?",
+      message: "The play stops starting itself at this moment. Runs it already started keep their trails.",
+      confirmLabel: "Delete auto play",
+    });
+    if (ok) remove.mutate(autoPlay.id, { onSuccess: onClose });
+  });
+
   return (
-    <FormProvider {...form}>
-      <div className="settle-in space-y-5">
-        <Button type="button" variant="ghost" size="sm" className="-ml-2.5 text-muted-foreground" onClick={() => void back()}>
-          <ArrowLeftIcon />
-          Auto plays
-        </Button>
+    <UnfoldedEditor label={autoPlay ? "Edit auto play" : "New auto play"}>
+      <FormProvider {...form}>
         <MomentSection />
+        {autoPlay?.moment === "schedule" && (
+          <div className="pb-3 @xl:pl-[8.5rem]">
+            <LastSweepLine playId={autoPlay.play_id} autoPlayId={autoPlay.id} />
+          </div>
+        )}
         <ConditionsSection />
+        <RunOnSection />
+        <ComputersSection />
         <PrioritySection />
         <LimitsSection />
-        <RunOnSection />
         <MemoriesSection />
-        <div className="flex justify-end gap-2">
+        <EditorFooter>
+          {autoPlay && (
+            <ActionButton permission="autoplays:delete" verb="delete auto plays" type="button" variant="ghost" liveClassName="text-destructive hover:text-destructive" onClick={() => void destroy()}>
+              Delete
+            </ActionButton>
+          )}
+          <span className="flex-1" />
           <Button type="button" variant="outline" onClick={() => void back()}>
             {canWrite ? "Cancel" : "Close"}
           </Button>
@@ -81,8 +103,8 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
               Save
             </Button>
           )}
-        </div>
-      </div>
-    </FormProvider>
+        </EditorFooter>
+      </FormProvider>
+    </UnfoldedEditor>
   );
 };

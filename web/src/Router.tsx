@@ -7,6 +7,7 @@ import { AccessSetupGate } from "@/components/accessgrid/AccessSetupGate";
 import { AreaGate } from "@/components/auth/AreaGate";
 import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
+import { AgentLegacyRedirect } from "@/components/agent/AgentLegacyRedirect";
 import { WorkspaceScope } from "@/components/workspace/WorkspaceScope";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
@@ -89,7 +90,8 @@ const workspaceRoutes: RouteObject[] = [
   { path: "tickets/:ticketId/:tab?", handle: projectGate("tickets"), element: <TicketPage /> },
   { path: "runners", element: <RunnersPage /> },
   { path: "agent", element: <AgentPage /> },
-  { path: "agent/:kind/:id", element: <AgentPage /> },
+  { path: "agent/:tab", element: <AgentPage /> },
+  { path: "agent/:kind/:id", element: <AgentLegacyRedirect /> },
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },
   ...staticTabs("access", ["roles", "channels"], "access", <AccessPage />),

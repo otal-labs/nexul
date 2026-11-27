@@ -159,6 +159,7 @@ export interface AutoPlayDraft {
   run_as: string;
   // Makes the caller the person on save; a new auto play starts with it set, as the server makes its creator the person.
   run_as_me: boolean;
+  computer_rule: AutoPlayComputerRule;
   memory_ids: string[];
 }
 
@@ -180,6 +181,7 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   resource: "",
   run_as: "",
   run_as_me: true,
+  computer_rule: {},
   memory_ids: [],
 });
 
@@ -201,6 +203,7 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   run_on: normalRunOn(autoPlay.run_on),
   run_as: autoPlay.run_as,
   run_as_me: false,
+  computer_rule: autoPlay.computer_rule ?? {},
   memory_ids: autoPlay.memory_ids,
 });
 
@@ -221,6 +224,8 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
   ...(draft.run_on === "person" && draft.run_as_me && { run_as_me: true }),
+  // Computer ids name computers in a person's order, so only a person auto play keeps them.
+  computer_rule: { labels_in: draft.computer_rule.labels_in ?? [], labels_out: draft.computer_rule.labels_out ?? [], ids: draft.run_on === "person" ? (draft.computer_rule.ids ?? []) : [] },
   memory_ids: draft.memory_ids,
   one_at_a_time: draft.one_at_a_time,
   resource: draft.one_at_a_time ? draft.resource.trim() : "",

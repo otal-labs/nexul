@@ -159,7 +159,7 @@ checkbox keeps its box at full strength on a `muted` fill, its tick on
 in words beside it, never only on hover.
 
 The current row. Every list that marks the current item (the sidebar and its
-channels, the section navs, the Docs, Memories, Agent and Inbox list panes, the
+channels, the section navs, the Docs, Memories and Inbox list panes, the
 access panel's targets, a note rail) draws it one way, from `brand` and never
 from `accent`: a fill of `brand` at 12% (16% in dark), the label in ink
 (`text-foreground`) at weight 500, never `brand` and never `brand-foreground`,
@@ -616,7 +616,7 @@ row, so the field after it never shifts between Success and Failure. A page
 that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
 
-List pane. A page that edits one record beside its siblings (Docs, Memories, Agent)
+List pane. A page that edits one record beside its siblings (Docs, Memories)
 is the app sidebar, a list, and the open record. From 1024px the list is
 dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 360px default, one width shared by every page,
@@ -653,7 +653,7 @@ its shortcut ("Ctrl K to search"); `ListDetailPlaceholder` is the
 reference. A list whose pane makes records (Memories) gives the placeholder
 its primary New action, which turns it into the full `EmptyState` (the 26px
 Fraunces headline over the count, the action, then the shortcut), and hides
-the list's `+` beside it. The Agent page from 1024px opens the list's first play instead, so the pane beside the list is never a placeholder while there is a play to show (`useFirstPlayPath`). Docs instead opens on its overview (`DocsOverview`), read from the
+the list's `+` beside it. Docs instead opens on its overview (`DocsOverview`), read from the
 set the list shows (live docs, or archived ones while that view is on) and
 filtered by the list's search: a page header titled "Docs" in the display face over a muted line of the folder count and the last
 edit (mono only as a relative figure, "14m ago"; a date stays in the line's sans), with the pane's one primary `New doc` at its right, the list's `+` hidden beside it, a "Needs attention"
@@ -697,47 +697,13 @@ rounded corners. Every list scroller keeps a stable scrollbar gutter on both
 edges, and so does each band of `ListPaneHeader`, so the `+` and the search
 field end on the rows' edge and the current row's tint sits as far from the
 panel's left edge as from its right. A meta on the title's line (`metaOnTitleLine`)
-sets inline in that line, so a mono count sits on the title's baseline. In a grouped list (Docs, Memories, Agent) the group row you
+sets inline in that line, so a mono count sits on the title's baseline. In a grouped list (Docs, Memories) the group row you
 are scrolled into stays pinned at the top on `panel-opaque`, 36px tall, and
 the top fade runs under it instead of over it (`sticky-group-head`).
 `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
-Plays. On the Agent page each type group's microheader reads "Ticket plays", "Doc plays" and so on, with a mono count. A play's row is
-the label (two lines at most, as every list pane title) with the last run's
-mono time in the title line's corner (none while a run is in flight), so
-the line under it takes the row's full width: a muted line of
-where it shows (`On In progress`) for a ticket play, or for any other play its description as the preview, so every play row is two lines; a bolt and
-`2 auto on` counting the auto plays switched on, its words kept at every width (in a tight row the stage or preview cuts; the count, its words and the status never do), `Off` and a muted label when disabled, and only when the play needs a
-look now a status mark and word, first that applies: `3 running`,
-`2 need answers`, `Last run failed`. The open play is one page of sections, not
-tabs: the header (the Enabled switch in its action cluster before Edit and
-the `…`, and under the description a mono health line, busiest first, zero
-figures left out: `5 running · 6 need answers · 1 failed this week · 17 runs
-this week · last 2h ago`, the last dropped while a run is in flight, `Not
-run yet` before the first), a facts strip (Shows on, Excluded, Template),
-Starts by itself (one bordered list; a row is the moment in 14px medium,
-then 12px labelled lines on a 72px muted label column, If, Priority and Runs
-on, each value hanging beside its label however far it wraps and a clause the
-rule lacks left out; every condition and every priority rule spelled out,
-never "and 2 more", values in foreground at normal weight and the glue and
-labels muted; an off row turns its moment muted, never faded, its switch at
-full ink; switch and `…` centred on the moment's line; the queue in
-the card's `surface-2` footer only while something is queued, one sentence of
-whose computers the runs wait for and why ("2 queued for Alice's computers,
-waiting their turn"); Runs on names a place, never a role ("The developer's
-computers"), and a yes/no rule reads as a phrase ("Has a linked PR"); an
-off row keeps its labels muted and dims its values to `foreground` at 80%;
-then Runs (a Needs answer block of the waiting runs, oldest first and
-five at most with Show all N, then Recent, newest first, ten at a time with
-Show more; each 40px row the status mark, a ticket's key in a mono column,
-the target's title in medium, the run's summary muted ("Needs Sam's
-answer" for a waiting run), who started it, and the mono time; in narrow
-runs the starter gives way first, then the summary, so the title keeps
-its room; its Needs answer and Recent subheads sit on the section's edge; an
-empty Runs is the same card with one muted line), then Instructions in a
-`well-shade` well, ten lines then Show all.
-`PlayDetail` and `PlayListRow` in `web/src/components/play/` are the reference.
+Plays. The Agent page is not a list pane: a header, then one tab per play type, and the tab's plays as one tree on the page. The header is "Agent" in the display face with, at its right, an outline Computers button (a status dot, the word, and "2/4" in mono, the finished computers online of all) that opens the Computers dialog, then the primary New ticket play, New doc play, New stack play or New interview play, following the tab. The tabs are line tabs, Ticket plays, Doc plays, Stack plays and Interview plays, each with its mono count and each a path segment (`/agent/ticket`), so a link lands on one; there are no filter tabs. A tab with no plays is the `EmptyState` with its New button. The tree is a hairline-divided list under a muted header row (Play, and when it starts by itself, then 7 days and Last run); phones keep the words and the switch. A play is a row: its name at 14px medium over one muted 12px line, "Button on tickets in In progress" and the description for a ticket play and the description alone for any other, its runs in 7 days (mono, muted at zero), its last run ("14m", "20 Oct", or a dash) and its enabled switch, which saves at once. Under it, indented a step with an elbow connector, one row per auto play: a bolt and the auto play as a sentence ("When it enters In progress, developer is Sam, one at a time", a stack's moment keeping its own words, a schedule its schedule in words), then a pill for each computer it would run on, each with its state dot and its name in mono, then its own switch. When the person is only known at run time one muted pill says whose computers they are ("Whoever moved it: their computers", "The developer: their computers", "The tester: their computers"), and "Nobody picked yet" while a person auto play has none; a fixed person other than the viewer reads "Sam: their computers". An auto play that no computer takes reads "No computer takes it". After a play's auto plays, a muted "+ Start it by itself when…" row; an interview play has neither auto plays nor that row. Rows unfold in place, never in a dialog, a sheet or a page of their own: one row is open at a time, kept in `?open=` so it is linkable, and it takes the current-row recipe (the `brand` tint and its edge) while its editor sits under it on `surface-2`, its fields as label rows (an 8rem muted label column, the controls beside it, stacked below 36rem), Save and Cancel at the foot with the row's own ghost actions (Delete, and History on a play) at the left. A play's editor has Name, Button shows in (a ticket play), Description, Instructions, Works in, Projects (a select over the projects its button shows in) and Needs; History opens the versions dialog. An auto play's editor is flat: When, Only if (a row per condition and "+ Add a condition · all must match", with a match select once there are several; a nested group an older auto play already has keeps its editor), Runs as, On computers, Priority, Limits and Memories. On computers is a select (Any computer, Labelled, Not labelled, Only these, the last only while it runs as a fixed person) beside a multi-value picker of labels, or of computers by name, with "Right now that's" and the same pills under it, the computers the rule leaves out struck through. A right-click on a play opens Edit, Clone, History, Permissions… and Delete, as on any row. The old links (`/agent/plays/<id>`, `/agent/computers/<id>`, `/agent/projects/<id>`) redirect to the tab with `?open=` or to the Computers dialog's `?computers=`. `AgentPage`, `PlayTreeRow`, `AutoPlayTreeRow`, `PlayEditor` and `AutoPlayEditor` are the reference.
 
 Inbox. One row per doc or ticket however many notifications it has: the
 title, over a meta line saying what happened ("created · 2 updates",
@@ -875,7 +841,7 @@ A mark that names the record (the board's project mark) goes in the
 `leading` slot, centred on the title and meta pair. Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
-A list pane (Docs, Memories, Agent, and the Inbox once a row is open) keeps its pane title bar instead of a page
+A list pane (Docs, Memories, and the Inbox once a row is open) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
 to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
 is three lines with no closing hairline (`actionsOn="crumbs"`): the
@@ -960,7 +926,7 @@ so the content's edge holds from a list to its record, and `size="page"`
 (`max-w-5xl`) for settings (Configuration, Your settings, Project settings); every page pads `py-8` inside its panel. A page taller than its
 panel fades over its last 40px at the panel's bottom edge rather than stopping
 on a flat line. Pages built
-from panes (Docs, Memories, Agent, Inbox, Ticket) run the full width with no
+from panes (Docs, Memories, Inbox, Ticket) run the full width with no
 Container, one panel per pane; Chat is one conversation panel.
 
 Microheader. The one small uppercase label is `microheaderClass`
@@ -2229,6 +2195,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Runners: one list, a `well-shade` band per machine, pinned while its rows scroll, over one-line runner rows on shared tracks, a column head row, the fleet's health in the header and the queue above the list (2026-10-29) | Against one card per machine (a server tile, three header actions and a People row on every machine put a one-runner machine at about 200px, columns were laid out per card, and the queue sat in a side rail that fell to the bottom of the page at 768) and against bands separated by space alone or a heading over a box per machine (both read as separate pages); the stat well's four figures moved into the header's health line, the trash column and Import into `⋯` menus, and "just now" was dropped, since a connected runner's last seen always reads that |
 | Runners: no column head, a server mark on each band, its runners stepped in under the name, the version trailing, and Add runner… in the band's `⋯` (2026-11-26) | A column head over a band read the band as a row with blank Version and Doing cells; a status dot on the band beside a runner's dot made "1 of 1 online" sit beside two green dots; a band Add runner beside the header's repeated the page's primary action on every machine; and with Doing last a short "idle" left a dead run to the row's end. Rejected: a column head repeated under every band (chrome for one or two rows) |
 | Plays: every row two lines, the description as the preview of a play whose group names its type; `auto on` keeps its words; the Agent page opens its first play from 1024px (2026-11-26) | One- and two-line rows side by side broke the list's rhythm, a bare bolt and figure at the default pane width said nothing, and an 830px pane holding a 14px "select a play" line read as empty. Rejected: a Fraunces headline in the placeholder (the list pane spec keeps it compact beside a full list) |
+| The Agent page is a tab per play type over one tree, rows unfolding in place, and no list pane (2026-11-27) | The owner picked it from prototypes. One left list mixed four play groups, the computers, the ones shared with you and the projects, so a play and an auto play were two clicks and a page apart and nothing said where a run would land; a tab per type with each play's auto plays beneath it shows the whole of what starts by itself at once, the pills name the computers, and an unfolding row keeps the list in view while it is edited. Against a filter tab strip (All, Starts by itself, Only when pressed: a play is one of several, never one of them), a side sheet or dialog per auto play, and a separate play page |
 | Runners: what a runner is doing set right against its version; an unused code's line ends where the versions end (2026-11-26) | With doing left in a wide column a short `idle` and the version sat about 450px apart, each aligned to nothing, and a column head was already rejected; set against each other they read as one group at every width. |
 | Runners: a runner's dot moved from before its name to beside its state word, and a code's dashed dot with it (2026-11-26) | A green dot before the name answered "connected" while the word at the row's end said `idle`, so one row spoke two state grammars beside the band's one dot-and-word; with the dot beside its word every state on the page reads as a dot and the word it means, and a busy runner no longer shows two dots |
 | A machine's commands are Commands… in its band's `⋯`, opening a right sheet (2026-11-25) | A root shell on a server is rare and held by few; a band button for it would sit on every machine for everyone who sees one. Against a section folded under the band: it pushed the runner rows down the page and the band is pinned while they scroll. The sheet reuses the computer row's command rows and log sheet, so a command reads the same wherever it ran |
