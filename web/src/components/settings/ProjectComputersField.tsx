@@ -24,7 +24,7 @@ export const ProjectComputersField = ({ projectId, projectName }: ProjectCompute
   const dirty = { shouldDirty: true };
 
   return (
-    <div className="pb-2">
+    <div>
       <RankedComputersField
         subject="project"
         label="Computers"

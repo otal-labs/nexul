@@ -129,6 +129,8 @@ export const isStaleOffline = (computer: Computer) => offlineForDays(computer) >
 export interface StateLine {
   tone: SettingsStatusTone;
   text: string;
+  // The part of the line that is about how long it has been gone; it alone takes the warning colour.
+  seen?: string;
   hollow?: boolean;
 }
 
@@ -138,6 +140,13 @@ export const computerStateLine = (computer: Computer, presence: string | undefin
   const [lane] = worstFirst(computerLanes(computer, presence));
   if (!lane) return { tone: "muted", text: "" };
   if (lane.text === "Online" || lane.text === "T3 Code answering") return { tone: "success", text: `Online · ${computer.running > 0 ? `${computer.running} of ${computer.runs_at_once} running` : "idle"}` };
-  if (lane.text === "Offline" && computer.runner) return { tone: lane.tone, text: `Offline · seen ${seenAgo(computer.runner.last_seen)}`, hollow: true };
+  if (lane.text === "Offline" && computer.runner) return { tone: lane.tone, text: "Offline · ", seen: `seen ${seenAgo(computer.runner.last_seen)}`, hollow: true };
   return { tone: lane.tone, text: lane.text };
+};
+
+// The muted word after a computer's name in a ranked list: nothing while online, "offline", or "offline 15d" once stale.
+export const offlineNote = (computer: Computer): string | undefined => {
+  if (!computer.runner || computer.runner.connected || computer.runner.reconnecting) return undefined;
+  const days = offlineForDays(computer);
+  return days >= STALE_OFFLINE_DAYS ? `offline ${days}d` : "offline";
 };

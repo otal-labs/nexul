@@ -75,20 +75,34 @@ export const RankedComputersField = ({
     </ToggleGroup>
   );
 
+  const list = (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={listed} strategy={verticalListSortingStrategy}>
+        <ul aria-label={`This ${subject}'s computers`} className={cn("divide-y divide-border rounded-md border border-border bg-card", toggle && "mt-1")}>
+          {listed.map((id, index) => (
+            <Fragment key={id}>{renderRow({ id, rank: index + 1, controls: controlsFor(id) })}</Fragment>
+          ))}
+          {editable && rest.length > 0 && <AddComputerRow computers={rest} unavailable={unavailable} onAdd={(id) => onChange([...ids, id])} />}
+        </ul>
+      </SortableContext>
+    </DndContext>
+  );
+
+  // Labelled, the list starts at the field column, in line with the controls under it.
+  if (toggle && label)
+    return (
+      <RunSettingField label={label}>
+        <div className="min-w-0">
+          {modes}
+          {list}
+        </div>
+      </RunSettingField>
+    );
+
   return (
     <div>
-      {toggle && label && <RunSettingField label={label}>{modes}</RunSettingField>}
-      {toggle && !label && modes}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={listed} strategy={verticalListSortingStrategy}>
-          <ul aria-label={`This ${subject}'s computers`} className={cn("divide-y divide-border rounded-md border border-border bg-card", toggle && "mt-1")}>
-            {listed.map((id, index) => (
-              <Fragment key={id}>{renderRow({ id, rank: index + 1, controls: controlsFor(id) })}</Fragment>
-            ))}
-            {editable && rest.length > 0 && <AddComputerRow computers={rest} unavailable={unavailable} onAdd={(id) => onChange([...ids, id])} />}
-          </ul>
-        </SortableContext>
-      </DndContext>
+      {toggle && modes}
+      {list}
     </div>
   );
 };

@@ -54,7 +54,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div>
+        <div className="@container divide-y divide-border rounded-lg border border-border px-4">
           <ProjectComputersField projectId={projectId} projectName={projectName} />
           {ids.length > 0 && (
             <RunSettingField label="Send runs to">

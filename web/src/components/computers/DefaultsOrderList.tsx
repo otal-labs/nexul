@@ -26,7 +26,7 @@ export const DefaultsOrderList = () => {
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <ul aria-label="Your order" className="divide-y divide-border rounded-md border border-border bg-card">
           {computers.map((computer, i) => (
-            <RankedComputerRow key={computer.id} id={computer.id} name={sharedComputerName(computer)} rank={i + 1} controls={{ sortable: ids.length > 1 }} />
+            <RankedComputerRow key={computer.id} id={computer.id} name={sharedComputerName(computer)} computer={computer} rank={i + 1} controls={{ sortable: ids.length > 1 }} />
           ))}
         </ul>
       </SortableContext>

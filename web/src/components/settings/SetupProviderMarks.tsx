@@ -12,7 +12,7 @@ export const SetupProviderMarks = ({ lines, titleOf = (line) => line.name }: Set
   <span className="inline-flex items-center gap-1.5 align-[-2px]">
     {lines.map((line) => (
       <span key={line.provider} title={titleOf(line)}>
-        <HarnessProviderMark driver={line.provider} className="size-3.5" />
+        <HarnessProviderMark driver={line.provider} className="size-4" />
         <span className="sr-only">{titleOf(line)}</span>
       </span>
     ))}

@@ -109,12 +109,14 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
     <div className="space-y-6">
       <PaneHeader
         title={name}
+        mono
+        note="Changes save as you go"
         meta={
           <>
             {staleDays > 0 && (
               <>
-                <SettingsStatus tone="warning" hollow textClassName="text-warning">
-                  Offline · {staleDays} days
+                <SettingsStatus tone="warning" hollow detail={`seen ${staleDays} days ago`} detailClassName="text-warning">
+                  Offline
                 </SettingsStatus>
                 <span>{[...lines.filter((l) => l.text !== "Offline").map((l) => l.text), `${computer.running} of ${computer.runs_at_once} running`].join(" · ")}</span>
               </>
@@ -173,7 +175,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
           </>
         }
       />
-      {staleDays > 0 && <StaleComputerNote name={name} days={staleDays} onRemove={() => void removeComputer()} />}
+      {staleDays > 0 && <StaleComputerNote days={staleDays} onRemove={() => void removeComputer()} />}
       {!pairing && <ComputerSettingsCard computer={computer} setup={setup} />}
       <ComputerDetails computer={computer} setup={setup} />
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}

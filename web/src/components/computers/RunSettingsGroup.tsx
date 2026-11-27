@@ -1,4 +1,5 @@
 import { SlidersHorizontalIcon } from "lucide-react";
+import { Fragment } from "react";
 
 import { DrillChevron } from "@/components/computers/DrillChevron";
 import { ListPaneGroup } from "@/components/listpane/ListPaneGroup";
@@ -12,7 +13,20 @@ import type { Project } from "@/models/Project";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // What the run settings use, up to two lines: the model and where threads start are the point of it.
-const Preview = ({ children }: { children: string | undefined }) => <span className="line-clamp-2 min-w-0 break-words">{children}</span>;
+// It breaks only at its " · " separators, so "New worktree" is never split across two lines.
+const Preview = ({ children }: { children: string | undefined }) => (
+  <span className="line-clamp-2 min-w-0">
+    {(children ?? "").split(" · ").map((part, i) => (
+      <Fragment key={part}>
+        {i > 0 && " "}
+        <span className="inline-block max-w-full truncate align-bottom whitespace-nowrap">
+          {i > 0 && "· "}
+          {part}
+        </span>
+      </Fragment>
+    ))}
+  </span>
+);
 
 interface DefaultsRowProps {
   selected: boolean;
@@ -65,7 +79,7 @@ export const RunSettingsGroup = ({ current }: RunSettingsGroupProps) => {
   const { data: projects } = useFetchWorkspaceProjects(workspaceId);
 
   return (
-    <ListPaneGroup plain label="Where runs go">
+    <ListPaneGroup plain label="Where runs go" count={(projects?.length ?? 0) + 1}>
       <DefaultsRow selected={current === DEFAULTS_ID} />
       {projects?.map((project) => <ProjectRow key={project.id} project={project} selected={current === projectTarget(project.id)} />)}
     </ListPaneGroup>

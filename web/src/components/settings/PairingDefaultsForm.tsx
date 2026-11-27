@@ -49,7 +49,7 @@ export const PairingDefaultsForm = ({ defaults }: PairingDefaultsFormProps) => {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
-      <div>
+      <div className="@container divide-y divide-border rounded-lg border border-border px-4">
         <RunSettingField label="Computers">
           <DefaultsOrderList />
         </RunSettingField>
