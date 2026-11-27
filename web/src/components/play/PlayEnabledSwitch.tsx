@@ -17,7 +17,7 @@ export const PlayEnabledSwitch = ({ play }: PlayEnabledSwitchProps) => {
       permission="plays:write"
       answer={answer("plays:write")}
       verb="edit plays"
-      aria-label={`Switch ${play.label} on or off`}
+      aria-label={`Turn ${play.label} on or off`}
       checked={play.enabled}
       disabled={update.isPending}
       onCheckedChange={(enabled) => update.mutate({ playId: play.id, input: { ...playToFormData(play), enabled } })}

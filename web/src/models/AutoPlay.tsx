@@ -103,11 +103,13 @@ export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
 export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "stack", "developer", "tester"]);
 
-export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
-  developer: "Developer",
-  tester: "Tester",
-  causer: "Whoever caused it",
-  person: "A person",
+// How a run-on choice reads for a subject and moment: the person is named by what they did to it.
+export const runOnLabel = (runOn: AutoPlayRunOn, subject: AutoPlaySubject, moment: AutoPlayMoment): string => {
+  if (runOn === "person") return "A person";
+  if (runOn === "developer") return "The ticket's developer";
+  if (runOn === "tester") return "The ticket's tester";
+  if (subject === "ticket") return "Whoever moved the ticket";
+  return moment === "doc.created" ? "Whoever created the doc" : "Whoever changed the doc";
 };
 
 // Which choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.

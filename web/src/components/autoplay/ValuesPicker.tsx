@@ -32,7 +32,7 @@ export const ValuesPicker = ({ label, values, field, onChange, disabled }: Value
           aria-label={label}
           disabled={disabled}
           title={text}
-          className="flex h-8 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-md border border-input px-2.5 text-left text-sm shadow-xs transition-[border-color] duration-150 ease-standard hover:border-foreground/25 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/20"
+          className="flex h-8 min-w-36 max-w-80 items-center justify-between gap-1.5 rounded-md border border-input px-2.5 text-left text-sm shadow-xs transition-[border-color] duration-150 ease-standard hover:border-foreground/25 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/20"
         >
           <span className={cn("truncate", values.length === 0 && "text-muted-foreground")}>{text || placeholder}</span>
           <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

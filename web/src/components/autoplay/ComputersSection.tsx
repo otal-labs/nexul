@@ -50,7 +50,7 @@ export const ComputersSection = () => {
           />
         )}
       </div>
-      {places && (
+      {places && (places.kind !== "role" || places.role !== "nobody") && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>Right now that's</span>
           <ComputerPills places={places} showExcluded />

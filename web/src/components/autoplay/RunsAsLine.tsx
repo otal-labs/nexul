@@ -15,7 +15,7 @@ export const RunsAsLine = () => {
   const yours = run_as_me || (me !== undefined && run_as === me.user.id);
   const text = (() => {
     if (yours) return "Runs as you, on your computers in your order.";
-    if (run_as === "") return "Nobody picked yet.";
+    if (run_as === "") return "Needs a person";
     return `Runs as ${personLabel(person)}, on their computers.`;
   })();
 

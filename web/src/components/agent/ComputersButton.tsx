@@ -5,7 +5,7 @@ import { useListComputers } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
 import { COMPUTERS_PARAM } from "@/models/Agent";
 
-// Opens the Computers dialog, which reads `?computers=`; the dot and "2/4" say how many of the finished computers are online.
+// Opens the Computers dialog, which reads `?computers=`; the dot and "2 of 4 online" say how many of the finished computers are online.
 export const ComputersButton = () => {
   const [, setParams] = useSearchParams();
   const { data } = useListComputers();
@@ -27,10 +27,8 @@ export const ComputersButton = () => {
       <span aria-hidden className={cn("size-1.5 rounded-full", online > 0 ? "bg-success" : "bg-muted-foreground/50")} />
       Computers
       {computers && (
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-          <span className="sr-only">, </span>
-          {online}/{computers.length}
-          <span className="sr-only"> online</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {online} of {computers.length} online
         </span>
       )}
     </Button>
