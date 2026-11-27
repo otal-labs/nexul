@@ -6,7 +6,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerCommandRow } from "@/components/settings/ComputerCommandRow";
-import { ComputerCommandSheet } from "@/components/settings/ComputerCommandSheet";
+import { ComputerCommandDialog } from "@/components/settings/ComputerCommandDialog";
 import { ComputerFact } from "@/components/settings/ComputerFact";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { LazyTerminalDialog } from "@/components/terminal/LazyTerminal";
@@ -71,7 +71,7 @@ export const ComputerCommands = ({ computer }: ComputerCommandsProps) => {
         )}
       </div>
       {shown.command && (
-        <ComputerCommandSheet command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
+        <ComputerCommandDialog command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
       )}
       {terminal && (
         <Suspense fallback={null}>
