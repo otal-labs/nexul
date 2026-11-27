@@ -10,7 +10,7 @@ import { COMPUTERS_PARAM, SETUP_PARAM } from "@/models/Agent";
 
 // Max height holds still as the pane changes; below 640px it is a full-screen sheet.
 const FRAME =
-  "flex h-[min(46rem,calc(100dvh-4rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(60rem,calc(100%-2rem))] max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0";
+  "flex h-[min(46rem,calc(100dvh-4rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(60rem,calc(100%-2rem))] xl:max-w-[min(72rem,calc(100%-2rem))] [&>button]:top-3.5 max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0";
 
 // Your computers and where runs go, on any page: open while the `computers` search param is set (ADR 0211), closing removes it.
 export const ComputersDialog = () => {

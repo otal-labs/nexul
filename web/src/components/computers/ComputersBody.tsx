@@ -36,7 +36,7 @@ export const ComputersBody = ({ target }: ComputersBodyProps) => {
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] min-[920px]:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] min-[920px]:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
       {/* A scroller of its own: the app's scrollbar and edge fade, and room under its last row so the fade clears at the end. */}
       <nav
         aria-label="Computers and run settings"

@@ -83,11 +83,11 @@ describe("the projects on the Agent page", () => {
     serve(oneWorkspace);
     renderComputers("/acme/agent?computers=");
 
-    expect(await screen.findByRole("link", { name: /home · Sonnet 5 · New worktree/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /home · Sonnet 5/ })).toBeInTheDocument();
     const group = await projectsGroup();
     expect(within(group).getByRole("link", { name: /Api/ })).toHaveTextContent("Uses defaults");
     const links = within(group).getAllByRole("link");
-    expect(links[0]).toHaveTextContent("DefaultsFirst in your order · Computer default · Project folder");
+    expect(links[0]).toHaveTextContent("Defaultshome · Computer default");
   });
 
   it("names a model from the first computer that is online when the first in order is not", async () => {
@@ -95,7 +95,7 @@ describe("the projects on the Agent page", () => {
     serve({ ...oneWorkspace, computers: [computer("c1", "home"), computer("c2", "vps")], links, presence: { c2: "connected" } });
     renderComputers("/acme/agent?computers=");
 
-    expect(await screen.findByRole("link", { name: /Sonnet 5 · New worktree/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Sonnet 5/ })).toBeInTheDocument();
   });
 
   it("saves a project's own computers, with nothing to clear on a project that uses the defaults", async () => {
@@ -111,7 +111,6 @@ describe("the projects on the Agent page", () => {
     expect(await screen.findByRole("heading", { name: "Api", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reset to defaults" }), "nothing to reset on a project that uses the defaults").toBeDisabled();
     await user.click(await screen.findByRole("radio", { name: "Only these" }));
-    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/p-api", expect.objectContaining({ computers: ["c1"] })));
     expect(toast.success).toHaveBeenCalledWith("Api saved");
@@ -124,23 +123,23 @@ describe("the projects on the Agent page", () => {
     renderComputers("/acme/agent?computers=project%3Ap-web");
 
     await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
+    await user.click(within(await screen.findByRole("dialog", { name: /^Reset .* to defaults\?$/ })).getByRole("button", { name: "Reset to defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/p-web"));
     expect(toast.success).toHaveBeenCalledWith("Web uses your defaults");
   });
 
-  it("saves the defaults from the Defaults pane", async () => {
+  it("writes the defaults as each control changes, with no Save, and says so", async () => {
     serve(oneWorkspace);
     mocks.put.mockResolvedValue({ data: { provider: "claude", model: "sonnet-5", placement: "spread", clone_automatically: false, start_in: "worktree" } });
     const user = userEvent.setup();
     renderComputers("/acme/agent?computers=defaults");
 
     expect(await screen.findByRole("heading", { name: "Defaults", level: 3 })).toBeInTheDocument();
-    await pickOption(user, /send runs to/i, "Least busy");
+    await pickOption(user, /if several are free/i, "Least busy");
     await user.click(await screen.findByRole("combobox", { name: "Model" }));
     await user.click(await screen.findByRole("option", { name: "Sonnet 5" }));
     await pickOption(user, /threads start in/i, "New worktree per thread");
-    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(mocks.put).toHaveBeenCalledWith("/api/pairing/defaults", {
@@ -152,6 +151,7 @@ describe("the projects on the Agent page", () => {
         clone_automatically: false,
       }),
     );
-    expect(await screen.findByRole("button", { name: "Saved" })).toBeInTheDocument();
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 });

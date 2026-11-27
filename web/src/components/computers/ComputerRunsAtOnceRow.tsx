@@ -14,7 +14,7 @@ export const ComputerRunsAtOnceRow = ({ computer }: ComputerRunsAtOnceRowProps) 
   return (
     <SettingsRow label="Runs at once" description="How many runs this computer takes together" compact className="last:pb-4">
       <Select value={String(computer.runs_at_once)} onValueChange={(v) => update.mutate({ runs_at_once: Number(v) })}>
-        <SelectTrigger aria-label={`Runs at once on ${computer.name}`} className="h-8 w-20 font-mono text-xs tabular-nums">
+        <SelectTrigger aria-label={`Runs at once on ${computer.name}`} className="ml-auto h-8 w-24 font-mono text-xs tabular-nums">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

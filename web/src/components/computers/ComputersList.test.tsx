@@ -202,11 +202,11 @@ describe("Your computers", () => {
     mocks.del.mockResolvedValue({ data: undefined });
     renderComputers("/acme/agent?computers=c-laptop");
 
-    expect(await screen.findByText(/2 setups never finished/)).toBeInTheDocument();
+    expect(await screen.findByText(/^2 unfinished setups/)).toBeInTheDocument();
     expect(order()).toEqual(["laptop", "build-box"]);
     expect(screen.queryByText("#3")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(screen.getByRole("button", { name: /^Remove 2 unfinished setups/ }));
     await user.click(await within(await screen.findByRole("dialog", { name: /Remove these 2 setups/ })).findByRole("button", { name: "Remove" }));
     await waitFor(() => expect(mocks.del).toHaveBeenCalledTimes(2));
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u1");
@@ -255,12 +255,12 @@ describe("Your computers", () => {
     expect(mocks.del).not.toHaveBeenCalled();
   });
 
-  it("marks an offline computer in the Defaults list with a muted word after its name, and how long once stale", async () => {
+  it("marks an offline computer in the Defaults list with a muted \"seen\" after its name", async () => {
     computers = [computers[0]!, { ...computers[1]!, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } }];
     renderComputers("/acme/agent?computers=defaults");
 
     const order = await screen.findByRole("list", { name: "Your order" });
-    expect(within(order).getByText(/^offline \d+d$/)).toBeInTheDocument();
-    expect(within(order).getAllByText(/offline/)).toHaveLength(1);
+    expect(within(order).getByText(/^seen \d+d ago$/)).toBeInTheDocument();
+    expect(within(order).getAllByText(/seen/)).toHaveLength(1);
   });
 });

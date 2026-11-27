@@ -50,7 +50,7 @@ export const ComputerLabels = ({ computer }: ComputerLabelsProps) => {
             e.preventDefault();
             add();
           }}
-          className="h-6 w-28 px-2 text-xs"
+          className="h-8 w-full px-3 text-xs"
         />
       </div>
       {derived.length > 0 && (

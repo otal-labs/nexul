@@ -4,6 +4,7 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PaneHeader } from "@/components/computers/PaneHeader";
 import { ProjectLinkForm } from "@/components/settings/ProjectLinkForm";
 import { useFetchProjectLinks, useProjectLinkSummary } from "@/hooks/PairingProjectHooks";
+import { useFlash } from "@/hooks/useFlash";
 import { useFetchWorkspaceProjects } from "@/hooks/ProjectHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -19,6 +20,7 @@ export const ProjectRunPane = ({ projectId }: ProjectRunPaneProps) => {
   const project = projects?.find((p) => p.id === projectId);
   const link = links?.find((l) => l.project_id === projectId);
   const summary = useProjectLinkSummary(link);
+  const [saved, flash] = useFlash();
   const error = projectsError || linksError;
 
   return (
@@ -26,10 +28,10 @@ export const ProjectRunPane = ({ projectId }: ProjectRunPaneProps) => {
       {(projectsPending || linksPending) && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {projects && links && !project && <NoDataDisplay message="That project isn't here" />}
-      {project && links && <PaneHeader title={project.name} meta={summary} />}
+      {project && links && <PaneHeader title={project.name} meta={summary} note={saved ? "Saved" : "Changes save as you go"} />}
       {project && links && (
         <div className="@container max-w-2xl">
-          <ProjectLinkForm projectId={project.id} projectName={project.name} link={link ?? { project_id: project.id, computers: [], checkouts: [] }} />
+          <ProjectLinkForm projectId={project.id} projectName={project.name} link={link ?? { project_id: project.id, computers: [], checkouts: [] }} onSaved={flash} />
         </div>
       )}
     </div>
