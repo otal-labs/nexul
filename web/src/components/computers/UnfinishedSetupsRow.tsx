@@ -24,21 +24,21 @@ export const UnfinishedSetupsRow = () => {
   };
 
   return (
-    <div className="mx-3 mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-      <p>
+    <div className="mx-3 mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+      <p className="min-w-0">
         {count === 1 ? "1 unfinished setup" : `${count} unfinished setups`}
         {newest && ` · started ${formatRelativeTime(newest)}`}
       </p>
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="-ml-2 h-7 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        className="h-7 shrink-0 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
         title="Removes the half-added computers; nothing ran on them"
         loading={clear.isPending}
         onClick={() => void clearAll()}
       >
-        {count === 1 ? "Remove 1 unfinished setup…" : `Remove ${count} unfinished setups…`}
+        {count === 1 ? "Remove setup" : `Remove ${count} setups`}
       </Button>
     </div>
   );

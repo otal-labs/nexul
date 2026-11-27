@@ -27,7 +27,7 @@ export const ComputerLabels = ({ computer }: ComputerLabelsProps) => {
     <div className="space-y-1.5 text-xs">
       <div className="flex flex-wrap items-center gap-1.5">
         {own.map((label) => (
-          <LabelChip key={label} label={label} className="pr-1">
+          <LabelChip key={label} label={label} dot={false} className="bg-transparent pr-1">
             <button
               type="button"
               aria-label={`Remove ${label}`}
@@ -57,7 +57,7 @@ export const ComputerLabels = ({ computer }: ComputerLabelsProps) => {
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-muted-foreground">From its facts</span>
           {derived.map((label) => (
-            <LabelChip key={label} label={label} className="border-dashed" />
+            <LabelChip key={label} label={label} dot={false} className="border-dashed bg-transparent" />
           ))}
         </div>
       )}

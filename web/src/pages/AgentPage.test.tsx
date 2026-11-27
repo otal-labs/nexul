@@ -72,7 +72,7 @@ const computer = (id: string, name: string, overrides: Record<string, unknown> =
   ...overrides,
 });
 
-const MINI = computer("c-mini", "onik-mini", { derived_labels: ["linux"] });
+const MINI = computer("c-mini", "onik-mini", { derived_labels: ["linux"], token_expires_at: "2099-01-01T00:00:00Z", facts: { t3: { state: "answering" } } });
 const DESK = computer("c-desk", "DESKTOP-4DMA8EK", { runner: { connected: false, last_seen: "", reconnecting: false }, derived_labels: ["windows"] });
 
 const OWNER_ME = {
@@ -162,12 +162,12 @@ describe("the tabs", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/plays", expect.objectContaining({ label: "Triage", type: "doc", show_when_stage: null }));
   });
 
-  it("opens the Computers dialog by setting ?computers=, with how many of the finished computers are online", async () => {
+  it("opens the Computers dialog by setting ?computers=, with how many of the finished computers are ready", async () => {
     const user = userEvent.setup();
     serve({ plays: [], computers: [MINI, DESK, computer("c-new", "", { unfinished: true })] });
     const router = renderAgentPage("/acme/agent/ticket");
 
-    const button = await screen.findByRole("button", { name: /Computers.*1 of 2 online/ });
+    const button = await screen.findByRole("button", { name: /Computers.*1 of 2 ready/ });
     await user.click(button);
     expect(router.state.location.search).toBe("?computers=");
   });

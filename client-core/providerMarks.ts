@@ -10,6 +10,8 @@ export interface ProviderMark {
   paths: string[];
   evenOdd?: boolean;
   hole?: { d: string; fill: MarkFill };
+  // A brand with no colour of its own: drawn muted and a little smaller so its solid shape never outweighs the coloured marks.
+  monochrome?: boolean;
 }
 
 const MARKS: Record<string, ProviderMark> = {
@@ -44,6 +46,7 @@ const MARKS: Record<string, ProviderMark> = {
     ],
   },
   opencode: {
+    monochrome: true,
     viewBox: "0 0 32 40",
     fill: { light: "#211E1E", dark: "#F1ECEC" },
     paths: [
