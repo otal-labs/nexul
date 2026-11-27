@@ -4,7 +4,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import { useListComputers } from "@/hooks/PairingHooks";
-import { useProjectPlacement } from "@/hooks/PairingProjectHooks";
+import { useFetchProjectLinks, useProjectPlacement } from "@/hooks/PairingProjectHooks";
 import { useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import type { WorkspacePlay } from "@/models/Play";
 import { sharedComputerName } from "@/models/SharedComputer";
@@ -34,6 +34,7 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
   const { data: answers, error, isPending } = useProjectPlacement(projectId, keys.map((key) => (key === "" ? [] : key.split(","))));
   const { data: own } = useListComputers();
   const { data: shared } = useListSharedComputers();
+  const { data: links } = useFetchProjectLinks();
   const nameOf = (id: string) => {
     const computer = [...(own ?? []), ...(shared ?? [])].find((c) => c.id === id);
     return computer ? sharedComputerName(computer) : "A computer you can't see";
@@ -42,6 +43,10 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
   const placed: PlacedPlay[] = (answers ?? []).flatMap((answer, i) => (groups.get(keys[i] ?? "") ?? []).map((play) => ({ play, answer })));
   const first = placed[0]?.answer.computer_id;
   const together = !!first && placed.every((p) => p.answer.computer_id === first);
+  // Computers of yours that the project's own list leaves out, which no run here tries.
+  const listed = links?.find((l) => l.project_id === projectId)?.computers ?? [];
+  const passedIds = new Set(placed.flatMap((p) => p.answer.passed_over.map((o) => o.computer_id)));
+  const outside = listed.length === 0 ? [] : (own ?? []).filter((c) => !c.unfinished && c.id !== first && !listed.includes(c.id) && !passedIds.has(c.id)).map((c) => c.name);
 
   return (
     keys.length > 0 && (
@@ -51,7 +56,7 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
         </h3>
         {isPending && <LoadingDisplay className="justify-start" />}
         {error && <ErrorDisplay error={error} />}
-        {answers && together && <PlacementSummary count={placed.length} computer={nameOf(first)} passed={placed.flatMap((p) => p.answer.passed_over)} />}
+        {answers && together && <PlacementSummary count={placed.length} computer={nameOf(first)} passed={placed.flatMap((p) => p.answer.passed_over)} outside={outside} />}
         {answers && !together && <PlacementList placed={placed} nameOf={nameOf} />}
       </section>
     )

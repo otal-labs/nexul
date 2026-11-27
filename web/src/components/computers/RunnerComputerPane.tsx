@@ -16,7 +16,7 @@ import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/S
 import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { usePairNow, useRestartApp } from "@/hooks/ComputerHooks";
-import { useDeleteComputer } from "@/hooks/PairingHooks";
+import { useDeleteComputer, useListOrderComputers } from "@/hooks/PairingHooks";
 import { useComputerMoves } from "@/hooks/useComputerMoves";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -55,6 +55,8 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
 
   const name = computer.name || UNNAMED;
   const connected = computer.runner?.connected === true;
+  const { data: ordered } = useListOrderComputers();
+  const rank = (ordered?.findIndex((c) => c.id === computer.id) ?? -1) + 1;
   const staleDays = isStaleOffline(computer) ? offlineForDays(computer) : 0;
   const summary = setup && setupSummary(setup);
   const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode; hollow?: boolean }[] = [
@@ -129,7 +131,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
         }
         actions={
           <>
-            {connected && computer.shell_enabled && <ComputerTerminalButton computer={computer} />}
+            {computer.shell_enabled && <ComputerTerminalButton computer={computer} offline={!connected} />}
             {/* Mounted whatever the pane shows, so the pane changing as the computer connects can't close the dialog. */}
             <AddComputerDialog
               again={{ id: computer.id, name: computer.name }}
@@ -173,7 +175,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
           </>
         }
       />
-      {staleDays > 0 && <StaleComputerNote days={staleDays} onRemove={() => void removeComputer()} />}
+      {staleDays > 0 && <StaleComputerNote rank={rank} onRemove={() => void removeComputer()} />}
       {!pairing && <ComputerSettingsCard computer={computer} setup={setup} />}
       <ComputerDetails computer={computer} setup={setup} />
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}

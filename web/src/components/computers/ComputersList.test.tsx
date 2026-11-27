@@ -180,7 +180,8 @@ describe("Your computers", () => {
     expect(within(yourComputers()).getByRole("link", { name: /^laptop/ })).toHaveTextContent("Online · 1 of 2 running");
     expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+d ago/);
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
-    expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
+    expect(screen.getByRole("button", { name: "Open terminal" }), "headers keep one shape").toBeDisabled();
+    expect(await screen.findByRole("note")).toHaveTextContent(/Skipped while offline\. Stays at #2 in your order\./);
     expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+d ago/), "the pane agrees with the row").toHaveClass("text-warning");
     expect(screen.getByRole("button", { name: "Remove computer" })).toBeInTheDocument();
   });

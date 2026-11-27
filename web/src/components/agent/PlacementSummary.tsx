@@ -30,30 +30,34 @@ interface PlacementSummaryProps {
   count: number;
   computer: string;
   passed: PassOver[];
+  // Computers of yours the project's own list leaves out.
+  outside?: string[];
 }
 
-// Every play landing on one computer is two sentences: "All 11 plays go to mini. mint and xps are skipped while offline."
-export const PlacementSummary = ({ count, computer, passed }: PlacementSummaryProps) => {
+const clause = (names: string[], one: string, many = one) => (
+  <>
+    {joined(names)} {names.length > 1 ? "are" : "is"} {names.length > 1 ? many : one}
+  </>
+);
+
+// Every play landing on one computer: "All 11 plays go to mini. mint and xps are offline; desk is not in this project's computers."
+export const PlacementSummary = ({ count, computer, passed, outside = [] }: PlacementSummaryProps) => {
   const entries = [...new Map(passed.map((p) => [`${p.computer_id}:${p.why}`, p])).values()];
-  const reasons = new Set(entries.map((p) => WHY[p.why] ?? p.text));
-  const names = [...new Set(entries.map((p) => p.name))];
+  const byReason = new Map<string, string[]>();
+  for (const p of entries) byReason.set(WHY[p.why] ?? p.text, [...(byReason.get(WHY[p.why] ?? p.text) ?? []), p.name]);
+  const parts = [...byReason.entries()].map(([reason, names]) => <Fragment key={reason}>{clause(names, reason)}</Fragment>);
+  if (outside.length > 0) parts.push(<Fragment key="outside">{clause(outside, "not in this project's computers")}</Fragment>);
 
   return (
     <p className="text-sm text-pretty">
       {count === 1 ? "The play goes" : `All ${count} plays go`} to <Host>{computer}</Host>.
-      {entries.length > 0 && reasons.size === 1 && (
+      {parts.length > 0 && (
         <>
           {" "}
-          {joined(names)} {names.length > 1 ? "are" : "is"} skipped{[...reasons][0] === "offline" ? " while offline" : `: ${[...reasons][0]}`}.
-        </>
-      )}
-      {entries.length > 0 && reasons.size > 1 && (
-        <>
-          {" "}
-          Skipped: {entries.map((p, i) => (
-            <Fragment key={`${p.computer_id}:${p.why}`}>
-              {i > 0 && ", "}
-              <Host>{p.name}</Host> ({WHY[p.why] ?? p.text})
+          {parts.map((part, i) => (
+            <Fragment key={i}>
+              {i > 0 && "; "}
+              {part}
             </Fragment>
           ))}
           .
