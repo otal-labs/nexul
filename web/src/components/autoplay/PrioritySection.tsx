@@ -2,7 +2,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AutoPlayLevel } from "@nexul/client-core/autoPlayText";
 
-import { ComposerSection, InlineSelect, QuietIcon } from "@/components/autoplay/ComposerControls";
+import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { PriorityRuleRow } from "@/components/autoplay/PriorityRuleRow";
 import { blankRule, LEVEL_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft } from "@/models/AutoPlay";
 
@@ -23,7 +23,7 @@ export const PrioritySection = () => {
           <PriorityRuleRow key={i} index={i} onRemove={() => write(rules.filter((_, at) => at !== i))} />
         ))}
         <div className="flex items-center gap-1.5">
-          <span className="text-sm text-muted-foreground">{rules.length > 0 ? "Otherwise" : "Always"}</span>
+          {rules.length > 0 && <span className="text-sm text-muted-foreground">Otherwise</span>}
           <InlineSelect
             label="Otherwise level"
             value={otherwise}
@@ -31,8 +31,11 @@ export const PrioritySection = () => {
             onChange={(level) => setValue("priority.otherwise", level as AutoPlayLevel, { shouldDirty: true })}
             disabled={formState.disabled}
           />
-          <span className="flex-1" />
-          {!formState.disabled && <QuietIcon label="Add a priority rule" onClick={add} />}
+          {!formState.disabled && (
+            <button type="button" onClick={add} className="rounded-sm text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground">
+              + Add a priority rule
+            </button>
+          )}
         </div>
       </div>
     </ComposerSection>

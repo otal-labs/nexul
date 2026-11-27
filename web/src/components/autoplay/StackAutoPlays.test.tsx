@@ -105,8 +105,8 @@ describe("a stack play's auto plays", () => {
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Nobody picked yet"));
-    await waitFor(() => expect(rows[1]).toHaveTextContent("Bob: their computers"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Needs a person"));
+    await waitFor(() => expect(rows[1]).toHaveTextContent("Bob's computers"));
   });
 
   it("offers the stack moments and conditions, runs as you by default, and saves that", async () => {
@@ -199,7 +199,7 @@ describe("a stack play's auto plays", () => {
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
     const runOn = screen.getByRole("region", { name: "Runs as" });
-    expect(await within(runOn).findByText("Nobody picked yet.")).toBeInTheDocument();
+    expect(await within(runOn).findByText("Needs a person")).toBeInTheDocument();
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
     await user.click(footer("Save"));
@@ -218,10 +218,10 @@ describe("a stack play's auto plays", () => {
     const { user } = await openAutoPlays();
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
 
-    await user.click(await screen.findByRole("switch", { name: "Switch auto play ap-2 on or off" }));
+    await user.click(await screen.findByRole("switch", { name: "Turn When a stack service recovers on or off" }));
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-2", expect.objectContaining({ enabled: false, run_on: "person" }));
 
-    await user.click(screen.getByRole("switch", { name: "Switch auto play ap-1 on or off" }));
+    await user.click(screen.getByRole("switch", { name: "Turn When a stack service crashes on or off" }));
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1", expect.objectContaining({ enabled: true }));
     expect(mocks.patch.mock.calls.at(-1)?.[1]).not.toHaveProperty("run_as_me");
   });
@@ -235,7 +235,7 @@ describe("the run-on choices of the other play types", () => {
 
     const runOn = screen.getByRole("region", { name: "Runs as" });
     await user.click(within(runOn).getByRole("combobox", { name: "Runs as" }));
-    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Developer", "Tester", "Whoever caused it", "A person"]);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["The ticket's developer", "The ticket's tester", "Whoever moved the ticket", "A person"]);
     await user.keyboard("{Escape}");
     await pickOption(user, "Runs as", "A person");
     expect(await within(runOn).findByText("Runs as you, on your computers in your order.")).toBeInTheDocument();
@@ -247,9 +247,9 @@ describe("the run-on choices of the other play types", () => {
     await user.click(await screen.findByRole("button", { name: ADD }));
 
     const runOn = screen.getByRole("region", { name: "Runs as" });
-    expect(within(runOn).getByRole("combobox", { name: "Runs as" })).toHaveTextContent("Whoever caused it");
+    expect(within(runOn).getByRole("combobox", { name: "Runs as" })).toHaveTextContent("Whoever created the doc");
     await user.click(within(runOn).getByRole("combobox", { name: "Runs as" }));
-    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Whoever caused it", "A person"]);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Whoever created the doc", "A person"]);
     await user.keyboard("{Escape}");
   });
 });

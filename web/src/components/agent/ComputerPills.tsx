@@ -4,16 +4,16 @@ import type { AutoPlayPlaces } from "@nexul/client-core/autoPlayComputers";
 import { statusDotClass } from "@/components/settings/SettingsStatus";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
-import { runnerPresence } from "@/models/ComputerChecks";
+import { isStaleOffline, runnerPresence } from "@/models/ComputerChecks";
 import type { Computer } from "@/models/Pairing";
 
 const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
 
-const ROLE_TEXT = { causer: "Whoever moved it: their computers", developer: "The developer: their computers", tester: "The tester: their computers", nobody: "Nobody picked yet" } as const;
+const ROLE_TEXT = { causer: "The mover's computers", developer: "The developer's computers", tester: "The tester's computers" } as const;
 
 const PersonPill = ({ userId }: { userId: string }) => {
   const person = usePerson(userId);
-  return <span className={cn(pillClass, "text-muted-foreground")}>{personLabel(person)}: their computers</span>;
+  return <span className={cn(pillClass, "text-muted-foreground")}>{personLabel(person)}'s computers</span>;
 };
 
 interface ComputerPillProps {
@@ -22,7 +22,9 @@ interface ComputerPillProps {
 }
 
 const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
-  const state = runnerPresence(computer.runner);
+  const presence = runnerPresence(computer.runner);
+  // The Computers dialog's mapping: online green, offline grey, offline for over a week a warning.
+  const state = presence.tone === "muted" && isStaleOffline(computer) ? { ...presence, tone: "warning" as const } : presence;
   return (
     <span className={cn(pillClass, "font-mono", struck && "text-muted-foreground line-through")}>
       {!struck && <span role="img" aria-label={state.text} className={cn("size-1.5 shrink-0 rounded-full", statusDotClass[state.tone])} />}
@@ -40,7 +42,13 @@ interface ComputerPillsProps {
 // Each computer an auto play would run on, with its state dot, or one muted pill saying whose computers it is.
 export const ComputerPills = ({ places, showExcluded = false }: ComputerPillsProps) => (
   <>
-    {places.kind === "role" && <span className={cn(pillClass, "text-muted-foreground")}>{ROLE_TEXT[places.role]}</span>}
+    {places.kind === "role" && places.role !== "nobody" && <span className={cn(pillClass, "text-muted-foreground")}>{ROLE_TEXT[places.role]}</span>}
+    {places.kind === "role" && places.role === "nobody" && (
+      <span className={cn(pillClass, "text-muted-foreground")}>
+        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusDotClass.warning)} />
+        Needs a person
+      </span>
+    )}
     {places.kind === "person" && <PersonPill userId={places.userId} />}
     {places.kind === "computers" &&
       places.computers

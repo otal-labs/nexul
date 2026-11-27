@@ -41,6 +41,8 @@ export const HistoryCompare = ({ ref, picked, restored, previous, compare, view,
       onHop={onHop}
     />
     <div ref={ref} className="mr-2 min-h-0 flex-1 overflow-y-auto [scroll-padding-top:40px] [scrollbar-gutter:stable]">
+      {/* A solid cap, so text scrolled under the strip never shows faded against its hairline. */}
+      <div aria-hidden className="sticky top-0 z-[6] -mb-3 h-3 bg-popover" />
       <HistoryScrollFade edge="top" size="lg" flush />
       <div className={cn("pt-8 pb-4", bodyKind === "code" ? "px-6" : "px-10 @min-[34rem]:px-14")}>
         {compare.isPending && !compare.error && <LoadingDisplay />}

@@ -167,7 +167,7 @@ describe("the tabs", () => {
     serve({ plays: [], computers: [MINI, DESK, computer("c-new", "", { unfinished: true })] });
     const router = renderAgentPage("/acme/agent/ticket");
 
-    const button = await screen.findByRole("button", { name: /Computers.*1\/2/ });
+    const button = await screen.findByRole("button", { name: /Computers.*1 of 2 online/ });
     await user.click(button);
     expect(router.state.location.search).toBe("?computers=");
   });
@@ -197,8 +197,8 @@ describe("the tree", () => {
     expect(row).toHaveTextContent("Button on tickets in In progress · Reads the ticket and opens a PR.");
     expect(screen.getByText("15")).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByRole("switch", { name: "Switch Fix with AI on or off" })).toBeEnabled());
-    await user.click(screen.getByRole("switch", { name: "Switch Fix with AI on or off" }));
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Turn Fix with AI on or off" })).toBeEnabled());
+    await user.click(screen.getByRole("switch", { name: "Turn Fix with AI on or off" }));
     await waitFor(() =>
       expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix", {
         label: "Fix with AI",
@@ -230,7 +230,7 @@ describe("the tree", () => {
     const mine = await screen.findByRole("button", { name: /When it enters In progress/ });
     await waitFor(() => expect(mine).toHaveTextContent("onik-mini"));
     expect(mine).not.toHaveTextContent("DESKTOP-4DMA8EK");
-    expect(await screen.findByRole("button", { name: /When it becomes unblocked/ })).toHaveTextContent("Whoever moved it: their computers");
+    expect(await screen.findByRole("button", { name: /When it becomes unblocked/ })).toHaveTextContent("The mover's computers");
     expect(screen.getByRole("button", { name: "+ Start it by itself when…" })).toBeInTheDocument();
   });
 
@@ -253,12 +253,60 @@ describe("the tree", () => {
     await screen.findByRole("button", { name: /When it enters In progress/ });
     await expectWriteControls(
       [
-        { role: "switch", name: "Switch Fix with AI on or off", reason: "Your role can't edit plays" },
-        { role: "switch", name: "Switch auto play ap-1 on or off", reason: "Your role can't switch auto plays on or off" },
+        { role: "switch", name: "Turn Fix with AI on or off", reason: "Your role can't edit plays" },
+        { role: "switch", name: "Turn When it enters In progress on or off", reason: "Your role can't switch auto plays on or off" },
         { role: "button", name: "+ Start it by itself when…", reason: "Your role can't add auto plays" },
       ],
       showLocked,
     );
+  });
+});
+
+describe("rows that open", () => {
+  it("opens from anywhere on the row but not from its switch", async () => {
+    const user = userEvent.setup();
+    serve({ plays: [play()] });
+    mocks.patch.mockResolvedValue({ data: play({ enabled: false }) });
+    const router = renderAgentPage("/acme/agent/ticket");
+
+    await user.click(await screen.findByText("15"));
+    expect(router.state.location.search).toBe("?open=play-fix");
+    expect(screen.getByRole("button", { name: /Fix with AI/ })).toHaveAttribute("aria-expanded", "true");
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Turn Fix with AI on or off" })).toBeEnabled());
+    await user.click(screen.getByRole("switch", { name: "Turn Fix with AI on or off" }));
+    expect(router.state.location.search).toBe("?open=play-fix");
+  });
+
+  it("keeps a play's auto plays in view by putting its settings after them", async () => {
+    serve({ plays: [play()], autoPlays: { "play-fix": [autoPlay()] } });
+    renderAgentPage("/acme/agent/ticket?open=play-fix");
+
+    const editor = await screen.findByRole("group", { name: "Edit Fix with AI" });
+    const row = await screen.findByRole("button", { name: /When it enters In progress/ });
+    expect(row.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("dots a computer offline for over a week as a warning and one offline since today as grey", async () => {
+    const week = { ...DESK, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } };
+    serve({ plays: [play()], computers: [MINI, week], autoPlays: { "play-fix": [autoPlay()] } });
+    renderAgentPage("/acme/agent/ticket");
+
+    const row = await screen.findByRole("button", { name: /When it enters In progress/ });
+    await waitFor(() => expect(within(row).getAllByRole("img")).toHaveLength(2));
+    const [online, stale] = within(row).getAllByRole("img");
+    expect(online).toHaveClass("bg-success");
+    expect(stale).toHaveClass("bg-warning-mark");
+  });
+
+  it("says a person auto play nobody is picked for needs a person, and lists no computers until one is", async () => {
+    serve({ plays: [play()], computers: [MINI], autoPlays: { "play-fix": [autoPlay({ run_as: "" })] } });
+    renderAgentPage("/acme/agent/ticket?open=ap-1");
+
+    const editor = await screen.findByRole("group", { name: "Edit auto play" });
+    expect(await within(editor).findByText("Needs a person")).toBeInTheDocument();
+    expect(within(editor).queryByText("Right now that's")).not.toBeInTheDocument();
+    expect(within(await screen.findByRole("button", { name: /When it enters In progress/ })).getByText("Needs a person")).toBeInTheDocument();
   });
 });
 
