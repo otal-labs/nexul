@@ -222,8 +222,8 @@ func (e *FieldError) Unwrap() error { return e.Err }
 // Paired reports whether the computer holds a harness session.
 func (c Computer) Paired() bool { return !c.TokenExpiresAt.IsZero() }
 
-// IsUnfinishedSetup is a computer added but never enrolled: the runner names it on enrolling, and it holds no session.
-func (c Computer) IsUnfinishedSetup() bool { return c.Name == "" && !c.Paired() }
+// IsUnfinishedSetup is a computer added but never enrolled: no name, no session and, on a list, no runner.
+func (c Computer) IsUnfinishedSetup() bool { return c.Name == "" && !c.Paired() && c.Runner == nil }
 
 // Session is the harness-facing view of a decrypted computer; one added with a runner is reached through it (ADR 0146).
 func (c Computer) Session() harness.Session {
