@@ -115,7 +115,7 @@ describe("TrailSection", () => {
       expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
       return;
     }
-    expect(await screen.findByRole("link", { name: "Set up onik-mint" })).toHaveAttribute("href", "/acme/agent/computers/c-mint?setup=c-mint");
+    expect(await screen.findByRole("link", { name: "Set up onik-mint" })).toHaveAttribute("href", "/?computers=c-mint&setup=c-mint");
   });
 
   it("renders nothing when the ticket has no trails", async () => {

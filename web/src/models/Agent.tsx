@@ -31,3 +31,12 @@ export const computersDialogPath = (target: string) => `${agentTabPath("ticket")
 export const agentPath = (kind: "computers" | "projects", id: string) => `${AGENT_PATH}/${kind}/${encodeURIComponent(id)}`;
 
 export const DEFAULTS_ID = "defaults";
+
+// With a computer's id, opens that computer's Set up step beside it.
+export const SETUP_PARAM = "setup";
+
+export const PROJECT_TARGET_PREFIX = "project:";
+
+export const projectTarget = (projectId: string) => `${PROJECT_TARGET_PREFIX}${projectId}`;
+
+export const computersSearch = (target = "") => `?${COMPUTERS_PARAM}=${encodeURIComponent(target)}`;

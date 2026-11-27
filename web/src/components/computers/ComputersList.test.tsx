@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Computer } from "@/models/Pairing";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { renderAgent } from "@/test/agentComputers";
+import { renderComputers } from "@/test/agentComputers";
+import { pickOption } from "@/test/pickOption";
 import { asOwner } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), post: vi.fn(), del: vi.fn() }));
@@ -45,7 +46,7 @@ const rest = (url: string) => {
   if (url === "/api/pairing/projects") return { links: [] };
   if (url === "/api/projects") return [];
   if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme", slug: "acme" }];
-  if (url.endsWith("/setup")) return { computer_id: "", confirmed_at: "2026-10-01T00:00:00Z", providers: [], turns: [], skipped_providers: [], models: {}, model_options: {}, folder: "" };
+  if (url.endsWith("/setup")) return { computer_id: "", confirmed_at: "2026-10-01T00:00:00Z", providers: [{ provider: "codex", confirmed_at: "2026-10-01T00:00:00Z", skills: [], skills_version: "v1", skills_outdated: false }], turns: [], skipped_providers: [], models: { codex: "gpt-5" }, model_options: {}, folder: "" };
   if (url.endsWith("/providers")) return { providers: [] };
   throw new Error(`unexpected GET ${url}`);
 };
@@ -65,14 +66,14 @@ describe("Your computers", () => {
 
   it("ranks the computers in their order, and says how busy the open one is", async () => {
     const user = userEvent.setup();
-    renderAgent("/acme/agent/computers/c-laptop");
+    renderComputers("/acme/agent?computers=c-laptop");
 
     expect(await screen.findByText("#1")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
     expect(order()).toEqual(["laptop", "build-box"]);
     expect(await screen.findByText("1 of 2 play runs")).toBeInTheDocument();
 
-    await user.click(within(yourComputers()).getByRole("link", { name: /build-box$/ }));
+    await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
     expect(await screen.findByText("0 of 2 play runs")).toBeInTheDocument();
   });
 
@@ -82,7 +83,7 @@ describe("Your computers", () => {
       computers = [{ ...computers[1]!, position: 0 }, { ...computers[0]!, position: 1 }];
       return { data: {} };
     });
-    renderAgent("/acme/agent/computers/c-laptop");
+    renderComputers("/acme/agent?computers=c-laptop");
 
     await user.click(await screen.findByRole("button", { name: "Actions for laptop" }));
     await user.click(await screen.findByRole("button", { name: "Move down" }));
@@ -94,7 +95,7 @@ describe("Your computers", () => {
   it("puts the order back when the server refuses it", async () => {
     const user = userEvent.setup();
     mocks.put.mockRejectedValue(new Error("the order must name each of your computers once"));
-    renderAgent("/acme/agent/computers/c-box");
+    renderComputers("/acme/agent?computers=c-box");
 
     await user.click(await screen.findByRole("button", { name: "Actions for build-box" }));
     await user.click(await screen.findByRole("button", { name: "Move up" }));
@@ -106,9 +107,9 @@ describe("Your computers", () => {
   it("sets how many runs a computer takes at once from its details", async () => {
     const user = userEvent.setup();
     mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
-    renderAgent("/acme/agent/computers/c-laptop");
+    renderComputers("/acme/agent?computers=c-laptop");
 
-    await user.click(within(await screen.findByRole("radiogroup", { name: "Runs at once on laptop" })).getByRole("radio", { name: "4" }));
+    await pickOption(user, "Runs at once on laptop", "4");
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });
     expect(await screen.findByText("1 of 4 play runs")).toBeInTheDocument();
@@ -118,7 +119,7 @@ describe("Your computers", () => {
     const user = userEvent.setup();
     computers = [{ ...computers[0]!, labels: ["gpu"], derived_labels: ["docker", "linux"] }, computers[1]!];
     mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
-    renderAgent("/acme/agent/computers/c-laptop");
+    renderComputers("/acme/agent?computers=c-laptop");
 
     expect(await screen.findByText("From its facts")).toBeInTheDocument();
     expect(screen.getByText("docker")).toBeInTheDocument();
@@ -130,17 +131,81 @@ describe("Your computers", () => {
     expect(screen.queryByRole("button", { name: "Remove docker" }), "what its facts give it can't be removed").not.toBeInTheDocument();
   });
 
-  it("switches a computer off for plays from its details, saying what still works there", async () => {
+  it("saves each of the three switches inverted or as is, apart from one another", async () => {
     const user = userEvent.setup();
     mocks.patch.mockImplementation(async (_url: string, body: object) => ({ data: { ...computers[0], ...body } }));
-    renderAgent("/acme/agent/computers/c-laptop");
+    renderComputers("/acme/agent?computers=c-laptop");
 
-    const takes = await screen.findByRole("switch", { name: "Plays, auto plays and @Agent run here" });
-    expect(takes).toBeChecked();
-    await user.click(takes);
+    const plays = await screen.findByRole("switch", { name: "Plays you start" });
+    const auto = screen.getByRole("switch", { name: "Auto plays" });
+    const terminal = screen.getByRole("switch", { name: "Terminal" });
+    expect([plays, auto, terminal].map((s) => s.getAttribute("aria-checked"))).toEqual(["true", "true", "true"]);
 
-    expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { plays_off: true });
-    expect(await screen.findByText("Commands, logs and setup still work.")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Plays, auto plays and @Agent run here" })).not.toBeChecked();
+    await user.click(plays);
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/pairing/computers/c-laptop", { plays_off: true });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Plays you start" })).not.toBeChecked());
+    expect(screen.getByRole("switch", { name: "Auto plays" }), "Auto plays keeps its own state").toBeChecked();
+
+    await user.click(screen.getByRole("switch", { name: "Auto plays" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/pairing/computers/c-laptop", { auto_plays_off: true });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Auto plays" })).not.toBeChecked());
+
+    await user.click(screen.getByRole("switch", { name: "Terminal" }));
+    expect(mocks.patch).toHaveBeenLastCalledWith("/api/pairing/computers/c-laptop", { shell_enabled: false });
+  });
+
+  it("offers Open terminal in the header only while the terminal is on and the computer online", async () => {
+    computers = [computers[0]!, { ...computers[1]!, shell_enabled: false }];
+    const user = userEvent.setup();
+    renderComputers("/acme/agent?computers=c-laptop");
+
+    expect(await screen.findByRole("button", { name: "Open terminal" })).toBeInTheDocument();
+    await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
+    expect(await screen.findByRole("heading", { name: "build-box", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open terminal" })).not.toBeInTheDocument();
+  });
+
+  it("shows each set-up provider as its mark, never its model, and a stale offline computer's warning with Remove", async () => {
+    const stale = { ...computers[1]!, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } };
+    computers = [computers[0]!, stale];
+    const user = userEvent.setup();
+    renderComputers("/acme/agent?computers=c-laptop");
+
+    const row = within(await screen.findByRole("link", { name: /^laptop/ }));
+    expect(await row.findByTitle("codex")).toBeInTheDocument();
+    expect(row.queryByText("GPT-5")).not.toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+
+    await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
+    expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
+    expect(screen.getByRole("button", { name: "Remove it" })).toBeInTheDocument();
+  });
+
+  it("opens on the first computer for an empty param, and closing takes the param away", async () => {
+    const user = userEvent.setup();
+    const { router } = renderComputers("/acme/agent?computers=&keep=1");
+
+    expect(await screen.findByRole("heading", { name: "laptop", level: 3 })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(router.state.location.search).toBe("?keep=1");
+  });
+
+  it("keeps setups that never finished out of the order and clears them together after the confirm", async () => {
+    const user = userEvent.setup();
+    const never = { ...computer("u1", "", 0), unfinished: true, token_expires_at: "0001-01-01T00:00:00Z", server_url: "" };
+    computers = [...computers, never, { ...never, id: "u2" }];
+    mocks.del.mockResolvedValue({ data: undefined });
+    renderComputers("/acme/agent?computers=c-laptop");
+
+    expect(await screen.findByText("2 setups never finished")).toBeInTheDocument();
+    expect(order()).toEqual(["laptop", "build-box"]);
+    expect(screen.queryByText("#3")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    await user.click(await within(await screen.findByRole("dialog", { name: /Clear these 2 setups/ })).findByRole("button", { name: "Clear" }));
+    await waitFor(() => expect(mocks.del).toHaveBeenCalledTimes(2));
+    expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u1");
+    expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u2");
   });
 });

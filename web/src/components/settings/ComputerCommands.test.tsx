@@ -79,35 +79,22 @@ describe("ComputerCommands", () => {
     expect(mocks.useContainerLogs).toHaveBeenCalledWith("/pairing/commands/j1/output");
   });
 
-  it("opens a terminal and stops a running command", async () => {
+  it("stops a running command", async () => {
     const user = userEvent.setup();
     mocks.get.mockResolvedValue({ data: { items: [command({ status: "running", exit_code: null })], total: 1 } });
-    mocks.post.mockResolvedValue({ data: command({ id: "j3", status: "queued", adapter: "terminal", command: "terminal" }) });
     renderCommands(laptop());
-
-    await user.click(screen.getByRole("button", { name: "Open terminal" }));
-    expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c-laptop/terminals", { cols: 80, rows: 24 });
-    expect(await screen.findByText("terminal Laptop /pairing/terminals/j3")).toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Stop go test ./..." }));
     expect(mocks.post).toHaveBeenCalledWith("/api/pairing/commands/j1/cancel");
   });
 
-  it("turns commands off with the switch, and says when the computer itself turned them off", async () => {
-    const user = userEvent.setup();
-    mocks.patch.mockResolvedValue({ data: laptop({ shell_enabled: false }) });
+  it("says when the computer itself turned commands off, and that commands are recorded", async () => {
     renderCommands(laptop({ facts: { t3: { state: "answering" }, providers: [], projects: [], shell: { enabled: false } } }));
 
     expect(screen.getByText("Off on the computer")).toBeInTheDocument();
     expect(screen.getByText("Commands run here are recorded and can be read by people with Read computer activity.")).toBeInTheDocument();
-    await user.click(screen.getByRole("switch"));
-    expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { shell_enabled: false });
-  });
-
-  it("hides Open terminal while its owner keeps commands off", async () => {
-    renderCommands(laptop({ shell_enabled: false }));
     expect(await screen.findByText("go test ./...")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Open terminal" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open terminal" }), "the owner opens it from the computer's header").not.toBeInTheDocument();
   });
 
   it("shows a closed terminal as closed and replays it in its own screen", async () => {
@@ -136,9 +123,14 @@ describe("ComputerCommands on a computer shared with the viewer", () => {
     mocks.get.mockResolvedValue({ data: { items: [command({ requester_id: "u-dave", requester_name: "dave", adapter: "web" })], total: 1 } });
   });
 
-  it("offers Open terminal but never the owner's switch", async () => {
+  it("opens a terminal for them, with no owner's switch", async () => {
+    const user = userEvent.setup();
+    mocks.post.mockResolvedValue({ data: command({ id: "j3", status: "queued", adapter: "terminal", command: "terminal" }) });
     renderCommands(laptop({ shell_enabled: false, shared: { owner_id: "u-alice", owner_name: "alice", permissions: ["computers:see", "computers:run_commands"] } }));
-    expect(await screen.findByRole("button", { name: "Open terminal" })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Open terminal" }));
+    expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c-laptop/terminals", { cols: 80, rows: 24 });
+    expect(await screen.findByText("terminal Laptop /pairing/terminals/j3")).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 

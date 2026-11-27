@@ -30,4 +30,5 @@ Rejected: tabs for Plays, Auto plays, Computers and Runs on one page, which keep
 play-by-computer matrix like the roles grid, which reads well at four computers and not at ten, and has nowhere for
 commands or setup; keeping Settings → Computers beside the new page, which is two places to keep in step.
 
-Decided 2026-11-25.
+Decided 2026-11-25. Amended 2026-11-27: the Your computers, Shared with you and Projects groups moved out of the Agent
+page's list into a Computers dialog that opens from any page; the page's list holds plays.
