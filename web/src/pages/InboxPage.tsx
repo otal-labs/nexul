@@ -1,13 +1,15 @@
+import { InboxIcon } from "lucide-react";
 import { useParams } from "react-router";
 
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
+import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { NotificationDetailPanel } from "@/components/notifications/NotificationDetailPanel";
 import { NotificationsSidebar } from "@/components/notifications/NotificationsSidebar";
 import { useFetchInbox, useMarkAllNotificationsRead, useSelectedInboxRow } from "@/hooks/NotificationHooks";
 import { EmbeddedCrumbsContext } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
-// The open row is the path's; a row that is no longer listed falls back to the list, which fills the page until a row is picked.
+// The open row is the path's; a row that is no longer listed falls back to the placeholder beside the list.
 export const InboxPage = () => {
   const { rowKey } = useParams();
   const { data, error, isPending } = useFetchInbox();
@@ -28,6 +30,7 @@ export const InboxPage = () => {
             isMarkingAllRead={markAllRead.isPending}
           />
         }
+        placeholder={!!data?.length && <ListDetailPlaceholder icon={InboxIcon} title="Select a notification" />}
         detail={<NotificationDetailPanel selected={selected?.notification} />}
       />
     </EmbeddedCrumbsContext>

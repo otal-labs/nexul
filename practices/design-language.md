@@ -723,10 +723,10 @@ take no indent. A ticket's play runs join its row. Every other notification
 is its own row, and all of them
 interleave by newest activity under day microheaders (Today, Yesterday, Last
 7 days, Earlier, by calendar day; a group with nothing is left out), pinned
-like the list pane's groups. Until a row is picked the list fills the page
-as one centred 56rem column under a page header (the workspace crumb, "Inbox" in the display face, the unread count as its meta, the controls on the right), so a row's time stays beside
-its title, with no open pane beside it; picking one opens the record beside the list, at
-the list pane's width.
+like the list pane's groups. The list keeps the list pane's width from the
+start, so picking a row opens the record beside it without moving the list;
+until then the open pane holds a `ListDetailPlaceholder` ("Select a
+notification"), empty while there is nothing to pick.
 
 Board. One grid. The header carries the project's identity: its 32px mark,
 the name in the display face (`pageTitleClassFor`), and a mono 12px meta line
@@ -841,7 +841,7 @@ A mark that names the record (the board's project mark) goes in the
 `leading` slot, centred on the title and meta pair. Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
-A list pane (Docs, Memories, and the Inbox once a row is open) keeps its pane title bar instead of a page
+A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
 to its list and folder (Docs › Runbooks), no workspace crumb. A doc's header
 is three lines with no closing hairline (`actionsOn="crumbs"`): the
@@ -2147,6 +2147,7 @@ The web app's pattern decisions, each with what it was picked over.
 
 | Decision | Why |
 |---|---|
+| The Inbox list keeps the list pane's width beside a "Select a notification" placeholder from the start (2026-11-27) | Reverses the full-page list of 2026-10-30, on the owner's call: the first pick re-laid the whole page out, swapping the page header for the pane's title bar and moving every row. At the 360px pane default a long title wraps to a second line instead of being cut, which the full-page list existed to avoid. The placeholder over a blank pane, because an empty panel reads as still loading |
 | The Inbox list fills the page until a row is picked, filters Unread or All, and every list pane starts at 360px (2026-10-30) | Reverses the Inbox row's rejection of a full-width list, on the owner's call after the inbox review: beside an empty "Select a notification" pane the list kept to 300px at 1440 and cut most titles to two lines, while the open pane said one sentence. The jump to the list pane's width on the first pick is the cost. At 300px the list pane cut titles on Docs, Memories and Plays too, so its default moves to 360, which still leaves an open record about 650px at 1280; a width saved at the old default moves with it, and a dragged one stays. Unread sits in the header as a segmented control because it narrows one list, and the row just opened stays listed so reading it never pulls it out from under the pointer |
 | The Inbox row leads with its mark, puts the time on the title's line and groups by day; filling the page it keeps to 56rem (2026-11-26) | Reverses the 2026-10-29 meta-line icon: a run of play notices drew one sparkle and "play run ended" on every row, so a failed run read like a finished one and fifteen rows repeated a line that said nothing. Leading with the outcome in its hue reads at a glance, and the title keeps its room at the 360px default because the summary line goes when it adds nothing. At full width the time sat about 1100px from a short title; the 56rem column keeps it beside it |
 | The calendar's seven columns are equal, and neighbouring months mute their text instead of taking `well-shade` (2026-11-26) | Against weekends at 0.65 of a weekday above 880px: the grid read uneven at 1440 and equal at 768; and against shaded out-of-month cells, which put two surface steps in one grid. Today's cell takes a quiet tint so the month reads at a glance |
