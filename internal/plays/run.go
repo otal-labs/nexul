@@ -98,6 +98,8 @@ type ProjectLookup interface {
 type HarnessChoice struct {
 	ComputerID string
 	Worktree   bool
+	// Auto is a run an auto play started, which a computer switched off for auto plays does not take (ADR 0213).
+	Auto bool
 	// HarnessProjectID is the T3 project a person picked beside ComputerID, remembered for the project as the run starts.
 	HarnessProjectID string
 	// Repository is the repository the run works on, as owner/name; empty takes the play's (ADR 0204).

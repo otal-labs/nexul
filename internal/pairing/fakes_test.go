@@ -139,6 +139,18 @@ func (f *fakeRepo) SetComputerLabels(_ context.Context, userID, computerID strin
 	return nil
 }
 
+func (f *fakeRepo) SetComputerAutoPlaysOff(_ context.Context, userID, computerID string, off bool, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.AutoPlaysOff = off
+	f.computers[computerID] = c
+	return nil
+}
+
 func (f *fakeRepo) SetComputerPlaysOff(_ context.Context, userID, computerID string, off bool, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

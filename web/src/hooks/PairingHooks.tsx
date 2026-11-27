@@ -306,6 +306,7 @@ export interface ComputerSettingsInput {
   chat_project_id?: string;
   shell_enabled?: boolean;
   plays_off?: boolean;
+  auto_plays_off?: boolean;
   labels?: string[];
 }
 

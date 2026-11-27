@@ -191,6 +191,9 @@ ORDER BY t.started_at DESC, t.id DESC LIMIT sqlc.arg(lim);
 -- name: SetPairingComputerPlaysOff :execrows
 UPDATE pairing_computers SET plays_off = ?, updated_at = ? WHERE id = ? AND user_id = ?;
 
+-- name: SetPairingComputerAutoPlaysOff :execrows
+UPDATE pairing_computers SET auto_plays_off = ?, updated_at = ? WHERE id = ? AND user_id = ?;
+
 -- name: ListPairingOrderShares :many
 SELECT computer_id, position FROM pairing_order_shares WHERE user_id = ? ORDER BY position, created_at;
 

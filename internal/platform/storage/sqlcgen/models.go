@@ -972,6 +972,7 @@ type PairingComputer struct {
 	ShellEnabled          int64
 	PlaysOff              int64
 	Labels                string
+	AutoPlaysOff          int64
 }
 
 type PairingMoveNotice struct {

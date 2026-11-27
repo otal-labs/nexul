@@ -67,6 +67,7 @@ type computerPairIn struct {
 	ChatProjectID *string           `json:"chat_project_id,omitempty" jsonschema:"The T3 project, from computer_list with this computer's id, that @Agent chats outside any project run in; empty clears it."`
 	ShellEnabled  *bool             `json:"shell_enabled,omitempty" jsonschema:"Whether command_run may run commands on it; false also stops the ones running."`
 	PlaysOff      *bool             `json:"plays_off,omitempty" jsonschema:"true keeps all runs off it; commands still run."`
+	AutoPlaysOff  *bool             `json:"auto_plays_off,omitempty" jsonschema:"true keeps the runs auto plays start off it; a run someone presses still lands there."`
 	Labels        *[]string         `json:"labels,omitempty" jsonschema:"Replaces its labels (a-z, 0-9, dashes); a play needing a label runs only where it is."`
 	InOrder       *bool             `json:"in_order,omitempty" jsonschema:"Shared with you under Run agents: true adds it to your order (at position), false removes it."`
 	Restart       bool              `json:"restart,omitempty" jsonschema:"Restart the Nexul app there so it picks up the PATH saved since, such as after installing git; it drops off for a few seconds."`
@@ -142,6 +143,9 @@ type computerResult struct {
 	SharedRuns       []SharedRun            `json:"shared_runs,omitempty"`
 	ShellEnabled     bool                   `json:"shell_enabled"`
 	PlaysOff         bool                   `json:"plays_off,omitempty"`
+	AutoPlaysOff     bool                   `json:"auto_plays_off,omitempty"`
+	Unfinished       bool                   `json:"unfinished,omitempty"`
+	CreatedAt        *time.Time             `json:"created_at,omitempty"`
 	Labels           []string               `json:"labels,omitempty"`
 	DerivedLabels    []string               `json:"derived_labels,omitempty"`
 	Shared           *SharedComputer        `json:"shared,omitempty"`
@@ -157,7 +161,10 @@ func toComputerResult(c Computer) computerResult {
 	r := computerResult{
 		ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Runner: c.Runner,
 		PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt, Position: c.Position, RunsAtOnce: c.RunsAtOnce, Running: c.Running,
-		ChatProjectID: c.ChatProjectID, ShellEnabled: c.ShellEnabled, PlaysOff: c.PlaysOff, Labels: c.Labels, DerivedLabels: c.DerivedLabels,
+		ChatProjectID: c.ChatProjectID, ShellEnabled: c.ShellEnabled, PlaysOff: c.PlaysOff, AutoPlaysOff: c.AutoPlaysOff, Labels: c.Labels, DerivedLabels: c.DerivedLabels,
+	}
+	if c.Unfinished {
+		r.Unfinished, r.CreatedAt = true, &c.CreatedAt
 	}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
@@ -410,7 +417,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 		}
 		return s.ownComputer(ctx, userID, in.ID)
 	}
-	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil && in.ShellEnabled == nil && in.PlaysOff == nil && in.Labels == nil {
+	if in.Name == "" && in.Position == nil && in.RunsAtOnce == nil && in.ChatProjectID == nil && in.ShellEnabled == nil && in.PlaysOff == nil && in.AutoPlaysOff == nil && in.Labels == nil {
 		return s.PairComputer(ctx, userID, in.ID)
 	}
 	if in.Position != nil {
@@ -418,7 +425,7 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 			return nil, err
 		}
 	}
-	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID, ShellEnabled: in.ShellEnabled, PlaysOff: in.PlaysOff, Labels: in.Labels}
+	patch := ComputerPatch{RunsAtOnce: in.RunsAtOnce, ChatProjectID: in.ChatProjectID, ShellEnabled: in.ShellEnabled, PlaysOff: in.PlaysOff, AutoPlaysOff: in.AutoPlaysOff, Labels: in.Labels}
 	if in.Name != "" {
 		patch.Name = &in.Name
 	}

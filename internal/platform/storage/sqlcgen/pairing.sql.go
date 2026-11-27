@@ -156,7 +156,7 @@ func (q *Queries) DeletePairingSetupTurnsForProvider(ctx context.Context, arg De
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels, auto_plays_off FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -197,6 +197,7 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.ShellEnabled,
 		&i.PlaysOff,
 		&i.Labels,
+		&i.AutoPlaysOff,
 	)
 	return i, err
 }
@@ -285,7 +286,7 @@ func (q *Queries) InsertPairingOrderShare(ctx context.Context, arg InsertPairing
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels, auto_plays_off FROM pairing_computers WHERE user_id = ? ORDER BY position, created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -327,6 +328,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.ShellEnabled,
 			&i.PlaysOff,
 			&i.Labels,
+			&i.AutoPlaysOff,
 		); err != nil {
 			return nil, err
 		}
@@ -342,7 +344,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 }
 
 const listPairingComputersFor = `-- name: ListPairingComputersFor :many
-SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, c.position, c.runs_at_once, c.chat_project_id, c.shell_enabled, c.plays_off, c.labels, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
+SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, c.position, c.runs_at_once, c.chat_project_id, c.shell_enabled, c.plays_off, c.labels, c.auto_plays_off, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
     CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name,
     s.position AS order_position
 FROM pairing_computers c
@@ -406,6 +408,7 @@ func (q *Queries) ListPairingComputersFor(ctx context.Context, userID string) ([
 			&i.PairingComputer.ShellEnabled,
 			&i.PairingComputer.PlaysOff,
 			&i.PairingComputer.Labels,
+			&i.PairingComputer.AutoPlaysOff,
 			&i.RuleAllow,
 			&i.OwnerName,
 			&i.OrderPosition,
@@ -849,7 +852,7 @@ func (q *Queries) ListPairingSharedRuns(ctx context.Context, arg ListPairingShar
 }
 
 const listPairingTunnelComputers = `-- name: ListPairingTunnelComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at, position, runs_at_once, chat_project_id, shell_enabled, plays_off, labels, auto_plays_off FROM pairing_computers WHERE tunnel_id != '' ORDER BY created_at, id
 `
 
 func (q *Queries) ListPairingTunnelComputers(ctx context.Context) ([]PairingComputer, error) {
@@ -891,6 +894,7 @@ func (q *Queries) ListPairingTunnelComputers(ctx context.Context) ([]PairingComp
 			&i.ShellEnabled,
 			&i.PlaysOff,
 			&i.Labels,
+			&i.AutoPlaysOff,
 		); err != nil {
 			return nil, err
 		}
@@ -1144,6 +1148,30 @@ func (q *Queries) SavePairingSetupTurn(ctx context.Context, arg SavePairingSetup
 		arg.EndedAt,
 	)
 	return err
+}
+
+const setPairingComputerAutoPlaysOff = `-- name: SetPairingComputerAutoPlaysOff :execrows
+UPDATE pairing_computers SET auto_plays_off = ?, updated_at = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerAutoPlaysOffParams struct {
+	AutoPlaysOff int64
+	UpdatedAt    int64
+	ID           string
+	UserID       string
+}
+
+func (q *Queries) SetPairingComputerAutoPlaysOff(ctx context.Context, arg SetPairingComputerAutoPlaysOffParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerAutoPlaysOff,
+		arg.AutoPlaysOff,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const setPairingComputerFacts = `-- name: SetPairingComputerFacts :execrows

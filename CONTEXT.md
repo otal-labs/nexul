@@ -320,6 +320,15 @@ A computer's switch, set by its owner and on by default: off, no play, auto play
 placement passes it over as `no_plays`, while commands, logs and setup keep working (ADR 0211). Stored as `plays_off`.
 _Avoid_: Disabled computer, paused computer
 
+**Takes auto plays**:
+A second owner switch, on by default: off, no run an auto play starts lands there (passed over as `no_auto_plays`), while a
+pressed run still does (ADR 0213). Stored as `auto_plays_off`.
+
+**Unfinished setup**:
+A computer added but never enrolled: no name, no session, no runner. It is in no run order and no passed-over list, and
+a client lists it as `unfinished` so it can be cleared (ADR 0213).
+_Avoid_: Ghost computer, pending computer
+
 **Project checkout**:
 The T3 project on one computer that a project's runs in one of its
 repositories use there: the one the person picked for that repository, else

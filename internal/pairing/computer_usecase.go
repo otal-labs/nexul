@@ -83,6 +83,7 @@ func (s *Service) AddComputer(ctx context.Context, userID, name string) (*Comput
 	name = strings.TrimSpace(name)
 	now := s.now().UTC()
 	computer := Computer{ID: ids.New(), UserID: userID, Kind: harness.KindT3Code, Name: name, CreatedAt: now, UpdatedAt: now}
+	computer.Unfinished = computer.IsUnfinishedSetup()
 	if err := s.repo.SaveComputer(ctx, computer); err != nil {
 		return nil, fmt.Errorf("save computer: %w", err)
 	}

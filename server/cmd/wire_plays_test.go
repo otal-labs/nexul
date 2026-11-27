@@ -170,6 +170,7 @@ func TestIntegration_PlaysHarnessResolver_AQueuedRunNamingNoComputerGoesToTheFir
 		name       string
 		offline    string
 		busy       string
+		autoOff    string
 		choice     plays.HarnessChoice
 		wantOn     string
 		wantReason string
@@ -178,6 +179,8 @@ func TestIntegration_PlaysHarnessResolver_AQueuedRunNamingNoComputerGoesToTheFir
 		{name: "the first one offline", offline: "a", choice: none, wantOn: "b", wantPassed: "a"},
 		{name: "the first one full", busy: "a", choice: none, wantOn: "b", wantPassed: "a"},
 		{name: "the order is the order tried", choice: none, wantOn: "a"},
+		{name: "the first one off for auto plays", autoOff: "a", choice: plays.HarnessChoice{Auto: true}, wantOn: "b", wantPassed: "a"},
+		{name: "off for auto plays still takes a run nobody's auto play started", autoOff: "a", choice: none, wantOn: "a"},
 		{name: "one computer that is full still waits", busy: "a", choice: plays.HarnessChoice{ComputerID: "a"}, wantReason: string(pairing.ReasonNoComputerReady)},
 	}
 	for _, tt := range tests {
@@ -212,6 +215,10 @@ func TestIntegration_PlaysHarnessResolver_AQueuedRunNamingNoComputerGoesToTheFir
 			require.NoError(t, err)
 			_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{Checkouts: []pairing.Checkout{{ComputerID: "a", HarnessProjectID: "checkout"}, {ComputerID: "b", HarnessProjectID: "checkout"}}})
 			require.NoError(t, err)
+			if tt.autoOff != "" {
+				_, err = svc.SetAutoPlaysOff(ctx, uOwner, tt.autoOff, true)
+				require.NoError(t, err)
+			}
 			if tt.busy != "" {
 				require.NoError(t, f.store.PlayTrails.CreateTrail(ctx, &plays.Trail{
 					ID: "tr-busy", WorkspaceID: wsDefault, PlayID: "p", PlayLabel: "pressed", TargetType: plays.TargetTicket, TargetID: f.ticket.ID,
