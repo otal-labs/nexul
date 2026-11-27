@@ -30,17 +30,18 @@ export const ComputersSection = () => {
 
   return (
     <ComposerSection title="On computers">
+      {nobody && <p className="pt-1.5 text-sm text-muted-foreground">Set Runs as first</p>}
+      {!nobody && (
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <InlineSelect
           label="Computer choice"
-          value={nobody ? "" : mode}
-          placeholder="—"
+          value={mode}
           options={(Object.keys(MODE_LABELS) as ComputerRuleMode[]).map((value) => ({ value, label: MODE_LABELS[value], disabled: value === "only" && run_on !== "person" }))}
           onChange={(value) => {
             setMode(value as ComputerRuleMode);
             write(withMode(value as ComputerRuleMode));
           }}
-          disabled={formState.disabled || nobody}
+          disabled={formState.disabled}
         />
         {mode !== "any" && (
           <ValuesPicker
@@ -48,11 +49,11 @@ export const ComputersSection = () => {
             values={ruleValues(rule, mode)}
             field={{ options, label: (value) => options.find((o) => o.value === value)?.label ?? value, empty: mode === "only" ? "No computers yet" : "No computer has a label yet" }}
             onChange={(values) => write(withValues(rule, mode, values))}
-            disabled={formState.disabled || nobody}
+            disabled={formState.disabled}
           />
         )}
       </div>
-      {nobody && <p className="text-xs text-muted-foreground">Pick who it runs as first</p>}
+      )}
       {places && !nobody && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>Right now that's</span>

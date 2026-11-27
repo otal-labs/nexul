@@ -29,7 +29,7 @@ interface AutoPlaySentenceProps {
   subject: AutoPlaySubject;
 }
 
-// An auto play as one sentence: "When it enters In progress, developer is Sam, one at a time".
+// An auto play as one sentence: "When it enters In progress, developer is Sam".
 export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) => {
   const groups = autoPlay.conditions.groups.filter((group) => group.rules.length > 0);
   return (
@@ -37,7 +37,6 @@ export const AutoPlaySentence = ({ autoPlay, subject }: AutoPlaySentenceProps) =
       {autoPlayLead(autoPlay, subject)}
       {groups.length > 0 && ", "}
       {joined(groups.map((group, i) => <GroupWords key={i} group={group} bracket={groups.length > 1} />), autoPlay.conditions.match)}
-      {autoPlay.one_at_a_time && ", one at a time"}
     </>
   );
 };

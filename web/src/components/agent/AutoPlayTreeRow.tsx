@@ -44,6 +44,7 @@ export const AutoPlayTreeRow = ({ play, autoPlay, open }: AutoPlayTreeRowProps) 
                 <ComputerPills places={places} />
               </span>
             )}
+            {autoPlay.one_at_a_time && <span className="text-xs text-muted-foreground">1 at a time</span>}
           </span>
         </span>
       </button>

@@ -105,7 +105,7 @@ describe("a stack play's auto plays", () => {
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Needs a person"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Set Runs as"));
     await waitFor(() => expect(rows[1]).toHaveTextContent("Bob's computers"));
   });
 

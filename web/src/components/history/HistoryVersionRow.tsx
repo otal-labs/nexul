@@ -63,22 +63,21 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
       {selected && <CurrentRowEdge />}
       <HistorySpine node={summary.name || summary.builtin_default ? "named" : "save"} selected={selected} first={first} last={last} />
       <span className="relative min-w-0 flex-1">
-        <span className="mb-0.5 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
-          {headline}
-        </span>
-        {note && <span className="mb-0.5 block text-xs text-muted-foreground">{note}</span>}
-        <span className="flex items-baseline justify-between gap-2 text-xs">
-          <span className="min-w-0 truncate text-muted-foreground">
-            <span className="font-mono tabular-nums">{date}</span>
-            {` · ${made}`}
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
+            {headline}
           </span>
           {size && (
-            <span className="shrink-0 font-mono tabular-nums" title={size.exact}>
+            <span className="shrink-0 font-mono text-xs tabular-nums" title={size.exact}>
               {size.added > 0 && <span className="text-success">+{cappedCount(size.added)}</span>}
               {size.added > 0 && size.removed > 0 && " "}
               {size.removed > 0 && <span className="text-destructive">−{cappedCount(size.removed)}</span>}
             </span>
           )}
+        </span>
+        {note && <span className="mb-0.5 block text-xs text-muted-foreground">{note}</span>}
+        <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums" title={made}>
+          {date}
         </span>
         {(summary.current || pending || restoredWhen) && (
           <span className="mt-1 block text-micro leading-4 text-muted-foreground">
