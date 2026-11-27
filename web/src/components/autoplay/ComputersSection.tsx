@@ -33,7 +33,8 @@ export const ComputersSection = () => {
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <InlineSelect
           label="Computer choice"
-          value={mode}
+          value={nobody ? "" : mode}
+          placeholder="—"
           options={(Object.keys(MODE_LABELS) as ComputerRuleMode[]).map((value) => ({ value, label: MODE_LABELS[value], disabled: value === "only" && run_on !== "person" }))}
           onChange={(value) => {
             setMode(value as ComputerRuleMode);

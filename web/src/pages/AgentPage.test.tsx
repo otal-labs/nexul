@@ -301,12 +301,16 @@ describe("rows that open", () => {
   });
 
   it("says a person auto play nobody is picked for needs a person, and lists no computers until one is", async () => {
+    const user = userEvent.setup();
     serve({ plays: [play()], computers: [MINI], autoPlays: { "play-fix": [autoPlay({ run_as: "" })] } });
     renderAgentPage("/acme/agent/ticket?open=ap-1");
 
     const editor = await screen.findByRole("group", { name: "Edit auto play" });
     expect(await within(editor).findByRole("combobox", { name: "Runs as" })).toHaveTextContent("Pick who it runs as");
-    expect(within(editor).getByRole("button", { name: "Run as me" })).toBeInTheDocument();
+    await user.click(within(editor).getByRole("combobox", { name: "Runs as" }));
+    expect((await screen.findAllByRole("option"))[0]).toHaveTextContent("Run as me");
+    await user.keyboard("{Escape}");
+    expect(within(editor).getByRole("combobox", { name: "Computer choice" })).toBeDisabled();
     expect(within(editor).getByText("Pick who it runs as first")).toBeInTheDocument();
     expect(within(editor).queryByText("Right now that's")).not.toBeInTheDocument();
     expect(within(await screen.findByRole("button", { name: /When it enters In progress/ })).getByText("Needs a person")).toBeInTheDocument();

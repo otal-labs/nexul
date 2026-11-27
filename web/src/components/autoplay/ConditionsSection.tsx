@@ -2,7 +2,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AutoPlayMatch } from "@nexul/client-core/autoPlayText";
 
-import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
+import { ComposerSection, inlineActionClass, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { ConditionRow } from "@/components/autoplay/ConditionRow";
 import { NestedGroupEditor } from "@/components/autoplay/NestedGroupEditor";
 import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type DraftGroup } from "@/models/AutoPlay";
@@ -33,7 +33,7 @@ export const ConditionsSection = () => {
       ))}
       {!formState.disabled && (
         <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-          <button type="button" onClick={addRule} className="rounded-sm hover:text-foreground focus-visible:text-foreground">
+          <button type="button" onClick={addRule} className={inlineActionClass}>
             + Add a condition
           </button>
           {groups.length > 1 && (

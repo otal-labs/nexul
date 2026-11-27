@@ -1,4 +1,5 @@
 import { CurrentRowEdge, currentRowFillClass } from "@/components/CurrentRow";
+import { inlineActionClass } from "@/components/autoplay/ComposerControls";
 import { ActionButton } from "@/components/action/ActionButton";
 import { useOpenRow } from "@/hooks/useOpenRow";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,7 @@ export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => 
         variant="ghost"
         size="sm"
         aria-expanded={open}
-        className="h-6 px-0 text-row font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className={cn(inlineActionClass, "h-6 px-0 font-normal hover:bg-transparent")}
         onClick={() => toggle(newAutoPlayKey(playId))}
       >
         + Add auto play

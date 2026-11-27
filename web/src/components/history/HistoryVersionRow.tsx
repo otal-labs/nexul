@@ -1,7 +1,6 @@
 import { personLabel } from "@nexul/client-core/person";
 
 import { CurrentRowEdge, currentRowFillClass } from "@/components/CurrentRow";
-import { HistoryAuthor } from "@/components/history/HistoryAuthor";
 import { HistorySpine } from "@/components/history/HistorySpine";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
@@ -29,6 +28,12 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
   const headline = summary.name || `Version ${summary.version}`;
   const note = summary.name || !summary.builtin_default ? "" : "Built-in default";
   const date = formatVersionTime(summary.created_at);
+  const [editor] = people;
+  // Who saved it, in a phrase: an editor's name, what an automatic save came through, or that it was saved on its own.
+  const made = (() => {
+    if (editor) return `edited by ${personLabel(editor)}${people.length > 1 ? ` +${people.length - 1}` : ""}`;
+    return summary.via ? viaLabel(summary.via) : "saved automatically";
+  })();
   const pending = summary.status === "pending";
   const label = [
     date,
@@ -62,17 +67,19 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
           {headline}
         </span>
         {note && <span className="mb-0.5 block text-xs text-muted-foreground">{note}</span>}
-        <span className="flex items-baseline justify-between gap-1 font-mono text-xs tabular-nums">
-          <span className="min-w-0 truncate">{date}</span>
+        <span className="flex items-baseline justify-between gap-2 text-xs">
+          <span className="min-w-0 truncate text-muted-foreground">
+            <span className="font-mono tabular-nums">{date}</span>
+            {` · ${made}`}
+          </span>
           {size && (
-            <span className="shrink-0" title={size.exact}>
+            <span className="shrink-0 font-mono tabular-nums" title={size.exact}>
               {size.added > 0 && <span className="text-success">+{cappedCount(size.added)}</span>}
               {size.added > 0 && size.removed > 0 && " "}
               {size.removed > 0 && <span className="text-destructive">−{cappedCount(size.removed)}</span>}
             </span>
           )}
         </span>
-        <HistoryAuthor people={people} via={summary.via} />
         {(summary.current || pending || restoredWhen) && (
           <span className="mt-1 block text-micro leading-4 text-muted-foreground">
             {summary.current && <span className="block">Current</span>}

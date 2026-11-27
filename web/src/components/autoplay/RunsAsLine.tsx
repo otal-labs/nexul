@@ -23,7 +23,7 @@ export const RunsAsLine = () => {
     me && (
       <div className="flex items-center gap-2">
         {text && <p className="text-xs text-muted-foreground">{text}</p>}
-        {!yours && (
+        {!yours && run_as !== "" && (
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" disabled={formState.disabled} onClick={() => setValue("run_as_me", true, { shouldDirty: true })}>
             Run as me
           </Button>

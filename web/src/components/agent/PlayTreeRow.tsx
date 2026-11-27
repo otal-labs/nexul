@@ -48,11 +48,8 @@ export const PlayTreeRow = ({ play, open, onHistory }: PlayTreeRowProps) => {
             <span className="line-clamp-2 text-xs text-muted-foreground">{lineOf(play)}</span>
           </span>
         </button>
-        <span className="hidden flex-col items-end gap-0.5 font-mono tabular-nums sm:flex">
-          <span className={cn("text-sm", play.runs_7d === 0 ? "text-muted-foreground" : "text-foreground")}>{play.runs_7d}</span>
-          <span className="text-micro text-muted-foreground lg:hidden">{play.last_run ? lastRunDate(play.last_run.started_at) : "—"}</span>
-        </span>
-        <span className="hidden text-right font-mono text-xs text-muted-foreground tabular-nums lg:block">{play.last_run ? lastRunDate(play.last_run.started_at) : "—"}</span>
+        <span className={cn("hidden text-right font-mono text-sm tabular-nums lg:block", play.runs_7d === 0 ? "text-muted-foreground" : "text-foreground")}>{play.runs_7d}</span>
+        <span className="hidden text-right font-mono text-xs text-muted-foreground tabular-nums sm:block">{play.last_run ? lastRunDate(play.last_run.started_at) : "—"}</span>
         <span onClick={stopRowClick} className="flex justify-end">
           <PlayEnabledSwitch play={play} />
         </span>
