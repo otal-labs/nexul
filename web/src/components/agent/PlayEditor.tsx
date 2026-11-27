@@ -1,3 +1,4 @@
+import { HistoryIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -95,7 +96,7 @@ export const PlayEditor = ({ play, onClose, onHistory }: PlayEditorProps) => {
             Delete
           </ActionButton>
         )}
-        <ActionButton permission="plays:read" verb="read play history" type="button" variant="ghost" onClick={onHistory}>
+        <ActionButton permission="plays:read" verb="read play history" icon={HistoryIcon} type="button" variant="outline" onClick={onHistory}>
           History
         </ActionButton>
         <span className="flex-1" />

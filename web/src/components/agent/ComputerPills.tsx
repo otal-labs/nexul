@@ -1,5 +1,3 @@
-import { UserRoundXIcon } from "lucide-react";
-
 import { personLabel } from "@nexul/client-core/person";
 import type { AutoPlayPlaces } from "@nexul/client-core/autoPlayComputers";
 
@@ -37,7 +35,7 @@ const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
         <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", stale ? "border-warning-mark" : "border-muted-foreground")} />
       )}
       <span className="truncate">{computer.name}</span>
-      {!struck && !online && age && <span aria-hidden className="shrink-0 text-muted-foreground">· {age}</span>}
+      {!struck && !online && age && <span aria-hidden className="shrink-0 text-muted-foreground">· seen {age}</span>}
       {!struck && !online && <span className="sr-only">, offline{stale ? ` ${days} ${days === 1 ? "day" : "days"}` : ""}</span>}
     </span>
   );
@@ -53,12 +51,7 @@ interface ComputerPillsProps {
 export const ComputerPills = ({ places, showExcluded = false }: ComputerPillsProps) => (
   <>
     {places.kind === "role" && places.role !== "nobody" && <span className={cn(pillClass, "text-muted-foreground")}>{ROLE_TEXT[places.role]}</span>}
-    {places.kind === "role" && places.role === "nobody" && (
-      <span className={cn(pillClass, "text-muted-foreground")}>
-        <UserRoundXIcon aria-hidden className="size-3 shrink-0" />
-        Set Runs as
-      </span>
-    )}
+    {places.kind === "role" && places.role === "nobody" && <span className={cn(pillClass, "border-dashed text-muted-foreground")}>Runs as not set</span>}
     {places.kind === "person" && <PersonPill userId={places.userId} />}
     {places.kind === "computers" &&
       places.computers

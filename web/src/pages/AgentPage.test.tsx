@@ -313,7 +313,7 @@ describe("rows that open", () => {
     expect(within(editor).queryByRole("combobox", { name: "Computer choice" })).not.toBeInTheDocument();
     expect(within(editor).getByText("Set Runs as first")).toBeInTheDocument();
     expect(within(editor).queryByText("Right now that's")).not.toBeInTheDocument();
-    expect(within(await screen.findByRole("button", { name: /When it enters In progress/ })).getByText("Set Runs as")).toBeInTheDocument();
+    expect(within(await screen.findByRole("button", { name: /When it enters In progress/ })).getByText("Runs as not set")).toBeInTheDocument();
   });
 });
 
