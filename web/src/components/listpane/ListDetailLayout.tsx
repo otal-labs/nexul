@@ -8,7 +8,7 @@ interface ListDetailLayoutProps {
   list: ReactNode;
   detail: ReactNode;
   hasSelection: boolean;
-  /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. Left out, the list fills the page until a row is picked (the inbox). */
+  /** Shown in the detail pane while nothing is selected, from its top; `ListDetailPlaceholder` centres itself. Left out, the list fills the page until a row is picked. */
   placeholder?: ReactNode;
   /** Reserves the record's scrollbar so it never shifts the record; the record then gives that width back from its right padding. */
   stableGutter?: boolean;
