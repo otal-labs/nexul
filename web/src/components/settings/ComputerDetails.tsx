@@ -65,7 +65,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium">On this computer</h3>
+      <h3 className="text-xs font-medium text-muted-foreground">On this computer</h3>
       <dl className="@container space-y-3">
         {computer.server_url && !reachedThroughRunner(computer.server_url) && (
           <Fact label="Address">

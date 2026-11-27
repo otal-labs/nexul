@@ -26,7 +26,7 @@ interface RankedComputersFieldProps {
   unavailable?: { id: string; label: string }[];
   // Computers the Add menu offers beside the person's own, never part of their order: those shared with them by Run agents.
   extra?: Computer[];
-  // Puts the segmented Your order / Custom control in a labelled settings field; a field whose owner picks the mode elsewhere leaves it out.
+  // Puts the segmented Your order | Only these control in a labelled settings field; a field whose owner picks the mode elsewhere leaves it out.
   label?: string;
   toggle?: boolean;
   renderRow: (row: { id: string; rank: number; controls: RowControls }) => ReactNode;
@@ -62,7 +62,7 @@ export const RankedComputersField = ({
     <ToggleGroup
       type="single"
       variant="segmented"
-      size="xs"
+      size="sm"
       value={custom ? CUSTOM : YOUR_ORDER}
       // Radix reports "" when the chosen item is clicked again; keep the current choice.
       onValueChange={(v) => v && onChange(v === CUSTOM ? own.map((c) => c.id) : [])}
@@ -71,7 +71,7 @@ export const RankedComputersField = ({
       className="justify-self-start"
     >
       <ToggleGroupItem value={YOUR_ORDER}>Your order</ToggleGroupItem>
-      <ToggleGroupItem value={CUSTOM}>Custom</ToggleGroupItem>
+      <ToggleGroupItem value={CUSTOM}>Only these</ToggleGroupItem>
     </ToggleGroup>
   );
 

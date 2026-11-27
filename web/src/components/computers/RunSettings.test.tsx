@@ -87,7 +87,7 @@ describe("the projects on the Agent page", () => {
     const group = await projectsGroup();
     expect(within(group).getByRole("link", { name: /Api/ })).toHaveTextContent("Uses defaults");
     const links = within(group).getAllByRole("link");
-    expect(links[0]).toHaveTextContent("DefaultsFirst in order · Computer default · Project folder");
+    expect(links[0]).toHaveTextContent("DefaultsFirst in your order · Computer default · Project folder");
   });
 
   it("names a model from the first computer that is online when the first in order is not", async () => {
@@ -110,7 +110,7 @@ describe("the projects on the Agent page", () => {
     await user.click(within(await projectsGroup()).getByRole("link", { name: /Api/ }));
     expect(await screen.findByRole("heading", { name: "Api", level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Use defaults" }), "nothing to clear on a project that uses the defaults").not.toBeInTheDocument();
-    await user.click(await screen.findByRole("radio", { name: "Custom" }));
+    await user.click(await screen.findByRole("radio", { name: "Only these" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/pairing/projects/p-api", expect.objectContaining({ computers: ["c1"] })));

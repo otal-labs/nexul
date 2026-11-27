@@ -46,7 +46,7 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
   return (
     keys.length > 0 && (
       <section aria-labelledby="plays-land" className="space-y-2">
-        <h3 id="plays-land" className="text-sm font-medium">
+        <h3 id="plays-land" className="text-xs font-medium text-muted-foreground">
           Where its plays land now
         </h3>
         {isPending && <LoadingDisplay className="justify-start" />}

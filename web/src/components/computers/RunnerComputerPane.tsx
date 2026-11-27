@@ -57,7 +57,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
   const connected = computer.runner?.connected === true;
   const staleDays = isStaleOffline(computer) ? offlineForDays(computer) : 0;
   const summary = setup && setupSummary(setup);
-  const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode }[] = [
+  const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode; hollow?: boolean }[] = [
     ...computerLanes(computer, presence, pairNow.isPending),
     ...(summary ? [{ tone: summary.tone, text: summary.text }] : []),
   ];
@@ -112,7 +112,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
         meta={
           <>
             {worstFirst(lines).map((line) => (
-              <SettingsStatus key={line.text} tone={line.tone} detail={line.detail} {...(line.tone === "warning" && line.detail && { detailClassName: "text-warning" })}>
+              <SettingsStatus key={line.text} tone={line.tone} hollow={!!line.hollow} detail={line.detail} {...(line.tone === "warning" && line.detail && { detailClassName: "text-warning" })}>
                 {line.text}
               </SettingsStatus>
             ))}

@@ -4,7 +4,7 @@ import { useReducedMotion } from "motion/react";
 
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
-import { statusDotClass } from "@/components/settings/SettingsStatus";
+import { statusDotFor } from "@/components/settings/SettingsStatus";
 import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
 import { useFetchPresence } from "@/hooks/PairingHooks";
 import { EASE_OUT } from "@/lib/motion";
@@ -43,7 +43,7 @@ export const ComputerListRow = ({ computer, rank, sortable, selected }: Computer
       title={name}
       muted={!computer.name || !!computer.plays_off}
       titleIcon={computer.shared && <UsersIcon role="img" aria-label="Shared with you" className="size-3 text-muted-foreground" />}
-      leading={<span aria-hidden className={cn("size-1.5 rounded-full", statusDotClass[state.tone])} />}
+      leading={<span aria-hidden className={cn("size-1.5 rounded-full", statusDotFor(state.tone, state.hollow))} />}
       meta={
         rank && (
           <span title="Run order" className="font-mono text-micro text-muted-foreground tabular-nums">

@@ -36,11 +36,10 @@ export const ComputersDialog = () => {
         ref={content}
         className={FRAME}
         aria-describedby={undefined}
-        // Focus starts on the open list item (or the list), not on Add a computer, so the dialog opens without a ring on a button.
+        // Focus starts on the list container, which paints no ring, not on Add a computer or a row.
         onOpenAutoFocus={(e) => {
           e.preventDefault();
-          const list = content.current?.querySelector<HTMLElement>("nav");
-          (list?.querySelector<HTMLElement>('[aria-current="page"]') ?? list)?.focus();
+          content.current?.querySelector<HTMLElement>("nav")?.focus({ focusVisible: false } as FocusOptions);
         }}
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border py-3 pr-14 pl-4 sm:pl-6">
