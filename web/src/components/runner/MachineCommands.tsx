@@ -10,7 +10,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ComputerCommandRow } from "@/components/settings/ComputerCommandRow";
-import { ComputerCommandSheet } from "@/components/settings/ComputerCommandSheet";
+import { ComputerCommandDialog } from "@/components/settings/ComputerCommandDialog";
 import { LazyTerminalDialog } from "@/components/terminal/LazyTerminal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetchMachineCommands, useOpenMachineTerminal, useSetMachineShell } from "@/hooks/MachineCommandHooks";
@@ -106,7 +106,7 @@ export const MachineCommands = ({ machine }: MachineCommandsProps) => {
         </ul>
       )}
       {shown.command && (
-        <ComputerCommandSheet command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
+        <ComputerCommandDialog command={shown.command} open={shown.open} onOpenChange={(open) => setShown((prev) => ({ ...prev, open }))} />
       )}
       {terminal && (
         <Suspense fallback={null}>
