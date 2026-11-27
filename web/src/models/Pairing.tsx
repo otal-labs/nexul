@@ -40,6 +40,10 @@ export interface Computer {
   shell_enabled: boolean;
   // Its owner's switch keeping every play, auto play and @Agent turn off it (ADR 0211); absent on an older server.
   plays_off?: boolean;
+  // Its owner's switch keeping the runs auto plays start off it; a pressed run still lands (ADR 0213).
+  auto_plays_off?: boolean;
+  // A setup that never enrolled: no name, no session, no runner; in no run order (ADR 0213).
+  unfinished?: boolean;
   // What its owner set, and what its facts give it (docker, its OS); a play's needs match both (ADR 0197).
   labels?: string[];
   derived_labels?: string[];
@@ -49,7 +53,7 @@ export interface Computer {
 export interface PassOver {
   computer_id: string;
   name: string;
-  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed" | "no_plays";
+  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed" | "no_plays" | "no_auto_plays";
   text: string;
 }
 

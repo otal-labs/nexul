@@ -558,6 +558,52 @@ func TestPlaysOff_PassesTheComputerOverAndSwitchingItBackWakesTheQueue(t *testin
 	assert.Equal(t, []PlacementChangedEvent{one, one}, bus.placements, "each switch wakes the waiting runs")
 }
 
+func TestAutoPlaysOff_PassesTheComputerOverForAutoRunsOnly(t *testing.T) {
+	t.Parallel()
+	bus := &fakeBus{}
+	f := newPlacementFixture(t)
+	f.svc.bus = bus
+	f.add(t, "desk", func(c *Computer) { c.AutoPlaysOff = true })
+	f.add(t, "laptop", nil)
+	pass := PassOver{ComputerID: "desk", Name: "desk", Why: PassOverNoAutoPlays, Text: "desk takes no auto plays"}
+
+	auto, err := f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Auto: true})
+	require.NoError(t, err)
+	assert.Equal(t, "laptop", auto.Computer.ID)
+	assert.Equal(t, []PassOver{pass}, auto.PassedOver)
+
+	pressed, err := f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1"})
+	require.NoError(t, err)
+	assert.Equal(t, "desk", pressed.Computer.ID, "a run someone presses still lands on it")
+
+	_, err = f.svc.UpdateComputer(t.Context(), "u1", "laptop", ComputerPatch{AutoPlaysOff: new(true)})
+	require.NoError(t, err)
+	var nc *NotConfiguredError
+	_, err = f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", Auto: true})
+	require.ErrorAs(t, err, &nc, "no computer takes auto plays")
+	assert.Len(t, nc.PassedOver, 2)
+	assert.Equal(t, []PlacementChangedEvent{{UserID: "u1", MembersOnly: true}}, bus.placements, "the switch wakes the waiting runs")
+}
+
+func TestUnfinishedSetup_IsInNeitherTheOrderNorThePassedOver(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "laptop", nil)
+	f.add(t, "stub", func(c *Computer) { c.Name, c.BearerToken, c.TokenExpiresAt = "", "", time.Time{} })
+
+	laptop := f.repo.computers["laptop"]
+	laptop.PlaysOff = true
+	f.repo.computers["laptop"] = laptop
+	var nc *NotConfiguredError
+	for _, ids := range [][]string{{"stub", "laptop"}, nil} {
+		_, err := f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", ComputerIDs: ids})
+		require.ErrorAs(t, err, &nc)
+		assert.Len(t, nc.PassedOver, 1, "the stub is not a computer that was passed over")
+	}
+
+	require.NoError(t, f.svc.ReorderComputers(t.Context(), "u1", []string{"laptop"}), "the order names only finished computers")
+}
+
 func TestSetPlaysOff_OnlyOnYourOwnComputer(t *testing.T) {
 	t.Parallel()
 	f := newPlacementFixture(t)

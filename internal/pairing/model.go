@@ -57,6 +57,10 @@ type Computer struct {
 	ShellEnabled bool `json:"shell_enabled"`
 	// PlaysOff is its owner's switch keeping every run off it; commands, logs and setup stay (ADR 0211).
 	PlaysOff bool `json:"plays_off"`
+	// AutoPlaysOff is its owner's switch keeping the runs an auto play starts off it; a pressed run still lands (ADR 0213).
+	AutoPlaysOff bool `json:"auto_plays_off"`
+	// Unfinished is a setup that never enrolled: no name, no session, no runner; it is in no run order (ADR 0213).
+	Unfinished bool `json:"unfinished"`
 	// Labels are what its owner set on it; DerivedLabels come from its facts (ADR 0197). A play's needs match both.
 	Labels        []string `json:"labels"`
 	DerivedLabels []string `json:"derived_labels"`
@@ -217,6 +221,9 @@ func (e *FieldError) Unwrap() error { return e.Err }
 
 // Paired reports whether the computer holds a harness session.
 func (c Computer) Paired() bool { return !c.TokenExpiresAt.IsZero() }
+
+// IsUnfinishedSetup is a computer added but never enrolled: no name, no session and, on a list, no runner.
+func (c Computer) IsUnfinishedSetup() bool { return c.Name == "" && !c.Paired() && c.Runner == nil }
 
 // Session is the harness-facing view of a decrypted computer; one added with a runner is reached through it (ADR 0146).
 func (c Computer) Session() harness.Session {
@@ -526,6 +533,7 @@ const (
 	PassOverFull              PassOverReason = "full"
 	PassOverCloneFailed       PassOverReason = "clone_failed"
 	PassOverNoPlays           PassOverReason = "no_plays"
+	PassOverNoAutoPlays       PassOverReason = "no_auto_plays"
 	PassOverMissingNeed       PassOverReason = "missing_need"
 )
 

@@ -37,6 +37,9 @@ func (s *Service) order(ctx context.Context, userID string) ([]orderSlot, error)
 	}
 	slots := make([]orderSlot, 0, len(own)+len(shares))
 	for i := range own {
+		if own[i].IsUnfinishedSetup() {
+			continue
+		}
 		slots = append(slots, orderSlot{id: own[i].ID, position: own[i].Position, own: &own[i]})
 	}
 	for _, sh := range shares {
