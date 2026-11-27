@@ -100,8 +100,8 @@ automation.on("ticket.test_failed", async (payload, ctx) => {
 });
 ```
 
-- The run waits in a person's queue exactly like an [auto play](/docs/guide/plays/#auto-plays)'s: on the ticket's developer, or its tester with `runOn: "tester"`, at `priority` `"high"`, `"normal"` (the default) or `"low"`. It counts toward the ticket's daily cap of automatic runs, and the play's show-when stage doesn't apply.
-- It answers with `{ id, state, reason }`. `state` is `"queued"`, with `reason` `"paused"` when the ticket has reached its daily cap, or `"didnt_run"` with why, such as the ticket having no developer. Either way the ticket shows it.
+- The run waits in a person's queue exactly like an [auto play](/docs/guide/plays/#auto-plays)'s: on the ticket's developer, or its tester with `runOn: "tester"`, at `priority` `"high"`, `"normal"` (the default) or `"low"`. The play's show-when stage doesn't apply.
+- It answers with `{ id, state, reason }`. `state` is `"queued"`, or `"didnt_run"` with why, such as the ticket having no developer. Either way the ticket shows it.
 - The automation's token needs the `plays:run` scope, and whoever created the automation must be able to run that play on that ticket. The default automations have no creator, so they can't start plays.
 
 Play names are checked as you type. Run `bunx nexul types <automation-id>` and it writes `src/plays.generated.d.ts` with the workspace's play names, so a typo, a doc play, or a play renamed since then is a type error in your editor. `nexul push` refreshes the file every time. A project made by `nexul init` already points `src/index.ts` at it; in an older project, add `/// <reference path="./plays.generated.d.ts" />` as the first line of `src/index.ts`. Labels are unique in a workspace, so a name is always one play.
