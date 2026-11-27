@@ -17,7 +17,7 @@ export const PlayTabFeed = ({ tab }: { tab: AgentTab }) => {
   const plays = data?.filter((play) => play.type === tab);
 
   return (
-    <div>
+    <div className={plays && plays.length > 0 ? "border-b border-border" : undefined}>
       {isPending && <LoadingDisplay label="Loading plays…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load plays." />}
       {plays && plays.length === 0 && (

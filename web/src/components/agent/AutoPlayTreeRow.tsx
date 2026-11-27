@@ -2,7 +2,7 @@ import { useId } from "react";
 import { ZapIcon } from "lucide-react";
 
 import { ActionSwitch } from "@/components/action/ActionSwitch";
-import { ComputerPills } from "@/components/agent/ComputerPills";
+import { ComputerPills, pillClass } from "@/components/agent/ComputerPills";
 import { RowChevron } from "@/components/agent/RowChevron";
 import { stopRowClick, treeRowClass } from "@/components/agent/treeRow";
 import { AutoPlaySentence } from "@/components/autoplay/AutoPlaySentence";
@@ -40,12 +40,12 @@ export const AutoPlayTreeRow = ({ play, autoPlay, open }: AutoPlayTreeRowProps) 
               <ZapIcon aria-hidden className="mr-1.5 mb-0.5 inline size-3.5" />
               <AutoPlaySentence autoPlay={autoPlay} subject={subjectOf(play)} />
             </span>{" "}
-            {places && (
+            {(places || autoPlay.one_at_a_time) && (
               <span className="flex flex-wrap items-center gap-1">
-                <ComputerPills places={places} />
+                {places && <ComputerPills places={places} />}
+                {autoPlay.one_at_a_time && <span className={cn(pillClass, "text-muted-foreground")}>One at a time</span>}
               </span>
             )}
-            {autoPlay.one_at_a_time && <span className="text-xs text-muted-foreground">· one at a time</span>}
           </span>
         </span>
       </button>

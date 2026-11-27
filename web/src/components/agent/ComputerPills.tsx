@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { isStaleOffline, offlineForDays } from "@/models/ComputerChecks";
 import type { Computer } from "@/models/Pairing";
 
-const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
+export const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
 
 const ROLE_TEXT = { causer: "The mover's computers", developer: "The developer's computers", tester: "The tester's computers" } as const;
 
