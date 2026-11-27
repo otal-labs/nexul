@@ -22,7 +22,7 @@ export const PlayTreeSection = ({ play }: { play: WorkspacePlay }) => {
   return (
     <section aria-label={play.label} className="group/play relative">
       {open === play.id && <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-10 w-0.5 bg-brand" />}
-      <PlayTreeRow play={play} open={open === play.id} onHistory={() => setHistoryOpen(true)} />
+      <PlayTreeRow play={play} open={open === play.id} autoPlays={autoPlays?.length ?? 0} onHistory={() => setHistoryOpen(true)} />
       {open === play.id && <PlayEditor key={play.id} play={play} onClose={() => setOpen("")} onHistory={() => setHistoryOpen(true)} />}
       {branch && autoPlays?.map((autoPlay) => <AutoPlayBranch key={autoPlay.id} play={play} autoPlay={autoPlay} open={open === autoPlay.id} />)}
       {branch && autoPlays && <NewAutoPlayBranch play={play} shown={open === play.id || autoPlays.length === 0} />}

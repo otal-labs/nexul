@@ -1,6 +1,9 @@
+import { UserRoundXIcon } from "lucide-react";
+
 import { personLabel } from "@nexul/client-core/person";
 import type { AutoPlayPlaces } from "@nexul/client-core/autoPlayComputers";
 
+import { formatShortAgo } from "@/components/doc/docTime";
 import { statusDotClass } from "@/components/settings/SettingsStatus";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
@@ -25,6 +28,7 @@ const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
   const online = !!computer.runner?.connected;
   const days = offlineForDays(computer);
   const stale = isStaleOffline(computer);
+  const age = stale ? `${days}d` : computer.runner?.last_seen ? formatShortAgo(computer.runner.last_seen) : "";
   const tip = stale ? `Offline · seen ${days} ${days === 1 ? "day" : "days"} ago` : "Offline · passed over while offline";
   return (
     <span title={online || struck ? undefined : tip} className={cn(pillClass, "font-mono", (struck || !online) && "text-muted-foreground", struck && "line-through")}>
@@ -33,7 +37,7 @@ const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
         <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", stale ? "border-warning-mark" : "border-muted-foreground")} />
       )}
       <span className="truncate">{computer.name}</span>
-      {stale && <span aria-hidden className="shrink-0 text-muted-foreground">· {days}d</span>}
+      {!struck && !online && age && <span aria-hidden className="shrink-0 text-muted-foreground">· {age}</span>}
       {!struck && !online && <span className="sr-only">, offline{stale ? ` ${days} ${days === 1 ? "day" : "days"}` : ""}</span>}
     </span>
   );
@@ -51,8 +55,8 @@ export const ComputerPills = ({ places, showExcluded = false }: ComputerPillsPro
     {places.kind === "role" && places.role !== "nobody" && <span className={cn(pillClass, "text-muted-foreground")}>{ROLE_TEXT[places.role]}</span>}
     {places.kind === "role" && places.role === "nobody" && (
       <span className={cn(pillClass, "text-muted-foreground")}>
-        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusDotClass.warning)} />
-        Needs a person
+        <UserRoundXIcon aria-hidden className="size-3 shrink-0" />
+        Set Runs as
       </span>
     )}
     {places.kind === "person" && <PersonPill userId={places.userId} />}

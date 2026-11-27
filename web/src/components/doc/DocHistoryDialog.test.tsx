@@ -87,7 +87,7 @@ describe("DocHistoryDialog", () => {
     expect(screen.getByText("an hour").tagName).toBe("DEL");
     expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
     expect(screen.getByText("This is the current version")).toBeInTheDocument();
-    expect(screen.getAllByText(/edited by Alice Moreau/)).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /Alice Moreau/ })).toHaveLength(3);
   });
 
   it("compares a picked version with the one before it and restores it", async () => {
@@ -99,7 +99,7 @@ describe("DocHistoryDialog", () => {
 
     const added = await screen.findByRole("group", { name: "Change 1 of 1, added" });
     expect(added).toHaveTextContent("Watch error rates for an hour then promote.");
-    expect(screen.getAllByText(/via an agent|edited by/).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /via an agent/ }).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /^Restore / }));
 
     expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/versions/2/restore");
