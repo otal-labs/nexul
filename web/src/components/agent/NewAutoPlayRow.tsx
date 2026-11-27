@@ -5,11 +5,25 @@ import { cn } from "@/lib/utils";
 
 export const newAutoPlayKey = (playId: string) => `new:${playId}`;
 
-// The compact, muted last row of a play's branch, its text on the auto plays' chevron; it unfolds a new auto play's editor in place.
-export const NewAutoPlayRow = ({ playId, open }: { playId: string; open: boolean }) => {
+interface NewAutoPlayRowProps {
+  playId: string;
+  open: boolean;
+  // Drawn while the play is open or has no auto plays; otherwise it takes no room until the play is hovered or holds focus.
+  shown: boolean;
+}
+
+// The compact, muted last row of a play's branch, its text on the auto plays' sentences; it unfolds a new auto play's editor in place.
+// Folded to no height rather than display none, so Tab from the play still reaches it and the focus reveals it.
+export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => {
   const { toggle } = useOpenRow();
   return (
-    <div className={cn("relative flex h-6 items-center border-b border-border pl-12", open && currentRowFillClass)}>
+    <div
+      className={cn(
+        "relative flex items-center overflow-hidden pl-[4.375rem]",
+        shown || open ? "h-6 border-b border-border" : "h-0 group-focus-within/play:h-6 group-focus-within/play:border-b group-hover/play:h-6 group-hover/play:border-b group-hover/play:border-border group-focus-within/play:border-border",
+        open && currentRowFillClass,
+      )}
+    >
       {open && <CurrentRowEdge />}
       <ActionButton
         permission="autoplays:write"
@@ -18,7 +32,7 @@ export const NewAutoPlayRow = ({ playId, open }: { playId: string; open: boolean
         variant="ghost"
         size="sm"
         aria-expanded={open}
-        className="h-6 px-0 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="h-6 px-0 text-row font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
         onClick={() => toggle(newAutoPlayKey(playId))}
       >
         + Add auto play

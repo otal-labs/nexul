@@ -30,10 +30,10 @@ export const LimitsSection = () => {
             onChange={(value) => setValue("once_within_minutes", Number(value), { shouldDirty: true })}
             disabled={formState.disabled}
           />
-          per {subject}
+          {minutes > 0 && `per ${subject}`}
         </div>
       </ComposerSection>
-      <ComposerSection title="One at a time">
+      <ComposerSection title="Overlap">
         <OneAtATimeField />
       </ComposerSection>
     </>

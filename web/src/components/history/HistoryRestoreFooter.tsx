@@ -12,17 +12,18 @@ interface HistoryRestoreFooterProps {
 
 export const HistoryRestoreFooter = ({ version, savedAt, isCurrent, restore }: HistoryRestoreFooterProps) => (
   <HistoryFooter note={isCurrent ? "This is the current version" : "Restoring adds a new version; nothing is lost"}>
+    {!isCurrent && (
     <ActionButton
       permission={restore.permission}
       projectId={restore.projectId}
       answer={restore.answer}
       verb="restore versions"
-            disabled={isCurrent}
       loading={restore.pending}
       className="tabular-nums"
       onClick={() => restore.run(version)}
     >
-      {isCurrent ? "Restore" : `Restore ${formatVersionTime(savedAt)}`}
+      {`Restore ${formatVersionTime(savedAt)}`}
     </ActionButton>
+    )}
   </HistoryFooter>
 );
