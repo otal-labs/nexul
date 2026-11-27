@@ -42,7 +42,7 @@ export const ComputerSettingsCard = ({ computer, setup }: ComputerSettingsCardPr
       <ComputerRunsAtOnceRow computer={computer} />
       {setup && <ComputerModelsRow computer={computer} setup={setup} />}
       <ComputerChatFolderRow computer={computer} />
-      <SettingsRow label="Labels" description="What a play's needs match" stacked className="last:pb-4">
+      <SettingsRow label="Labels" description="What a play's needs match" compact className="last:pb-4">
         <ComputerLabels computer={computer} />
       </SettingsRow>
     </div>

@@ -141,9 +141,8 @@ export const computerStateLine = (computer: Computer, presence: string | undefin
   return { tone: lane.tone, text: lane.text };
 };
 
-// The muted word after a computer's name in a ranked list: nothing while online, "offline", or "offline 15d" once stale.
+// The muted words after a computer's name in a ranked list: nothing while online, "seen 3h ago" once offline.
 export const offlineNote = (computer: Computer): string | undefined => {
   if (!computer.runner || computer.runner.connected || computer.runner.reconnecting) return undefined;
-  const days = offlineForDays(computer);
-  return days >= STALE_OFFLINE_DAYS ? `offline ${days}d` : "offline";
+  return `seen ${seenAgo(computer.runner.last_seen)}`;
 };

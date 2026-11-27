@@ -405,7 +405,7 @@ export const Placement = { InOrder: "in_order", Spread: "spread" } as const;
 export type Placement = (typeof Placement)[keyof typeof Placement];
 
 export const PLACEMENT_OPTIONS = [
-  { value: Placement.InOrder, label: "First in your order" },
+  { value: Placement.InOrder, label: "First in order" },
   { value: Placement.Spread, label: "Least busy" },
 ];
 

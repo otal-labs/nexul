@@ -1,5 +1,3 @@
-import { CircleDashedIcon } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { useClearUnfinishedComputers, useListComputers } from "@/hooks/PairingHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -26,14 +24,21 @@ export const UnfinishedSetupsRow = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
-      <CircleDashedIcon aria-hidden className="size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1">
-        {count === 1 ? "1 setup never finished" : `${count} setups never finished`}
+    <div className="mx-3 mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+      <p>
+        {count === 1 ? "1 unfinished setup" : `${count} unfinished setups`}
         {newest && ` · started ${formatRelativeTime(newest)}`}
-      </span>
-      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs underline" title="Removes the half-added computers; nothing ran on them" loading={clear.isPending} onClick={() => void clearAll()}>
-        Remove
+      </p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="-ml-2 h-7 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        title="Removes the half-added computers; nothing ran on them"
+        loading={clear.isPending}
+        onClick={() => void clearAll()}
+      >
+        {count === 1 ? "Remove 1 unfinished setup…" : `Remove ${count} unfinished setups…`}
       </Button>
     </div>
   );
