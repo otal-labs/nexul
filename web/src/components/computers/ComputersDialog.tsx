@@ -31,7 +31,7 @@ export const ComputersDialog = () => {
   return (
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
       <DialogContent className={FRAME} aria-describedby={undefined}>
-        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3 pr-14 sm:px-6">
+        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border py-3 pr-14 pl-4 sm:pl-6">
           <DialogTitle className="type-display text-xl">Computers</DialogTitle>
           <DialogDescription className="sr-only">Your computers in run order, and where runs go</DialogDescription>
           <AddComputerDialog
