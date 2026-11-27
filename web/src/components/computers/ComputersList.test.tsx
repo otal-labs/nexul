@@ -171,17 +171,18 @@ describe("Your computers", () => {
     const user = userEvent.setup();
     renderComputers("/acme/agent?computers=c-laptop");
 
-    const row = within(await screen.findByRole("link", { name: /^laptop/ }));
+    const row = within((await screen.findByRole("link", { name: /^laptop/ })).closest("li") as HTMLElement);
     expect(await row.findByTitle("codex · GPT 5")).toBeInTheDocument();
     expect(row.queryByText("GPT-5")).not.toBeInTheDocument();
+    expect(row.getByTitle("Run order"), "the rank and the marks share the name's line").toHaveTextContent("#1");
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
 
     expect(within(yourComputers()).getByRole("link", { name: /^laptop/ })).toHaveTextContent("Online · 1 of 2 running");
     expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+ days ago/);
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
     expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
-    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/), "the pane agrees with the row").toHaveClass("text-warning");
-    expect(screen.getByRole("button", { name: "Remove it" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/Offline · \d+ days/), "the pane agrees with the row").toHaveClass("text-warning");
+    expect(screen.getByRole("button", { name: "Remove build-box…" })).toBeInTheDocument();
   });
 
   it("opens on the first computer for an empty param, and closing takes the param away", async () => {
@@ -230,5 +231,27 @@ describe("Your computers", () => {
     expect(list).toHaveClass("max-[919px]:hidden");
     await user.click(screen.getByRole("button", { name: "Computers" }));
     expect(list).not.toHaveClass("max-[919px]:hidden");
+  });
+
+  it("lists your order in the Defaults pane as the ranked list a project's own order is, grips included", async () => {
+    mocks.put.mockResolvedValue({ data: {} });
+    renderComputers("/acme/agent?computers=defaults");
+
+    const order = await screen.findByRole("list", { name: "Your order" });
+    expect(within(order).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(order).getByRole("button", { name: "Reorder laptop" }), "each row has its grip").toBeInTheDocument();
+    expect(screen.queryByText("Drag in the list to change")).not.toBeInTheDocument();
+  });
+
+  it("words a stale computer's banner and status as one warning, and Remove asks first", async () => {
+    const user = userEvent.setup();
+    computers = [computers[0]!, { ...computers[1]!, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } }];
+    renderComputers("/acme/agent?computers=c-box");
+
+    expect(await screen.findByText(/Offline · \d+ days/)).toHaveClass("text-warning");
+    expect(screen.getByRole("note")).toHaveTextContent("Removing it takes it out of Nexul.");
+    await user.click(screen.getByRole("button", { name: "Remove build-box…" }));
+    expect(await screen.findByRole("dialog", { name: "Remove build-box?" })).toBeInTheDocument();
+    expect(mocks.del).not.toHaveBeenCalled();
   });
 });

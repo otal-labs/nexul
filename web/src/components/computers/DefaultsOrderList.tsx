@@ -1,23 +1,35 @@
-import { SettingsHint } from "@/components/settings/SettingsHint";
-import { useListOrderComputers } from "@/hooks/PairingHooks";
+import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+
+import { RankedComputerRow } from "@/components/settings/RankedComputerRow";
+import { useListOrderComputers, useReorderComputers } from "@/hooks/PairingHooks";
+import { useRowSortSensors } from "@/hooks/useRowSortSensors";
 import { sharedComputerName } from "@/models/SharedComputer";
 
-// What the defaults use for where runs go: your order, read-only here because the list beside it is where it changes.
+// Your order as the Defaults use it: the same ranked list a project's own order is, reordering the one list the dialog's left column shows.
 export const DefaultsOrderList = () => {
   const { data: computers } = useListOrderComputers();
+  const { mutate: reorder } = useReorderComputers();
+  const sensors = useRowSortSensors();
   if (!computers || computers.length === 0) return null;
 
+  const ids = computers.map((c) => c.id);
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const from = ids.indexOf(String(active.id));
+    const to = over ? ids.indexOf(String(over.id)) : -1;
+    if (from < 0 || to < 0 || from === to) return;
+    reorder(arrayMove(ids, from, to));
+  };
+
   return (
-    <div className="space-y-1.5 pt-2">
-      <ol aria-label="Your order" className="divide-y divide-border rounded-md border border-border text-sm">
-        {computers.map((computer, i) => (
-          <li key={computer.id} className="flex items-baseline gap-3 px-3 py-1.5">
-            <span className="w-4 font-mono text-xs text-muted-foreground tabular-nums">{i + 1}</span>
-            <span className="min-w-0 truncate">{sharedComputerName(computer)}</span>
-          </li>
-        ))}
-      </ol>
-      <SettingsHint>Drag in the list to change</SettingsHint>
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <ul aria-label="Your order" className="divide-y divide-border rounded-md border border-border bg-card">
+          {computers.map((computer, i) => (
+            <RankedComputerRow key={computer.id} id={computer.id} name={sharedComputerName(computer)} rank={i + 1} controls={{ sortable: ids.length > 1 }} />
+          ))}
+        </ul>
+      </SortableContext>
+    </DndContext>
   );
 };

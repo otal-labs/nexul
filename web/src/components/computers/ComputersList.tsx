@@ -41,7 +41,7 @@ export const ComputersList = ({ current }: ComputersListProps) => {
       {computers && computers.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ListPaneGroup plain label="Your computers" count={computers.length}>
+            <ListPaneGroup plain label="Your computers" caption="Your computers · run order" count={computers.length}>
               {computers.map((computer) => (
                 <ComputerListRow key={computer.id} computer={computer} rank={ids.indexOf(computer.id) + 1} sortable={ids.length > 1} selected={computer.id === current} />
               ))}

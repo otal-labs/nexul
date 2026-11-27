@@ -11,6 +11,10 @@ import { useListOrderComputers } from "@/hooks/PairingHooks";
 import { cn } from "@/lib/utils";
 import { DEFAULTS_ID, PROJECT_TARGET_PREFIX } from "@/models/Agent";
 
+// With only the list on screen no row is "open", so the current fill and edge wait until a record is.
+const SINGLE_PANE_PLAIN =
+  "max-[919px]:[&_li:has(a[aria-current=page])]:bg-transparent! max-[919px]:[&_li:has(a[aria-current=page])>span[aria-hidden]]:hidden";
+
 interface ComputersBodyProps {
   // The `computers` param: "" the first computer, a computer's id, "defaults", or "project:<id>".
   target: string;
@@ -38,7 +42,7 @@ export const ComputersBody = ({ target }: ComputersBodyProps) => {
         aria-label="Computers and run settings"
         tabIndex={-1}
         onClick={onListClick}
-        className={cn("scroll-edge quiet-focus min-h-0 overflow-y-auto border-border pb-6 outline-none [scrollbar-gutter:stable] min-[920px]:border-r", !listShown && "max-[919px]:hidden")}
+        className={cn("scroll-edge quiet-focus min-h-0 overflow-y-auto border-border pb-6 outline-none [scrollbar-gutter:stable] min-[920px]:border-r", !listShown && "max-[919px]:hidden", listShown && SINGLE_PANE_PLAIN)}
       >
         <ComputersList current={current} />
       </nav>

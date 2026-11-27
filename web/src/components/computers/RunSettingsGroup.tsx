@@ -1,5 +1,6 @@
 import { SlidersHorizontalIcon } from "lucide-react";
 
+import { DrillChevron } from "@/components/computers/DrillChevron";
 import { ListPaneGroup } from "@/components/listpane/ListPaneGroup";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { ProjectMark } from "@/components/project/ProjectMark";
@@ -9,6 +10,9 @@ import { useFetchWorkspaceProjects } from "@/hooks/ProjectHooks";
 import { computersSearch, DEFAULTS_ID, projectTarget } from "@/models/Agent";
 import type { Project } from "@/models/Project";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+
+// What the run settings use, up to two lines: the model and where threads start are the point of it.
+const Preview = ({ children }: { children: string | undefined }) => <span className="line-clamp-2 min-w-0 break-words">{children}</span>;
 
 interface DefaultsRowProps {
   selected: boolean;
@@ -23,7 +27,8 @@ const DefaultsRow = ({ selected }: DefaultsRowProps) => {
       to={computersSearch(DEFAULTS_ID)}
       title="Defaults"
       leading={<SlidersHorizontalIcon aria-hidden className="size-3.5 text-muted-foreground" />}
-      snippet={error ? "Couldn't load" : (summary ?? "")}
+      detail={<Preview>{error ? "Couldn't load" : summary}</Preview>}
+      trailing={<DrillChevron />}
       selected={selected}
     />
   );
@@ -43,7 +48,8 @@ const ProjectRow = ({ project, selected }: ProjectRowProps) => {
       to={computersSearch(projectTarget(project.id))}
       title={project.name}
       leading={<ProjectMark project={project} className="size-6 rounded-md text-micro shadow-none" />}
-      snippet={summary ?? ""}
+      detail={<Preview>{summary}</Preview>}
+      trailing={<DrillChevron />}
       selected={selected}
     />
   );
