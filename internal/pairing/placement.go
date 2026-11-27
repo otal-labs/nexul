@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
@@ -55,7 +56,9 @@ type RunRequest struct {
 	// Tests is a run of a play that works on the project's tests repository.
 	Tests bool
 	// Needs are labels the computer must have, its own or from its facts; a computer missing one is passed over (ADR 0197).
-	Needs        []string
+	Needs []string
+	// ComputerRule is the auto play's narrowing of the person's computers; a computer it leaves out is passed over (ADR 0214).
+	ComputerRule labels.ComputerRule
 	Provider     string
 	Model        string
 	ModelOptions []harness.OptionSetting
@@ -308,6 +311,9 @@ func (s *Service) check(ctx context.Context, p *plan, c Computer, running int) (
 	}
 	if c.AutoPlaysOff && p.req.Auto {
 		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverNoAutoPlays, Text: c.Name + " takes no auto plays"}}, nil
+	}
+	if p.req.ComputerRule.LeftOut(c.ID, func(l string) bool { return hasLabel(c, l) }) {
+		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverRuleOut, Text: c.Name + " is left out by the auto play's computer rule"}}, nil
 	}
 	if m := s.reachable(ctx, c); m != nil {
 		return nil, m, nil

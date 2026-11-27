@@ -238,8 +238,8 @@ enters a stage, is created, gets a developer or tester, or fails a test, or a
 doc is created or settles after edits. Each auto play is set up on the play's
 Auto plays tab from dropdowns (when, if, priority, limits, whose computer).
 Runs wait in each person's queue, highest priority first, are checked again
-before they start, and a daily cap per ticket pauses loops until someone
-resumes. A ticket shows what is queued, paused, skipped or didn't run. The
+before they start, and a computer's runs at once is the only limit. A ticket
+shows what is queued, skipped or didn't run. The
 decisions check is now an ordinary play with its own auto play, and
 automations start a play by name with `runPlay`.
 

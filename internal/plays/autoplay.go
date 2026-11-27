@@ -7,6 +7,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 )
 
 // Moment is what happens to a ticket, doc, or stack that an auto play waits for; the values are stored, so they never change.
@@ -117,22 +118,14 @@ var fieldOps = map[Type]map[Field][]Op{
 
 // Bounds on what one auto play may hold, so a pasted tree cannot grow without limit.
 const (
-	MaxAutoPlayRules        = 20
-	MaxAutoPlayRuleValues   = 50
-	MaxOnceWithinMinutes    = 30 * 24 * 60
-	MinAutoPlayDailyCap     = 1
-	MaxAutoPlayDailyCap     = 50
-	DefaultAutoPlayDailyCap = 5
-	MaxAutoPlayMemories     = 50
-	MaxSweepRuns            = 100
-	DefaultSweepRuns        = 10
-	MaxResourceLength       = 40
+	MaxAutoPlayRules      = 20
+	MaxAutoPlayRuleValues = 50
+	MaxOnceWithinMinutes  = 30 * 24 * 60
+	MaxAutoPlayMemories   = 50
+	MaxSweepRuns          = 100
+	DefaultSweepRuns      = 10
+	MaxResourceLength     = 40
 )
-
-// AutoPlayLimits are a workspace's bounds on automatic runs, shared by every play's auto plays.
-type AutoPlayLimits struct {
-	DailyCapPerTicket int `json:"daily_cap_per_ticket"`
-}
 
 // Conditions is a stack nested one level: the top matches all or any of its groups, each group all or any of its rules.
 type Conditions struct {
@@ -193,9 +186,11 @@ type AutoPlay struct {
 	OnceWithinMinutes int   `json:"once_within_minutes"`
 	RunOn             RunOn `json:"run_on" enum:"developer,tester,causer,person,computer"`
 	// RunAs is who a RunOnPerson auto play runs as, on their order; empty otherwise and while a seeded one awaits its pick.
-	RunAs       string   `json:"run_as"`
-	ComputerIDs []string `json:"computer_ids" deprecated:"true" jsonschema:"Always []: an auto play runs as a person on their order now (ADR 0197)."`
-	ComputerID  string   `json:"computer_id" deprecated:"true" jsonschema:"Always empty: an auto play runs as a person on their order now (ADR 0197)."`
+	RunAs string `json:"run_as"`
+	// ComputerRule narrows the computers the run-as person's order offers (ADR 0214).
+	ComputerRule labels.ComputerRule `json:"computer_rule"`
+	ComputerIDs  []string            `json:"computer_ids" deprecated:"true" jsonschema:"Always []: an auto play runs as a person on their order now (ADR 0197)."`
+	ComputerID   string              `json:"computer_id" deprecated:"true" jsonschema:"Always empty: an auto play runs as a person on their order now (ADR 0197)."`
 	// MemoryIDs are read by each run beside the always-included ones; a run reads only those in its target's project.
 	MemoryIDs []string  `json:"memory_ids"`
 	CreatedBy string    `json:"created_by"`
@@ -239,6 +234,9 @@ func (a *AutoPlay) normalize(playType Type) {
 		a.RunAs = ""
 	}
 	a.ComputerIDs, a.ComputerID = []string{}, ""
+	if rule, err := a.ComputerRule.Normalize(); err == nil {
+		a.ComputerRule = rule
+	}
 	if a.Moment != MomentTicketEnteredStage {
 		a.MomentStage = nil
 	}
@@ -311,6 +309,9 @@ func (a *AutoPlay) Validate(playType Type) error {
 	if err := a.validateLimits(); err != nil {
 		return err
 	}
+	if err := a.validateComputerRule(); err != nil {
+		return err
+	}
 	if !a.Conditions.Match.valid() {
 		return fmt.Errorf("%w: conditions match must be all or any", apperrs.ErrInvalid)
 	}
@@ -365,6 +366,16 @@ func (a *AutoPlay) validateLimits() error {
 	}
 	if a.OnceWithinMinutes < 0 || a.OnceWithinMinutes > MaxOnceWithinMinutes {
 		return fmt.Errorf("%w: once_within_minutes must be 0 (no limit) to %d (30 days)", apperrs.ErrInvalid, MaxOnceWithinMinutes)
+	}
+	return nil
+}
+
+func (a *AutoPlay) validateComputerRule() error {
+	if _, err := a.ComputerRule.Normalize(); err != nil {
+		return fmt.Errorf("computer_rule: %w", err)
+	}
+	if len(a.ComputerRule.IDs) > 0 && a.RunOn != RunOnPerson {
+		return fmt.Errorf("%w: computer_rule ids name computers in a person's order; set run_on to person", apperrs.ErrInvalid)
 	}
 	return nil
 }

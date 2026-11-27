@@ -57,14 +57,13 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/plays/queue", h.queue)
 	mux.HandleFunc("GET /api/plays/queued", h.queued)
 	mux.HandleFunc("POST /api/plays/queue", h.queuePlay)
-	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
 	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
 	mux.HandleFunc("GET /api/plays/sweeps", h.lastSweeps)
 	mux.HandleFunc("GET /api/plays/sweeps/{sweepID}", h.sweep)
 	return mux
 }
 
-// queue answers a ticket's or doc's auto runs: queued, started, skipped, didn't run, cancelled, and whether it is paused.
+// queue answers a ticket's or doc's auto runs: queued, started, skipped, didn't run, cancelled.
 func (h *RunHandler) queue(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	queue, err := h.runner.GetQueue(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"))
@@ -114,25 +113,6 @@ func (h *RunHandler) queuePlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusAccepted, queuedRun{ID: it.ID, State: it.Status, Reason: it.Reason})
-}
-
-type targetRequest struct {
-	TargetType TargetType `json:"target_type"`
-	TargetID   string     `json:"target_id"`
-}
-
-func (h *RunHandler) resumeQueue(w http.ResponseWriter, r *http.Request) {
-	var req targetRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	queue, err := h.runner.ResumeAutoPlays(r.Context(), req.TargetType, req.TargetID)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, queue)
 }
 
 func (h *RunHandler) cancelQueued(w http.ResponseWriter, r *http.Request) {

@@ -13,7 +13,7 @@ export const waitingRuns = (queue: PlayQueue | undefined): PlayQueueItem[] =>
     .filter((it) => it.status === "queued" || it.status === "dispatching")
     .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority] || Date.parse(a.queued_at) - Date.parse(b.queued_at));
 
-export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!queue && (queue.paused || waitingRuns(queue).length > 0);
+export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!queue && waitingRuns(queue).length > 0;
 
 const YOUR_COMPUTERS_LINK: ReadinessLink = { to: COMPUTERS_PATH, label: "Your computers" };
 

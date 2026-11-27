@@ -141,7 +141,7 @@ func (a playsHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, p
 func runRequest(userID, projectID string, choice plays.HarnessChoice, room pairing.Room) pairing.RunRequest {
 	req := pairing.RunRequest{
 		UserID: userID, ProjectID: projectID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions, Room: room,
-		Repository: choice.Repository, Tests: choice.Tests, Needs: choice.Needs, Auto: choice.Auto,
+		Repository: choice.Repository, Tests: choice.Tests, Needs: choice.Needs, Auto: choice.Auto, ComputerRule: choice.ComputerRule,
 	}
 	if choice.ComputerID != "" {
 		req.ComputerIDs = []string{choice.ComputerID}

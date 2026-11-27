@@ -38,7 +38,6 @@ const autoPlay: AutoPlay = {
 
 const rest = (url: string) => {
   if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return [autoPlay];
-  if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { daily_cap_per_ticket: 5 };
   return [];
 };
 

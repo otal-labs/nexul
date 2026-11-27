@@ -67,7 +67,6 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/plays") return { data: [current] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: WRITE } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
-    if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5 } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/queued") return { data: [] };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
     if (url === "/api/memories") return { data: [] };

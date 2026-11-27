@@ -407,7 +407,6 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleSlotsFreed)
 	// A run stopping on a question lets go of its one-at-a-time lock and may close its sweep.
 	mustSubscribe(ctx, bus, "plays.queue_waiting", plays.TopicRunWaiting, " for the run queue", svc.playsRunner.HandleSlotsFreed)
-	mustSubscribe(ctx, bus, "plays.queue_limits", plays.TopicAutoPlayLimitsUpdated, " for the run queue", svc.playsRunner.HandleSlotsFreed)
 	// A paired computer or a finished setup may close the gap a person's queued runs wait on.
 	for _, topic := range plays.ComputerTopics {
 		mustSubscribe(ctx, bus, "plays.queue_computer", topic, " for the run queue", svc.playsRunner.HandleComputerChanged)

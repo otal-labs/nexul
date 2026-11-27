@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil/migrated"
@@ -704,45 +705,30 @@ func TestHandleComputerChanged_RetriesTheHeldRunsAtOnce(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrFatal)
 }
 
-func TestDispatch_DailyCap_PausesUntilResumed(t *testing.T) {
+func TestDispatch_NoDailyCap_ARunStartsEveryTimeTheTicketMatches(t *testing.T) {
 	r := newRig(t, openStore(t))
-	require.NoError(t, r.store.Plays.SetAutoPlayLimits(t.Context(), ws, plays.AutoPlayLimits{DailyCapPerTicket: 2}))
 	fix := r.play(t, "Fix it")
 	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
 	r.ticket("t-1")
-	start := r.clock
-	run := func() {
+	for range 7 {
 		r.unblock(t, "t-1")
 		r.dispatch(t)
+		assert.Equal(t, plays.QueueStarted, r.queued(t, "t-1")[0].Status)
 		r.endRuns(t, "t-1")
 		r.clock = r.clock.Add(time.Hour)
 	}
-	run()
-	_, err := r.Runner.ResumeAutoPlays(as(t.Context(), dev), plays.TargetTicket, "t-1")
-	require.ErrorIs(t, err, apperrs.ErrConflict, "nothing to resume under the cap")
-	run()
+}
 
+func TestDispatch_AnAutoPlaysComputerRuleReachesPlacementThroughStorage(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	rule := labels.ComputerRule{LabelsIn: []string{"gpu"}, LabelsOut: []string{"flaky"}, IDs: []string{"c-1"}}
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked, func(a *plays.AutoPlay) { a.RunOn, a.RunAs, a.ComputerRule = plays.RunOnPerson, dev, rule })
+	r.ticket("t-1")
 	r.unblock(t, "t-1")
-	wait := r.dispatch(t)
-
-	q, err := r.Runner.GetQueue(as(t.Context(), dev), plays.TargetTicket, "t-1")
-	require.NoError(t, err)
-	assert.Equal(t, []any{true, 2, 2}, []any{q.Paused, q.AutoRuns, q.DailyCap})
-	assert.Equal(t, []any{plays.QueueQueued, plays.ReasonPaused}, []any{q.Items[0].Status, q.Items[0].Reason})
-	assert.Equal(t, start.Add(24*time.Hour).Sub(r.clock), wait, "wakes when the oldest run leaves the day")
-	require.NotNil(t, q.PausedUntil)
-	assert.Equal(t, start.Add(24*time.Hour), q.PausedUntil.UTC(), "the page looks again when the oldest run leaves the day")
-
-	_, err = r.Runner.ResumeAutoPlays(as(t.Context(), "u-stranger"), plays.TargetTicket, "t-1")
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	q, err = r.Runner.ResumeAutoPlays(as(t.Context(), dev), plays.TargetTicket, "t-1")
-	require.NoError(t, err)
-	assert.Equal(t, []any{false, 0}, []any{q.Paused, q.AutoRuns})
-	assert.Nil(t, q.PausedUntil)
-	assert.True(t, r.Kicked())
-
 	r.dispatch(t)
-	assert.Equal(t, plays.QueueStarted, r.queued(t, "t-1")[0].Status)
+
+	assert.Equal(t, rule, r.LastChoice().ComputerRule)
 }
 
 func TestQueue_Cancel(t *testing.T) {
@@ -873,12 +859,10 @@ func TestQueueSurfaces_MCP(t *testing.T) {
 	var page struct {
 		Items []plays.QueueItem `json:"items"`
 		Total int               `json:"total"`
-		Pause bool              `json:"paused"`
-		Cap   int               `json:"daily_cap"`
 	}
 	require.NoError(t, json.Unmarshal(raw, &page))
 	require.Len(t, page.Items, 1)
-	assert.Equal(t, []any{1, false, 5, plays.QueueQueued}, []any{page.Total, page.Pause, page.Cap, page.Items[0].Status})
+	assert.Equal(t, []any{1, plays.QueueQueued}, []any{page.Total, page.Items[0].Status})
 
 	_, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","cancel":true,"stop":true}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "cancel takes no other steer")
@@ -886,10 +870,6 @@ func TestQueueSurfaces_MCP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, plays.QueueCancelled, out.(*plays.QueueItem).Status)
 
-	_, err = tool(t, r, ctx, "play_run", `{"resume_auto_plays":true,"play_id":"`+fix.ID+`","target_type":"ticket","target_id":"t-1"}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "resume takes only the target")
-	_, err = tool(t, r, ctx, "play_run", `{"resume_auto_plays":true,"target_type":"ticket","target_id":"t-1"}`)
-	require.ErrorIs(t, err, apperrs.ErrConflict, "nothing is paused")
 	out, err = tool(t, r, as(t.Context(), "u-stranger"), "trail_list", `{"target_type":"ticket","target_id":"t-1","queue":true}`)
 	require.NoError(t, err)
 	raw, err = json.Marshal(out)
@@ -979,7 +959,6 @@ func TestQueueSurfaces_HTTP(t *testing.T) {
 	var waiting []plays.QueueItem
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &waiting))
 	assert.Len(t, waiting, 1)
-	assert.Equal(t, http.StatusConflict, call(http.MethodPost, "/api/plays/queue/resume", `{"target_type":"ticket","target_id":"t-1"}`).Code)
 	assert.Equal(t, http.StatusOK, call(http.MethodPost, "/api/plays/queue/"+q.Items[0].ID+"/cancel", "").Code)
 	assert.Equal(t, http.StatusNotFound, call(http.MethodPost, "/api/plays/queue/missing/cancel", "").Code)
 }

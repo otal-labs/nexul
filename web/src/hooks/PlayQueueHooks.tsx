@@ -16,21 +16,13 @@ import { followEach, type LiveFollower } from "@/lib/live";
 export const getPlayQueueKey = "getPlayQueue";
 export const getPlayQueuedKey = "getPlayQueued";
 
-// A longer delay overflows the timer, which then fires every millisecond.
-const MAX_TIMER_MS = 2 ** 31 - 1;
-
-// The rolling day freeing a paused target sends no frame, so the query looks again once its oldest counted run leaves.
-const lookAgainWhenFreed = (queue: PlayQueue | undefined): number | false =>
-  queue?.paused_until ? Math.min(Math.max(Date.parse(queue.paused_until) - Date.now(), 0) + 1000, MAX_TIMER_MS) : false;
-
-// A ticket's or doc's auto runs and whether they are paused; the queue frames keep it live.
+// A ticket's or doc's auto runs; the queue frames keep it live.
 export const useFetchPlayQueue = (targetType: PlayType, targetId: string) =>
   useQuery({
     queryKey: [getPlayQueueKey, targetType, targetId],
     queryFn: async () =>
       (await api.get<PlayQueue>("/api/plays/queue", { params: { target_type: targetType, target_id: targetId } })).data,
     enabled: targetId !== "" && hasPlayQueue(targetType),
-    refetchInterval: (query) => lookAgainWhenFreed(query.state.data),
   });
 
 export const useFetchPlayQueued = (playId: string) =>
@@ -68,22 +60,7 @@ export const useCancelQueuedRun = () => {
   });
 };
 
-export const useResumeAutoPlays = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("autoplays:write", async ({ targetType, targetId }: { targetType: PlayType; targetId: string }) =>
-      (await api.post<PlayQueue>("/api/plays/queue/resume", { target_type: targetType, target_id: targetId })).data),
-    onSuccess: (queue, { targetType, targetId }) => {
-      client.setQueryData([getPlayQueueKey, targetType, targetId], queue);
-      toast.success("Auto plays resumed");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-// play.queued and play.queue_updated carry the item; play.queue_resumed names only its target.
-type QueueFrame = Pick<PlayQueueItem, "target_type" | "target_id">;
-
+// play.queued and play.queue_updated carry the item.
 // The board's batch answer names the queued targets, so a queue frame refreshes it too.
 export const playQueueFollower: LiveFollower = {
   ...followEach(["play.queued", "play.queue_updated"], (item: PlayQueueItem, { client }) =>
@@ -91,6 +68,4 @@ export const playQueueFollower: LiveFollower = {
       refreshQueues(client, item),
       client.invalidateQueries({ queryKey: [getActiveTrailsKey, item.target_type, item.project_id], exact: true }),
     ])),
-  "play.queue_resumed": ({ target_type, target_id }: QueueFrame, { client }) =>
-    client.invalidateQueries({ queryKey: [getPlayQueueKey, target_type, target_id], exact: true }),
 };

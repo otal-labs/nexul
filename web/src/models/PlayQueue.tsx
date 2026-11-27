@@ -35,12 +35,7 @@ export interface PlayQueueItem {
   waiting_on?: PassOver[];
 }
 
-// Mirrors internal/plays.Queue: a ticket's, doc's or stack's auto runs, newest first, and whether the daily cap paused them.
+// Mirrors internal/plays.Queue: a ticket's, doc's or stack's auto runs, newest first.
 export interface PlayQueue {
   items: PlayQueueItem[];
-  paused: boolean;
-  auto_runs: number;
-  daily_cap: number;
-  // When the oldest counted run leaves the rolling day; null unless paused.
-  paused_until: string | null;
 }

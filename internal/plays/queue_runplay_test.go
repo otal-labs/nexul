@@ -152,27 +152,6 @@ func TestQueuePlay_NobodyToRunItOn_DidntRunWithAFailedTrail(t *testing.T) {
 	assert.Equal(t, plays.TrailFailed, trail.State)
 }
 
-func TestQueuePlay_AtTheDailyCap_WaitsPausedAndCountsTowardIt(t *testing.T) {
-	r := newRig(t, openStore(t))
-	require.NoError(t, r.store.Plays.SetAutoPlayLimits(t.Context(), ws, plays.AutoPlayLimits{DailyCapPerTicket: 1}))
-	r.play(t, "Fix it")
-	r.ticket("t-1")
-	queue := func() *plays.QueueItem {
-		it, err := r.Runner.QueuePlay(asAutomation(t.Context(), dev), plays.QueuePlayInput{Play: "Fix it", TicketID: "t-1"})
-		require.NoError(t, err)
-		return it
-	}
-	queue()
-	r.dispatch(t)
-	r.endRuns(t, "t-1")
-
-	it := queue()
-
-	assert.Equal(t, []any{plays.QueueQueued, plays.ReasonPaused}, []any{it.Status, it.Reason})
-	r.dispatch(t)
-	assert.Equal(t, plays.QueueQueued, r.queued(t, "t-1")[0].Status, "the automation's own run counted toward the cap")
-}
-
 func TestQueuePlay_RecheckAtTheFront(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -1096,3 +1096,9 @@ func setupEvent(e SetupChangedEvent) eventbus.OutboxEvent {
 	e.MembersOnly = true
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: e}
 }
+
+// MayRunOn is whether userID's runs may land on the computer: their own, or one shared with them by Run agents.
+func (s *Service) MayRunOn(ctx context.Context, userID, computerID string) bool {
+	_, err := s.runComputer(ctx, userID, strings.TrimSpace(computerID))
+	return err == nil
+}

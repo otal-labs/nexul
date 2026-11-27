@@ -140,7 +140,7 @@ const responses: Record<string, unknown> = {
     { id: "s-1", project_id: "p-1", name: "api", machine: "box-1", strategy: "run", managed: true },
     { id: "s-2", project_id: "p-1", name: "worker", machine: "box-1", strategy: "run", managed: true },
   ],
-  "/api/plays/queue?target_type=ticket&target_id=t-1": { items: [], paused: false, auto_runs: 0, daily_cap: 5, paused_until: null },
+  "/api/plays/queue?target_type=ticket&target_id=t-1": { items: [] },
   "/api/plays/runs?target_type=ticket&target_id=t-1&steps=last": [run("r-1")],
   "/api/workspaces/ws-1/plays/applicable?project_id=p-1&type=ticket&stage=backlog": [],
   "/api/stacks/s-1/deploys": [],

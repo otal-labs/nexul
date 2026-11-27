@@ -144,7 +144,7 @@ func TestPlayQueueRepo_DueByPriorityThenAge(t *testing.T) {
 	assert.Empty(t, onTargets)
 }
 
-func TestPlayQueueRepo_CountsStartedRunsSinceTheLaterOfTheDayAndAResume(t *testing.T) {
+func TestPlayQueueRepo_QueuedSinceSeesAStartedRun(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	seedPlays(t, s)
@@ -158,20 +158,9 @@ func TestPlayQueueRepo_CountsStartedRunsSinceTheLaterOfTheDayAndAResume(t *testi
 		require.NoError(t, err)
 	}
 
-	count, oldest, err := s.PlayQueue.CountAutoRuns(ctx, plays.TargetTicket, "t-1", at.Add(time.Hour))
-	require.NoError(t, err)
-	assert.Equal(t, []any{2, at.Add(time.Hour)}, []any{count, oldest})
 	ran, err := s.PlayQueue.QueuedSince(ctx, "ap-q-3", plays.TargetTicket, "t-1", at.Add(time.Hour))
 	require.NoError(t, err)
 	assert.True(t, ran)
-
-	require.NoError(t, s.PlayQueue.Resume(ctx, plays.TargetTicket, "t-1", "u-1", at.Add(90*time.Minute)))
-	count, _, err = s.PlayQueue.CountAutoRuns(ctx, plays.TargetTicket, "t-1", at)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count, "only the run after the resume counts")
-	count, oldest, err = s.PlayQueue.CountAutoRuns(ctx, plays.TargetTicket, "t-2", at)
-	require.NoError(t, err)
-	assert.Equal(t, []any{0, time.Time{}}, []any{count, oldest})
 }
 
 func TestPlayQueueRepo_RecoverDispatching_StartedOnlyWhenTheTrailExists(t *testing.T) {

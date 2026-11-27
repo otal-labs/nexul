@@ -535,6 +535,7 @@ const (
 	PassOverNoPlays           PassOverReason = "no_plays"
 	PassOverNoAutoPlays       PassOverReason = "no_auto_plays"
 	PassOverMissingNeed       PassOverReason = "missing_need"
+	PassOverRuleOut           PassOverReason = "rule_out"
 )
 
 // PassOver is one computer a run passed over and why; Text says it in a line every client shows as is.

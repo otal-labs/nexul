@@ -78,6 +78,7 @@ type AutoPlay struct {
 	Schedule          sql.NullString
 	OneAtATime        int64
 	Resource          string
+	ComputerRule      string
 }
 
 type AutoPlaySweep struct {
@@ -1156,13 +1157,6 @@ type PlayQueue struct {
 	Repository       string
 }
 
-type PlayQueueResume struct {
-	TargetType string
-	TargetID   string
-	ResumedBy  string
-	ResumedAt  int64
-}
-
 type PlayTrail struct {
 	ID                  string
 	WorkspaceID         string
@@ -1642,7 +1636,6 @@ type Workspace struct {
 	MentionChipTemplate   string
 	Slug                  string
 	DecisionsCheckEnabled int64
-	AutoPlayDailyCap      int64
 	AccessSetupFinished   int64
 	AccessSetupBy         string
 	AccessSetupAt         int64

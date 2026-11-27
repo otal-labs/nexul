@@ -8,7 +8,7 @@ import (
 )
 
 // restoreThenChange restores first, so the other fields apply to a workspace the caller reaches again.
-func restoreThenChange(ctx context.Context, w WorkspaceService, limits AutoPlayLimits, accounts GitHubAccounts, setup AccessSetup, userID string, in workspaceUpdateIn) (any, error) {
+func restoreThenChange(ctx context.Context, w WorkspaceService, accounts GitHubAccounts, setup AccessSetup, userID string, in workspaceUpdateIn) (any, error) {
 	restored, err := w.Restore(ctx, userID, in.ID)
 	if err != nil {
 		return nil, err
@@ -18,7 +18,7 @@ func restoreThenChange(ctx context.Context, w WorkspaceService, limits AutoPlayL
 	if !in.changesSettings() {
 		return out, nil
 	}
-	changed, err := changeSettings(ctx, w, limits, accounts, setup, userID, in)
+	changed, err := changeSettings(ctx, w, accounts, setup, userID, in)
 	if err != nil {
 		return nil, appliedFirst("archived", err)
 	}

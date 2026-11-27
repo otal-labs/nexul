@@ -9,18 +9,17 @@ import { isQueued, type PlayQueue, type PlayQueueItem, type PlayType } from "@/m
 export const getPlayQueueKey = "getPlayQueue";
 export const getPlayQueuedKey = "getPlayQueued";
 
-// A queue frame names its target, so it refetches that target's queue alone: its paused flag and counts aren't in the frame.
+// A queue frame names its target, so it refetches that target's queue alone.
 const refetchTargetQueue = (client: QueryClient, frame: Pick<PlayQueueItem, "target_type" | "target_id">) =>
   void client.invalidateQueries({ queryKey: [getPlayQueueKey, frame.target_type, frame.target_id], exact: true });
 
-// A ticket's or doc's auto runs, and whether the daily cap paused them.
+// A ticket's or doc's auto runs.
 const playQueueQuery = defineQuery({
   key: getPlayQueueKey,
   fetch: (targetType: PlayType, targetId: string) => api.get<PlayQueue>(`/api/plays/queue?target_type=${targetType}&target_id=${targetId}`),
   refreshes: {
     "play.queued": { patch: refetchTargetQueue },
     "play.queue_updated": { patch: refetchTargetQueue },
-    "play.queue_resumed": { patch: refetchTargetQueue },
   },
 });
 
@@ -43,8 +42,6 @@ const playQueuedQuery = defineQuery({
   refreshes: {
     "play.queued": { patch: upsertQueued },
     "play.queue_updated": { patch: upsertQueued },
-    // A resume names only its target, which any play's waiting runs may be on.
-    "play.queue_resumed": "all",
   },
 });
 
@@ -65,15 +62,5 @@ export const useCancelQueuedRun = () => {
       upsertQueued(client, item);
       refetchTargetQueue(client, item);
     },
-  });
-};
-
-export const useResumeAutoPlays = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("autoplays:write", ({ targetType, targetId }: { targetType: PlayType; targetId: string }) =>
-      api.post<PlayQueue>("/api/plays/queue/resume", { target_type: targetType, target_id: targetId }),
-    ),
-    onSuccess: (queue, { targetType, targetId }) => client.setQueryData([getPlayQueueKey, targetType, targetId], queue),
   });
 };

@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
@@ -107,7 +108,9 @@ type HarnessChoice struct {
 	// Tests is a run of a play that works on the project's tests repository.
 	Tests bool
 	// Needs are the play's labels every computer that takes the run must have (ADR 0197).
-	Needs        []string
+	Needs []string
+	// ComputerRule is the auto play's narrowing of the starter's computers; empty for a pressed run (ADR 0214).
+	ComputerRule labels.ComputerRule
 	Provider     string
 	Model        string
 	ModelOptions []harness.OptionSetting
@@ -379,7 +382,8 @@ type target struct {
 	service       string
 	outageID      string
 	// memoryIDs are an auto run's picks from its auto play; the run reads those in its project and drops the rest.
-	memoryIDs []string
+	memoryIDs    []string
+	computerRule labels.ComputerRule
 }
 
 func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, result harness.TurnResult, replyMessageID, note string) {

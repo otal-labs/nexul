@@ -2,6 +2,7 @@ import {
   FIELD_OPS,
   LEVEL_LABELS,
   normalRunOn,
+  type AutoPlayComputerRule,
   type AutoPlayField,
   type AutoPlayGroup,
   type AutoPlayLevel,
@@ -38,6 +39,8 @@ export interface AutoPlay {
   run_on: AutoPlayRunOn;
   // The person a "person" auto play runs as, on their computers in their order; "" until someone picks (a seeded one) and for every other run-on.
   run_as: string;
+  // Narrows the person's computers; empty or absent leaves every one in.
+  computer_rule?: AutoPlayComputerRule;
   // Read by each run beside the always-included memories; a run reads only those in its own project.
   memory_ids: string[];
   // One run at a time: its own, or with a resource, across every auto play naming it.
@@ -48,18 +51,11 @@ export interface AutoPlay {
   updated_at: string;
 }
 
-// The full replace the create and update routes take; run_as_me makes the caller the person, and leaving it out keeps who it runs as.
+// The full replace the create and update routes take; run_as_me makes the caller the person, and leaving it out keeps who it runs as and its computer rule.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource"
+  "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource" | "computer_rule"
 > & { run_as_me?: boolean };
-
-export interface AutoPlayLimits {
-  daily_cap_per_ticket: number;
-}
-
-export const MIN_DAILY_CAP = 1;
-export const MAX_DAILY_CAP = 50;
 
 // What an auto play's play fires on; an interview play has no auto plays, so it never gets here.
 export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {

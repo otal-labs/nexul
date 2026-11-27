@@ -728,13 +728,7 @@ whose computers the runs wait for and why ("2 queued for Alice's computers,
 waiting their turn"); Runs on names a place, never a role ("The developer's
 computers"), and a yes/no rule reads as a phrase ("Has a linked PR"); an
 off row keeps its labels muted and dims its values to `foreground` at 80%;
-then Limits, a `well-shade` well of label rows (a well straight on the panel
-takes `well-shade`, because `surface-2` is barely a step from the dark
-panel), the daily cap on ticket plays and, under a 12px medium "Your
-computers · runs at once" subhead, each of the viewer's computers, its whole
-name wrapping, with a compact 1–5 select, the daily cap's own control, every control on one right
-edge with the row `…` pulled in to meet it, the block absent when neither
-applies), Runs (a Needs answer block of the waiting runs, oldest first and
+then Runs (a Needs answer block of the waiting runs, oldest first and
 five at most with Show all N, then Recent, newest first, ten at a time with
 Show more; each 40px row the status mark, a ticket's key in a mono column,
 the target's title in medium, the run's summary muted ("Needs Sam's
@@ -1093,9 +1087,8 @@ muted "Show N more"), Development, Reviews, Testing, Plays, then
 Attachments, Bugs and Trail, and a muted mono foot line, "created 17 Aug by
 <reporter>". A play is one line, its full prompt in the tooltip, ending in its
 latest run's state icon and mono time. Plays is stage-bound, so it is
-absent, not empty, when no play applies to the ticket's stage, unless an auto play waits there or the daily cap paused
-it: a queued run is an `info` clock over "<person> · <why it waits>", a paused ticket a `warning` pause over its runs
-today, each with its one ghost action (Cancel, Resume); its person also reads each of their computers' reasons in the why,
+absent, not empty, when no play applies to the ticket's stage, unless an auto play waits there:
+a queued run is an `info` clock over "<person> · <why it waits>" with its one ghost action, Cancel; its person also reads each of their computers' reasons in the why,
 for that person only. What an auto play already did is an event line in the Thread
 at its time: a small icon in a circle under the avatar column, the play's name in medium weight, the rest muted, a mono
 time, and an outline "Run it" on a didn't-run. Links leads with the Source group
@@ -1497,7 +1490,7 @@ Licensee, Expires) take a muted 12px label over the value (`Fact` with `plain`),
 disabled (the flat disabled look) until something changes, then Discard and
 "Unsaved changes" wake and Save fills `brand`; once a save lands Save reads
 Saved with a check for 1.4s. Settings that apply the moment they are picked
-(Appearance, a play's Limits) have no Save and no confirmation: the control
+(Appearance) have no Save and no confirmation: the control
 shows the value picked while it saves, and only a failed save says so, in an
 error toast. Copying uses
 `CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
@@ -2236,7 +2229,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Runners: one list, a `well-shade` band per machine, pinned while its rows scroll, over one-line runner rows on shared tracks, a column head row, the fleet's health in the header and the queue above the list (2026-10-29) | Against one card per machine (a server tile, three header actions and a People row on every machine put a one-runner machine at about 200px, columns were laid out per card, and the queue sat in a side rail that fell to the bottom of the page at 768) and against bands separated by space alone or a heading over a box per machine (both read as separate pages); the stat well's four figures moved into the header's health line, the trash column and Import into `⋯` menus, and "just now" was dropped, since a connected runner's last seen always reads that |
 | Runners: no column head, a server mark on each band, its runners stepped in under the name, the version trailing, and Add runner… in the band's `⋯` (2026-11-26) | A column head over a band read the band as a row with blank Version and Doing cells; a status dot on the band beside a runner's dot made "1 of 1 online" sit beside two green dots; a band Add runner beside the header's repeated the page's primary action on every machine; and with Doing last a short "idle" left a dead run to the row's end. Rejected: a column head repeated under every band (chrome for one or two rows) |
 | Plays: every row two lines, the description as the preview of a play whose group names its type; `auto on` keeps its words; the Agent page opens its first play from 1024px (2026-11-26) | One- and two-line rows side by side broke the list's rhythm, a bare bolt and figure at the default pane width said nothing, and an 830px pane holding a 14px "select a play" line read as empty. Rejected: a Fraunces headline in the placeholder (the list pane spec keeps it compact beside a full list) |
-| Runners: what a runner is doing set right against its version; an unused code's line ends where the versions end; a play's per-computer runs at once is a compact select (2026-11-26) | With doing left in a wide column a short `idle` and the version sat about 450px apart, each aligned to nothing, and a column head was already rejected; set against each other they read as one group at every width. Twenty segmented cells for a secondary setting were the heaviest block on a play's page; the select matches the daily cap above it |
+| Runners: what a runner is doing set right against its version; an unused code's line ends where the versions end (2026-11-26) | With doing left in a wide column a short `idle` and the version sat about 450px apart, each aligned to nothing, and a column head was already rejected; set against each other they read as one group at every width. |
 | Runners: a runner's dot moved from before its name to beside its state word, and a code's dashed dot with it (2026-11-26) | A green dot before the name answered "connected" while the word at the row's end said `idle`, so one row spoke two state grammars beside the band's one dot-and-word; with the dot beside its word every state on the page reads as a dot and the word it means, and a busy runner no longer shows two dots |
 | A machine's commands are Commands… in its band's `⋯`, opening a right sheet (2026-11-25) | A root shell on a server is rare and held by few; a band button for it would sit on every machine for everyone who sees one. Against a section folded under the band: it pushed the runner rows down the page and the band is pinned while they scroll. The sheet reuses the computer row's command rows and log sheet, so a command reads the same wherever it ran |
 | Topology in lanes, read at a legible zoom (2026-10-29) | The fitted canvas sat near 0.5, where the mono route rows rendered at 6 to 8px, and its automatic layout scattered the hostnames, gateways and services so the left-to-right sentence only held inside each gateway card; at its worst the fit still cut hostnames and drawn nodes off both sides. Fixed lanes, pills level with their rows and a 0.8 floor keep the sentence whole. Against a docked route index listing every hostname (hostnames shown twice, which the hub rows were chosen to avoid) and against anchoring the camera on one lane (the whole sentence fits at 1440). The gateway, service, pill, drawn-node and frame shapes were picked from screenshot variants |

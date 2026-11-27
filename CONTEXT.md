@@ -531,8 +531,10 @@ only those in its target's project. The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until a ready computer of theirs has room
 (Runs at once), and is checked again before it starts; a waiting run names
-each of their computers and why it could not take the run. A ticket past the daily
-cap on automatic runs shows "Auto plays paused" until resumed. Managed with
+each of their computers and why it could not take the run. An auto play may carry a
+**computer rule** (labels a computer must have one of, labels it must not have, and, for a person, the computers
+to use), and a computer the rule leaves out is passed over under its own reason; a pressed run ignores it. A
+computer's Runs at once is the only limit on how much runs. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`. A ticket play's auto
 play may instead wait for a **Schedule** and work through every ticket it takes as a **Sweep**, and any auto play may run

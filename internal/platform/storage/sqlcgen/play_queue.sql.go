@@ -11,31 +11,6 @@ import (
 	"strings"
 )
 
-const countPlayQueueStarted = `-- name: CountPlayQueueStarted :one
-SELECT COUNT(*) AS started, MIN(q.decided_at) AS oldest FROM play_queue q
-WHERE q.target_type = ?1 AND q.target_id = ?2 AND q.status = 'started'
-  AND q.decided_at >= MAX(?3, COALESCE(
-      (SELECT resumed_at FROM play_queue_resumes r WHERE r.target_type = ?1 AND r.target_id = ?2), 0))
-`
-
-type CountPlayQueueStartedParams struct {
-	TargetType string
-	TargetID   string
-	Since      interface{}
-}
-
-type CountPlayQueueStartedRow struct {
-	Started int64
-	Oldest  interface{}
-}
-
-func (q *Queries) CountPlayQueueStarted(ctx context.Context, arg CountPlayQueueStartedParams) (CountPlayQueueStartedRow, error) {
-	row := q.db.QueryRowContext(ctx, countPlayQueueStarted, arg.TargetType, arg.TargetID, arg.Since)
-	var i CountPlayQueueStartedRow
-	err := row.Scan(&i.Started, &i.Oldest)
-	return i, err
-}
-
 const getPlayQueueItem = `-- name: GetPlayQueueItem :one
 SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, harness_project_id, service, outage_id, waiting_on, sweep_id, sweep_position, start_by, lock_key, repository FROM play_queue WHERE id = ?
 `
@@ -708,28 +683,6 @@ func (q *Queries) UpdatePlayQueueItem(ctx context.Context, arg UpdatePlayQueueIt
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const upsertPlayQueueResume = `-- name: UpsertPlayQueueResume :exec
-INSERT INTO play_queue_resumes (target_type, target_id, resumed_by, resumed_at) VALUES (?, ?, ?, ?)
-ON CONFLICT(target_type, target_id) DO UPDATE SET resumed_by = excluded.resumed_by, resumed_at = excluded.resumed_at
-`
-
-type UpsertPlayQueueResumeParams struct {
-	TargetType string
-	TargetID   string
-	ResumedBy  string
-	ResumedAt  int64
-}
-
-func (q *Queries) UpsertPlayQueueResume(ctx context.Context, arg UpsertPlayQueueResumeParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPlayQueueResume,
-		arg.TargetType,
-		arg.TargetID,
-		arg.ResumedBy,
-		arg.ResumedAt,
-	)
-	return err
 }
 
 const wakePlayQueuePerson = `-- name: WakePlayQueuePerson :exec

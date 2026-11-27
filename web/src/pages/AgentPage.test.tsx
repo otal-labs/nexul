@@ -51,7 +51,6 @@ const rest = (plays: unknown[]) => (url: string) => {
   if (url === "/api/workspaces") return [{ id: "ws-1", name: "Acme", slug: "acme" }];
   if (url === "/api/projects") return [{ id: "p-1", name: "Website" }];
   if (url === "/api/workspaces/ws-1/plays/pl-x/auto-plays") return [];
-  if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { daily_cap_per_ticket: 5 };
   if (url === "/api/plays/runs") return { items: [], total: 0 };
   throw new Error(`unexpected GET ${url}`);
 };
