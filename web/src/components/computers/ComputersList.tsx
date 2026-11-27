@@ -35,7 +35,7 @@ export const ComputersList = ({ current }: ComputersListProps) => {
   };
 
   return (
-    <div className="pb-4">
+    <div className="pb-8">
       {isPending && <LoadingDisplay label="Loading computers…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load your computers." />}
       {computers && computers.length > 0 && (

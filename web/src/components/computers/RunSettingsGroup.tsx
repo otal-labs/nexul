@@ -1,5 +1,4 @@
 import { SlidersHorizontalIcon } from "lucide-react";
-import { Fragment } from "react";
 
 import { DrillChevron } from "@/components/computers/DrillChevron";
 import { ListPaneGroup } from "@/components/listpane/ListPaneGroup";
@@ -13,20 +12,8 @@ import type { Project } from "@/models/Project";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // What the run settings use, up to two lines: the model and where threads start are the point of it.
-// It breaks only at its " · " separators, so "New worktree" is never split across two lines.
-const Preview = ({ children }: { children: string | undefined }) => (
-  <span className="line-clamp-2 min-w-0">
-    {(children ?? "").split(" · ").map((part, i) => (
-      <Fragment key={part}>
-        {i > 0 && " "}
-        <span className="inline-block max-w-full truncate align-bottom whitespace-nowrap">
-          {i > 0 && "· "}
-          {part}
-        </span>
-      </Fragment>
-    ))}
-  </span>
-);
+// One line with an ellipsis: the pane's subtitle carries the whole of it.
+const Preview = ({ children }: { children: string | undefined }) => <span className="block min-w-0 truncate whitespace-nowrap">{children}</span>;
 
 interface DefaultsRowProps {
   selected: boolean;

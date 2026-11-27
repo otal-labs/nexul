@@ -2,7 +2,6 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PaneHeader } from "@/components/computers/PaneHeader";
-import { ProjectPlaysPlacement } from "@/components/agent/ProjectPlaysPlacement";
 import { ProjectLinkForm } from "@/components/settings/ProjectLinkForm";
 import { useFetchProjectLinks, useProjectLinkSummary } from "@/hooks/PairingProjectHooks";
 import { useFetchWorkspaceProjects } from "@/hooks/ProjectHooks";
@@ -33,7 +32,6 @@ export const ProjectRunPane = ({ projectId }: ProjectRunPaneProps) => {
           <ProjectLinkForm projectId={project.id} projectName={project.name} link={link ?? { project_id: project.id, computers: [], checkouts: [] }} />
         </div>
       )}
-      {project && <ProjectPlaysPlacement projectId={project.id} />}
     </div>
   );
 };

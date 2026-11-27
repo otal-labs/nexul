@@ -85,7 +85,7 @@ describe("where a project's plays land now", () => {
     renderComputers("/acme/agent?computers=project%3Aproj-1");
 
     const section = await screen.findByRole("region", { name: "Where its plays land now" });
-    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk; winbox is passed over: offline.");
+    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is skipped while offline.");
     expect(within(section).queryByRole("listitem")).not.toBeInTheDocument();
   });
 });

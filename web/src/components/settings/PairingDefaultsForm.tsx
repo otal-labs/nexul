@@ -74,8 +74,9 @@ export const PairingDefaultsForm = ({ defaults }: PairingDefaultsFormProps) => {
           <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel options={START_IN_OPTIONS} />
         </RunSettingField>
       </div>
-      <div className="flex justify-end pt-3">
-        <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} loading={form.formState.isSubmitting} disabled={!form.formState.isDirty && !saved}>
+      <div className="flex items-center justify-end gap-3 pt-3">
+        {form.formState.isDirty && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
+        <Button type="submit" size="sm" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty && !saved}>
           {saved && <CheckIcon className="size-4" aria-hidden />}
           {saved ? "Saved" : "Save"}
         </Button>

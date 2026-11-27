@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
+import { ProjectPlaysPlacement } from "@/components/agent/ProjectPlaysPlacement";
 import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
@@ -56,6 +57,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="@container divide-y divide-border rounded-lg border border-border px-4">
           <ProjectComputersField projectId={projectId} projectName={projectName} />
+          <ProjectPlaysPlacement projectId={projectId} />
           {ids.length > 0 && (
             <RunSettingField label="Send runs to">
               <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel placeholder={SAME_AS_DEFAULTS} options={PLACEMENT_OPTIONS} />
@@ -80,13 +82,12 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
             <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel placeholder={SAME_AS_DEFAULTS} options={START_IN_OPTIONS} />
           </RunSettingField>
         </div>
-        <div className="flex items-center justify-end gap-2 pt-3">
-          {linkSaysSomething(link) && (
-            <Button type="button" variant="ghost" size="sm" onClick={onClear} loading={clearLink.isPending}>
-              Use defaults
-            </Button>
-          )}
-          <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
+        <div className="flex items-center justify-end gap-3 pt-3">
+          {form.formState.isDirty && <span className="mr-auto text-xs text-muted-foreground">Unsaved changes</span>}
+          <Button type="button" variant="ghost" size="sm" onClick={onClear} loading={clearLink.isPending} disabled={!linkSaysSomething(link)}>
+            Reset to defaults
+          </Button>
+          <Button type="submit" size="sm" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
             Save
           </Button>
         </div>

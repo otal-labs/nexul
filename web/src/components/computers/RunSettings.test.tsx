@@ -105,11 +105,11 @@ describe("the projects on the Agent page", () => {
     renderComputers("/acme/agent?computers=project%3Ap-web");
 
     expect(await screen.findByRole("heading", { name: "Web", level: 3 })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Use defaults" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Reset to defaults" })).toBeEnabled();
 
     await user.click(within(await projectsGroup()).getByRole("link", { name: /Api/ }));
     expect(await screen.findByRole("heading", { name: "Api", level: 3 })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Use defaults" }), "nothing to clear on a project that uses the defaults").not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset to defaults" }), "nothing to reset on a project that uses the defaults").toBeDisabled();
     await user.click(await screen.findByRole("radio", { name: "Only these" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -123,7 +123,7 @@ describe("the projects on the Agent page", () => {
     const user = userEvent.setup();
     renderComputers("/acme/agent?computers=project%3Ap-web");
 
-    await user.click(await screen.findByRole("button", { name: "Use defaults" }));
+    await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/p-web"));
     expect(toast.success).toHaveBeenCalledWith("Web uses your defaults");
