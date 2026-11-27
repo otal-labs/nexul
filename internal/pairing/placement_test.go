@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 )
 
 var placementNow = time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
@@ -597,4 +598,29 @@ func TestNeeds_GoToTheFirstComputerThatHasThemAll(t *testing.T) {
 		{ComputerID: "laptop", Name: "laptop", Why: PassOverMissingNeed, Text: "laptop doesn't have windows-vm"},
 		{ComputerID: "desk", Name: "desk", Why: PassOverMissingNeed, Text: "desk doesn't have windows-vm"},
 	}, nc.PassedOver, "the waiting line names every computer and what it lacks")
+}
+
+func TestComputerRule_LeavesOutWhatItNamesBeforeAnyIsChosen(t *testing.T) {
+	t.Parallel()
+	f := newPlacementFixture(t)
+	f.add(t, "laptop", func(c *Computer) { c.Labels = []string{"flaky"} })
+	f.add(t, "desk", func(c *Computer) { c.Labels = []string{"gpu"}; c.Facts.OS = "linux" })
+	f.add(t, "build", func(c *Computer) { c.Labels = []string{"gpu"} })
+	preview := func(rule labels.ComputerRule) (*ResolvedTarget, error) {
+		return f.svc.PreviewRun(t.Context(), RunRequest{UserID: "u1", ProjectID: "proj-1", ComputerRule: rule, Room: RoomPreferred})
+	}
+
+	out, err := preview(labels.ComputerRule{LabelsOut: []string{"flaky"}})
+	require.NoError(t, err)
+	assert.Equal(t, "desk", out.Computer.ID)
+	assert.Equal(t, []PassOver{{ComputerID: "laptop", Name: "laptop", Why: PassOverRuleOut, Text: "laptop is left out by the auto play's computer rule"}}, out.PassedOver)
+
+	in, err := preview(labels.ComputerRule{LabelsIn: []string{"gpu", "windows"}, IDs: []string{"build", "laptop"}})
+	require.NoError(t, err)
+	assert.Equal(t, "build", in.Computer.ID, "a derived or own label from the list, and an id from the list, are both required")
+
+	_, err = preview(labels.ComputerRule{IDs: []string{"elsewhere"}})
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc)
+	assert.Len(t, nc.PassedOver, 3, "every computer is named as left out")
 }

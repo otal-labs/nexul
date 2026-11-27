@@ -38,7 +38,7 @@ describe("PlayQueueNowLine", () => {
       queueItem({ id: "q-1", reason: "offline" }),
       queueItem({ id: "q-2", target_id: "t-2", reason: "offline" }),
       queueItem({ id: "q-3", person_id: "u-bob", reason: "no_computer_ready" }),
-      queueItem({ id: "q-4", person_id: "u-sam", reason: "paused" }),
+      queueItem({ id: "q-4", person_id: "u-sam", reason: "ticket busy" }),
     ]);
     expect(await screen.findByText(/queued/, { selector: "p" })).toHaveTextContent(
       "4 queued: 2 for Alice Moreau's computers (computer offline) · 1 for bob's computers (no computer can take it) · 1 more",

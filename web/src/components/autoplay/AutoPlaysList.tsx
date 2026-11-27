@@ -1,7 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
 import { AutoPlayRow } from "@/components/autoplay/AutoPlayRow";
-import { AutoPlayLimits } from "@/components/autoplay/AutoPlayLimits";
 import { PlayQueueNowLine } from "@/components/autoplay/PlayQueueNowLine";
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
@@ -51,7 +50,6 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
           </div>
         </div>
       )}
-      {autoPlays && <AutoPlayLimits workspaceId={play.workspace_id} ticket={subject === "ticket"} canWrite={canWrite} />}
     </section>
   );
 };

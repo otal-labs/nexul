@@ -135,7 +135,7 @@ func (q *Queries) DeleteWorkspaceInvite(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE id = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE id = ?
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error) {
@@ -149,7 +149,6 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 		&i.MentionChipTemplate,
 		&i.Slug,
 		&i.DecisionsCheckEnabled,
-		&i.AutoPlayDailyCap,
 		&i.AccessSetupFinished,
 		&i.AccessSetupBy,
 		&i.AccessSetupAt,
@@ -159,7 +158,7 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE slug = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, access_setup_finished, access_setup_by, access_setup_at, archived_at FROM workspaces WHERE slug = ?
 `
 
 func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
@@ -173,7 +172,6 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.MentionChipTemplate,
 		&i.Slug,
 		&i.DecisionsCheckEnabled,
-		&i.AutoPlayDailyCap,
 		&i.AccessSetupFinished,
 		&i.AccessSetupBy,
 		&i.AccessSetupAt,
@@ -201,7 +199,7 @@ func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMember
 }
 
 const listArchivedWorkspaces = `-- name: ListArchivedWorkspaces :many
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at, archived_at
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, access_setup_finished, access_setup_by, access_setup_at, archived_at
 FROM workspaces WHERE archived_at IS NOT NULL ORDER BY archived_at DESC, id
 `
 
@@ -222,7 +220,6 @@ func (q *Queries) ListArchivedWorkspaces(ctx context.Context) ([]Workspace, erro
 			&i.MentionChipTemplate,
 			&i.Slug,
 			&i.DecisionsCheckEnabled,
-			&i.AutoPlayDailyCap,
 			&i.AccessSetupFinished,
 			&i.AccessSetupBy,
 			&i.AccessSetupAt,
@@ -684,7 +681,7 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at, w.archived_at
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.access_setup_finished, w.access_setup_by, w.access_setup_at, w.archived_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ? AND w.archived_at IS NULL
@@ -709,7 +706,6 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]W
 			&i.MentionChipTemplate,
 			&i.Slug,
 			&i.DecisionsCheckEnabled,
-			&i.AutoPlayDailyCap,
 			&i.AccessSetupFinished,
 			&i.AccessSetupBy,
 			&i.AccessSetupAt,

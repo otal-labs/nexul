@@ -3,7 +3,6 @@ import { View } from "react-native";
 import type { PlayStage } from "@nexul/client-core/plays";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { AutoPlaysPausedRow } from "@/components/plays/AutoPlaysPausedRow";
 import { PlayStartRow } from "@/components/plays/PlayStartRow";
 import { QueuedRunRow } from "@/components/plays/QueuedRunRow";
 import { RunRow } from "@/components/plays/RunRow";
@@ -39,11 +38,10 @@ export const TargetPlaysSection = ({ targetType, targetId, projectId, stage, tab
           ))}
         </SettingsCard>
       )}
-      {queue?.paused && <AutoPlaysPausedRow targetType={targetType} targetId={targetId} projectId={projectId} autoRuns={queue.auto_runs} />}
       {queued.length > 0 && (
         <SettingsCard title="Queued">
           {queued.map((item, i) => (
-            <QueuedRunRow key={item.id} item={item} title={item.play_label} resumable={false} first={i === 0} />
+            <QueuedRunRow key={item.id} item={item} title={item.play_label} first={i === 0} />
           ))}
         </SettingsCard>
       )}

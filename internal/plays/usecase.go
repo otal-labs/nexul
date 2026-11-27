@@ -109,14 +109,23 @@ type Service struct {
 	repo     Repo
 	perm     PermissionGate
 	instance InstanceTemplates
-	// computers is optional; without it no auto play can be pinned to a computer.
-	now func() time.Time
+	// computers is optional; without it no auto play's computer rule may name a computer.
+	computers ComputerAccess
+	now       func() time.Time
 }
 
 // InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
 type InstanceTemplates interface {
 	Effective(ctx context.Context, kind, key string) (string, error)
 }
+
+// ComputerAccess says whether a person's runs may land on a computer: their own, or one shared with them by Run agents.
+type ComputerAccess interface {
+	MayRunOn(ctx context.Context, userID, computerID string) bool
+}
+
+// SetComputerAccess wires the check a computer rule's ids go through.
+func (s *Service) SetComputerAccess(c ComputerAccess) { s.computers = c }
 
 // SetInstanceTemplates wires the instance layer a new workspace's built-in plays take their instructions from.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }

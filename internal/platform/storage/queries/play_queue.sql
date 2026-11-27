@@ -50,16 +50,6 @@ SELECT EXISTS (
     WHERE target_type = ? AND target_id = ? AND queued_at >= ? AND auto_play_id = ? AND status IN ('queued', 'dispatching', 'started')
 );
 
--- name: CountPlayQueueStarted :one
-SELECT COUNT(*) AS started, MIN(q.decided_at) AS oldest FROM play_queue q
-WHERE q.target_type = sqlc.arg(target_type) AND q.target_id = sqlc.arg(target_id) AND q.status = 'started'
-  AND q.decided_at >= MAX(sqlc.arg(since), COALESCE(
-      (SELECT resumed_at FROM play_queue_resumes r WHERE r.target_type = sqlc.arg(target_type) AND r.target_id = sqlc.arg(target_id)), 0));
-
--- name: UpsertPlayQueueResume :exec
-INSERT INTO play_queue_resumes (target_type, target_id, resumed_by, resumed_at) VALUES (?, ?, ?, ?)
-ON CONFLICT(target_type, target_id) DO UPDATE SET resumed_by = excluded.resumed_by, resumed_at = excluded.resumed_at;
-
 -- name: RecoverDispatchingPlayQueue :exec
 UPDATE play_queue SET
     status = CASE WHEN EXISTS (SELECT 1 FROM play_trails t WHERE t.id = play_queue.trail_id) THEN 'started' ELSE 'queued' END,

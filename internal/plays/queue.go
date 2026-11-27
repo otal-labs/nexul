@@ -31,13 +31,12 @@ const (
 const (
 	ReasonOffline    = "offline"
 	ReasonTicketBusy = "ticket busy"
-	ReasonPaused     = "paused"
 	// ReasonOneAtATime is a run waiting while another holding its lock goes: its auto play's own, or a shared resource.
 	ReasonOneAtATime = "one at a time"
 )
 
 // QueueItem is one match of an auto play's moment on a ticket or doc, or an automation's runPlay call (ADR 0132),
-// queued on the person it runs on and kept once decided, so the target shows it and the daily cap counts it.
+// queued on the person it runs on and kept once decided, so the target shows it.
 type QueueItem struct {
 	ID            string       `json:"id"`
 	WorkspaceID   string       `json:"workspace_id"`
@@ -72,17 +71,12 @@ type QueueItem struct {
 	LockKey string `json:"-"`
 }
 
-// Queue is a target's auto runs as its page shows them: every item newest first, and whether the daily cap paused it.
+// Queue is a target's auto runs as its page shows them: every item newest first.
 type Queue struct {
-	Items    []*QueueItem `json:"items"`
-	Paused   bool         `json:"paused"`
-	AutoRuns int          `json:"auto_runs"`
-	DailyCap int          `json:"daily_cap"`
-	// PausedUntil is when the oldest counted run leaves the rolling day, so a page can look again then; null unless paused.
-	PausedUntil *time.Time `json:"paused_until"`
+	Items []*QueueItem `json:"items"`
 }
 
-// QueueResumedEvent is the play.queue_resumed payload: the target's daily count of automatic runs starts again from ResumedAt.
+// QueueResumedEvent is the play.queue_resumed payload, no longer sent (ADR 0214).
 type QueueResumedEvent struct {
 	WorkspaceID string     `json:"workspace_id"`
 	ProjectID   string     `json:"project_id"`
@@ -103,17 +97,7 @@ func (r *Runner) GetQueue(ctx context.Context, targetType TargetType, targetID s
 	if err != nil {
 		return nil, fmt.Errorf("list the queue of %s %s: %w", targetType, targetID, err)
 	}
-	q := &Queue{Items: r.seenItems(ctx, workspaceID, items)}
-	var frees time.Time
-	q.AutoRuns, q.DailyCap, frees, err = r.autoRunsToday(ctx, workspaceID, targetType, targetID)
-	if err != nil {
-		return nil, err
-	}
-	q.Paused = q.AutoRuns >= q.DailyCap
-	if q.Paused {
-		q.PausedUntil = &frees
-	}
-	return q, nil
+	return &Queue{Items: r.seenItems(ctx, workspaceID, items)}, nil
 }
 
 // QueuedForPlay returns what waits for a play, in queue order, where the caller may open the project (autoplays:read).
@@ -169,36 +153,6 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	}
 	r.Kick()
 	return it, nil
-}
-
-// ResumeAutoPlays restarts a paused target's daily count of automatic runs from now; an autoplays:write holder or the
-// ticket's developer may.
-func (r *Runner) ResumeAutoPlays(ctx context.Context, targetType TargetType, targetID string) (*Queue, error) {
-	f, workspaceID, err := r.queueTarget(ctx, targetType, targetID)
-	if err != nil {
-		return nil, err
-	}
-	targetID = strings.TrimSpace(targetID)
-	actor := actorID(ctx)
-	if (actor == "" || actor != f.Developer) && !r.perm.HasPermission(ctx, actor, workspaceID, permissions.AutoplaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the ticket's developer or an %s holder can resume auto plays", apperrs.ErrForbidden, permissions.AutoplaysWrite)
-	}
-	count, limit, _, err := r.autoRunsToday(ctx, workspaceID, targetType, targetID)
-	if err != nil {
-		return nil, err
-	}
-	if count < limit {
-		return nil, fmt.Errorf("%w: auto plays are not paused here; %d of %d automatic runs today", apperrs.ErrConflict, count, limit)
-	}
-	now := r.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicQueueResumed, Payload: QueueResumedEvent{
-		WorkspaceID: workspaceID, ProjectID: f.ProjectID, TargetType: targetType, TargetID: targetID, ResumedBy: actor, ResumedAt: now,
-	}}
-	if err := r.queue.Resume(ctx, targetType, targetID, actor, now, evt); err != nil {
-		return nil, fmt.Errorf("resume auto plays on %s %s: %w", targetType, targetID, err)
-	}
-	r.Kick()
-	return r.GetQueue(ctx, targetType, targetID)
 }
 
 // queuedItem reads a queue item whose target and play the caller can see; any other is not found.
@@ -261,21 +215,6 @@ func (r *Runner) queueTarget(ctx context.Context, targetType TargetType, targetI
 		return Facts{}, "", err
 	}
 	return f, workspaceID, nil
-}
-
-// autoRunsToday counts the target's automatic runs in the rolling day, or since its resume, against the workspace's
-// cap, and says when the oldest of them leaves the count.
-func (r *Runner) autoRunsToday(ctx context.Context, workspaceID string, targetType TargetType, targetID string) (count, limit int, frees time.Time, err error) {
-	limits, err := r.plays.AutoPlayLimits(ctx, workspaceID)
-	if err != nil {
-		return 0, 0, time.Time{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
-	}
-	limit = limits.DailyCapPerTicket
-	count, oldest, err := r.queue.CountAutoRuns(ctx, targetType, targetID, r.now().UTC().Add(-autoRunWindow))
-	if err != nil {
-		return 0, 0, time.Time{}, fmt.Errorf("count the automatic runs on %s %s: %w", targetType, targetID, err)
-	}
-	return count, limit, oldest.Add(autoRunWindow), nil
 }
 
 // decide moves it from one status to another with reason, publishing the change; ErrConflict when it already moved on.

@@ -186,7 +186,7 @@ func TestStackQueue_WaitsOnAGapAndIsReadThroughItsProject(t *testing.T) {
 	q, err := r.Runner.GetQueue(as(t.Context(), alice), plays.TargetStack, "st-1")
 	require.NoError(t, err)
 	require.Len(t, q.Items, 1)
-	assert.Equal(t, []any{plays.QueueQueued, "no_default", 0}, []any{q.Items[0].Status, q.Items[0].Reason, q.AutoRuns},
+	assert.Equal(t, []any{plays.QueueQueued, "no_default"}, []any{q.Items[0].Status, q.Items[0].Reason},
 		"a run whose picker has no T3 project on that computer waits on the gap instead of failing")
 
 	r.Refuse("")
@@ -194,7 +194,7 @@ func TestStackQueue_WaitsOnAGapAndIsReadThroughItsProject(t *testing.T) {
 	r.dispatch(t)
 	q, err = r.Runner.GetQueue(as(t.Context(), alice), plays.TargetStack, "st-1")
 	require.NoError(t, err)
-	assert.Equal(t, []any{plays.QueueStarted, 1}, []any{q.Items[0].Status, q.AutoRuns})
+	assert.Equal(t, plays.QueueStarted, q.Items[0].Status)
 
 	r.HideProject("u-stranger", project)
 	_, err = r.Runner.GetQueue(as(t.Context(), "u-stranger"), plays.TargetStack, "st-1")

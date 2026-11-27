@@ -122,18 +122,6 @@ func (r *PlayQueueRepo) ListQueuedByPlay(ctx context.Context, playID string, sco
 	return toQueueItems(rows), nil
 }
 
-func (r *PlayQueueRepo) Resume(ctx context.Context, targetType plays.TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		err := r.q.WithTx(tx).UpsertPlayQueueResume(ctx, sqlcgen.UpsertPlayQueueResumeParams{
-			TargetType: string(targetType), TargetID: targetID, ResumedBy: by, ResumedAt: at.Unix(),
-		})
-		if err != nil {
-			return fmt.Errorf("resume %s %s: %w", targetType, targetID, classifyWriteErr(err))
-		}
-		return enqueuePlaysOutbox(ctx, tx, evts)
-	})
-}
-
 func (r *PlayQueueRepo) QueuedPeople(ctx context.Context, now time.Time) ([]string, error) {
 	return r.q.ListPlayQueuePeople(ctx, now.Unix())
 }
@@ -156,18 +144,6 @@ func (r *PlayQueueRepo) NextNotBefore(ctx context.Context, after time.Time) (tim
 		return time.Time{}, false, err
 	}
 	return time.Unix(n, 0).UTC(), true, nil
-}
-
-func (r *PlayQueueRepo) CountAutoRuns(ctx context.Context, targetType plays.TargetType, targetID string, since time.Time) (int, time.Time, error) {
-	row, err := r.q.CountPlayQueueStarted(ctx, sqlcgen.CountPlayQueueStartedParams{TargetType: string(targetType), TargetID: targetID, Since: since.Unix()})
-	if err != nil {
-		return 0, time.Time{}, err
-	}
-	oldest, ok, err := optionalInt(row.Oldest)
-	if err != nil || !ok {
-		return int(row.Started), time.Time{}, err
-	}
-	return int(row.Started), time.Unix(oldest, 0).UTC(), nil
 }
 
 func (r *PlayQueueRepo) QueuedSince(ctx context.Context, autoPlayID string, targetType plays.TargetType, targetID string, since time.Time) (bool, error) {

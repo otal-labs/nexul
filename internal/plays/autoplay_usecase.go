@@ -8,6 +8,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -25,6 +26,8 @@ type AutoPlayInput struct {
 	MemoryIDs  []string
 	OneAtATime bool
 	Resource   string
+	// ComputerRule narrows the run-as person's computers, ids needing run_on person; nil keeps the auto play's.
+	ComputerRule *labels.ComputerRule
 }
 
 // ListAutoPlays returns a play's auto plays, oldest first (autoplays:read).
@@ -88,6 +91,9 @@ func (s *Service) CreateAutoPlay(ctx context.Context, workspaceID, playID string
 	if err := a.Validate(p.Type); err != nil {
 		return nil, err
 	}
+	if err := s.checkComputers(ctx, a); err != nil {
+		return nil, err
+	}
 	if err := s.repo.CreateAutoPlay(ctx, a, s.event(TopicAutoPlayCreated, AutoPlayEvent{AutoPlay: *a})); err != nil {
 		return nil, fmt.Errorf("create auto play on play %s: %w", p.ID, err)
 	}
@@ -111,6 +117,9 @@ func (s *Service) UpdateAutoPlay(ctx context.Context, workspaceID, playID, id st
 	if err := a.Validate(p.Type); err != nil {
 		return nil, err
 	}
+	if err := s.checkComputers(ctx, a); err != nil {
+		return nil, err
+	}
 	if err := s.repo.UpdateAutoPlay(ctx, a, s.event(TopicAutoPlayUpdated, AutoPlayEvent{AutoPlay: *a})); err != nil {
 		return nil, fmt.Errorf("update auto play %s: %w", a.ID, err)
 	}
@@ -131,50 +140,6 @@ func (s *Service) DeleteAutoPlay(ctx context.Context, workspaceID, playID, id st
 		return fmt.Errorf("delete auto play %s: %w", a.ID, err)
 	}
 	return nil
-}
-
-// AutoPlayLimits are workspaceID's bounds on automatic runs (autoplays:read).
-func (s *Service) AutoPlayLimits(ctx context.Context, workspaceID string) (AutoPlayLimits, error) {
-	workspaceID = strings.TrimSpace(workspaceID)
-	if err := s.require(ctx, workspaceID, permissions.AutoplaysRead); err != nil {
-		return AutoPlayLimits{}, err
-	}
-	limits, err := s.repo.AutoPlayLimits(ctx, workspaceID)
-	if err != nil {
-		return AutoPlayLimits{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
-	}
-	return limits, nil
-}
-
-// AutoPlayLimitsPatch names the limits to change; a nil field keeps its value.
-type AutoPlayLimitsPatch struct {
-	DailyCapPerTicket *int `json:"daily_cap_per_ticket"`
-}
-
-// SetAutoPlayLimits changes workspaceID's bounds on automatic runs (autoplays:write).
-func (s *Service) SetAutoPlayLimits(ctx context.Context, workspaceID string, patch AutoPlayLimitsPatch) (AutoPlayLimits, error) {
-	workspaceID = strings.TrimSpace(workspaceID)
-	if err := s.require(ctx, workspaceID, permissions.AutoplaysWrite); err != nil {
-		return AutoPlayLimits{}, err
-	}
-	if patch.DailyCapPerTicket == nil {
-		return AutoPlayLimits{}, fmt.Errorf("%w: send daily_cap_per_ticket", apperrs.ErrInvalid)
-	}
-	if c := patch.DailyCapPerTicket; c != nil && (*c < MinAutoPlayDailyCap || *c > MaxAutoPlayDailyCap) {
-		return AutoPlayLimits{}, fmt.Errorf("%w: the daily cap on automatic runs per ticket is %d to %d", apperrs.ErrInvalid, MinAutoPlayDailyCap, MaxAutoPlayDailyCap)
-	}
-	limits, err := s.repo.AutoPlayLimits(ctx, workspaceID)
-	if err != nil {
-		return AutoPlayLimits{}, fmt.Errorf("get the auto play limits of workspace %s: %w", workspaceID, err)
-	}
-	if patch.DailyCapPerTicket != nil {
-		limits.DailyCapPerTicket = *patch.DailyCapPerTicket
-	}
-	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: limits.DailyCapPerTicket})
-	if err := s.repo.SetAutoPlayLimits(ctx, workspaceID, limits, evt); err != nil {
-		return AutoPlayLimits{}, fmt.Errorf("set the auto play limits of workspace %s: %w", workspaceID, err)
-	}
-	return limits, nil
 }
 
 // autoPlayInPlay finds an auto play under its play and workspace; one under another play reads as not found.
@@ -215,4 +180,23 @@ func (a *AutoPlay) apply(in AutoPlayInput) {
 	a.OnceWithinMinutes = in.OnceWithinMinutes
 	a.RunOn = in.RunOn
 	a.MemoryIDs = in.MemoryIDs
+	if in.ComputerRule != nil {
+		a.ComputerRule = *in.ComputerRule
+	}
+}
+
+// checkComputers refuses ids in a's computer rule that its run-as person may not run on: not theirs and not shared by Run agents.
+func (s *Service) checkComputers(ctx context.Context, a *AutoPlay) error {
+	if len(a.ComputerRule.IDs) == 0 {
+		return nil
+	}
+	if a.RunAs == "" {
+		return fmt.Errorf("%w: pick the person it runs as before naming computers", apperrs.ErrInvalid)
+	}
+	for _, id := range a.ComputerRule.IDs {
+		if s.computers == nil || !s.computers.MayRunOn(ctx, a.RunAs, id) {
+			return fmt.Errorf("%w: computer %s is not one the person it runs as owns or may run agents on", apperrs.ErrInvalid, id)
+		}
+	}
+	return nil
 }

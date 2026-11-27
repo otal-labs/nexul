@@ -29,9 +29,5 @@ export const queueItem = (overrides: Partial<PlayQueueItem> = {}): PlayQueueItem
 
 export const playQueue = (overrides: Partial<PlayQueue> = {}): PlayQueue => ({
   items: [],
-  paused: false,
-  auto_runs: 0,
-  daily_cap: 5,
-  paused_until: null,
   ...overrides,
 });

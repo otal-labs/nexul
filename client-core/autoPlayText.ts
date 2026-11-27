@@ -19,6 +19,13 @@ export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
 export type AutoPlayRunOn = "developer" | "tester" | "causer" | "person";
 
+// Narrows the computers an auto play's runs may land on: one of labels_in when set, none of labels_out, one of ids when set (ids need run_on person).
+export interface AutoPlayComputerRule {
+  labels_in?: string[];
+  labels_out?: string[];
+  ids?: string[];
+}
+
 // The server still reads "computer" as "person", so an older payload or cache can carry it.
 export const normalRunOn = (runOn: AutoPlayRunOn | "computer"): AutoPlayRunOn => (runOn === "computer" ? "person" : runOn);
 export type AutoPlayOp = "is" | "is_not" | "set" | "unset";

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -162,4 +163,25 @@ func TestPlayUpdate_ASchedule_KeepsItsFieldsAcrossAPartialUpdate(t *testing.T) {
 
 	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","add_auto_plays":[{"moment":"schedule","run_on":"causer","schedule":{"cron":"0 23 * * *"}}]}`)
 	assert.True(t, errors.Is(err, apperrs.ErrInvalid), "a schedule has no causer")
+}
+
+func TestPlayUpdate_ComputerRuleIsAddedKeptThroughOtherChangesAndReplacedWhole(t *testing.T) {
+	s, _, ps := autoPlayFixture(t)
+	tools := MCPTools(s)
+	play := ps[TypeTicket]
+	update := func(changes string) []autoPlayResult {
+		t.Helper()
+		out, err := callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`",`+changes+`}`)
+		require.NoError(t, err)
+		return out.(playResult).AutoPlays
+	}
+
+	added := update(`"add_auto_plays":[{"moment":"ticket.created","computer_rule":{"labels_in":["Gpu"],"labels_out":["flaky"]}}]`)
+	assert.Equal(t, labels.ComputerRule{LabelsIn: []string{"gpu"}, LabelsOut: []string{"flaky"}, IDs: []string{}}, added[0].ComputerRule)
+
+	kept := update(`"update_auto_plays":[{"id":"` + added[0].ID + `","enabled":true}]`)
+	assert.Equal(t, added[0].ComputerRule, kept[0].ComputerRule, "a change that leaves the rule out keeps it")
+
+	replaced := update(`"update_auto_plays":[{"id":"` + added[0].ID + `","computer_rule":{"labels_out":["slow"]}}]`)
+	assert.Equal(t, labels.ComputerRule{LabelsIn: []string{}, LabelsOut: []string{"slow"}, IDs: []string{}}, replaced[0].ComputerRule)
 }

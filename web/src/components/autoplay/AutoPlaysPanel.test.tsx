@@ -95,7 +95,6 @@ const serve = () =>
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/workspaces/ws-1/plays/pl-1/auto-plays") return { data: autoPlays };
     if (url === "/api/workspaces/ws-1/plays/pl-2/auto-plays") return { data: [] };
-    if (url === "/api/workspaces/ws-1/plays/auto-play-limits") return { data: { daily_cap_per_ticket: 5, runs_at_once_per_person: 1 } };
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Website" }] };
     if (url === "/api/memories") return { data: memories };
     if (url === "/api/plays/sweeps") return { data: sweeps };
@@ -130,7 +129,7 @@ beforeEach(() => {
 });
 
 describe("a play's auto plays", () => {
-  it("lists each with its If, Priority and Runs on lines, switches it at once and puts it back when the save is refused, and sets the daily cap", async () => {
+  it("lists each with its If, Priority and Runs on lines, switches it at once and puts it back when the save is refused", async () => {
     const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
     const { user } = await openAutoPlays();
@@ -151,11 +150,6 @@ describe("a play's auto plays", () => {
     });
     refuse(new Error("no"));
     await waitFor(() => expect(toggle).toBeChecked());
-
-    mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7, runs_at_once_per_person: 1 } });
-    await pickOption(user, "Auto plays per ticket a day", "7");
-    await waitFor(() => expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 }));
-    expect(screen.queryByRole("combobox", { name: /runs at once/i })).not.toBeInTheDocument();
   });
 
   it("opens one in place of the list, and Cancel with an edit asks before going back", async () => {
@@ -260,8 +254,6 @@ describe("a play's auto plays", () => {
     const toggle = await screen.findByRole("switch", { name: "Switch auto play ap-1 on or off" });
     expect(toggle).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Add auto play" })).not.toBeInTheDocument();
-    expect(await screen.findByText("Auto plays per ticket a day")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Auto plays per ticket a day" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /becomes unblocked/ }));
     expect(await screen.findByRole("combobox", { name: "Moment" })).toBeDisabled();

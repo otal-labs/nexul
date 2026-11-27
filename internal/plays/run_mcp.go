@@ -92,7 +92,6 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 type playRunIn struct {
 	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
 	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the Decisions check play on a done ticket instead of a play_id; pass only target_type ticket and target_id."`
-	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays the daily cap paused on a ticket or doc instead of running a play; pass only target_type and target_id. Queued runs then go ahead."`
 	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, interview, or stack."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to read before the run, from memory_list; its always-included ones come anyway."`
@@ -110,7 +109,7 @@ type trailListIn struct {
 	TargetID   string     `json:"target_id,omitempty" jsonschema:"Without id: the ticket's or doc's id, or for an interview the project's id."`
 	PlayID     string     `json:"play_id,omitempty" jsonschema:"Without id: only the trails of this play."`
 	Steps      int        `json:"steps,omitzero" jsonschema:"With id: newest transcript steps to return, 1 to 300. Defaults to 50."`
-	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first, each with its state and why, and whether the daily cap paused them."`
+	Queue      bool       `json:"queue,omitempty" jsonschema:"Without id: true lists the target's auto runs instead of its trails, newest first, each with its state and why."`
 	mcptool.PageArgs
 }
 
@@ -128,14 +127,6 @@ type trailUpdateIn struct {
 	Cancel   bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
 }
 
-// queuePage is a target's auto runs as trail_list with queue returns them: one page of items and the paused state.
-type queuePage struct {
-	mcptool.Page[*QueueItem]
-	Paused   bool `json:"paused"`
-	AutoRuns int  `json:"auto_runs"`
-	DailyCap int  `json:"daily_cap"`
-}
-
 // RunMCPTools returns the tools that run plays and read or steer their trails; every run started here carries Via mcp (ADR 0049).
 func RunMCPTools(r *Runner) []mcptool.Tool {
 	return []mcptool.Tool{
@@ -147,15 +138,11 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"Clarify via AI instead opens the doc's next clarification round and unlocks the doc when it ends, "+
 				"unless it was locked before. With decisions_check true instead of a play_id it runs the Decisions "+
 				"check play on a done ticket, which reads it and its pull requests and updates the project's decisions "+
-				"log; use it when the ticket shows the check didn't run. With resume_auto_plays true it lets queued runs go ahead and "+
-				"returns the queue as trail_list with queue does. Otherwise returns the trail in state starting; poll "+
+				"log; use it when the ticket shows the check didn't run. Returns the trail in state starting; poll "+
 				"trail_list with its id, and answer or stop it with trail_update. The first run in a project the "+
 				"caller has not linked needs computer_id and t3_project_id, saved as their link there.",
 			mcptool.Hints{},
 			func(ctx context.Context, in playRunIn) (any, error) {
-				if in.ResumeAutoPlays {
-					return resumeAutoPlays(ctx, r, in)
-				}
 				t, err := runPlay(ctx, r, in)
 				if err != nil {
 					return nil, startHint(err)
@@ -209,22 +196,8 @@ func cancelQueued(ctx context.Context, r *Runner, in trailUpdateIn) (any, error)
 	return r.CancelQueued(ctx, in.ID)
 }
 
-func toQueuePage(q *Queue, page mcptool.PageArgs) queuePage {
-	return queuePage{Page: mcptool.Paginate(q.Items, page), Paused: q.Paused, AutoRuns: q.AutoRuns, DailyCap: q.DailyCap}
-}
-
-// resumeAutoPlays is play_run's resume_auto_plays: it starts no run itself, but lets the paused queue go on.
-func resumeAutoPlays(ctx context.Context, r *Runner, in playRunIn) (any, error) {
-	choices := in.PlayID != "" || in.DecisionsCheck || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" ||
-		in.ComputerID != "" || in.T3ProjectID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
-	if choices {
-		return nil, fmt.Errorf("%w: resume_auto_plays takes only target_type and target_id", apperrs.ErrInvalid)
-	}
-	q, err := r.ResumeAutoPlays(ctx, in.TargetType, in.TargetID)
-	if err != nil {
-		return nil, err
-	}
-	return toQueuePage(q, mcptool.PageArgs{}), nil
+func toQueuePage(q *Queue, page mcptool.PageArgs) mcptool.Page[*QueueItem] {
+	return mcptool.Paginate(q.Items, page)
 }
 
 // runPlay starts the named play, or with decisions_check the workspace's seeded decisions check.

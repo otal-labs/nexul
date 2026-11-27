@@ -40,27 +40,6 @@ func TestHandler_AutoPlaysRoundTrip(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, do(t, routes, http.MethodGet, base, "", "player").Code)
 }
 
-func TestHandler_AutoPlayLimits(t *testing.T) {
-	s, _, _ := autoPlayFixture(t)
-	routes := NewHandler(s).Routes()
-	path := "/api/workspaces/" + workspaceID + "/plays/auto-play-limits"
-
-	rec := do(t, routes, http.MethodGet, path, "", "editor")
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"daily_cap_per_ticket":5}`, rec.Body.String())
-
-	rec = do(t, routes, http.MethodPatch, path, `{"daily_cap_per_ticket":8}`, "editor")
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"daily_cap_per_ticket":8}`, rec.Body.String())
-
-	rec = do(t, routes, http.MethodPatch, path, `{"runs_at_once_per_person":3}`, "editor")
-	assert.Equal(t, http.StatusBadRequest, rec.Code, "runs at once is set on each computer now")
-
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{"daily_cap_per_ticket":0}`, "editor").Code)
-	assert.Equal(t, http.StatusBadRequest, do(t, routes, http.MethodPatch, path, `{`, "editor").Code)
-	assert.Equal(t, http.StatusForbidden, do(t, routes, http.MethodGet, path, "", "player").Code)
-}
-
 func TestHandler_AutoPlayRunsAsAPersonAndRunAsMePicksTheCaller(t *testing.T) {
 	s, repo, ps := personFixture(t)
 	routes := NewHandler(s).Routes()
@@ -141,3 +120,24 @@ func TestHandler_ListCountsTheAutoPlaysSwitchedOn(t *testing.T) {
 }
 
 func ptr(n int) *int { return &n }
+
+func TestHandler_AutoPlayComputerRule_IsReturnedAndKeptWhenAnEditOmitsIt(t *testing.T) {
+	s, _, ps := autoPlayFixture(t)
+	routes := NewHandler(s).Routes()
+	base := "/api/workspaces/" + workspaceID + "/plays/" + ps[TypeTicket].ID + "/auto-plays"
+
+	rec := do(t, routes, http.MethodPost, base, `{"moment":"ticket.created","computer_rule":{"labels_in":["gpu"]}}`, "editor")
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var created AutoPlay
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	assert.Equal(t, []string{"gpu"}, created.ComputerRule.LabelsIn)
+
+	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"enabled":true,"moment":"ticket.created"}`, "editor")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var kept AutoPlay
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &kept))
+	assert.Equal(t, []string{"gpu"}, kept.ComputerRule.LabelsIn, "an editor that sends no rule leaves it alone")
+
+	rec = do(t, routes, http.MethodPatch, base+"/"+created.ID, `{"moment":"ticket.created","computer_rule":{"ids":["c-1"]}}`, "editor")
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "ids need run_on person")
+}

@@ -1,6 +1,6 @@
 -- name: CreateAutoPlay :exec
-INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, schedule, conditions, priority, once_within_minutes, run_on, run_as, memory_ids, one_at_a_time, resource, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO auto_plays (id, play_id, workspace_id, enabled, moment, moment_stage, schedule, conditions, priority, once_within_minutes, run_on, run_as, computer_rule, memory_ids, one_at_a_time, resource, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetAutoPlay :one
 SELECT * FROM auto_plays WHERE id = ?;
@@ -9,17 +9,11 @@ SELECT * FROM auto_plays WHERE id = ?;
 SELECT * FROM auto_plays WHERE play_id IN (SELECT value FROM json_each(sqlc.arg(play_ids))) ORDER BY play_id, created_at, id;
 
 -- name: UpdateAutoPlay :execrows
-UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, schedule = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, run_as = ?, memory_ids = ?, one_at_a_time = ?, resource = ?, updated_at = ?
+UPDATE auto_plays SET enabled = ?, moment = ?, moment_stage = ?, schedule = ?, conditions = ?, priority = ?, once_within_minutes = ?, run_on = ?, run_as = ?, computer_rule = ?, memory_ids = ?, one_at_a_time = ?, resource = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteAutoPlay :execrows
 DELETE FROM auto_plays WHERE id = ?;
-
--- name: GetAutoPlayLimits :one
-SELECT auto_play_daily_cap FROM workspaces WHERE id = ?;
-
--- name: SetAutoPlayLimits :execrows
-UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?;
 
 -- name: ListEnabledAutoPlaysByMoment :many
 SELECT * FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1

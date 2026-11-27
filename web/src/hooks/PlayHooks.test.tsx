@@ -198,17 +198,6 @@ describe("the play follower", () => {
     expect([isStale(client, ["getAutoPlays", "ws-1", "pl-1"]), isStale(client, ["getAutoPlays", "ws-2", "pl-2"])]).toEqual([true, false]);
   });
 
-  it("patches the daily cap of the workspace a frame names, with no request", async () => {
-    const client = seeded([
-      [["getAutoPlayLimits", "ws-1"], { daily_cap_per_ticket: 5 }],
-      [["getAutoPlayLimits", "ws-2"], { daily_cap_per_ticket: 5 }],
-    ]);
-    await followFrame(playFollower, "auto_play.limits_updated", { workspace_id: "ws-1", daily_cap_per_ticket: 9 }, client);
-    expect(client.getQueryData(["getAutoPlayLimits", "ws-1"])).toEqual({ daily_cap_per_ticket: 9 });
-    expect(client.getQueryData(["getAutoPlayLimits", "ws-2"])).toEqual({ daily_cap_per_ticket: 5 });
-    expect(isStale(client, ["getAutoPlayLimits", "ws-1"])).toBe(false);
-  });
-
   it("refetches the play lists on a play's rule, and nothing on another entity's", async () => {
     const keys = [["getWorkspacePlays", "ws-1"], ["getApplicablePlays", "ws-1", "p-1", "ticket", null], ["getAutoPlays", "ws-1", "pl-1"]];
     const client = seeded(keys.map((key) => [key, []]));
