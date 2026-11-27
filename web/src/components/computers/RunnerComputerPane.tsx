@@ -13,7 +13,6 @@ import { ComputerLoad } from "@/components/settings/ComputerLoad";
 import { RenameComputerForm } from "@/components/settings/RenameComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
-import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { usePairNow, useRestartApp } from "@/hooks/ComputerHooks";
@@ -60,7 +59,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
   const summary = setup && setupSummary(setup);
   const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode }[] = [
     ...computerLanes(computer, presence, pairNow.isPending),
-    ...(summary ? [{ tone: summary.tone, text: summary.text, detail: summary.providers && <SetupProviderMarks lines={summary.providers} /> }] : []),
+    ...(summary ? [{ tone: summary.tone, text: summary.text }] : []),
   ];
   const setupLabel = setup?.confirmed_at ? "Re-run setup" : "Set up";
   const primary: Primary = (() => {
@@ -113,7 +112,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
         meta={
           <>
             {worstFirst(lines).map((line) => (
-              <SettingsStatus key={line.text} tone={line.tone} detail={line.detail}>
+              <SettingsStatus key={line.text} tone={line.tone} detail={line.detail} {...(line.tone === "warning" && line.detail && { detailClassName: "text-warning" })}>
                 {line.text}
               </SettingsStatus>
             ))}

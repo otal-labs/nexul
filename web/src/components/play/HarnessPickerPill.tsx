@@ -6,7 +6,7 @@ import { ModelSettingRow } from "@/components/model/ModelSettingRow";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
-import { findModel, optionsLabel } from "@/models/ModelPick";
+import { findModel, optionsLabel, slugName } from "@/models/ModelPick";
 import type { OptionSetting } from "@/models/Pairing";
 
 export interface HarnessPick {
@@ -54,7 +54,7 @@ export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) =
   const providerEntry = providers?.find((p) => p.id === value.provider);
   const providerLabel = value.provider === "" ? "Provider default" : (providerEntry?.name ?? value.provider);
   const model = findModel(providers ?? [], value);
-  const modelLabel = value.model === "" ? "Model default" : (model?.name ?? value.model);
+  const modelLabel = value.model === "" ? "Model default" : (model?.name ?? slugName(value.model));
   const optionsText = model?.options && value.model_options.length > 0 ? ` · ${optionsLabel(model.options, value.model_options)}` : "";
   const label = `${providerLabel} · ${modelLabel}${optionsText}`;
 

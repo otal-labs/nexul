@@ -40,7 +40,7 @@ let computers: Computer[];
 
 const rest = (url: string) => {
   if (url === "/api/pairing/computers") return { computers };
-  if (url === "/api/pairing/presence") return { computers: {} };
+  if (url === "/api/pairing/presence") return { computers: { "c-laptop": "connected", "c-box": "connected" } };
   if (url === "/api/runners/enrollments") return [];
   if (url === "/api/pairing/defaults") return {};
   if (url === "/api/pairing/projects") return { links: [] };
@@ -71,10 +71,10 @@ describe("Your computers", () => {
     expect(await screen.findByText("#1")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
     expect(order()).toEqual(["laptop", "build-box"]);
-    expect(await screen.findByText("1 of 2 play runs")).toBeInTheDocument();
+    expect(await screen.findByText("1 of 2 running")).toBeInTheDocument();
 
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
-    expect(await screen.findByText("0 of 2 play runs")).toBeInTheDocument();
+    expect(await screen.findByText("0 of 2 running")).toBeInTheDocument();
   });
 
   it("moves a computer down from its menu, at once, and sends the new order", async () => {
@@ -112,7 +112,7 @@ describe("Your computers", () => {
     await pickOption(user, "Runs at once on laptop", "4");
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c-laptop", { runs_at_once: 4 });
-    expect(await screen.findByText("1 of 4 play runs")).toBeInTheDocument();
+    expect(await screen.findByText("1 of 4 running")).toBeInTheDocument();
   });
 
   it("adds and removes the labels a play's needs match, beside the ones its facts give it", async () => {
@@ -172,12 +172,15 @@ describe("Your computers", () => {
     renderComputers("/acme/agent?computers=c-laptop");
 
     const row = within(await screen.findByRole("link", { name: /^laptop/ }));
-    expect(await row.findByTitle("codex")).toBeInTheDocument();
+    expect(await row.findByTitle("codex · GPT 5")).toBeInTheDocument();
     expect(row.queryByText("GPT-5")).not.toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
 
+    expect(within(yourComputers()).getByRole("link", { name: /^laptop/ })).toHaveTextContent("Online · 1 of 2 running");
+    expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+ days ago/);
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
     expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/), "the pane agrees with the row").toHaveClass("text-warning");
     expect(screen.getByRole("button", { name: "Remove it" })).toBeInTheDocument();
   });
 
@@ -207,5 +210,25 @@ describe("Your computers", () => {
     await waitFor(() => expect(mocks.del).toHaveBeenCalledTimes(2));
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u1");
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u2");
+  });
+
+  it("opens with focus in the list, never on Add a computer, and on the record when a deep link names one", async () => {
+    renderComputers("/acme/agent?computers=c-box");
+    await screen.findByRole("link", { name: /^build-box/ });
+    const list = screen.getByRole("navigation", { name: "Computers and run settings" });
+    expect(list.contains(document.activeElement), "not Add a computer").toBe(true);
+    expect(list, "a deep link opens on its record, so the list waits behind it below 640px").toHaveClass("max-sm:hidden");
+  });
+
+  it("shows the list first when the dialog opens on no record, and the record once a row is picked", async () => {
+    const user = userEvent.setup();
+    renderComputers("/acme/agent?computers=");
+    const list = await screen.findByRole("navigation", { name: "Computers and run settings" });
+    expect(list).not.toHaveClass("max-sm:hidden");
+    await screen.findByRole("region", { name: "Your computers" });
+    await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
+    expect(list).toHaveClass("max-sm:hidden");
+    await user.click(screen.getByRole("button", { name: "Computers" }));
+    expect(list).not.toHaveClass("max-sm:hidden");
   });
 });

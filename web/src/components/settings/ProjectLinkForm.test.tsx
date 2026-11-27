@@ -121,7 +121,7 @@ describe("ProjectLinkForm", () => {
     );
   });
 
-  it("takes a computer out of its own order with the X on its row and offers it again from Add computer", async () => {
+  it("takes a computer out of its own order with the X on its row and offers it again from Include a computer", async () => {
     const user = userEvent.setup();
     renderForm();
     await screen.findByText("t3-app");
@@ -131,7 +131,7 @@ describe("ProjectLinkForm", () => {
     expect(within(list).getAllByRole("button", { name: /^Reorder/ })).toHaveLength(2);
     await user.click(within(list).getByRole("button", { name: "Remove build-box" }));
     expect(within(list).queryByRole("button", { name: /^Remove|^Reorder/ })).not.toBeInTheDocument();
-    await user.click(within(list).getByRole("button", { name: "Add computer" }));
+    await user.click(within(list).getByRole("button", { name: "Include a computer" }));
     expect((await screen.findAllByRole("menuitem")).map((i) => i.textContent)).toEqual(["build-box"]);
     await user.keyboard("{Escape}");
 

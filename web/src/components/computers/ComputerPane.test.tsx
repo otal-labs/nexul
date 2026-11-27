@@ -382,7 +382,7 @@ describe("the computers on the Agent page", () => {
     const { client } = renderComputers(openComputer());
 
     expect(await screen.findByText("Setup confirmed")).toBeInTheDocument();
-    expect(details().getAllByTitle("Codex").length).toBeGreaterThan(0);
+    expect(details().getAllByTitle(/^Codex/).length).toBeGreaterThan(0);
     expect(screen.getByText("confirmed 2d ago")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Actions for Home" }));
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();

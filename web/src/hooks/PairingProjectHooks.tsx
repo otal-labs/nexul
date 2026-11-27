@@ -12,7 +12,7 @@ import {
   useListComputers,
   useModelComputerId,
 } from "@/hooks/PairingHooks";
-import { COMPUTER_DEFAULT, findModel, type ModelPick } from "@/models/ModelPick";
+import { COMPUTER_DEFAULT, findModel, slugName, type ModelPick } from "@/models/ModelPick";
 import {
   canChooseRunLocation,
   linkSaysSomething,
@@ -97,7 +97,7 @@ const USES_DEFAULTS = "Uses defaults";
 
 // A pick by its model's name once the computer lists it, else its slug; an empty pick is the computer's default.
 const modelName = (providers: HarnessProvider[] | undefined, pick: ModelPick) =>
-  pick.model ? (findModel(providers ?? [], pick)?.name ?? pick.model) : "";
+  pick.model ? (findModel(providers ?? [], pick)?.name ?? slugName(pick.model)) : "";
 
 // "Build box, laptop · Sonnet 5 · New worktree": what the link changes, the computers by name; undefined while names load.
 export const useProjectLinkSummary = (link: ProjectLink | undefined): string | undefined => {

@@ -1,7 +1,7 @@
-import { PlacementRow } from "@/components/agent/PlacementRow";
+import { PlacementList, type PlacedPlay } from "@/components/agent/PlacementList";
+import { PlacementSummary } from "@/components/agent/PlacementSummary";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Microheader } from "@/components/Microheader";
 import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useProjectPlacement } from "@/hooks/PairingProjectHooks";
@@ -39,19 +39,20 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
     return computer ? sharedComputerName(computer) : "A computer you can't see";
   };
 
+  const placed: PlacedPlay[] = (answers ?? []).flatMap((answer, i) => (groups.get(keys[i] ?? "") ?? []).map((play) => ({ play, answer })));
+  const first = placed[0]?.answer.computer_id;
+  const together = !!first && placed.every((p) => p.answer.computer_id === first);
+
   return (
     keys.length > 0 && (
       <section aria-labelledby="plays-land" className="space-y-2">
-        <Microheader id="plays-land">Where its plays land now</Microheader>
+        <h3 id="plays-land" className="text-sm font-medium">
+          Where its plays land now
+        </h3>
         {isPending && <LoadingDisplay className="justify-start" />}
         {error && <ErrorDisplay error={error} />}
-        {answers && (
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {answers.map((answer, i) => (
-              <PlacementRow key={keys[i]} answer={answer} plays={groups.get(keys[i] ?? "") ?? []} nameOf={nameOf} />
-            ))}
-          </ul>
-        )}
+        {answers && together && <PlacementSummary count={placed.length} computer={nameOf(first)} passed={placed.flatMap((p) => p.answer.passed_over)} />}
+        {answers && !together && <PlacementList placed={placed} nameOf={nameOf} />}
       </section>
     )
   );

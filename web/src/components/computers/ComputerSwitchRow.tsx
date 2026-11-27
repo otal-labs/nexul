@@ -11,7 +11,7 @@ interface ComputerSwitchRowProps {
 
 // One on/off setting of a computer; it saves the moment it is flipped.
 export const ComputerSwitchRow = ({ label, description, checked, disabled, onChange }: ComputerSwitchRowProps) => (
-  <SettingsRow label={label} description={description} className="last:pb-4">
+  <SettingsRow label={label} description={description} compact className="last:pb-4">
     <Switch aria-label={label} checked={checked} disabled={disabled} onCheckedChange={onChange} />
   </SettingsRow>
 );

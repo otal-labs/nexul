@@ -59,7 +59,7 @@ export const RunSettingsGroup = ({ current }: RunSettingsGroupProps) => {
   const { data: projects } = useFetchWorkspaceProjects(workspaceId);
 
   return (
-    <ListPaneGroup label="Where runs go">
+    <ListPaneGroup plain label="Where runs go">
       <DefaultsRow selected={current === DEFAULTS_ID} />
       {projects?.map((project) => <ProjectRow key={project.id} project={project} selected={current === projectTarget(project.id)} />)}
     </ListPaneGroup>

@@ -17,7 +17,7 @@ export const ComputerChatFolderRow = ({ computer }: ComputerChatFolderRowProps) 
   const picked = projects.find((p) => p.id === computer.chat_project_id);
 
   return (
-    <SettingsRow label="Chat folder" description="Where chats outside a project run" className="last:pb-4">
+    <SettingsRow label="Chat folder" description="Where chats outside a project run" compact className="last:pb-4">
       <Select value={computer.chat_project_id || NO_FOLDER} onValueChange={(v) => update.mutate({ chat_project_id: v === NO_FOLDER ? "" : v })}>
         <SelectTrigger aria-label={`Chat folder on ${computer.name}`} title={picked?.path} className="h-8 w-full text-xs">
           {/* The list shows each folder's path; the button shows the name alone, so a long path never overflows it. */}

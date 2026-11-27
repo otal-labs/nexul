@@ -61,6 +61,17 @@ const pairedCheck = (computer: Computer): Check => {
 // The three checks Add a computer waits on, each driven by what the computer list says after a pushed frame.
 export const computerChecks = (computer: Computer): Check[] => [connectedCheck(computer), t3Check(computer), pairedCheck(computer)];
 
+// A computer unseen this long is likely gone for good, so its pane offers Remove beside the warning.
+export const STALE_OFFLINE_DAYS = 7;
+
+const staleSince = (lastSeen: string) => daysAgo(lastSeen) >= STALE_OFFLINE_DAYS;
+
+// "2h ago" for a recent sighting, "15 days ago" once it is days old.
+export const seenAgo = (lastSeen: string) => {
+  const days = daysAgo(lastSeen);
+  return days >= 2 ? `${days} days ago` : formatRelativeTime(lastSeen);
+};
+
 export interface Lane {
   tone: SettingsStatusTone;
   text: string;
@@ -85,7 +96,7 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
 export const computerLanes = (computer: Computer, presence: string | undefined, repairing = false): Lane[] => {
   if (!computer.runner) return [{ tone: "muted", text: "Nexul app not installed" }];
   if (computer.runner.reconnecting) return [{ tone: "warning", text: "Reconnecting", detail: `dropped ${formatRelativeTime(computer.runner.last_seen)}` }];
-  if (!computer.runner.connected) return [{ tone: "muted", text: "Offline", detail: `last seen ${formatRelativeTime(computer.runner.last_seen)}` }];
+  if (!computer.runner.connected) return [{ ...runnerPresence(computer.runner), detail: `seen ${seenAgo(computer.runner.last_seen)}` }];
   if (repairing) return [{ tone: "success", text: "Online" }, { tone: "info", text: "Re-pairing" }];
   return [{ tone: "success", text: "Online" }, t3Lane(computer, presence)];
 };
@@ -96,14 +107,13 @@ const toneRank: Record<SettingsStatusTone, number> = { destructive: 0, warning: 
 export const worstFirst = <T extends { tone: SettingsStatusTone }>(lanes: T[]): T[] => [...lanes].sort((a, b) => toneRank[a.tone] - toneRank[b.tone]);
 
 // A computer's runner in a word: online, back any moment after a drop, or offline.
+// One mapping for every surface: online `success`, offline grey, offline for a week or more `warning`.
 export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
   if (runner?.connected) return { tone: "success", text: "Online" };
   if (runner?.reconnecting) return { tone: "warning", text: "Reconnecting" };
+  if (runner && staleSince(runner.last_seen)) return { tone: "warning", text: "Offline" };
   return { tone: "muted", text: "Offline" };
 };
-
-// A computer unseen this long is likely gone for good, so its pane offers Remove beside the warning.
-export const STALE_OFFLINE_DAYS = 7;
 
 export const offlineForDays = (computer: Computer): number => {
   const runner = computer.runner;
@@ -119,12 +129,12 @@ export interface StateLine {
   text: string;
 }
 
-// One short line for a list row: the lane that needs doing first, "Online · 1/4" when all is well, "seen 16m ago" when offline.
+// One short line for a list row: the lane that needs doing first, "Online · idle" or "Online · 2 of 4 running" when all is well, "seen 16m ago" when offline.
 export const computerStateLine = (computer: Computer, presence: string | undefined): StateLine => {
   if (computer.shared) return runnerPresence(computer.runner);
   const [lane] = worstFirst(computerLanes(computer, presence));
   if (!lane) return { tone: "muted", text: "" };
-  if (lane.text === "Online" || lane.text === "T3 Code answering") return { tone: "success", text: `Online · ${computer.running}/${computer.runs_at_once}` };
-  if (lane.text === "Offline" && computer.runner) return { tone: isStaleOffline(computer) ? "warning" : "muted", text: `seen ${formatRelativeTime(computer.runner.last_seen)}` };
+  if (lane.text === "Online" || lane.text === "T3 Code answering") return { tone: "success", text: `Online · ${computer.running > 0 ? `${computer.running} of ${computer.runs_at_once} running` : "idle"}` };
+  if (lane.text === "Offline" && computer.runner) return { tone: lane.tone, text: `seen ${seenAgo(computer.runner.last_seen)}` };
   return { tone: lane.tone, text: lane.text };
 };
