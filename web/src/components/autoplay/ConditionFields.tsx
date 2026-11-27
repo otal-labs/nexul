@@ -19,7 +19,7 @@ export const ConditionFields = ({ path }: { path: RulePath }) => {
   const name = FIELD_LABELS[rule.field];
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1.5">
+    <div className="flex min-w-0 items-center gap-1.5">
       <InlineSelect
         label="Field"
         value={rule.field}

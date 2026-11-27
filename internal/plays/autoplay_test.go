@@ -1,6 +1,7 @@
 package plays
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -55,6 +57,8 @@ func TestAutoPlayValidate_RefusesEveryInvalidShape(t *testing.T) {
 		{"a ticket field on a stack play", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldLabel, OpIs, "bug"))}}}, `field "label" is not one a stack play reads`},
 		{"a stack field on a ticket play", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpIs, "api"))}}}, `field "service" is not one a ticket play reads`},
 		{"an op a stack field does not take", TypeStack, AutoPlay{Moment: MomentStackServiceCrashed, Conditions: Conditions{Groups: []Group{when(rule(FieldService, OpSet))}}}, "takes the ops is, is_not"},
+		{"computer ids on a run as the developer", TypeTicket, AutoPlay{Moment: MomentTicketCreated, ComputerRule: labels.ComputerRule{IDs: []string{"c-1"}}}, "set run_on to person"},
+		{"a computer label that is not one", TypeTicket, AutoPlay{Moment: MomentTicketCreated, ComputerRule: labels.ComputerRule{LabelsIn: []string{"Bad Label"}}}, "computer_rule"},
 		{"a negative limit", TypeTicket, AutoPlay{Moment: MomentTicketCreated, OnceWithinMinutes: -1}, "once_within_minutes"},
 		{"a limit past 30 days", TypeTicket, AutoPlay{Moment: MomentTicketCreated, OnceWithinMinutes: MaxOnceWithinMinutes + 1}, "once_within_minutes"},
 		{"a top match that is neither", TypeTicket, AutoPlay{Moment: MomentTicketCreated, Conditions: Conditions{Match: "most"}}, "conditions match"},
@@ -200,17 +204,12 @@ func TestAutoPlays_EachVerbNeedsItsOwnBit(t *testing.T) {
 			_, err := s.UpdateAutoPlay(ctxAs(u), workspaceID, playID, existing.ID, true, AutoPlayInput{Moment: MomentTicketCreated})
 			return err
 		},
-		"delete":      func(u string) error { return s.DeleteAutoPlay(ctxAs(u), workspaceID, playID, existing.ID) },
-		"read limits": func(u string) error { _, err := s.AutoPlayLimits(ctxAs(u), workspaceID); return err },
-		"set limits": func(u string) error {
-			_, err := s.SetAutoPlayLimits(ctxAs(u), workspaceID, AutoPlayLimitsPatch{DailyCapPerTicket: ptr(3)})
-			return err
-		},
+		"delete": func(u string) error { return s.DeleteAutoPlay(ctxAs(u), workspaceID, playID, existing.ID) },
 	}
 	denied := map[string][]string{
-		"player": {"list", "list by play", "create", "update", "delete", "read limits", "set limits"},
-		"reader": {"create", "update", "delete", "set limits"},
-		"writer": {"list", "list by play", "delete", "read limits"},
+		"player": {"list", "list by play", "create", "update", "delete"},
+		"reader": {"create", "update", "delete"},
+		"writer": {"list", "list by play", "delete"},
 	}
 	for user, names := range denied {
 		for _, name := range names {
@@ -302,30 +301,34 @@ func TestAutoPlaysByPlay_OneReadAndAnEntryPerPlay(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestAutoPlayLimits_StayInTheirBounds(t *testing.T) {
-	s, repo, _ := autoPlayFixture(t)
-	limits, err := s.AutoPlayLimits(ctxAs("editor"), workspaceID)
-	require.NoError(t, err)
-	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: DefaultAutoPlayDailyCap}, limits)
-	for name, bad := range map[string]AutoPlayLimitsPatch{
-		"nothing":        {},
-		"no daily cap":   {DailyCapPerTicket: ptr(0)},
-		"too high a cap": {DailyCapPerTicket: ptr(MaxAutoPlayDailyCap + 1)},
-	} {
-		_, err := s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, bad)
-		require.ErrorIs(t, err, apperrs.ErrInvalid, name)
-	}
-	repo.published = nil
-	limits, err = s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, AutoPlayLimitsPatch{DailyCapPerTicket: ptr(12)})
-	require.NoError(t, err)
-	assert.Equal(t, AutoPlayLimits{DailyCapPerTicket: 12}, limits)
-	require.Len(t, repo.published, 1)
-	assert.Equal(t, TopicAutoPlayLimitsUpdated, repo.published[0].Topic)
-	assert.Equal(t, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: 12}, repo.published[0].Payload)
+type fakeComputerAccess map[string]bool
 
-	repo.autoPlayErr = errors.New("disk full")
-	_, err = s.AutoPlayLimits(ctxAs("editor"), workspaceID)
-	require.Error(t, err)
-	_, err = s.SetAutoPlayLimits(ctxAs("editor"), workspaceID, AutoPlayLimitsPatch{DailyCapPerTicket: ptr(3)})
-	require.Error(t, err)
+func (f fakeComputerAccess) MayRunOn(_ context.Context, userID, computerID string) bool {
+	return f[userID+"/"+computerID]
+}
+
+func TestAutoPlay_ComputerRuleIDsMustBeComputersThePersonMayRunOn(t *testing.T) {
+	s, _, ps := autoPlayFixture(t)
+	s.SetComputerAccess(fakeComputerAccess{"editor/mine": true})
+	input := func(ids ...string) AutoPlayInput {
+		return AutoPlayInput{Moment: MomentTicketCreated, RunOn: RunOnPerson, RunAsMe: true, ComputerRule: &labels.ComputerRule{IDs: ids}}
+	}
+
+	a, err := s.CreateAutoPlay(ctxAs("editor"), workspaceID, ps[TypeTicket].ID, input("mine"))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"mine"}, a.ComputerRule.IDs)
+
+	_, err = s.CreateAutoPlay(ctxAs("editor"), workspaceID, ps[TypeTicket].ID, input("mine", "theirs"))
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorContains(t, err, "computer theirs is not one the person it runs as owns or may run agents on")
+
+	_, err = s.UpdateAutoPlay(ctxAs("editor"), workspaceID, ps[TypeTicket].ID, a.ID, false, input("theirs"))
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "an update is checked as a create is")
+
+	seeded, err := s.CreateAutoPlay(ctxAs("editor"), workspaceID, ps[TypeTicket].ID, AutoPlayInput{Moment: MomentTicketCreated})
+	require.NoError(t, err)
+	_, err = s.UpdateAutoPlay(ctxAs("editor"), workspaceID, ps[TypeTicket].ID, seeded.ID, false, AutoPlayInput{
+		Moment: MomentTicketCreated, RunOn: RunOnPerson, ComputerRule: &labels.ComputerRule{IDs: []string{"mine"}},
+	})
+	assert.ErrorContains(t, err, "pick the person it runs as before naming computers")
 }

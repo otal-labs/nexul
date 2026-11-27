@@ -2,7 +2,7 @@ import type { AxiosError } from "axios";
 import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
-import { AGENT_PATH, agentPath } from "@/models/Agent";
+import { AGENT_PATH, computersSearch, SETUP_PARAM } from "@/models/Agent";
 import type { ComputerFacts } from "@/models/ComputerFacts";
 import type { SharedComputer } from "@/models/SharedComputer";
 
@@ -40,6 +40,10 @@ export interface Computer {
   shell_enabled: boolean;
   // Its owner's switch keeping every play, auto play and @Agent turn off it (ADR 0211); absent on an older server.
   plays_off?: boolean;
+  // Its owner's switch keeping the runs auto plays start off it; a pressed run still lands (ADR 0213).
+  auto_plays_off?: boolean;
+  // A setup that never enrolled: no name, no session, no runner; in no run order (ADR 0213).
+  unfinished?: boolean;
   // What its owner set, and what its facts give it (docker, its OS); a play's needs match both (ADR 0197).
   labels?: string[];
   derived_labels?: string[];
@@ -49,7 +53,7 @@ export interface Computer {
 export interface PassOver {
   computer_id: string;
   name: string;
-  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed" | "no_plays";
+  why: "offline" | "expired_token" | "setup_required" | "no_model" | "no_checkout" | "ambiguous_checkout" | "no_chat_folder" | "full" | "clone_failed" | "no_plays" | "no_auto_plays";
   text: string;
 }
 
@@ -365,8 +369,8 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// The computer on the Agent page with its Set up step open, workspace-relative.
-export const computerSetupPath = (computerId: string) => `${agentPath("computers", computerId)}?setup=${encodeURIComponent(computerId)}`;
+// The query that opens the Computers dialog on one computer with its Set up step open, on whatever page the link sits.
+export const computerSetupSearch = (computerId: string) => `${computersSearch(computerId)}&${SETUP_PARAM}=${encodeURIComponent(computerId)}`;
 
 // Mirrors pairing.ReasonNeedsLocation: no computer of the person's has the project, so their run asks where (ADR 0165).
 export const NEEDS_LOCATION_REASON = "needs_location";
@@ -574,10 +578,10 @@ export interface ReadinessLink {
   label: string;
 }
 
-// Workspace-relative: the Agent page holds your computers and each project's run settings (ADR 0211).
-export const COMPUTERS_PATH = AGENT_PATH;
+// Workspace-relative: the Computers dialog holds your computers and each project's run settings, opened over the Agent page.
+export const COMPUTERS_PATH = `${AGENT_PATH}${computersSearch()}`;
 export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_PATH, label: "Add a computer" };
-export const COMPUTER_PROJECTS_PATH = AGENT_PATH;
+export const COMPUTER_PROJECTS_PATH = `${AGENT_PATH}${computersSearch()}`;
 
 // The computers a run passed over for the project's checkout there, which the run itself fixes (spec decision 6).
 export const checkoutPasses = (passes: PassOver[]): PassOver[] =>

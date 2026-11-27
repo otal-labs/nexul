@@ -2,6 +2,9 @@
 
 Amends ADR 0165 and ADR 0156.
 
+Amended by ADR 0214: an auto play may narrow its person's computers with a computer rule, which supersedes "auto plays name no
+computers" below.
+
 Amended by ADR 0211: a shared computer with Run agents may join a person's order, and auto plays reach it that way.
 
 Amended by ADR 0204: the app repository wins because a run that names no repository works on it; a tests run matches

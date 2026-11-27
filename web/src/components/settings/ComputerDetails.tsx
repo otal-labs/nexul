@@ -4,7 +4,6 @@ import { ComputerContainers } from "@/components/settings/ComputerContainers";
 import { ComputerSharedRuns } from "@/components/settings/ComputerSharedRuns";
 import { ComputerFactRows } from "@/components/settings/ComputerFactRows";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
-import { ComputerRunFacts } from "@/components/settings/ComputerRunFacts";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner, t3Status } from "@/models/ComputerFacts";
 import {
@@ -58,59 +57,60 @@ interface ComputerDetailsProps {
   setup: ComputerSetup | undefined;
 }
 
-// Everything a computer row folds away: what it takes, where it is, what runs there, each provider's confirmation, its
-// facts, and its MCP token. A computer reached through its runner shows its T3 Code instead of the relay address.
+// What is on the computer: where it is, what runs there, each provider's confirmation, its facts, and its MCP token. A computer reached through its runner shows its T3 Code instead of the relay address.
 export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const lines = setup ? providerSetupLines(setup) : [];
   const pairing = stillPairing(computer);
   const t3 = computer.facts && t3Status(computer.facts.t3, computer.runner?.connected === false);
   const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
-    <dl className="@container space-y-3 rounded-md bg-surface-2 p-3">
-      {!pairing && <ComputerRunFacts computer={computer} />}
-      {computer.server_url && !reachedThroughRunner(computer.server_url) && (
-        <Fact label="Address">
-          <span className="font-mono break-all">{computer.server_url}</span>
+    <section className="space-y-3">
+      <h3 className="text-xs font-medium text-muted-foreground">On this computer</h3>
+      <dl className="@container space-y-3">
+        {computer.server_url && !reachedThroughRunner(computer.server_url) && (
+          <Fact label="Address">
+            <span className="font-mono break-all">{computer.server_url}</span>
+          </Fact>
+        )}
+        {t3 && (
+          <Fact label="T3 Code">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+              <SettingsStatus tone={t3.tone}>{t3.text}</SettingsStatus>
+              {t3.detail && <span className="min-w-0 font-mono break-all text-muted-foreground tabular-nums">{t3.detail}</span>}
+            </span>
+            {restartError && <span className="mt-1 block break-words text-destructive">Restart failed: {restartError}</span>}
+            {!restartError && restartedAt && (
+              <span className="mt-1 block font-mono text-muted-foreground tabular-nums">restarted {formatRelativeTime(restartedAt)}</span>
+            )}
+          </Fact>
+        )}
+        {!t3 && computer.harness_version && (
+          <Fact label={harnessLabel(computer.kind)}>
+            <span className="font-mono">{computer.harness_version}</span>
+          </Fact>
+        )}
+        {!pairing && (
+          <Fact label="Paired until">
+            <span className="font-mono">{formatShortDate(computer.token_expires_at)}</span>
+          </Fact>
+        )}
+        {lines.length > 0 && (
+          <Fact label="Providers">
+            <ul className="space-y-1">
+              {lines.map((line) => (
+                <ProviderLine key={line.provider} line={line} />
+              ))}
+            </ul>
+          </Fact>
+        )}
+        {computer.facts && <ComputerFactRows computer={computer} facts={computer.facts} factsAt={computer.facts_at} />}
+        {computer.facts?.docker?.available && <ComputerContainers computerId={computer.id} dockerVersion={computer.facts.docker.version} />}
+        {computer.runner && <ComputerCommands computer={computer} />}
+        {computer.runner && <ComputerSharedRuns computerId={computer.id} />}
+        <Fact label="MCP token">
+          <ComputerMCPToken computerId={computer.id} />
         </Fact>
-      )}
-      {t3 && (
-        <Fact label="T3 Code">
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-            <SettingsStatus tone={t3.tone}>{t3.text}</SettingsStatus>
-            {t3.detail && <span className="min-w-0 font-mono break-all text-muted-foreground tabular-nums">{t3.detail}</span>}
-          </span>
-          {restartError && <span className="mt-1 block break-words text-destructive">Restart failed: {restartError}</span>}
-          {!restartError && restartedAt && (
-            <span className="mt-1 block font-mono text-muted-foreground tabular-nums">restarted {formatRelativeTime(restartedAt)}</span>
-          )}
-        </Fact>
-      )}
-      {!t3 && computer.harness_version && (
-        <Fact label={harnessLabel(computer.kind)}>
-          <span className="font-mono">{computer.harness_version}</span>
-        </Fact>
-      )}
-      {!pairing && (
-        <Fact label="Paired until">
-          <span className="font-mono">{formatShortDate(computer.token_expires_at)}</span>
-        </Fact>
-      )}
-      {lines.length > 0 && (
-        <Fact label="Providers">
-          <ul className="space-y-1">
-            {lines.map((line) => (
-              <ProviderLine key={line.provider} line={line} />
-            ))}
-          </ul>
-        </Fact>
-      )}
-      {computer.facts && <ComputerFactRows computer={computer} facts={computer.facts} factsAt={computer.facts_at} />}
-      {computer.facts?.docker?.available && <ComputerContainers computerId={computer.id} dockerVersion={computer.facts.docker.version} />}
-      {computer.runner && <ComputerCommands computer={computer} />}
-      {computer.runner && <ComputerSharedRuns computerId={computer.id} />}
-      <Fact label="MCP token">
-        <ComputerMCPToken computerId={computer.id} />
-      </Fact>
-    </dl>
+      </dl>
+    </section>
   );
 };

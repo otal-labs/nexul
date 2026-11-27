@@ -80,14 +80,14 @@ beforeEach(() => {
 });
 
 describe("DocHistoryDialog", () => {
-  it("opens on the newest version with its changes marked and Restore disabled", async () => {
+  it("opens on the newest version with its changes marked and no Restore", async () => {
     renderDialog();
 
     expect((await screen.findByText("thirty minutes")).tagName).toBe("INS");
     expect(screen.getByText("an hour").tagName).toBe("DEL");
-    expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
     expect(screen.getByText("This is the current version")).toBeInTheDocument();
-    expect(screen.getAllByText("Alice Moreau")).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /Alice Moreau/ })).toHaveLength(3);
   });
 
   it("compares a picked version with the one before it and restores it", async () => {
@@ -99,19 +99,19 @@ describe("DocHistoryDialog", () => {
 
     const added = await screen.findByRole("group", { name: "Change 1 of 1, added" });
     expect(added).toHaveTextContent("Watch error rates for an hour then promote.");
-    expect(screen.getByText(/via an agent/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /via an agent/ }).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /^Restore / }));
 
     expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/versions/2/restore");
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it("shows the version as it was, with no marks, once As it was is picked", async () => {
+  it("shows the version as it was, with no marks, once Previous version is picked", async () => {
     const user = userEvent.setup();
     renderDialog();
     await screen.findByText("thirty minutes");
 
-    await user.click(screen.getByRole("radio", { name: "As it was" }));
+    await user.click(screen.getByRole("radio", { name: "Previous version" }));
 
     expect(screen.getByText("Watch error rates for thirty minutes then promote.")).toBeInTheDocument();
     expect(screen.queryByText("an hour")).not.toBeInTheDocument();

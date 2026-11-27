@@ -326,6 +326,7 @@ type updateComputerRequest struct {
 	ChatProjectID *string   `json:"chat_project_id"`
 	ShellEnabled  *bool     `json:"shell_enabled"`
 	PlaysOff      *bool     `json:"plays_off"`
+	AutoPlaysOff  *bool     `json:"auto_plays_off"`
 	Labels        *[]string `json:"labels"`
 }
 

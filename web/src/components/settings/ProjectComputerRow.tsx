@@ -11,6 +11,7 @@ import type { RepoCheckout } from "@/models/ProjectCheckout";
 
 interface ProjectComputerRowProps {
   projectId: string;
+  projectName: string;
   computer: Computer;
   rank: number;
   // One per repository of the project, or one for a project with one or none.
@@ -22,7 +23,7 @@ interface ProjectComputerRowProps {
 
 // One computer a project's runs may land on, ranked, with the checkout each repository's runs would use there and the
 // way to add one.
-export const ProjectComputerRow = ({ projectId, computer, rank, checkouts, controls, onPick }: ProjectComputerRowProps) => {
+export const ProjectComputerRow = ({ projectId, projectName, computer, rank, checkouts, controls, onPick }: ProjectComputerRowProps) => {
   const [adding, setAdding] = useState(false);
   const firstMissing = checkouts.find((c) => c.checkout.state === "missing");
   const missing = !!firstMissing;
@@ -37,6 +38,7 @@ export const ProjectComputerRow = ({ projectId, computer, rank, checkouts, contr
     <RankedComputerRow
       id={computer.id}
       name={computer.name}
+      computer={computer}
       rank={rank}
       controls={controls}
       below={
@@ -56,6 +58,7 @@ export const ProjectComputerRow = ({ projectId, computer, rank, checkouts, contr
             computerName={computer.name}
             repository={several ? c.repository : undefined}
             checkout={c.checkout}
+            projectName={projectName}
             onPick={(id) => onPick(c.repository, id)}
           />
         ))}

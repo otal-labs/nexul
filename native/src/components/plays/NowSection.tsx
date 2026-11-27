@@ -17,7 +17,7 @@ const runTitle = (run: PlayRun) => [run.target_key || run.target_title, run.play
 // A queued ticket run opens its ticket on the Board, where the run will show once it starts.
 const QueuedTicketRow = ({ item, first }: { item: PlayQueueItem; first: boolean }) => {
   const router = useRouter();
-  const row = <QueuedRunRow item={item} title={item.play_label} resumable first={first} />;
+  const row = <QueuedRunRow item={item} title={item.play_label} first={first} />;
   return (
     <>
       {item.target_type === "ticket" && (

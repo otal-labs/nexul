@@ -1,7 +1,9 @@
+import { computerReadiness, STALE_OFFLINE_DAYS, type Readiness } from "@nexul/client-core/computerReadiness";
+
 import type { SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner } from "@/models/ComputerFacts";
 import { stillPairing, type Computer, type ComputerRunner } from "@/models/Pairing";
-import { formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
+import { daysAgo, formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
 
 export type CheckState = "waiting" | "passed" | "warning" | "failed";
 
@@ -61,10 +63,19 @@ const pairedCheck = (computer: Computer): Check => {
 // The three checks Add a computer waits on, each driven by what the computer list says after a pushed frame.
 export const computerChecks = (computer: Computer): Check[] => [connectedCheck(computer), t3Check(computer), pairedCheck(computer)];
 
+const staleSince = (lastSeen: string) => daysAgo(lastSeen) >= STALE_OFFLINE_DAYS;
+
+// "3h ago", "15d ago": short units, so a state line never wraps.
+export const seenAgo = (lastSeen: string) => formatRelativeTime(lastSeen);
+
+export { computerReadiness, STALE_OFFLINE_DAYS };
+
 export interface Lane {
   tone: SettingsStatusTone;
   text: string;
   detail?: string;
+  // Offline reads as a ring dot on every surface.
+  hollow?: boolean;
 }
 
 const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
@@ -73,19 +84,19 @@ const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
   if (presence === "rejected") return { tone: "destructive", text: "T3 Code refused the session", detail: "re-pair to connect again" };
   if (computer.pair_error) return { tone: "destructive", text: "Pairing failed", detail: computer.pair_error };
   if (t3?.state === "installing") return { tone: "info", text: "Installing T3 Code" };
-  if (t3?.state === "not_running" && t3.install === "desktop_app") return { tone: "warning", text: "Open T3 Code" };
-  if (t3?.state === "not_running") return { tone: "warning", text: "T3 Code not running" };
+  if (t3?.state === "not_running" && t3.install === "desktop_app") return { tone: "muted", text: "Open T3 Code" };
+  if (t3?.state === "not_running") return { tone: "muted", text: "T3 Code not running" };
   if (t3?.state === "missing") return { tone: "destructive", text: "T3 Code not installed" };
   if (t3?.state === "not_loopback") return { tone: "destructive", text: "T3 Code not on loopback" };
-  if (stillPairing(computer)) return { tone: "warning", text: "Pairing" };
-  return { tone: "warning", text: "T3 Code not answering" };
+  if (stillPairing(computer)) return { tone: "muted", text: "Pairing" };
+  return { tone: "muted", text: "T3 Code not answering" };
 };
 
 // A runner computer's health, one lane at a time: the computer's own connection, then T3 Code through it.
 export const computerLanes = (computer: Computer, presence: string | undefined, repairing = false): Lane[] => {
   if (!computer.runner) return [{ tone: "muted", text: "Nexul app not installed" }];
-  if (computer.runner.reconnecting) return [{ tone: "warning", text: "Reconnecting", detail: `dropped ${formatRelativeTime(computer.runner.last_seen)}` }];
-  if (!computer.runner.connected) return [{ tone: "muted", text: "Offline", detail: `last seen ${formatRelativeTime(computer.runner.last_seen)}` }];
+  if (computer.runner.reconnecting) return [{ tone: "muted", text: "Reconnecting", detail: `dropped ${formatRelativeTime(computer.runner.last_seen)}` }];
+  if (!computer.runner.connected) return [{ ...runnerPresence(computer.runner), detail: `seen ${seenAgo(computer.runner.last_seen)}` }];
   if (repairing) return [{ tone: "success", text: "Online" }, { tone: "info", text: "Re-pairing" }];
   return [{ tone: "success", text: "Online" }, t3Lane(computer, presence)];
 };
@@ -96,8 +107,53 @@ const toneRank: Record<SettingsStatusTone, number> = { destructive: 0, warning: 
 export const worstFirst = <T extends { tone: SettingsStatusTone }>(lanes: T[]): T[] => [...lanes].sort((a, b) => toneRank[a.tone] - toneRank[b.tone]);
 
 // A computer's runner in a word: online, back any moment after a drop, or offline.
+// One mapping for every surface: online `success`, offline grey, offline for a week or more `warning`.
 export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
   if (runner?.connected) return { tone: "success", text: "Online" };
   if (runner?.reconnecting) return { tone: "warning", text: "Reconnecting" };
-  return { tone: "muted", text: "Offline" };
+  if (runner && staleSince(runner.last_seen)) return { tone: "warning", text: "Offline", hollow: true };
+  return { tone: "muted", text: "Offline", hollow: true };
+};
+
+export const offlineForDays = (computer: Computer): number => {
+  const runner = computer.runner;
+  if (!runner || runner.connected || runner.reconnecting) return 0;
+  const days = daysAgo(runner.last_seen);
+  return Number.isNaN(days) ? 0 : days;
+};
+
+export const isStaleOffline = (computer: Computer) => offlineForDays(computer) >= STALE_OFFLINE_DAYS;
+
+export interface StateLine {
+  tone: SettingsStatusTone;
+  text: string;
+  // The part of the line that is about how long it has been gone; it alone takes the warning colour.
+  seen?: string;
+  hollow?: boolean;
+}
+
+// The dot a readiness draws on every surface: success while ready, a filled grey one while online but blocked, a grey ring
+// while offline and a `warning-mark` ring once stale. Amber is only for stale.
+export const readinessDot = (state: Readiness): { tone: SettingsStatusTone; hollow: boolean } => {
+  if (state === "ready") return { tone: "success", hollow: false };
+  if (state === "degraded") return { tone: "muted", hollow: false };
+  if (state === "offline") return { tone: "muted", hollow: true };
+  return { tone: "warning", hollow: true };
+};
+
+// One short line for a list row, by the computer's readiness: "Online · idle", "Online · T3 Code not answering", "Offline · seen 3h ago".
+export const computerStateLine = (computer: Computer, presence: string | undefined): StateLine => {
+  if (computer.shared) return runnerPresence(computer.runner);
+  const { state, words } = computerReadiness(computer, presence);
+  const dot = readinessDot(state);
+  if (state === "ready") return { ...dot, text: `Online · ${computer.running > 0 ? `${computer.running} of ${computer.runs_at_once} running` : "idle"}` };
+  if (state === "degraded") return { ...dot, text: words === "Reconnecting" ? words : `Online · ${words}` };
+  if (!computer.runner) return { ...dot, text: words };
+  return { ...dot, text: "Offline · ", seen: `seen ${seenAgo(computer.runner.last_seen)}` };
+};
+
+// The muted words after a computer's name in a ranked list: nothing while online, "seen 3h ago" once offline.
+export const offlineNote = (computer: Computer): string | undefined => {
+  if (!computer.runner || computer.runner.connected || computer.runner.reconnecting) return undefined;
+  return `seen ${seenAgo(computer.runner.last_seen)}`;
 };

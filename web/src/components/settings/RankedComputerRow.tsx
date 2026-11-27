@@ -3,9 +3,13 @@ import { useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { RemoveIcon } from "@/components/autoplay/ComposerControls";
+import { statusDotFor } from "@/components/settings/SettingsStatus";
 import { RowGrip } from "@/components/settings/RowGrip";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useFetchPresence } from "@/hooks/PairingHooks";
+import { computerReadiness, offlineNote, readinessDot } from "@/models/ComputerChecks";
+import type { Computer } from "@/models/Pairing";
 
 // What a ranked list lets a row do: be dragged to another place, and be taken out.
 export interface RowControls {
@@ -18,6 +22,8 @@ interface RankedComputerRowProps {
   name: string;
   rank: number;
   controls: RowControls;
+  // When given, the row shows its state dot and, once offline, a muted "offline" after the name.
+  computer?: Computer;
   // The row's own cells, between the name and its remove button.
   children?: ReactNode;
   // Folds open under the row.
@@ -25,8 +31,10 @@ interface RankedComputerRowProps {
 }
 
 // One computer in a ranked list: a grip to drag it, its place, its name, and the button that takes it out.
-export const RankedComputerRow = ({ id, name, rank, controls, children, below }: RankedComputerRowProps) => {
+export const RankedComputerRow = ({ id, name, rank, controls, computer, children, below }: RankedComputerRowProps) => {
   const reduced = useReducedMotion() ?? false;
+  const presence = useFetchPresence();
+  const dot = readinessDot(computer ? computerReadiness(computer, presence.data?.[computer.id]).state : "ready");
   const sortable = useSortable({ id, disabled: !controls.sortable, transition: reduced ? null : { duration: 200, easing: EASE_OUT } });
   const { setNodeRef, transform, transition, isDragging } = sortable;
 
@@ -41,8 +49,10 @@ export const RankedComputerRow = ({ id, name, rank, controls, children, below }:
         <span aria-hidden className="w-4 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
           {rank}
         </span>
-        <p className="min-w-0 flex-1 truncate text-sm" title={name}>
+        {computer && <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusDotFor(dot.tone, dot.hollow))} />}
+        <p className="min-w-0 flex-1 truncate font-mono text-sm" title={name}>
           {name}
+          {computer && offlineNote(computer) && <span className="ml-2 font-sans text-xs text-muted-foreground">{offlineNote(computer)}</span>}
         </p>
         {children}
         {controls.onRemove && <RemoveIcon label={`Remove ${name}`} onClick={controls.onRemove} />}

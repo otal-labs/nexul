@@ -17,14 +17,14 @@ export const SETUP_GAPS: Record<string, { why: string; sentence: string }> = {
 
 const waitingOn = (item: WaitingRun) => item.waiting_on ?? [];
 
-// Every computer that couldn't take the run was only busy, so it starts once one of them frees up.
-export const onlyComputersFull = (item: WaitingRun) => waitingOn(item).length > 0 && waitingOn(item).every((p) => p.why === "full");
+// Every computer that couldn't take the run was only busy, or left out by its auto play's computer rule, so it starts once a busy one frees up.
+export const onlyComputersFull = (item: WaitingRun) =>
+  waitingOn(item).some((p) => p.why === "full") && waitingOn(item).every((p) => p.why === "full" || p.why === "rule_out" || p.why === "no_auto_plays");
 
 // Why a queued run waits, from the server's hold reasons.
 export const waitingWhy = (item: WaitingRun): string => {
   if (item.status === "dispatching") return "starting";
   if (item.reason === "ticket busy") return `${item.target_type} busy`;
-  if (item.reason === "paused") return "paused";
   if (onlyComputersFull(item)) return "computers busy";
   return SETUP_GAPS[item.reason]?.why ?? "next in line";
 };

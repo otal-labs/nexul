@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { ContextAwareConfirmation } from "react-confirm";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
-import { AgentPage } from "@/pages/AgentPage";
+import { ComputersDialog } from "@/components/computers/ComputersDialog";
 
 // A computer added with its app, online; overrides reshape it.
 export const computer = (overrides: Record<string, unknown> = {}) => ({
@@ -25,16 +25,13 @@ export const computer = (overrides: Record<string, unknown> = {}) => ({
 // A computer paired by URL before the Nexul app.
 export const pairedBefore = (overrides: Record<string, unknown> = {}) => computer({ server_url: "https://home.example.com", runner: undefined, ...overrides });
 
-export const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [] };
+export const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], models: {}, turns: [] };
 
-// The Agent page at a path, in its own client so a test can push a refresh at it; the router says where a click went.
-export const renderAgent = (path: string) => {
+// The Computers dialog opened by a path's `computers` param, in its own client so a test can push a refresh at it; the router says where a click went.
+export const renderComputers = (path: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
-    [
-      { path: "/acme/agent", element: <AgentPage /> },
-      { path: "/acme/agent/:kind/:id", element: <AgentPage /> },
-    ],
+    [{ path: "/acme/agent", element: <ComputersDialog /> }],
     { initialEntries: [path] },
   );
   render(

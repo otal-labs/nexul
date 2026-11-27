@@ -20,7 +20,6 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-// The developer is matched by id, so a login stored in another case still lets them resume.
 const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog", developer: "Alice", developer_id: "u-alice" } as Ticket;
 
 const people = [
@@ -104,25 +103,6 @@ describe("PlaysRailSection auto play signals", () => {
     expect(await screen.findByRole("button", { name: "Cancel Fix with AI" })).toBeInTheDocument();
   });
 
-  it("shows a paused ticket with its runs today, and lets the ticket's developer resume it", async () => {
-    mockApi(() => playQueue({ paused: true, auto_runs: 5, paused_until: "2099-01-01T00:00:00Z" }), "u-alice");
-    vi.mocked(api.post).mockResolvedValue({ data: playQueue() });
-    renderSection();
-    expect(await screen.findByText("Auto plays paused")).toBeInTheDocument();
-    expect(screen.getByText("runs today", { exact: false })).toHaveTextContent("5 runs today");
-    await userEvent.click(await screen.findByRole("button", { name: "Resume" }));
-    expect(api.post).toHaveBeenCalledWith("/api/plays/queue/resume", { target_type: "ticket", target_id: "t-1" });
-    await waitFor(() => expect(screen.queryByText("Auto plays paused")).not.toBeInTheDocument());
-  });
-
-  it("offers Resume to no one but the developer and autoplays:write holders", async () => {
-    mockApi(() => playQueue({ paused: true, auto_runs: 1, paused_until: "2099-01-01T00:00:00Z" }), "u-bob");
-    renderSection();
-    expect(await screen.findByText("today", { exact: false })).toHaveTextContent("1 run today");
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/auth/me"));
-    expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
-  });
-
   it("follows the queue live: a run queued after the page opened appears without a refresh", async () => {
     let queue = playQueue();
     mockApi(() => queue);
@@ -138,7 +118,7 @@ describe("PlaysRailSection auto play signals", () => {
   it("links the person a run waits on to the fix for their computer setup", async () => {
     mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }), "u-alice");
     renderSection();
-    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/acme/agent");
+    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/acme/agent?computers=");
   });
 
   it("says only what the gap is to anyone else, since the fix is in the run's person's own settings", async () => {

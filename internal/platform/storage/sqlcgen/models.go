@@ -78,6 +78,7 @@ type AutoPlay struct {
 	Schedule          sql.NullString
 	OneAtATime        int64
 	Resource          string
+	ComputerRule      string
 }
 
 type AutoPlaySweep struct {
@@ -972,6 +973,7 @@ type PairingComputer struct {
 	ShellEnabled          int64
 	PlaysOff              int64
 	Labels                string
+	AutoPlaysOff          int64
 }
 
 type PairingMoveNotice struct {
@@ -1153,13 +1155,6 @@ type PlayQueue struct {
 	StartBy          sql.NullInt64
 	LockKey          string
 	Repository       string
-}
-
-type PlayQueueResume struct {
-	TargetType string
-	TargetID   string
-	ResumedBy  string
-	ResumedAt  int64
 }
 
 type PlayTrail struct {
@@ -1641,7 +1636,6 @@ type Workspace struct {
 	MentionChipTemplate   string
 	Slug                  string
 	DecisionsCheckEnabled int64
-	AutoPlayDailyCap      int64
 	AccessSetupFinished   int64
 	AccessSetupBy         string
 	AccessSetupAt         int64

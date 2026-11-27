@@ -15,7 +15,7 @@ export interface RunPlayOptions {
   priority?: "high" | "normal" | "low";
 }
 
-// QueuedRun is the queued run, or one that didn't run; reason is why, or what it waits on ("paused" at the daily cap).
+// QueuedRun is the queued run, or one that didn't run; reason is why, or what it waits on.
 export interface QueuedRun {
   id: string;
   state: "queued" | "didnt_run";

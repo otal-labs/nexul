@@ -77,7 +77,7 @@ func (in QueuePlayInput) normalize() (QueuePlayInput, error) {
 	return in, nil
 }
 
-// enqueueAutomationRun writes the run queued, held at the daily cap, or didn't run; a twin already waiting answers instead.
+// enqueueAutomationRun writes the run queued or didn't run; a twin already waiting answers instead.
 func (r *Runner) enqueueAutomationRun(ctx context.Context, automationID string, play *Play, f Facts, in QueuePlayInput) (*QueueItem, error) {
 	now := r.now().UTC()
 	it := &QueueItem{
@@ -94,13 +94,6 @@ func (r *Runner) enqueueAutomationRun(ctx context.Context, automationID string, 
 		it.Status, it.Reason, it.DecidedAt = QueueDidntRun, reason, &now
 		_, err := r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
 		return it, err
-	}
-	count, limit, _, err := r.autoRunsToday(ctx, it.WorkspaceID, TargetTicket, it.TargetID)
-	if err != nil {
-		return nil, err
-	}
-	if count >= limit {
-		it.Reason = ReasonPaused
 	}
 	queued, err := r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
 	if err != nil {

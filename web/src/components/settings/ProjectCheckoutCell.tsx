@@ -8,20 +8,23 @@ interface ProjectCheckoutCellProps {
   repository?: string | undefined;
   checkout: ProjectCheckout;
   onPick: (harnessProjectId: string) => void;
+  // The project the run is for: a checkout of the same name says nothing the row does not, so it shows only when it differs.
+  projectName?: string;
   className?: string;
 }
 
 // What a project's run would use on one computer: its checkout there, a pick between several, or that it has none.
-export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick, className }: ProjectCheckoutCellProps) => (
+export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick, projectName, className }: ProjectCheckoutCellProps) => (
   <div className={cn("flex min-w-0 items-center justify-end gap-2", className)}>
     {repository && (
       <span className="shrink-0 font-mono text-micro text-muted-foreground" title={repository}>
         {repository.split("/").pop()}
       </span>
     )}
-    {checkout.state === "has" && (
-      <span className="min-w-0 truncate font-mono text-xs text-muted-foreground" title={checkout.project.path}>
-        {checkout.project.title}
+    {checkout.state === "has" && checkout.project.title.toLowerCase() !== projectName?.toLowerCase() && (
+      <span className="flex min-w-0 items-baseline gap-1 text-xs text-muted-foreground" title="T3 project on this computer">
+        <span>in</span>
+        <span className="min-w-0 truncate font-mono">{checkout.project.title}</span>
       </span>
     )}
     {checkout.state === "ambiguous" && (

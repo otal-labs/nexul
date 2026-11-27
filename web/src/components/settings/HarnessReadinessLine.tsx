@@ -1,6 +1,5 @@
 import { useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
 import { passOverLines } from "@/models/Pairing";
-import { cn } from "@/lib/utils";
 
 const CHATS = "Chats outside a project";
 
@@ -14,8 +13,7 @@ export const HarnessReadinessLine = () => {
   const computerName = readiness.computerId ? computers?.find((c) => c.id === readiness.computerId)?.name : undefined;
   const passes = readiness.state === "no_computer_ready" ? (readiness.passedOver ?? []) : [];
   return (
-    <p className="flex items-start gap-1.5 text-xs">
-      <span aria-hidden className={cn("mt-[5px] size-1.5 shrink-0 rounded-full", ready ? "bg-success" : "bg-warning-mark")} />
+    <p className="text-xs">
       {ready && `${CHATS} start on ${computerName ?? "your first computer"}.`}
       {readiness.state === "offline" && (
         <span className="text-muted-foreground">

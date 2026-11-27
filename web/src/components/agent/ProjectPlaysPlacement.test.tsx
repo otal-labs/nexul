@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { renderAgent } from "@/test/agentComputers";
+import { renderComputers } from "@/test/agentComputers";
 import { asViewer } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -55,15 +55,52 @@ beforeEach(() => {
 
 describe("where a project's plays land now", () => {
   it("answers every play from one read, plays sharing needs sharing an answer, switched-off and excluded plays left out", async () => {
-    renderAgent("/acme/agent/projects/proj-1");
+    renderComputers("/acme/agent?computers=project%3Aproj-1");
 
     const section = await screen.findByRole("region", { name: "Where its plays land now" });
     const rows = await within(section).findAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
-      "Fix with AI, Test with AIdesk",
-      "Test on Windowswindows-vmwinboxPassed over: desk doesn't have windows-vm",
+      "Fix with AIdesk",
+      "Test with AIdesk",
+      "Test on Windowswinbox" + "Passed over: desk doesn't have windows-vm",
     ]);
     expect(placementReads()).toHaveLength(1);
     expect(placementReads()[0]?.[0]).toBe("/api/pairing/projects/proj-1/placement?needs=&needs=windows-vm");
+  });
+
+  it("says it in one sentence when every play lands on the same computer, naming who it passed over and why", async () => {
+    const base = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation((url: string) =>
+      url.startsWith("/api/pairing/projects/proj-1/placement")
+        ? Promise.resolve({
+            data: {
+              answers: [
+                { needs: [], computer_id: "c-desk", passed_over: [{ computer_id: "c-win", name: "winbox", why: "offline", text: "winbox is offline" }] },
+                { needs: ["windows-vm"], computer_id: "c-desk", passed_over: [{ computer_id: "c-win", name: "winbox", why: "offline", text: "winbox is offline" }] },
+              ],
+            },
+          })
+        : base(url),
+    );
+    renderComputers("/acme/agent?computers=project%3Aproj-1");
+
+    const section = await screen.findByRole("region", { name: "Where its plays land now" });
+    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is offline.");
+    expect(within(section).queryByRole("listitem")).not.toBeInTheDocument();
+  });
+
+  it("names a computer the project's own list leaves out beside the ones that are offline", async () => {
+    const base = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/pairing/projects") return Promise.resolve({ data: { links: [{ project_id: "proj-1", computers: ["c-desk"], checkouts: [] }] } });
+      if (url.startsWith("/api/pairing/projects/proj-1/placement")) {
+        return Promise.resolve({ data: { answers: [{ needs: [], computer_id: "c-desk", passed_over: [] }, { needs: ["windows-vm"], computer_id: "c-desk", passed_over: [] }] } });
+      }
+      return base(url);
+    });
+    renderComputers("/acme/agent?computers=project%3Aproj-1");
+
+    const section = await screen.findByRole("region", { name: "Where its plays land now" });
+    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is not in this project's computers.");
   });
 });

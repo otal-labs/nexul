@@ -1,13 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { DefaultsOrderList } from "@/components/computers/DefaultsOrderList";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { RunSettingField } from "@/components/settings/RunSettingField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { useModelComputerId, useUpdatePairingDefaults } from "@/hooks/PairingHooks";
-import { useFlash } from "@/hooks/useFlash";
+import { useAutoSaveForm } from "@/hooks/useAutoSaveForm";
 import {
   PairingDefaultsFormSchema,
   PLACEMENT_OPTIONS,
@@ -28,54 +27,41 @@ const formValues = (d: PairingDefaults): PairingDefaultsFormData => ({
 
 interface PairingDefaultsFormProps {
   defaults: PairingDefaults;
+  onSaved?: () => void;
 }
 
-// Split out so defaultValues only seed from a loaded `defaults`, avoiding the F2 "= [] trap".
-export const PairingDefaultsForm = ({ defaults }: PairingDefaultsFormProps) => {
+// Split out so defaultValues only seed from a loaded `defaults`, avoiding the F2 "= [] trap". Every change writes at once.
+export const PairingDefaultsForm = ({ defaults, onSaved }: PairingDefaultsFormProps) => {
   const update = useUpdatePairingDefaults();
   const modelComputer = useModelComputerId();
   const form = useForm<PairingDefaultsFormData>({ defaultValues: formValues(defaults), resolver: zodResolver(PairingDefaultsFormSchema) });
-  const [saved, flash] = useFlash();
-
-  const onSubmit = async (data: PairingDefaultsFormData) => {
-    try {
-      form.reset(formValues(await update.mutateAsync(data)));
-      flash();
-    } catch {
-      // Error is surfaced by the hook's toast; the form stays open to retry.
-    }
-  };
+  useAutoSaveForm(form, async (values) => formValues(await update.mutateAsync(values)), onSaved);
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)}>
-      <div>
-        <RunSettingField label="Send runs to">
-          <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel options={PLACEMENT_OPTIONS} />
-        </RunSettingField>
-        <RunSettingField label="Model">
-          <HarnessProviderModelFields
-            control={form.control}
-            providerName="provider"
-            modelName="model"
-            optionsName="model_options"
-            computerId={modelComputer}
-            onPick={(provider, model, options) => {
-              form.setValue("provider", provider, { shouldDirty: true });
-              form.setValue("model", model, { shouldDirty: true });
-              form.setValue("model_options", options, { shouldDirty: true });
-            }}
-          />
-        </RunSettingField>
-        <RunSettingField label="Threads start in">
-          <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel options={START_IN_OPTIONS} />
-        </RunSettingField>
-      </div>
-      <div className="flex justify-end pt-3">
-        <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} loading={form.formState.isSubmitting} disabled={!form.formState.isDirty && !saved}>
-          {saved && <CheckIcon className="size-4" aria-hidden />}
-          {saved ? "Saved" : "Save"}
-        </Button>
-      </div>
-    </form>
+    <div className="@container divide-y divide-border rounded-lg border border-border px-4">
+      <RunSettingField label="Computers">
+        <DefaultsOrderList />
+      </RunSettingField>
+      <RunSettingField label="If several are free">
+        <FormSelect control={form.control} name="placement" label="If several are free" hideLabel options={PLACEMENT_OPTIONS} />
+      </RunSettingField>
+      <RunSettingField label="Model">
+        <HarnessProviderModelFields
+          control={form.control}
+          providerName="provider"
+          modelName="model"
+          optionsName="model_options"
+          computerId={modelComputer}
+          onPick={(provider, model, options) => {
+            form.setValue("provider", provider);
+            form.setValue("model", model);
+            form.setValue("model_options", options);
+          }}
+        />
+      </RunSettingField>
+      <RunSettingField label="Threads start in">
+        <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel options={START_IN_OPTIONS} />
+      </RunSettingField>
+    </div>
   );
 };

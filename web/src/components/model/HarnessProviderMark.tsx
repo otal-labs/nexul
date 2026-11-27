@@ -19,7 +19,7 @@ export const HarnessProviderMark = ({ driver, className = "size-3.5" }: HarnessP
   const mark = providerMark(driver);
   if (!mark) return <Bot className={className} aria-hidden />;
   return (
-    <svg viewBox={mark.viewBox} className={cn(mark.fill === null ? "fill-current" : themedFill, className)} style={mark.fill ? fillVars(mark.fill) : undefined} aria-hidden>
+    <svg viewBox={mark.viewBox} className={cn(mark.fill === null || mark.monochrome ? "fill-current text-muted-foreground" : themedFill, mark.monochrome && "scale-[0.85]", className)} style={mark.fill && !mark.monochrome ? fillVars(mark.fill) : undefined} aria-hidden>
       {mark.hole && <path d={mark.hole.d} className={themedFill} style={fillVars(mark.hole.fill)} />}
       {mark.paths.map((d) => (
         <path key={d} d={d} {...(mark.evenOdd && { fillRule: "evenodd" as const, clipRule: "evenodd" as const })} />

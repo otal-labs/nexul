@@ -179,26 +179,3 @@ func TestAutoPlaysRepo_MissingRowsAndAMissingPlay(t *testing.T) {
 	_, err := s.Plays.GetAutoPlay(ctx, "ap-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
-
-func TestAutoPlaysRepo_LimitsStartAtFiveADay(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	seedPlays(t, s)
-	ctx := t.Context()
-	limits, err := s.Plays.AutoPlayLimits(ctx, "ws-1")
-	require.NoError(t, err)
-	assert.Equal(t, plays.AutoPlayLimits{DailyCapPerTicket: plays.DefaultAutoPlayDailyCap}, limits)
-	want := plays.AutoPlayLimits{DailyCapPerTicket: 9}
-	evt := eventbus.OutboxEvent{ID: "evt-cap", Topic: plays.TopicAutoPlayLimitsUpdated, Payload: plays.AutoPlayLimitsEvent{WorkspaceID: "ws-1", DailyCapPerTicket: 9}}
-	require.NoError(t, s.Plays.SetAutoPlayLimits(ctx, "ws-1", want, evt))
-	limits, err = s.Plays.AutoPlayLimits(ctx, "ws-1")
-	require.NoError(t, err)
-	assert.Equal(t, want, limits)
-	var topic string
-	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE id = 'evt-cap'`).Scan(&topic))
-	assert.Equal(t, plays.TopicAutoPlayLimitsUpdated, topic)
-
-	_, err = s.Plays.AutoPlayLimits(ctx, "ghost")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-	require.ErrorIs(t, s.Plays.SetAutoPlayLimits(ctx, "ghost", want), apperrs.ErrNotFound)
-}

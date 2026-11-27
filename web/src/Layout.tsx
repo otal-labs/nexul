@@ -2,6 +2,7 @@ import { Suspense, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { LazyComputersDialog } from "@/components/computers/LazyComputersDialog";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
@@ -58,6 +59,7 @@ export const Layout = () => {
             <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} unreadCount={unread?.count ?? 0} />
           )}
           {!onboarding && <CommandPalette />}
+          {!onboarding && <LazyComputersDialog />}
           <div className="flex min-w-0 flex-1 flex-col">
             <ViewAsBanner />
             <ServerUpdatedBanner />

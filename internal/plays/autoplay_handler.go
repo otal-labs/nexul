@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 )
 
 // autoPlayRequest is a full replace of an auto play's editable fields; a create starts it off whatever enabled says.
@@ -21,13 +22,15 @@ type autoPlayRequest struct {
 	MemoryIDs  []string `json:"memory_ids"`
 	OneAtATime bool     `json:"one_at_a_time"`
 	Resource   string   `json:"resource"`
+	// ComputerRule narrows the run-as person's computers; omitted keeps the auto play's.
+	ComputerRule *labels.ComputerRule `json:"computer_rule"`
 }
 
 func (req autoPlayRequest) input() AutoPlayInput {
 	return AutoPlayInput{
 		Moment: req.Moment, MomentStage: req.MomentStage, Schedule: req.Schedule, Conditions: req.Conditions, Priority: req.Priority,
 		OnceWithinMinutes: req.OnceWithinMinutes, RunOn: req.RunOn, RunAsMe: req.RunAsMe, MemoryIDs: req.MemoryIDs,
-		OneAtATime: req.OneAtATime, Resource: req.Resource,
+		OneAtATime: req.OneAtATime, Resource: req.Resource, ComputerRule: req.ComputerRule,
 	}
 }
 
@@ -74,27 +77,4 @@ func (h *Handler) deleteAutoPlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *Handler) getAutoPlayLimits(w http.ResponseWriter, r *http.Request) {
-	limits, err := h.svc.AutoPlayLimits(r.Context(), r.PathValue("workspaceID"))
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, limits)
-}
-
-func (h *Handler) setAutoPlayLimits(w http.ResponseWriter, r *http.Request) {
-	var req AutoPlayLimitsPatch
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	limits, err := h.svc.SetAutoPlayLimits(r.Context(), r.PathValue("workspaceID"), req)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, limits)
 }

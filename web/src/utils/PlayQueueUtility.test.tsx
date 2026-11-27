@@ -39,7 +39,7 @@ describe("waitingWhy and waitingLines", () => {
       ],
     });
     expect(waitingLines(item)).toEqual(["laptop is offline", "build-box doesn't have this project"]);
-    expect(waitingLink(item)?.to).toBe("/agent");
+    expect(waitingLink(item)?.to).toBe("/agent?computers=");
   });
 
   it("reads a run waiting only for room as busy, with nothing to fix", () => {
@@ -49,7 +49,7 @@ describe("waitingWhy and waitingLines", () => {
   });
 
   it("sends a run held on its person's computers to the Agent page like any other", () => {
-    expect(waitingLink(queueItem({ run_on: "person", reason: "offline" }))).toEqual({ to: "/agent", label: "Your computers" });
+    expect(waitingLink(queueItem({ run_on: "person", reason: "offline" }))).toEqual({ to: "/agent?computers=", label: "Your computers" });
     expect(waitingLink(queueItem({ run_on: "person", reason: "setup_required" }))?.label).toBe("Run setup");
   });
 

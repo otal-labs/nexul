@@ -13,14 +13,16 @@ interface ValuesPickerProps {
   field: FieldValues;
   onChange: (values: string[]) => void;
   disabled?: boolean | undefined;
+  // What the closed picker says while nothing is picked.
+  placeholder?: string;
 }
 
 // Several values for is / is not: reads like a select, holds a check per value; a picked value no option names stays listed.
-export const ValuesPicker = ({ label, values, field, onChange, disabled }: ValuesPickerProps) => {
+export const ValuesPicker = ({ label, values, field, onChange, disabled, placeholder: empty }: ValuesPickerProps) => {
   const unknown = values.filter((value) => !field.options.some((option) => option.value === value));
   const rows = [...unknown.map((value) => ({ value, label: field.label(value) })), ...field.options];
   const text = values.map(field.label).join(", ");
-  const placeholder = rows.length === 0 && field.empty ? field.empty : "Pick values";
+  const placeholder = rows.length === 0 && field.empty ? field.empty : (empty ?? "Pick values");
   const toggle = (value: string) =>
     onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
 
@@ -32,7 +34,7 @@ export const ValuesPicker = ({ label, values, field, onChange, disabled }: Value
           aria-label={label}
           disabled={disabled}
           title={text}
-          className="flex h-8 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-md border border-input px-2.5 text-left text-sm shadow-xs transition-[border-color] duration-150 ease-standard hover:border-foreground/25 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/20"
+          className="flex h-8 min-w-36 max-w-80 items-center justify-between gap-1.5 rounded-md border border-input px-2.5 text-left text-sm shadow-xs transition-[border-color] duration-150 ease-standard hover:border-foreground/25 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/20"
         >
           <span className={cn("truncate", values.length === 0 && "text-muted-foreground")}>{text || placeholder}</span>
           <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

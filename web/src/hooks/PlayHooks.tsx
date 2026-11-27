@@ -7,7 +7,7 @@ import type { PlayStage } from "@nexul/client-core/plays";
 
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
+import type { AutoPlay, SaveAutoPlayRequest } from "@/models/AutoPlay";
 import type { ListedPlay, Play, PlayRenameImpact, PlayType, SavePlayFormData, WorkspacePlay } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
@@ -17,7 +17,6 @@ import { followEach, type LiveFollower } from "@/lib/live";
 export const getWorkspacePlaysKey = "getWorkspacePlays";
 export const getApplicablePlaysKey = "getApplicablePlays";
 export const getAutoPlaysKey = "getAutoPlays";
-export const getAutoPlayLimitsKey = "getAutoPlayLimits";
 export const getPlayRenameImpactKey = "getPlayRenameImpact";
 
 export const useFetchWorkspacePlays = (workspaceId: string) =>
@@ -85,28 +84,6 @@ export const useDeleteAutoPlay = (workspaceId: string, playId: string) => {
     onSuccess: async () => {
       await Promise.all([refetchAutoPlays(client, workspaceId, playId), refetchPlaysList(client, workspaceId)]);
       toast.success("Auto play deleted");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-const limitsPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/plays/auto-play-limits`;
-
-// The workspace's bounds on automatic runs, shared by every play's auto plays.
-export const useFetchAutoPlayLimits = (workspaceId: string) =>
-  useQuery({
-    queryKey: [getAutoPlayLimitsKey, workspaceId],
-    queryFn: async () => (await api.get<AutoPlayLimits>(limitsPath(workspaceId))).data,
-    enabled: workspaceId !== "",
-  });
-
-export const useSetAutoPlayLimits = (workspaceId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: requires("autoplays:write", async (patch: Partial<AutoPlayLimits>) =>
-      (await api.patch<AutoPlayLimits>(limitsPath(workspaceId), patch)).data),
-    onSuccess: (limits) => {
-      client.setQueryData([getAutoPlayLimitsKey, workspaceId], limits);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -220,8 +197,6 @@ export const playFollower: LiveFollower = {
   ),
   "auto_play.deleted": ({ play_id, workspace_id }: { play_id: string; workspace_id: string }, { client }) =>
     Promise.all([refetchAutoPlays(client, workspace_id, play_id), refetchPlaysList(client, workspace_id)]),
-  "auto_play.limits_updated": ({ workspace_id, ...limits }: AutoPlayLimits & { workspace_id: string }, { client }) =>
-    client.setQueryData([getAutoPlayLimitsKey, workspace_id], limits),
   "memory.deleted": ({ workspace_id }: { workspace_id: string }, { client }) =>
     client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspace_id] }),
   // A play's rule decides who sees it; its frame names no workspace, so every workspace's play lists refetch.

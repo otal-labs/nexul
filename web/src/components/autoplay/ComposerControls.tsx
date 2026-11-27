@@ -1,6 +1,7 @@
 import { PlusIcon, XIcon, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { EditorRow } from "@/components/agent/EditorRow";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -61,9 +62,7 @@ export const RemoveIcon = ({ label, onClick }: { label: string; onClick: () => v
   <QuietIcon label={label} onClick={onClick} icon={XIcon} />
 );
 
-export const ComposerSection = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="space-y-2" aria-label={title}>
-    <h3 className="text-sm font-medium">{title}</h3>
-    {children}
-  </section>
-);
+// The muted text button that adds a row in an editor: "+ Add a condition", "+ Add a priority rule", "+ Add auto play".
+export const inlineActionClass = "rounded-sm text-row text-muted-foreground hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline";
+
+export const ComposerSection = ({ title, children }: { title: string; children: ReactNode }) => <EditorRow label={title}>{children}</EditorRow>;

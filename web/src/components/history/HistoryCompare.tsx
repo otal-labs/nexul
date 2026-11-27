@@ -25,7 +25,7 @@ interface HistoryCompareProps {
 }
 
 // The body column: the compare strip over the picked version's text, which scrolls on its own below the strip's hairline, its
-// scrollbar kept clear of the rail's. A change lands 40px down, clear of the top fade, so a hop never ends under it. The body's
+// scrollbar kept clear of the rail's. A change lands 56px down, 16px clear of the top fade, so a hop never ends under it. The body's
 // scrollbar gutter is reserved, so its text never moves between states.
 export const HistoryCompare = ({ ref, picked, restored, previous, compare, view, onView, step, onHop, bodyKind }: HistoryCompareProps) => (
   <div className="@container flex min-h-0 min-w-0 flex-col bg-popover">
@@ -40,7 +40,9 @@ export const HistoryCompare = ({ ref, picked, restored, previous, compare, view,
       step={step}
       onHop={onHop}
     />
-    <div ref={ref} className="mr-2 min-h-0 flex-1 overflow-y-auto [scroll-padding-top:40px] [scrollbar-gutter:stable]">
+    <div ref={ref} className="mr-2 min-h-0 flex-1 overflow-y-auto [scroll-padding-top:56px] [scrollbar-gutter:stable]">
+      {/* A solid cap, so text scrolled under the strip never shows faded against its hairline. */}
+      <div aria-hidden className="sticky top-0 z-[6] -mb-3 h-3 bg-popover" />
       <HistoryScrollFade edge="top" size="lg" flush />
       <div className={cn("pt-8 pb-4", bodyKind === "code" ? "px-6" : "px-10 @min-[34rem]:px-14")}>
         {compare.isPending && !compare.error && <LoadingDisplay />}

@@ -447,6 +447,32 @@
           "run_as": {
             "type": "string"
           },
+          "computer_rule": {
+            "type": "object",
+            "properties": {
+              "labels_in": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "A computer needs at least one of these labels; empty for no demand."
+              },
+              "labels_out": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "A computer with any of these labels is left out."
+              },
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Only these computers, when person is the run_on; empty for any."
+              }
+            }
+          },
           "computer_ids": {
             "type": "array",
             "items": {
@@ -493,6 +519,7 @@
           "once_within_minutes",
           "run_on",
           "run_as",
+          "computer_rule",
           "computer_ids",
           "computer_id",
           "memory_ids",
@@ -544,6 +571,7 @@
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Never sent now that the daily cap is gone (ADR 0214); kept so the published contract only grows.",
     "required": [
       "workspace_id",
       "daily_cap_per_ticket",
@@ -1058,6 +1086,32 @@
           "run_as": {
             "type": "string"
           },
+          "computer_rule": {
+            "type": "object",
+            "properties": {
+              "labels_in": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "A computer needs at least one of these labels; empty for no demand."
+              },
+              "labels_out": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "A computer with any of these labels is left out."
+              },
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Only these computers, when person is the run_on; empty for any."
+              }
+            }
+          },
           "computer_ids": {
             "type": "array",
             "items": {
@@ -1104,6 +1158,7 @@
           "once_within_minutes",
           "run_on",
           "run_as",
+          "computer_rule",
           "computer_ids",
           "computer_id",
           "memory_ids",
@@ -6741,7 +6796,7 @@
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "description": "Someone resumed auto plays on a ticket or doc the daily cap had paused; its count of automatic runs starts again.",
+    "description": "Never sent now that the daily cap is gone (ADR 0214); kept so the published contract only grows.",
     "required": [
       "workspace_id",
       "project_id",

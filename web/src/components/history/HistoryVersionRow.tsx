@@ -1,7 +1,6 @@
 import { personLabel } from "@nexul/client-core/person";
 
 import { CurrentRowEdge, currentRowFillClass } from "@/components/CurrentRow";
-import { HistoryAuthor } from "@/components/history/HistoryAuthor";
 import { HistorySpine } from "@/components/history/HistorySpine";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
@@ -26,14 +25,22 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
   const person = usePersonLookup(useWorkspaceStore((s) => s.selectedWorkspaceId));
   const people = summary.editor_ids.map(person);
   const size = versionSize(summary);
-  const headline = summary.name || (summary.builtin_default ? "Built-in default" : "");
+  const headline = summary.name || `Version ${summary.version}`;
+  const note = summary.name || !summary.builtin_default ? "" : "Built-in default";
   const date = formatVersionTime(summary.created_at);
+  const [editor] = people;
+  // Who saved it, in a phrase: an editor's name, what an automatic save came through, or that it was saved on its own.
+  const made = (() => {
+    if (editor) return `edited by ${personLabel(editor)}${people.length > 1 ? ` +${people.length - 1}` : ""}`;
+    return summary.via ? viaLabel(summary.via) : "saved automatically";
+  })();
   const pending = summary.status === "pending";
   const label = [
     date,
     people.map(personLabel).join(", "),
     summary.via && viaLabel(summary.via),
     headline,
+    note,
     size?.exact,
     summary.current && "current version",
     pending && "pending version",
@@ -54,24 +61,24 @@ export const HistoryVersionRow = ({ summary, selected, first, last, restoredWhen
         className={cn("inset-focus absolute inset-0 transition-colors duration-150 ease-standard", !selected && "hover:bg-accent")}
       />
       {selected && <CurrentRowEdge />}
-      <HistorySpine node={headline ? "named" : "save"} selected={selected} first={first} last={last} />
+      <HistorySpine node={summary.name || summary.builtin_default ? "named" : "save"} selected={selected} first={first} last={last} />
       <span className="relative min-w-0 flex-1">
-        {headline && (
-          <span className="mb-0.5 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 line-clamp-2 text-row leading-[1.3] font-semibold text-balance [overflow-wrap:anywhere]" title={headline}>
             {headline}
           </span>
-        )}
-        <span className="flex items-baseline justify-between gap-1 font-mono text-xs tabular-nums">
-          <span className="min-w-0 truncate">{date}</span>
           {size && (
-            <span className="shrink-0" title={size.exact}>
+            <span className="shrink-0 font-mono text-xs tabular-nums" title={size.exact}>
               {size.added > 0 && <span className="text-success">+{cappedCount(size.added)}</span>}
               {size.added > 0 && size.removed > 0 && " "}
               {size.removed > 0 && <span className="text-destructive">−{cappedCount(size.removed)}</span>}
             </span>
           )}
         </span>
-        <HistoryAuthor people={people} via={summary.via} />
+        {note && <span className="mb-0.5 block text-xs text-muted-foreground">{note}</span>}
+        <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums" title={made}>
+          {date}
+        </span>
         {(summary.current || pending || restoredWhen) && (
           <span className="mt-1 block text-micro leading-4 text-muted-foreground">
             {summary.current && <span className="block">Current</span>}

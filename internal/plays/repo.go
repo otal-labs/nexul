@@ -29,7 +29,7 @@ type Repo interface {
 	HistoryRepo
 }
 
-// AutoPlayRepo persists a play's auto plays, which go with their play, and the workspace's daily cap on them.
+// AutoPlayRepo persists a play's auto plays, which go with their play.
 type AutoPlayRepo interface {
 	CreateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
 	GetAutoPlay(ctx context.Context, id string) (*AutoPlay, error)
@@ -37,8 +37,6 @@ type AutoPlayRepo interface {
 	ListAutoPlays(ctx context.Context, playIDs []string) ([]*AutoPlay, error)
 	UpdateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
 	DeleteAutoPlay(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
-	AutoPlayLimits(ctx context.Context, workspaceID string) (AutoPlayLimits, error)
-	SetAutoPlayLimits(ctx context.Context, workspaceID string, limits AutoPlayLimits, evts ...eventbus.OutboxEvent) error
 	// ListEnabledAutoPlays returns a workspace's switched-on auto plays waiting for moment, oldest first.
 	ListEnabledAutoPlays(ctx context.Context, workspaceID string, moment Moment) ([]*AutoPlay, error)
 	// ListEnabledScheduleAutoPlays returns every switched-on schedule auto play outside an archived workspace, oldest first.
@@ -63,13 +61,11 @@ type QueueRepo interface {
 	ListQueuedByTargets(ctx context.Context, targetType TargetType, targetIDs []string) ([]*QueueItem, error)
 	// ListQueuedByPlay returns a play's queued items in the projects of scope, highest priority then oldest first.
 	ListQueuedByPlay(ctx context.Context, playID string, scope ProjectScope) ([]*QueueItem, error)
-	// Resume restarts the target's count of automatic runs from at.
-	Resume(ctx context.Context, targetType TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error
 	QueueDispatchRepo
 	SweepRepo
 }
 
-// QueueDispatchRepo is what the queue's dispatcher and its limits read.
+// QueueDispatchRepo is what the queue's dispatcher reads.
 type QueueDispatchRepo interface {
 	// QueuedPeople returns everyone with a queued item due by now.
 	QueuedPeople(ctx context.Context, now time.Time) ([]string, error)
@@ -77,8 +73,6 @@ type QueueDispatchRepo interface {
 	ListDue(ctx context.Context, personID string, now time.Time) ([]*QueueItem, error)
 	// NextNotBefore is the earliest not_before of a queued item still held back after now; false when there is none.
 	NextNotBefore(ctx context.Context, after time.Time) (time.Time, bool, error)
-	// CountAutoRuns counts the target's started items since since or its last resume, whichever is later, with the oldest's time.
-	CountAutoRuns(ctx context.Context, targetType TargetType, targetID string, since time.Time) (int, time.Time, error)
 	// QueuedSince reports whether autoPlayID queued, or started, a run on the target at or after since.
 	QueuedSince(ctx context.Context, autoPlayID string, targetType TargetType, targetID string, since time.Time) (bool, error)
 	// WakePerson makes every queued item of personID due now, for a change to their computers that may close a setup gap.

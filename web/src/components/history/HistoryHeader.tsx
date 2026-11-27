@@ -13,12 +13,13 @@ interface HistoryHeaderProps {
 export const HistoryHeader = ({ name, view, onView }: HistoryHeaderProps) => {
   const wide = useMinWidth(1024);
   return (
-    <div className="flex h-14 shrink-0 items-center gap-3 bg-popover pt-0.5 pr-14 pl-6">
-      <DialogTitle className="text-row">History</DialogTitle>
-      <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
-      <DialogDescription className="min-w-0 flex-1 truncate text-row" title={name}>
-        {name}
-      </DialogDescription>
+    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-popover py-3 pr-14 pl-6">
+      <div className="min-w-0 flex-1">
+        <DialogTitle className="type-display text-xl">History</DialogTitle>
+        <DialogDescription className="truncate text-row text-muted-foreground" title={name}>
+          {name}
+        </DialogDescription>
+      </div>
       {!wide && view && onView && <HistoryViewToggle view={view} onView={onView} />}
     </div>
   );

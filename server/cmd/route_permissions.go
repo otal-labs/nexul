@@ -276,7 +276,6 @@ var routePermissions = map[string][]string{
 
 	"POST /api/plays/decisions-check":           {"plays:run"},
 	"POST /api/plays/queue":                     {"plays:run"},
-	"POST /api/plays/queue/resume":              {"autoplays:write"},
 	"POST /api/plays/queue/{itemID}/cancel":     {"autoplays:write"},
 	"POST /api/plays/runs/{trailID}/answer":     {"plays:write"},
 	"POST /api/plays/runs/{trailID}/continue":   {"plays:write"},
@@ -379,7 +378,6 @@ var routePermissions = map[string][]string{
 	"POST /api/workspaces/{workspaceID}/members/{userID}/view-as":                 {"members:view_as"},
 	"PATCH /api/workspaces/{workspaceID}/mention-chip-template":                   {"workspaces:write"},
 	"POST /api/workspaces/{workspaceID}/plays":                                    {"plays:write"},
-	"PATCH /api/workspaces/{workspaceID}/plays/auto-play-limits":                  {"autoplays:write"},
 	"DELETE /api/workspaces/{workspaceID}/plays/{playID}":                         {"plays:delete"},
 	"PATCH /api/workspaces/{workspaceID}/plays/{playID}":                          {"plays:write"},
 	"POST /api/workspaces/{workspaceID}/plays/{playID}/auto-plays":                {"autoplays:write"},

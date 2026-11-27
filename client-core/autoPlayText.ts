@@ -19,6 +19,13 @@ export type AutoPlayMatch = "all" | "any";
 export type AutoPlayLevel = "high" | "normal" | "low";
 export type AutoPlayRunOn = "developer" | "tester" | "causer" | "person";
 
+// Narrows the computers an auto play's runs may land on: one of labels_in when set, none of labels_out, one of ids when set (ids need run_on person).
+export interface AutoPlayComputerRule {
+  labels_in?: string[];
+  labels_out?: string[];
+  ids?: string[];
+}
+
 // The server still reads "computer" as "person", so an older payload or cache can carry it.
 export const normalRunOn = (runOn: AutoPlayRunOn | "computer"): AutoPlayRunOn => (runOn === "computer" ? "person" : runOn);
 export type AutoPlayOp = "is" | "is_not" | "set" | "unset";
@@ -200,4 +207,11 @@ export const autoPlayTitle = (autoPlay: AutoPlayMomentFields, subject: AutoPlayS
   if (autoPlay.moment === "schedule" && autoPlay.schedule) return describeSchedule(autoPlay.schedule.cron, autoPlay.schedule.timezone ?? "UTC");
   const stage = autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : "";
   return `When a ${subject} ${MOMENT_PHRASES[autoPlay.moment]}${stage}`;
+};
+
+// The title as a sentence about "it": "When it enters In progress". A stack's moments already read as one.
+export const autoPlayLead = (autoPlay: AutoPlayMomentFields, subject: AutoPlaySubject): string => {
+  const title = autoPlayTitle(autoPlay, subject);
+  if (autoPlay.moment === "schedule" || subject === "stack") return title;
+  return title.replace(`When a ${subject} `, "When it ");
 };

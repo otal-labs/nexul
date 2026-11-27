@@ -21,8 +21,6 @@ const (
 	dispatchTimeout = 30 * time.Second
 	// queueRetry is how soon a failed pass is tried again.
 	queueRetry = 5 * time.Second
-	// autoRunWindow is the rolling day the daily cap counts automatic runs over.
-	autoRunWindow = 24 * time.Hour
 )
 
 // Kick wakes the dispatcher for another pass; it never blocks, and kicks during a pass fold into one more pass.
@@ -33,8 +31,7 @@ func (r *Runner) Kick() {
 	}
 }
 
-// HandleSlotsFreed is registered on play.run_finished, where a run ending frees its computer's room and its target, and on
-// auto_play.limits_updated, where a workspace's daily cap may now let a paused target go.
+// HandleSlotsFreed is registered on play.run_finished, where a run ending frees its computer's room and its target.
 func (r *Runner) HandleSlotsFreed(context.Context, eventbus.Event) error {
 	r.Kick()
 	return nil
@@ -161,7 +158,7 @@ func (r *Runner) HandleAutoPlayPersonChanged(ctx context.Context, ev eventbus.Ev
 }
 
 // RunQueue starts queued auto runs until ctx ends. It passes once at boot, then on every kick, and on a timer to the
-// next held item (a held computer's retry, a paused target's oldest run leaving the day); it never polls.
+// next held item (a held computer's retry); it never polls.
 func (r *Runner) RunQueue(ctx context.Context) {
 	if r.queue == nil || r.facts == nil {
 		return
@@ -276,16 +273,6 @@ func (r *Runner) dispatchItem(ctx context.Context, pass *queuePass, it *QueueIte
 	if held, err := r.lockHeld(ctx, it); err != nil || held {
 		return
 	}
-	count, limit, frees, err := r.autoRunsToday(ctx, it.WorkspaceID, it.TargetType, it.TargetID)
-	if err != nil {
-		r.log.Error("plays: count a queued run's target's automatic runs", "item", it.ID, "error", err)
-		return
-	}
-	if count >= limit {
-		pass.wakeAt(frees)
-		r.hold(ctx, it, ReasonPaused)
-		return
-	}
 	play, tgt, v, err := r.recheck(ctx, it, trails)
 	if err != nil {
 		r.log.Error("plays: check a queued run again", "item", it.ID, "error", err)
@@ -334,7 +321,7 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: normalizeIDs(tgt.memoryIDs),
 		State: TrailStarting, StartedAt: now,
 	}
-	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{Repository: it.Repository}, launchQueued)
+	_, err := r.launch(runCtx, play, trail, tgt, HarnessChoice{Repository: it.Repository, Auto: it.AutoPlayID != ""}, launchQueued)
 	if err == nil {
 		r.logDecide(ctx, it, QueueDispatching, QueueStarted, "")
 		return
@@ -360,10 +347,11 @@ func (r *Runner) startQueued(ctx context.Context, it *QueueItem, play *Play, tgt
 	r.logDecide(ctx, it, QueueDispatching, QueueDidntRun, err.Error())
 }
 
-// onlyFull is whether every computer that could not take a run was only full: a run ending frees one and kicks the
+// onlyFull is whether every computer that could not take a run was only full, or left out by the auto play's rule, with one full: a run ending frees one and kicks the
 // queue, so the run waits for that rather than a retry.
 func onlyFull(passed []PassedOver) bool {
-	return len(passed) > 0 && !slices.ContainsFunc(passed, func(p PassedOver) bool { return p.Why != "full" })
+	return slices.ContainsFunc(passed, func(p PassedOver) bool { return p.Why == "full" }) &&
+		!slices.ContainsFunc(passed, func(p PassedOver) bool { return p.Why != "full" && p.Why != "rule_out" && p.Why != "no_auto_plays" })
 }
 
 // requeue puts a dispatching item back in its queue without the trail it never got, announcing it only when it waits
@@ -419,7 +407,7 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 	}
 	tgt.service, tgt.outageID = it.Service, it.OutageID
 	if a != nil {
-		tgt.memoryIDs = a.MemoryIDs
+		tgt.memoryIDs, tgt.computerRule = a.MemoryIDs, a.ComputerRule
 	}
 	return play, tgt, goAhead, nil
 }

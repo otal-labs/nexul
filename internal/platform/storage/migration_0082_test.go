@@ -79,8 +79,4 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 	require.NoError(t, db.QueryRow(`SELECT allow_json, deny_json FROM invitation_grants WHERE invitation_id = 'inv-1'`).Scan(&allow, &deny))
 	assert.JSONEq(t, `["autoplays:delete","plays:delete"]`, allow, "a pending invitation lands with what it promised")
 	assert.JSONEq(t, `["autoplays:read","plays:read"]`, deny)
-
-	var limit int
-	require.NoError(t, db.QueryRow(`SELECT auto_play_daily_cap FROM workspaces WHERE id = 'workspace-default'`).Scan(&limit))
-	assert.Equal(t, 5, limit, "an existing workspace starts at the default cap")
 }

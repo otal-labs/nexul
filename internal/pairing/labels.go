@@ -44,10 +44,15 @@ func (s *Service) SetLabels(ctx context.Context, userID, computerID string, in [
 	return c, nil
 }
 
+// hasLabel is whether label is among c's own labels or its facts'.
+func hasLabel(c Computer, label string) bool {
+	return slices.Contains(c.Labels, label) || slices.Contains(DerivedLabels(c.Facts), label)
+}
+
 // missingNeed is the first of needs c lacks among its own and its facts' labels; empty when it has them all.
 func missingNeed(c Computer, needs []string) string {
 	for _, need := range needs {
-		if !slices.Contains(c.Labels, need) && !slices.Contains(DerivedLabels(c.Facts), need) {
+		if !hasLabel(c, need) {
 			return need
 		}
 	}

@@ -60,13 +60,9 @@ export const autoPlayRequest = (autoPlay: AutoPlay, enabled: boolean) => ({
 
 export type PlayQueueItem = EventPayloads["play.queued"];
 
-// Mirrors internal/plays.Queue: a target's auto runs, newest first, and whether the daily cap paused them.
+// Mirrors internal/plays.Queue: a target's auto runs, newest first.
 export interface PlayQueue {
   items: PlayQueueItem[];
-  paused: boolean;
-  auto_runs: number;
-  daily_cap: number;
-  paused_until: string | null;
 }
 
 // Waiting to start, as opposed to decided (started, skipped, didn't run, cancelled).

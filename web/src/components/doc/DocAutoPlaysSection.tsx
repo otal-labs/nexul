@@ -24,7 +24,7 @@ export const DocAutoPlaysSection = ({ workspaceId, docId, className }: DocAutoPl
     (hasAutoPlaySignals(queue) || showEvents) && (
       <section className={cn("space-y-0.5", className)}>
         <h2 className={cn(microheaderClass, "px-2 pb-1")}>Auto plays</h2>
-        <AutoPlaySignals targetType="doc" targetId={docId} developer="" />
+        <AutoPlaySignals targetType="doc" targetId={docId} />
         {showEvents && <QueueEventList targetType="doc" targetId={docId} />}
       </section>
     )

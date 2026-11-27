@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/labels"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
@@ -55,13 +56,17 @@ type RunRequest struct {
 	// Tests is a run of a play that works on the project's tests repository.
 	Tests bool
 	// Needs are labels the computer must have, its own or from its facts; a computer missing one is passed over (ADR 0197).
-	Needs        []string
+	Needs []string
+	// ComputerRule is the auto play's narrowing of the person's computers; a computer it leaves out is passed over (ADR 0214).
+	ComputerRule labels.ComputerRule
 	Provider     string
 	Model        string
 	ModelOptions []harness.OptionSetting
 	Room         Room
 	// Person is a run someone pressed: with no computer holding the project it asks where instead of failing.
 	Person bool
+	// Auto is a run an auto play started; a computer switched off for auto plays is passed over.
+	Auto bool
 	// Chat runs in the computer's chat folder when no computer has a checkout of the project.
 	Chat bool
 }
@@ -112,6 +117,7 @@ func (s *Service) place(ctx context.Context, req RunRequest, live bool) (*Resolv
 	if err != nil {
 		return nil, err
 	}
+	computers = slices.DeleteFunc(computers, Computer.IsUnfinishedSetup)
 	target, misses, err := s.land(ctx, p, computers, live)
 	if err != nil || target != nil {
 		return target, err
@@ -302,6 +308,12 @@ func (s *Service) tryOption(ctx context.Context, p *plan, o option, live bool) (
 func (s *Service) check(ctx context.Context, p *plan, c Computer, running int) (*option, *miss, error) {
 	if c.PlaysOff {
 		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverNoPlays, Text: c.Name + " is switched off for plays"}}, nil
+	}
+	if c.AutoPlaysOff && p.req.Auto {
+		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverNoAutoPlays, Text: c.Name + " takes no auto plays"}}, nil
+	}
+	if p.req.ComputerRule.LeftOut(c.ID, func(l string) bool { return hasLabel(c, l) }) {
+		return nil, &miss{pass: PassOver{ComputerID: c.ID, Name: c.Name, Why: PassOverRuleOut, Text: c.Name + " is left out by the auto play's computer rule"}}, nil
 	}
 	if m := s.reachable(ctx, c); m != nil {
 		return nil, m, nil
@@ -620,6 +632,21 @@ func (s *Service) SetPlaysOff(ctx context.Context, userID, computerID string, of
 	return c, nil
 }
 
+// SetAutoPlaysOff switches one of the caller's own computers off or back on for the runs auto plays start; its waiting runs look again.
+func (s *Service) SetAutoPlaysOff(ctx context.Context, userID, computerID string, off bool) (*Computer, error) {
+	c, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetComputerAutoPlaysOff(ctx, userID, c.ID, off, s.now().UTC()); err != nil {
+		return nil, err
+	}
+	s.placementChanged(ctx, userID)
+	c.AutoPlaysOff = off
+	c.BearerToken = ""
+	return c, nil
+}
+
 // placementChanged tells the queue a person's runs may land somewhere new; a failed publish waits out the queue's retry.
 func (s *Service) placementChanged(ctx context.Context, userID string) {
 	if s.bus == nil {
@@ -655,6 +682,7 @@ type ComputerPatch struct {
 	ChatProjectID *string
 	ShellEnabled  *bool
 	PlaysOff      *bool
+	AutoPlaysOff  *bool
 	Labels        *[]string
 }
 
@@ -674,10 +702,8 @@ func (s *Service) UpdateComputer(ctx context.Context, userID, computerID string,
 			return nil, err
 		}
 	}
-	if patch.PlaysOff != nil {
-		if c, err = s.SetPlaysOff(ctx, userID, computerID, *patch.PlaysOff); err != nil {
-			return nil, err
-		}
+	if c, err = s.applyPlaySwitches(ctx, userID, c, patch); err != nil {
+		return nil, err
 	}
 	if patch.Labels != nil {
 		if c, err = s.SetLabels(ctx, userID, computerID, *patch.Labels); err != nil {
@@ -696,6 +722,20 @@ func (s *Service) UpdateComputer(ctx context.Context, userID, computerID string,
 		chat = *patch.ChatProjectID
 	}
 	return s.SetComputerPlacement(ctx, userID, computerID, runs, chat)
+}
+
+// applyPlaySwitches sets the plays and auto plays switches a patch gives, each only when given.
+func (s *Service) applyPlaySwitches(ctx context.Context, userID string, c *Computer, patch ComputerPatch) (*Computer, error) {
+	var err error
+	if patch.PlaysOff != nil {
+		if c, err = s.SetPlaysOff(ctx, userID, c.ID, *patch.PlaysOff); err != nil {
+			return nil, err
+		}
+	}
+	if patch.AutoPlaysOff != nil {
+		return s.SetAutoPlaysOff(ctx, userID, c.ID, *patch.AutoPlaysOff)
+	}
+	return c, nil
 }
 
 // MoveComputer puts a computer in the caller's order at position, 0 first, clamped to the order's ends.

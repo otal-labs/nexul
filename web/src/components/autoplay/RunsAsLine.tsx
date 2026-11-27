@@ -15,16 +15,16 @@ export const RunsAsLine = () => {
   const yours = run_as_me || (me !== undefined && run_as === me.user.id);
   const text = (() => {
     if (yours) return "Runs as you, on your computers in your order.";
-    if (run_as === "") return "Nobody picked yet.";
+    if (run_as === "") return "";
     return `Runs as ${personLabel(person)}, on their computers.`;
   })();
 
   return (
     me && (
       <div className="flex items-center gap-2">
-        <p className="text-xs text-muted-foreground">{text}</p>
-        {!yours && (
-          <Button type="button" variant="outline" size="sm" disabled={formState.disabled} onClick={() => setValue("run_as_me", true, { shouldDirty: true })}>
+        {text && <p className="text-xs text-muted-foreground">{text}</p>}
+        {!yours && run_as !== "" && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" disabled={formState.disabled} onClick={() => setValue("run_as_me", true, { shouldDirty: true })}>
             Run as me
           </Button>
         )}

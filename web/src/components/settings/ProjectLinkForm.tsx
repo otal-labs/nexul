@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
+import { ProjectPlaysPlacement } from "@/components/agent/ProjectPlaysPlacement";
 import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
@@ -8,6 +9,8 @@ import { ProjectComputersField } from "@/components/settings/ProjectComputersFie
 import { RunSettingField } from "@/components/settings/RunSettingField";
 import { useModelComputerId } from "@/hooks/PairingHooks";
 import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHooks";
+import { useAutoSaveForm } from "@/hooks/useAutoSaveForm";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import {
   linkSaysSomething,
   PLACEMENT_OPTIONS,
@@ -24,28 +27,30 @@ interface ProjectLinkFormProps {
   projectId: string;
   projectName: string;
   link: ProjectLink;
+  onSaved?: () => void;
 }
 
-// Split out so defaultValues only seed from a loaded `link`, the same F2 "= [] trap" fix.
-export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFormProps) => {
+// Split out so defaultValues only seed from a loaded `link`, the same F2 "= [] trap" fix. Every change writes at once.
+export const ProjectLinkForm = ({ projectId, projectName, link, onSaved }: ProjectLinkFormProps) => {
   const setLink = useSetProjectLink(projectId, projectName);
   const clearLink = useClearProjectLink(projectId, projectName);
+  const { open: confirm } = useConfirmationDialog();
   const form = useForm<ProjectLinkFormData>({ defaultValues: projectLinkFormValues(link), resolver: zodResolver(ProjectLinkFormSchema) });
   const ids = useWatch({ control: form.control, name: "computers" });
   const modelComputer = useModelComputerId(ids);
+  useAutoSaveForm(form, async (values) => projectLinkFormValues(await setLink.mutateAsync(values)), onSaved);
 
-  const onSubmit = async (data: ProjectLinkFormData) => {
-    try {
-      form.reset(projectLinkFormValues(await setLink.mutateAsync(data)));
-    } catch {
-      // Error is surfaced by the hook's toast; the form stays open to retry.
-    }
-  };
-
-  const onClear = async () => {
+  const onReset = async () => {
+    const ok = await confirm({
+      title: `Reset ${projectName} to defaults?`,
+      message: "Its own computers, model and start folder are cleared, so its runs follow your defaults.",
+      confirmLabel: "Reset to defaults",
+    });
+    if (!ok) return;
     try {
       await clearLink.mutateAsync();
       form.reset(projectLinkFormValues({ project_id: projectId, computers: [], checkouts: form.getValues("checkouts") }));
+      onSaved?.();
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -53,12 +58,12 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div>
-          <ProjectComputersField projectId={projectId} />
+      <div className="space-y-3">
+        <div className="@container divide-y divide-border rounded-lg border border-border px-4">
+          <ProjectComputersField projectId={projectId} projectName={projectName} />
           {ids.length > 0 && (
-            <RunSettingField label="Send runs to">
-              <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel placeholder={SAME_AS_DEFAULTS} options={PLACEMENT_OPTIONS} />
+            <RunSettingField label="If several are free">
+              <FormSelect control={form.control} name="placement" label="If several are free" hideLabel placeholder={SAME_AS_DEFAULTS} options={PLACEMENT_OPTIONS} />
             </RunSettingField>
           )}
           <RunSettingField label="Model">
@@ -70,27 +75,21 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
               computerId={modelComputer}
               defaultLabel={SAME_AS_DEFAULTS}
               onPick={(provider, model, options) => {
-                form.setValue("provider", provider, { shouldDirty: true });
-                form.setValue("model", model, { shouldDirty: true });
-                form.setValue("model_options", options, { shouldDirty: true });
+                form.setValue("provider", provider);
+                form.setValue("model", model);
+                form.setValue("model_options", options);
               }}
             />
           </RunSettingField>
           <RunSettingField label="Threads start in">
             <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel placeholder={SAME_AS_DEFAULTS} options={START_IN_OPTIONS} />
           </RunSettingField>
+          <ProjectPlaysPlacement projectId={projectId} />
         </div>
-        <div className="flex items-center gap-2 pt-3">
-          {linkSaysSomething(link) && (
-            <Button type="button" variant="ghost" size="sm" onClick={onClear} loading={clearLink.isPending}>
-              Use defaults
-            </Button>
-          )}
-          <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} className="ml-auto" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
-            Save
-          </Button>
-        </div>
-      </form>
+        <Button type="button" variant="outline" size="sm" onClick={() => void onReset()} loading={clearLink.isPending} disabled={!linkSaysSomething(link)}>
+          Reset to defaults
+        </Button>
+      </div>
     </FormProvider>
   );
 };

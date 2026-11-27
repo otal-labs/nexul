@@ -1,14 +1,13 @@
-import { ListPlusIcon } from "lucide-react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AutoPlayMatch } from "@nexul/client-core/autoPlayText";
 
-import { ComposerSection, InlineSelect, QuietIcon } from "@/components/autoplay/ComposerControls";
+import { ComposerSection, inlineActionClass, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { ConditionRow } from "@/components/autoplay/ConditionRow";
 import { NestedGroupEditor } from "@/components/autoplay/NestedGroupEditor";
 import { blankRule, MATCH_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft, type DraftGroup } from "@/models/AutoPlay";
 
-// "[All] of these N conditions must match:", a row per condition, nested groups one indent in.
+// One level of conditions, a row each; an auto play that already has nested groups keeps its editor for them.
 export const ConditionsSection = () => {
   const { setValue, formState } = useFormContext<AutoPlayDraft>();
   const groups = useWatch<AutoPlayDraft, "groups">({ name: "groups" });
@@ -22,47 +21,37 @@ export const ConditionsSection = () => {
     const at = groups.some((g) => g.nested) ? groups.findIndex((g) => g.nested) : groups.length;
     write([...groups.slice(0, at), { match: "all", nested: false, rules: [blankRule(first)] }, ...groups.slice(at)]);
   };
-  const addGroup = () => write([...groups, { match: "any", nested: true, rules: [blankRule(first)] }]);
-  const count = groups.length;
 
   return (
-    <ComposerSection title="If">
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          {count > 0 && (
-            <InlineSelect
-              label="Match"
-              value={match}
-              options={MATCH_OPTIONS}
-              onChange={(value) => setValue("match", value as AutoPlayMatch, { shouldDirty: true })}
-              disabled={formState.disabled}
-            />
-          )}
-          {count > 0 && (
-            <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-              of {count === 1 ? "this" : "these"} <span className="font-medium text-foreground">{count}</span>{" "}
-              {count === 1 ? "condition" : "conditions"} must match:
-            </p>
-          )}
-          {count === 0 && <p className="min-w-0 flex-1 text-sm text-muted-foreground">No conditions: every {subject} at this moment runs it.</p>}
-          {!formState.disabled && <QuietIcon label="Add a group" icon={ListPlusIcon} onClick={addGroup} />}
-          {!formState.disabled && <QuietIcon label="Add a condition" onClick={addRule} />}
+    <ComposerSection title="Only if">
+      {groups.length === 0 && <p className="pt-1.5 text-sm text-muted-foreground">No conditions</p>}
+      {groups.map((group, i) => (
+        <div key={i}>
+          {group.nested && <NestedGroupEditor index={i} onRemove={() => without(i)} />}
+          {!group.nested && <ConditionRow path={`groups.${i}.rules.0`} onRemove={() => without(i)} />}
         </div>
-        {count > 0 && (
-          <div className="space-y-2 pl-5">
-            {groups.map((group, i) => (
-              <ConditionItem key={i} index={i} nested={group.nested} onRemove={() => without(i)} />
-            ))}
-          </div>
-        )}
-      </div>
+      ))}
+      {!formState.disabled && (
+        <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+          <button type="button" onClick={addRule} className={inlineActionClass}>
+            + Add a condition
+          </button>
+          {groups.length > 1 && (
+            <>
+              <span aria-hidden>·</span>
+              <InlineSelect
+                label="Match"
+                value={match}
+                options={MATCH_OPTIONS}
+                onChange={(value) => setValue("match", value as AutoPlayMatch, { shouldDirty: true })}
+                className="h-6 px-1.5 text-xs"
+              />
+              <span>must match</span>
+            </>
+          )}
+          {groups.length === 1 && <span>· all must match</span>}
+        </div>
+      )}
     </ComposerSection>
   );
 };
-
-const ConditionItem = ({ index, nested, onRemove }: { index: number; nested: boolean; onRemove: () => void }) => (
-  <div>
-    {nested && <NestedGroupEditor index={index} onRemove={onRemove} />}
-    {!nested && <ConditionRow path={`groups.${index}.rules.0`} onRemove={onRemove} />}
-  </div>
-);

@@ -2,6 +2,7 @@ import {
   FIELD_OPS,
   LEVEL_LABELS,
   normalRunOn,
+  type AutoPlayComputerRule,
   type AutoPlayField,
   type AutoPlayGroup,
   type AutoPlayLevel,
@@ -38,6 +39,8 @@ export interface AutoPlay {
   run_on: AutoPlayRunOn;
   // The person a "person" auto play runs as, on their computers in their order; "" until someone picks (a seeded one) and for every other run-on.
   run_as: string;
+  // Narrows the person's computers; empty or absent leaves every one in.
+  computer_rule?: AutoPlayComputerRule;
   // Read by each run beside the always-included memories; a run reads only those in its own project.
   memory_ids: string[];
   // One run at a time: its own, or with a resource, across every auto play naming it.
@@ -48,18 +51,11 @@ export interface AutoPlay {
   updated_at: string;
 }
 
-// The full replace the create and update routes take; run_as_me makes the caller the person, and leaving it out keeps who it runs as.
+// The full replace the create and update routes take; run_as_me makes the caller the person, and leaving it out keeps who it runs as and its computer rule.
 export type SaveAutoPlayRequest = Pick<
   AutoPlay,
-  "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource"
+  "enabled" | "moment" | "moment_stage" | "schedule" | "conditions" | "priority" | "once_within_minutes" | "run_on" | "memory_ids" | "one_at_a_time" | "resource" | "computer_rule"
 > & { run_as_me?: boolean };
-
-export interface AutoPlayLimits {
-  daily_cap_per_ticket: number;
-}
-
-export const MIN_DAILY_CAP = 1;
-export const MAX_DAILY_CAP = 50;
 
 // What an auto play's play fires on; an interview play has no auto plays, so it never gets here.
 export const subjectOf = (play: Pick<Play, "type">): AutoPlaySubject => {
@@ -107,11 +103,13 @@ export const takesValues = (op: AutoPlayOp) => op === "is" || op === "is_not";
 // Fields whose values are ids, so a value nothing in view names reads as unknown rather than as a raw id.
 export const ID_FIELDS: ReadonlySet<AutoPlayField> = new Set(["project", "status", "folder", "stack", "developer", "tester"]);
 
-export const RUN_ON_LABELS: Record<AutoPlayRunOn, string> = {
-  developer: "Developer",
-  tester: "Tester",
-  causer: "Whoever caused it",
-  person: "A person",
+// How a run-on choice reads for a subject and moment: the person is named by what they did to it.
+export const runOnLabel = (runOn: AutoPlayRunOn, subject: AutoPlaySubject, moment: AutoPlayMoment): string => {
+  if (runOn === "person") return "A person";
+  if (runOn === "developer") return "The ticket's developer";
+  if (runOn === "tester") return "The ticket's tester";
+  if (subject === "ticket") return "Whoever moved the ticket";
+  return moment === "doc.created" ? "Whoever created the doc" : "Whoever changed the doc";
 };
 
 // Which choices a play's auto plays offer: a doc has no developer or tester, a stack has none of the three.
@@ -126,6 +124,15 @@ const FIRST_RUN_ON: Record<AutoPlaySubject, AutoPlayRunOn> = { ticket: "develope
 export const LIMIT_PRESETS = [0, 60, 24 * 60, 7 * 24 * 60];
 
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+
+// The repeat window as the editor's select reads it.
+export const repeatLabel = (minutes: number): string => {
+  if (minutes === 0) return "Any time";
+  if (minutes === 60) return "Once an hour";
+  if (minutes === 24 * 60) return "Once a day";
+  if (minutes === 7 * 24 * 60) return "Once a week";
+  return `Once every ${limitLabel(minutes)}`;
+};
 
 export const limitLabel = (minutes: number): string => {
   if (minutes === 0) return "No limit";
@@ -163,6 +170,7 @@ export interface AutoPlayDraft {
   run_as: string;
   // Makes the caller the person on save; a new auto play starts with it set, as the server makes its creator the person.
   run_as_me: boolean;
+  computer_rule: AutoPlayComputerRule;
   memory_ids: string[];
 }
 
@@ -184,6 +192,7 @@ export const newDraft = (subject: AutoPlaySubject): AutoPlayDraft => ({
   resource: "",
   run_as: "",
   run_as_me: true,
+  computer_rule: {},
   memory_ids: [],
 });
 
@@ -205,6 +214,7 @@ export const toDraft = (autoPlay: AutoPlay, subject: AutoPlaySubject): AutoPlayD
   run_on: normalRunOn(autoPlay.run_on),
   run_as: autoPlay.run_as,
   run_as_me: false,
+  computer_rule: autoPlay.computer_rule ?? {},
   memory_ids: autoPlay.memory_ids,
 });
 
@@ -225,6 +235,8 @@ export const toSaveRequest = (draft: AutoPlayDraft): SaveAutoPlayRequest => ({
   once_within_minutes: draft.once_within_minutes,
   run_on: draft.run_on,
   ...(draft.run_on === "person" && draft.run_as_me && { run_as_me: true }),
+  // Computer ids name computers in a person's order, so only a person auto play keeps them.
+  computer_rule: { labels_in: draft.computer_rule.labels_in ?? [], labels_out: draft.computer_rule.labels_out ?? [], ids: draft.run_on === "person" ? (draft.computer_rule.ids ?? []) : [] },
   memory_ids: draft.memory_ids,
   one_at_a_time: draft.one_at_a_time,
   resource: draft.one_at_a_time ? draft.resource.trim() : "",

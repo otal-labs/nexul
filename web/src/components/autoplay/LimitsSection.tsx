@@ -3,8 +3,9 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { OneAtATimeField } from "@/components/autoplay/OneAtATimeField";
 import { SweepLimits } from "@/components/autoplay/SweepLimits";
-import { LIMIT_PRESETS, limitLabel, type AutoPlayDraft } from "@/models/AutoPlay";
+import { LIMIT_PRESETS, repeatLabel, type AutoPlayDraft } from "@/models/AutoPlay";
 
+// How often the same ticket or doc may start it, and whether its runs go one at a time.
 export const LimitsSection = () => {
   const { setValue, formState } = useFormContext<AutoPlayDraft>();
   const subject = useWatch<AutoPlayDraft, "subject">({ name: "subject" });
@@ -14,19 +15,27 @@ export const LimitsSection = () => {
   const choices = LIMIT_PRESETS.includes(minutes) ? LIMIT_PRESETS : [...LIMIT_PRESETS, minutes].sort((a, b) => a - b);
 
   return (
-    <ComposerSection title="Limits">
-      {moment === "schedule" && <SweepLimits />}
-      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-        At most once per {subject} every{" "}
-        <InlineSelect
-          label="Limit"
-          value={String(minutes)}
-          options={choices.map((value) => ({ value: String(value), label: limitLabel(value) }))}
-          onChange={(value) => setValue("once_within_minutes", Number(value), { shouldDirty: true })}
-          disabled={formState.disabled}
-        />
-      </div>
-      <OneAtATimeField />
-    </ComposerSection>
+    <>
+      {moment === "schedule" && (
+        <ComposerSection title="Sweep">
+          <SweepLimits />
+        </ComposerSection>
+      )}
+      <ComposerSection title="Repeat">
+        <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+          <InlineSelect
+            label="Repeat"
+            value={String(minutes)}
+            options={choices.map((value) => ({ value: String(value), label: repeatLabel(value) }))}
+            onChange={(value) => setValue("once_within_minutes", Number(value), { shouldDirty: true })}
+            disabled={formState.disabled}
+          />
+          {minutes > 0 && `per ${subject}`}
+        </div>
+      </ComposerSection>
+      <ComposerSection title="Overlap">
+        <OneAtATimeField />
+      </ComposerSection>
+    </>
   );
 };

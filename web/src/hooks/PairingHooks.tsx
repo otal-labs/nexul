@@ -106,6 +106,21 @@ export const useDeleteComputer = () => {
   });
 };
 
+// Setups that never enrolled hold no session, so clearing them is one delete each and one note.
+export const useClearUnfinishedComputers = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: requires("none", async (computers: Computer[]) => {
+      await Promise.all(computers.map((c) => api.delete(`/api/pairing/computers/${c.id}`)));
+    }),
+    onSuccess: async (_, computers) => {
+      await client.invalidateQueries({ queryKey: [getComputersKey] });
+      toast.success(computers.length === 1 ? "Setup cleared" : `${computers.length} setups cleared`);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // Metadata only; the raw token exists solely on the mint mutation's data.
 export const useFetchMCPToken = (computerId: string) =>
   useQuery({
@@ -306,6 +321,7 @@ export interface ComputerSettingsInput {
   chat_project_id?: string;
   shell_enabled?: boolean;
   plays_off?: boolean;
+  auto_plays_off?: boolean;
   labels?: string[];
 }
 
@@ -323,7 +339,7 @@ export const useUpdateComputerSettings = (computerId: string) => {
   });
 };
 
-const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id, shell_enabled: c.shell_enabled, plays_off: c.plays_off ?? false, labels: c.labels ?? [] });
+const pick = (c: Computer) => ({ runs_at_once: c.runs_at_once, chat_project_id: c.chat_project_id, shell_enabled: c.shell_enabled, plays_off: c.plays_off ?? false, auto_plays_off: c.auto_plays_off ?? false, labels: c.labels ?? [] });
 
 // Pairing frames name the computer they are about (internal/pairing/events.go).
 interface ComputerPayload {

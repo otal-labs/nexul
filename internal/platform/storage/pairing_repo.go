@@ -248,6 +248,19 @@ func (r *PairingRepo) SetComputerPlaysOff(ctx context.Context, userID, computerI
 	})
 }
 
+func (r *PairingRepo) SetComputerAutoPlaysOff(ctx context.Context, userID, computerID string, off bool, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerAutoPlaysOff(ctx, sqlcgen.SetPairingComputerAutoPlaysOffParams{AutoPlaysOff: boolToInt(off), UpdatedAt: at.Unix(), ID: computerID, UserID: userID})
+		if err != nil {
+			return fmt.Errorf("set auto plays of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set auto plays of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *PairingRepo) SetComputerPlacement(ctx context.Context, userID, computerID string, runsAtOnce int, chatProjectID string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetPairingComputerPlacement(ctx, sqlcgen.SetPairingComputerPlacementParams{
@@ -641,7 +654,7 @@ func (r *PairingRepo) SetSetupMCPToken(ctx context.Context, userID, computerID, 
 
 func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 	facts := toFacts(row)
-	return pairing.Computer{
+	c := pairing.Computer{
 		ID: row.ID, UserID: row.UserID, Kind: harness.Kind(row.Kind), Name: row.Name, ServerURL: row.ServerUrl, BearerToken: row.BearerToken,
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
 		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt), SetupMCPToken: row.SetupMcpToken,
@@ -654,9 +667,12 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		Position: int(row.Position), RunsAtOnce: int(row.RunsAtOnce), ChatProjectID: row.ChatProjectID,
 		ShellEnabled:  row.ShellEnabled != 0,
 		PlaysOff:      row.PlaysOff != 0,
+		AutoPlaysOff:  row.AutoPlaysOff != 0,
 		Labels:        decodeJSON(row.Labels, []string{}),
 		DerivedLabels: pairing.DerivedLabels(facts),
 	}
+	c.Unfinished = c.IsUnfinishedSetup()
+	return c
 }
 
 // toFacts is nil until the computer's runner first reported.

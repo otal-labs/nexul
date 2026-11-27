@@ -83,7 +83,7 @@ describe("YourSettingsPage", () => {
     expect(screen.getByText("LK")).toBeInTheDocument();
   });
 
-  it("marks the Computers link, which opens the Agent page, while one of your computers has out-of-date skills", async () => {
+  it("marks the Computers link, which opens the Computers dialog, while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
         return Promise.resolve({ data: { computers: [{ id: "c1", name: "Home", token_expires_at: "2099-01-01T00:00:00Z", kind: "t3code", skills_outdated: true }] } });
@@ -91,7 +91,7 @@ describe("YourSettingsPage", () => {
     });
     renderPage("/settings/profile");
 
-    expect(await screen.findByRole("link", { name: "Computers, skills out of date" })).toHaveAttribute("href", "/acme/agent");
+    expect(await screen.findByRole("link", { name: "Computers, skills out of date" })).toHaveAttribute("href", "/settings/profile?computers=");
   });
 
   it("opens Security as one page: the devices, then the tokens, then connecting a device", async () => {

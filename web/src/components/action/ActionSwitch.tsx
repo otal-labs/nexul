@@ -11,20 +11,22 @@ interface ActionSwitchProps extends ActionGate {
   size?: "sm" | "default";
   disabled?: boolean;
   "aria-label": string;
+  // Names the switch by other text on the page, such as the row's sentence; wins over the label.
+  labelledBy?: string;
   title?: string;
   className?: string;
 }
 
 // A switch shows state too, so a viewer who can't flip it still sees it, disabled.
-export const ActionSwitch = ({ permission, projectId, answer, verb, checked, onCheckedChange, size = "default", disabled = false, title, className, "aria-label": label }: ActionSwitchProps) => {
+export const ActionSwitch = ({ permission, projectId, answer, verb, checked, onCheckedChange, size = "default", disabled = false, title, className, "aria-label": label, labelledBy }: ActionSwitchProps) => {
   const action = useActionState({ permission, projectId, answer, verb });
   return (
     <>
       {action.state === "live" && (
-        <Switch size={size} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-label={label} className={className} {...(title && { title })} />
+        <Switch size={size} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-label={label} {...(labelledBy && { "aria-labelledby": labelledBy })} className={className} {...(title && { title })} />
       )}
       {action.state === "hidden" && (
-        <Switch size={size} checked={checked} disabled aria-label={label} className={className} {...(title && { title })} />
+        <Switch size={size} checked={checked} disabled aria-label={label} {...(labelledBy && { "aria-labelledby": labelledBy })} className={className} {...(title && { title })} />
       )}
       {action.state === "locked" && (
         // The tooltip's trigger is a wrapper: on the switch itself its data-state would replace checked and unchecked.
@@ -33,7 +35,7 @@ export const ActionSwitch = ({ permission, projectId, answer, verb, checked, onC
             <Switch
               size={size}
               checked={checked}
-              aria-label={label}
+              aria-label={label} {...(labelledBy && { "aria-labelledby": labelledBy })}
               aria-disabled
               aria-description={action.reason}
               data-locked

@@ -9,11 +9,12 @@ import { projectRemotes, repoCheckouts, withCheckout } from "@/models/ProjectChe
 
 interface ProjectComputersFieldProps {
   projectId: string;
+  projectName: string;
 }
 
 // The computers a project's runs try, ranked: the person's order, or the project's own list in its own order, each with
 // the checkout a run in each of the project's repositories would use there (ADR 0165, ADR 0204).
-export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps) => {
+export const ProjectComputersField = ({ projectId, projectName }: ProjectComputersFieldProps) => {
   const { control, setValue } = useFormContext<ProjectLinkFormData>();
   const ids = useWatch({ control, name: "computers" });
   const checkouts = useWatch({ control, name: "checkouts" });
@@ -23,7 +24,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
   const dirty = { shouldDirty: true };
 
   return (
-    <div className="pb-2">
+    <div>
       <RankedComputersField
         subject="project"
         label="Computers"
@@ -36,6 +37,7 @@ export const ProjectComputersField = ({ projectId }: ProjectComputersFieldProps)
             computer && (
               <ProjectComputerRow
                 projectId={projectId}
+                projectName={projectName}
                 computer={computer}
                 rank={rank}
                 checkouts={repoCheckouts(computer, checkouts, remotes)}

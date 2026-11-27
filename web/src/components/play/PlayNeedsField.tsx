@@ -9,10 +9,12 @@ import type { SavePlayFormData } from "@/models/Play";
 
 interface PlayNeedsFieldProps {
   control: Control<SavePlayFormData>;
+  // Inside a label row that already names it, so the field's own label is only for screen readers.
+  bare?: boolean;
 }
 
 // The labels a computer must have to take the play's runs (ADR 0197), suggested from the labels on your own computers.
-export const PlayNeedsField = ({ control }: PlayNeedsFieldProps) => {
+export const PlayNeedsField = ({ control, bare = false }: PlayNeedsFieldProps) => {
   const listId = useId();
   const [draft, setDraft] = useState("");
   const { data: computers } = useListComputers();
@@ -31,7 +33,7 @@ export const PlayNeedsField = ({ control }: PlayNeedsFieldProps) => {
         };
         return (
           <div className="space-y-2">
-            <label htmlFor={`${listId}-input`} className="text-sm font-medium">
+            <label htmlFor={`${listId}-input`} className={bare ? "sr-only" : "text-sm font-medium"}>
               Needs
             </label>
             <div className="flex flex-wrap items-center gap-1.5">

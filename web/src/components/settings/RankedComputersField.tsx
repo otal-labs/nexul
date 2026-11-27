@@ -26,7 +26,7 @@ interface RankedComputersFieldProps {
   unavailable?: { id: string; label: string }[];
   // Computers the Add menu offers beside the person's own, never part of their order: those shared with them by Run agents.
   extra?: Computer[];
-  // Puts the segmented Your order / Custom control in a labelled settings field; a field whose owner picks the mode elsewhere leaves it out.
+  // Puts the segmented Your order | Only these control in a labelled settings field; a field whose owner picks the mode elsewhere leaves it out.
   label?: string;
   toggle?: boolean;
   renderRow: (row: { id: string; rank: number; controls: RowControls }) => ReactNode;
@@ -62,7 +62,7 @@ export const RankedComputersField = ({
     <ToggleGroup
       type="single"
       variant="segmented"
-      size="xs"
+      size="sm"
       value={custom ? CUSTOM : YOUR_ORDER}
       // Radix reports "" when the chosen item is clicked again; keep the current choice.
       onValueChange={(v) => v && onChange(v === CUSTOM ? own.map((c) => c.id) : [])}
@@ -71,24 +71,38 @@ export const RankedComputersField = ({
       className="justify-self-start"
     >
       <ToggleGroupItem value={YOUR_ORDER}>Your order</ToggleGroupItem>
-      <ToggleGroupItem value={CUSTOM}>Custom</ToggleGroupItem>
+      <ToggleGroupItem value={CUSTOM}>Only these</ToggleGroupItem>
     </ToggleGroup>
   );
 
+  const list = (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={listed} strategy={verticalListSortingStrategy}>
+        <ul aria-label={`This ${subject}'s computers`} className={cn("divide-y divide-border rounded-md border border-border bg-card", toggle && "mt-1")}>
+          {listed.map((id, index) => (
+            <Fragment key={id}>{renderRow({ id, rank: index + 1, controls: controlsFor(id) })}</Fragment>
+          ))}
+          {editable && rest.length > 0 && <AddComputerRow computers={rest} unavailable={unavailable} onAdd={(id) => onChange([...ids, id])} />}
+        </ul>
+      </SortableContext>
+    </DndContext>
+  );
+
+  // Labelled, the list starts at the field column, in line with the controls under it.
+  if (toggle && label)
+    return (
+      <RunSettingField label={label}>
+        <div className="min-w-0">
+          {modes}
+          {list}
+        </div>
+      </RunSettingField>
+    );
+
   return (
     <div>
-      {toggle && label && <RunSettingField label={label}>{modes}</RunSettingField>}
-      {toggle && !label && modes}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={listed} strategy={verticalListSortingStrategy}>
-          <ul aria-label={`This ${subject}'s computers`} className={cn("divide-y divide-border rounded-md border border-border bg-card", toggle && "mt-1")}>
-            {listed.map((id, index) => (
-              <Fragment key={id}>{renderRow({ id, rank: index + 1, controls: controlsFor(id) })}</Fragment>
-            ))}
-            {editable && rest.length > 0 && <AddComputerRow computers={rest} unavailable={unavailable} onAdd={(id) => onChange([...ids, id])} />}
-          </ul>
-        </SortableContext>
-      </DndContext>
+      {toggle && modes}
+      {list}
     </div>
   );
 };

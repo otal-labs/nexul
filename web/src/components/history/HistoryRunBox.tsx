@@ -9,7 +9,7 @@ const BAND: Partial<Record<RowMark, string>> = {
   removed: "border-destructive bg-destructive/10 dark:bg-destructive/16",
 };
 const BAND_SHAPE = "-mr-2 -ml-5 rounded-r-sm border-l-[3px] py-1.5 pr-2 pl-[17px] [&>div:first-of-type>*]:mt-0! [&>div:last-of-type>*]:mb-0!";
-export const editedBarClass = "relative before:absolute before:inset-y-1 before:-left-5 before:w-[3px] before:rounded-sm before:bg-muted-foreground";
+export const editedBarClass = "relative before:absolute before:inset-y-0 before:-left-3 before:w-0.5 before:bg-muted-foreground";
 const WORDS: Partial<Record<RowMark, string>> = { added: "added", removed: "removed", edited: "edited" };
 
 interface HistoryRunBoxProps {

@@ -177,9 +177,10 @@ Runner — a Runner executes builds; the Agent converses and drives the product
 through MCP.
 
 **Agent page**:
-The workspace page, Agent in the sidebar, that holds what the Agent does by itself and where it runs: the plays and
-their auto plays, your computers in run order, the computers shared with you, and each project's run settings with
-Defaults first, as one list beside the open one (ADR 0211). Settings → Computers opens it.
+The workspace page, Agent in the sidebar, that holds what the Agent does by itself: the plays and their auto plays
+(ADR 0211). Its Computers button opens the **Computers dialog**, on any page through the `computers` search param: your
+computers in run order, the computers shared with you, and each project's run settings with Defaults first, as one list
+beside the open one. Settings → Computers opens it.
 _Avoid_: Plays page, Computers settings
 
 **Steer**:
@@ -320,6 +321,15 @@ A computer's switch, set by its owner and on by default: off, no play, auto play
 placement passes it over as `no_plays`, while commands, logs and setup keep working (ADR 0211). Stored as `plays_off`.
 _Avoid_: Disabled computer, paused computer
 
+**Takes auto plays**:
+A second owner switch, on by default: off, no run an auto play starts lands there (passed over as `no_auto_plays`), while a
+pressed run still does (ADR 0213). Stored as `auto_plays_off`.
+
+**Unfinished setup**:
+A computer added but never enrolled: no name, no session, no runner. It is in no run order and no passed-over list, and
+a client lists it as `unfinished` so it can be cleared (ADR 0213).
+_Avoid_: Ghost computer, pending computer
+
 **Project checkout**:
 The T3 project on one computer that a project's runs in one of its
 repositories use there: the one the person picked for that repository, else
@@ -332,7 +342,7 @@ _Avoid_: Checkout (that is a stack's on a machine), fallback T3 project
 
 **Project link**:
 One person's provider, model, model options, and start-in for one project
-they can open, set under Projects on the Agent page, used on whichever
+they can open, set under Where runs go in the Computers dialog, used on whichever
 computer the run lands on. It follows Your computers or names its own list in
 its own order (ADR 0165). Each person has their own; nobody else's turns use
 it. A play pressed in a project no computer of theirs has asks where to run,
@@ -522,8 +532,10 @@ only those in its target's project. The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until a ready computer of theirs has room
 (Runs at once), and is checked again before it starts; a waiting run names
-each of their computers and why it could not take the run. A ticket past the daily
-cap on automatic runs shows "Auto plays paused" until resumed. Managed with
+each of their computers and why it could not take the run. An auto play may carry a
+**computer rule** (labels a computer must have one of, labels it must not have, and, for a person, the computers
+to use), and a computer the rule leaves out is passed over under its own reason; a pressed run ignores it. A
+computer's Runs at once is the only limit on how much runs. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`. A ticket play's auto
 play may instead wait for a **Schedule** and work through every ticket it takes as a **Sweep**, and any auto play may run

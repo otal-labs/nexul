@@ -10,15 +10,13 @@ import {
   useFetchHarnessProviders,
   useHarnessReadiness,
   useListComputers,
+  useListOrderComputers,
   useModelComputerId,
 } from "@/hooks/PairingHooks";
-import { COMPUTER_DEFAULT, findModel, type ModelPick } from "@/models/ModelPick";
+import { COMPUTER_DEFAULT, findModel, slugName, type ModelPick } from "@/models/ModelPick";
 import {
   canChooseRunLocation,
   linkSaysSomething,
-  PLACEMENT_OPTIONS,
-  START_IN_SHORT_LABELS,
-  StartIn,
   type HarnessProvider,
   type PairingDefaults,
   type PlacementAnswer,
@@ -97,9 +95,12 @@ const USES_DEFAULTS = "Uses defaults";
 
 // A pick by its model's name once the computer lists it, else its slug; an empty pick is the computer's default.
 const modelName = (providers: HarnessProvider[] | undefined, pick: ModelPick) =>
-  pick.model ? (findModel(providers ?? [], pick)?.name ?? pick.model) : "";
+  pick.model ? (findModel(providers ?? [], pick)?.name ?? slugName(pick.model)) : "";
 
-// "Build box, laptop · Sonnet 5 · New worktree": what the link changes, the computers by name; undefined while names load.
+// "onik-mini +2": the first computer by name and how many more, so a list preview never runs long.
+const computersLabel = (names: string[]) => (names.length > 1 ? `${names[0]} +${names.length - 1}` : (names[0] ?? ""));
+
+// "build-box +1 · Sonnet 5": what the link changes, the computers then the model; undefined while names load.
 export const useProjectLinkSummary = (link: ProjectLink | undefined): string | undefined => {
   const computers = useListComputers();
   const modelComputer = useModelComputerId(link?.computers);
@@ -109,19 +110,18 @@ export const useProjectLinkSummary = (link: ProjectLink | undefined): string | u
 
   const names = link?.computers.map((id) => computers.data?.find((c) => c.id === id)?.name ?? "Unknown computer") ?? [];
   const model = modelName(providers, { provider: link?.provider ?? "", model: link?.model ?? "" });
-  const startIn = link?.start_in && START_IN_SHORT_LABELS[link.start_in];
-  return [names.join(", "), model, startIn].filter(Boolean).join(" · ");
+  return [computersLabel(names), model].filter(Boolean).join(" · ");
 };
 
-// "First in order · Sonnet 5 · New worktree"; undefined while the model's name loads.
+// "onik-mini +2 · Sonnet 5": your order's first computer, then the model; undefined while the model's name loads.
 export const useDefaultsSummary = (defaults: PairingDefaults | undefined): string | undefined => {
+  const { data: ordered } = useListOrderComputers();
   const modelComputer = useModelComputerId();
   const { data: providers, isPending } = useFetchHarnessProviders(modelComputer);
   if (!defaults || (defaults.model && modelComputer !== "" && isPending)) return undefined;
 
-  const placement = PLACEMENT_OPTIONS.find((o) => o.value === defaults.placement)?.label;
   const model = modelName(providers, { provider: defaults.provider ?? "", model: defaults.model ?? "" }) || COMPUTER_DEFAULT;
-  return [placement, model, START_IN_SHORT_LABELS[defaults.start_in ?? StartIn.Folder]].filter(Boolean).join(" · ");
+  return [computersLabel((ordered ?? []).map((c) => c.name)), model].filter(Boolean).join(" · ");
 };
 
 // Where the viewer's runs in a project land now, one answer per set of needs, in one read however many plays share them.
