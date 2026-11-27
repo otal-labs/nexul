@@ -278,13 +278,13 @@ describe("rows that open", () => {
     expect(router.state.location.search).toBe("?open=play-fix");
   });
 
-  it("keeps a play's auto plays in view by putting its settings after them", async () => {
+  it("puts a play's settings directly under its row, before its auto plays", async () => {
     serve({ plays: [play()], autoPlays: { "play-fix": [autoPlay()] } });
     renderAgentPage("/acme/agent/ticket?open=play-fix");
 
     const editor = await screen.findByRole("group", { name: "Edit Fix with AI" });
     const row = await screen.findByRole("button", { name: /When it enters In progress/ });
-    expect(row.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(editor.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("dots a computer offline for over a week as a warning and one offline since today as grey", async () => {

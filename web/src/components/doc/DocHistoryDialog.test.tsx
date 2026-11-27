@@ -80,12 +80,12 @@ beforeEach(() => {
 });
 
 describe("DocHistoryDialog", () => {
-  it("opens on the newest version with its changes marked and Restore disabled", async () => {
+  it("opens on the newest version with its changes marked and no Restore", async () => {
     renderDialog();
 
     expect((await screen.findByText("thirty minutes")).tagName).toBe("INS");
     expect(screen.getByText("an hour").tagName).toBe("DEL");
-    expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
     expect(screen.getByText("This is the current version")).toBeInTheDocument();
     expect(screen.getAllByText("Alice Moreau")).toHaveLength(3);
   });
