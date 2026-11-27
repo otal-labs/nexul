@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from "lucide-react";
 import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export const ComputersButton = () => {
           {online} of {computers.length} online
         </span>
       )}
+      <ChevronRightIcon aria-hidden className="size-3.5 text-muted-foreground" />
     </Button>
   );
 };

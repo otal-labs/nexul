@@ -2,6 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { UsersIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 
+import { DrillChevron } from "@/components/computers/DrillChevron";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { SetupProviderMarks } from "@/components/settings/SetupProviderMarks";
 import { statusDotFor } from "@/components/settings/SettingsStatus";
@@ -45,23 +46,20 @@ export const ComputerListRow = ({ computer, rank, sortable, selected }: Computer
       titleIcon={computer.shared && <UsersIcon role="img" aria-label="Shared with you" className="size-3 text-muted-foreground" />}
       leading={<span aria-hidden className={cn("size-1.5 rounded-full", statusDotFor(state.tone, state.hollow))} />}
       meta={
-        rank && (
-          <span title="Run order" className="font-mono text-micro text-muted-foreground tabular-nums">
-            #{rank}
-          </span>
-        )
-      }
-      metaOnTitleLine
-      detail={
-        <>
-          <span className={cn("min-w-0 truncate", state.tone === "warning" && "text-warning")}>{state.text}</span>
-          {confirmed.length > 0 && (
-            <span className="ml-auto shrink-0">
-              <SetupProviderMarks lines={confirmed} titleOf={(line) => (setup ? `${line.name} · ${computerModelName(computer, setup, line.provider)}` : line.name)} />
+        <span className="flex items-center gap-1.5">
+          {rank && (
+            <span title="Run order" className="font-mono text-micro text-muted-foreground tabular-nums">
+              #{rank}
             </span>
           )}
-        </>
+          {confirmed.length > 0 && (
+            <SetupProviderMarks lines={confirmed} titleOf={(line) => (setup ? `${line.name} · ${computerModelName(computer, setup, line.provider)}` : line.name)} />
+          )}
+        </span>
       }
+      metaOnTitleLine
+      trailing={<DrillChevron />}
+      detail={<span className={cn("min-w-0 truncate", state.tone === "warning" && "text-warning")}>{state.text}</span>}
       selected={selected}
       {...(sortable && {
         drag: {

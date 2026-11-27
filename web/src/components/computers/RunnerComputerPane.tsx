@@ -111,12 +111,20 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
         title={name}
         meta={
           <>
-            {worstFirst(lines).map((line) => (
+            {staleDays > 0 && (
+              <>
+                <SettingsStatus tone="warning" hollow textClassName="text-warning">
+                  Offline · {staleDays} days
+                </SettingsStatus>
+                <span>{[...lines.filter((l) => l.text !== "Offline").map((l) => l.text), `${computer.running} of ${computer.runs_at_once} running`].join(" · ")}</span>
+              </>
+            )}
+            {staleDays === 0 && worstFirst(lines).map((line) => (
               <SettingsStatus key={line.text} tone={line.tone} hollow={!!line.hollow} detail={line.detail} {...(line.tone === "warning" && line.detail && { detailClassName: "text-warning" })}>
                 {line.text}
               </SettingsStatus>
             ))}
-            {!pairing && <ComputerLoad computer={computer} />}
+            {staleDays === 0 && !pairing && <ComputerLoad computer={computer} />}
           </>
         }
         actions={
@@ -165,7 +173,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
           </>
         }
       />
-      {staleDays > 0 && <StaleComputerNote days={staleDays} onRemove={() => void removeComputer()} />}
+      {staleDays > 0 && <StaleComputerNote name={name} days={staleDays} onRemove={() => void removeComputer()} />}
       {!pairing && <ComputerSettingsCard computer={computer} setup={setup} />}
       <ComputerDetails computer={computer} setup={setup} />
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}

@@ -22,7 +22,7 @@ interface ModelChoiceProps {
   className?: string;
 }
 
-// The model button, a hairline, then its options button, in one frame; a model with no options shows the model alone.
+// The model button, a hairline, the options' name, then its options button, in one frame; a model with no options shows the model alone.
 export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, defaultLabel, disabled = false, mark = true, className }: ModelChoiceProps) => {
   const modelOptions = findModel(providers, value)?.options ?? [];
   return (
@@ -39,6 +39,12 @@ export const ModelChoice = ({ providers, value, options, onPick, onOptions, labe
         className={cn(INNER, "min-w-0 flex-1")}
       />
       {modelOptions.length > 0 && <span aria-hidden className="h-4 w-px shrink-0 bg-border" />}
+      {/* Names what the second control sets (Effort, Context), 16px from the model button. */}
+      {modelOptions.length > 0 && (
+        <span aria-hidden className="ml-4 shrink-0 text-xs text-muted-foreground">
+          {modelOptions.length === 1 ? modelOptions[0]?.label : "Options"}
+        </span>
+      )}
       <ModelOptionsPicker options={modelOptions} value={options} onChange={onOptions} label={`${label} options`} disabled={disabled} className={cn(INNER, "shrink-0")} />
     </div>
   );

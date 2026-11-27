@@ -460,7 +460,7 @@ describe("the computers on the Agent page", () => {
       ["online but refused pairing", { runner: online, facts: answering, pair_error: "T3 Code made no pairing token" }, undefined, ["Online", "Pairing failed"]],
       ["online with its session refused by T3 Code", { runner: online, facts: answering }, "rejected", ["Online", "T3 Code refused the session"]],
       ["back any moment after a drop", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z", reconnecting: true } }, undefined, ["Reconnecting"]],
-      ["offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, undefined, ["Offline"]],
+      ["offline", { runner: { connected: false, last_seen: new Date(Date.now() - 3_600_000).toISOString() } }, undefined, ["Offline"]],
     ])("reads each lane on its own when %s", async (_, state, lane, lanes) => {
       serveComputers([computer({ server_url: relay, ...state })]);
       presence = lane ? { c1: lane } : {};
