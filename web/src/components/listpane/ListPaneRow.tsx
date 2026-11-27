@@ -17,6 +17,8 @@ interface ListPaneRowProps {
   leading?: ReactNode;
   /** A small state icon after the title, such as a lock. */
   titleIcon?: ReactNode;
+  /** Sets the title in another face, such as the mono of a computer's hostname. */
+  titleClassName?: string;
   snippet?: string;
   /** A second line with marks in it, in place of the plain snippet. */
   detail?: ReactNode;
@@ -41,7 +43,7 @@ interface ListPaneRowProps {
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch, drag }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, titleClassName, snippet = "", detail, selected, meta, actions, menu, trailing, dense = false, oneLineTitle = false, metaOnTitleLine = false, prefetch, drag }: ListPaneRowProps) => {
   // Inline in the title's line box, a mono count sits on the title's baseline instead of centring in it.
   const onTitleLine = metaOnTitleLine && cn("block h-lh text-row", dense ? "mt-1.5" : "mt-2");
   const titleLineBox = metaOnTitleLine && cn("h-lh text-row", dense ? "mt-1.5" : "mt-2");
@@ -96,7 +98,7 @@ export const ListPaneRow = ({ to, title, muted = false, leading, titleIcon, snip
         >
           <span className={cn("flex min-w-0 items-start gap-1.5 text-row", cornerMeta && "pr-12")}>
             {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
-            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", muted && "text-muted-foreground", dense || oneLineTitle ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
+            <span dir="auto" title={title} className={cn("min-w-0 text-foreground", titleClassName, muted && "text-muted-foreground", dense || oneLineTitle ? "truncate" : "line-clamp-2 break-words text-balance", selected && "font-medium")}>
               {title}
             </span>
             {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}

@@ -83,7 +83,7 @@ describe("the projects on the Agent page", () => {
     serve(oneWorkspace);
     renderComputers("/acme/agent?computers=");
 
-    expect(await screen.findByText("home · Sonnet 5 · New worktree")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /home · Sonnet 5 · New worktree/ })).toBeInTheDocument();
     const group = await projectsGroup();
     expect(within(group).getByRole("link", { name: /Api/ })).toHaveTextContent("Uses defaults");
     const links = within(group).getAllByRole("link");
@@ -95,7 +95,7 @@ describe("the projects on the Agent page", () => {
     serve({ ...oneWorkspace, computers: [computer("c1", "home"), computer("c2", "vps")], links, presence: { c2: "connected" } });
     renderComputers("/acme/agent?computers=");
 
-    expect(await screen.findByText("Sonnet 5 · New worktree")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Sonnet 5 · New worktree/ })).toBeInTheDocument();
   });
 
   it("saves a project's own computers, with nothing to clear on a project that uses the defaults", async () => {

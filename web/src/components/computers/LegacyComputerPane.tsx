@@ -32,7 +32,7 @@ export const LegacyComputerPane = ({ computer, onMove }: LegacyComputerPaneProps
 
   return (
     <div className="space-y-6">
-      <PaneHeader title={computer.name} meta={<MoveNotice computer={computer} onMove={onMove} />} actions={<RowActionsMenu subject={computer.name} actions={actions} />} />
+      <PaneHeader title={computer.name} mono meta={<MoveNotice computer={computer} onMove={onMove} />} actions={<RowActionsMenu subject={computer.name} actions={actions} />} />
       <ComputerDetails computer={computer} setup={setup} />
     </div>
   );

@@ -34,7 +34,7 @@ export const PlacementSummary = ({ count, computer, passed }: PlacementSummaryPr
 
   return (
     <p className="rounded-md border border-border px-3 py-2.5 text-sm text-pretty">
-      {count === 1 ? "The play goes" : `All ${count} plays go`} to <span className="font-medium">{computer}</span>
+      {count === 1 ? "The play goes" : `All ${count} plays go`} to <span className="font-mono font-medium">{computer}</span>
       {entries.length > 0 && `; ${passedText}`}.
     </p>
   );

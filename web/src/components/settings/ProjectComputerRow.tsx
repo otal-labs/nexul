@@ -38,6 +38,7 @@ export const ProjectComputerRow = ({ projectId, projectName, computer, rank, che
     <RankedComputerRow
       id={computer.id}
       name={computer.name}
+      computer={computer}
       rank={rank}
       controls={controls}
       below={

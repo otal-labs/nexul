@@ -181,8 +181,8 @@ describe("Your computers", () => {
     expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+ days ago/);
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
     expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
-    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/Offline · \d+ days/), "the pane agrees with the row").toHaveClass("text-warning");
-    expect(screen.getByRole("button", { name: "Remove build-box…" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/), "the pane agrees with the row").toHaveClass("text-warning");
+    expect(screen.getByRole("button", { name: "Remove computer" })).toBeInTheDocument();
   });
 
   it("opens on the first computer for an empty param, and closing takes the param away", async () => {
@@ -248,10 +248,19 @@ describe("Your computers", () => {
     computers = [computers[0]!, { ...computers[1]!, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } }];
     renderComputers("/acme/agent?computers=c-box");
 
-    expect(await screen.findByText(/Offline · \d+ days/)).toHaveClass("text-warning");
-    expect(screen.getByRole("note")).toHaveTextContent("Removing it takes it out of Nexul.");
-    await user.click(screen.getByRole("button", { name: "Remove build-box…" }));
+    await screen.findByRole("note");
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/)).toHaveClass("text-warning");
+        await user.click(screen.getByRole("button", { name: "Remove computer" }));
     expect(await screen.findByRole("dialog", { name: "Remove build-box?" })).toBeInTheDocument();
     expect(mocks.del).not.toHaveBeenCalled();
+  });
+
+  it("marks an offline computer in the Defaults list with a muted word after its name, and how long once stale", async () => {
+    computers = [computers[0]!, { ...computers[1]!, runner: { connected: false, last_seen: "2026-01-01T00:00:00Z", reconnecting: false } }];
+    renderComputers("/acme/agent?computers=defaults");
+
+    const order = await screen.findByRole("list", { name: "Your order" });
+    expect(within(order).getByText(/^offline \d+d$/)).toBeInTheDocument();
+    expect(within(order).getAllByText(/offline/)).toHaveLength(1);
   });
 });

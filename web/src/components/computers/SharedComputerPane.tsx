@@ -21,6 +21,7 @@ export const SharedComputerPane = ({ computer }: SharedComputerPaneProps) => {
   return (
     <div className="space-y-6">
       <PaneHeader
+        mono
         title={shared ? `${shared.owner_name}'s ${computer.name}` : computer.name}
         meta={
           <SettingsStatus tone={presence.tone} detail={shared && sharedComputerAbilities(shared)}>
