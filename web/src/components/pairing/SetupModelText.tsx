@@ -1,4 +1,4 @@
-import { findModel, optionsLabel } from "@/models/ModelPick";
+import { findModel, optionsLabel, slugName } from "@/models/ModelPick";
 import type { OptionSetting, SetupModelChoice } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,6 @@ interface SetupModelTextProps {
 export const SetupModelText = ({ choice, model, options, className }: SetupModelTextProps) => {
   const found = findModel([choice.instance], { provider: choice.instance.id, model });
   const settings = found?.options ?? [];
-  const text = [found?.name ?? (model || "Provider default"), settings.length > 0 && optionsLabel(settings, options)].filter(Boolean).join(" · ");
+  const text = [found?.name ?? (model ? slugName(model) : "Provider default"), settings.length > 0 && optionsLabel(settings, options)].filter(Boolean).join(" · ");
   return <span className={cn("truncate px-2.5 text-sm text-muted-foreground", className)}>{text}</span>;
 };

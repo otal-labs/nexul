@@ -12,28 +12,37 @@ interface SettingsRowProps {
   children?: ReactNode;
   /** Puts the control under the text at every width, for a control that needs the room (a list, a textarea). */
   stacked?: boolean;
+  /** Keeps the control beside the text from 18rem and lets the hint run the row's width, for a pane narrower than a settings card. */
+  compact?: boolean;
   className?: string;
 }
 
 // One setting: what it is and what it does on the left, the control on the right. Rows sit in SettingsRows.
-export const SettingsRow = ({ label, description, htmlFor, children, stacked = false, className }: SettingsRowProps) => {
+export const SettingsRow = ({ label, description, htmlFor, children, stacked = false, compact = false, className }: SettingsRowProps) => {
   const Label = htmlFor ? "label" : "p";
   return (
     <div
       className={cn(
         "flex flex-col gap-3 py-4 last:pb-0",
-        !stacked && "@[27rem]:flex-row @[27rem]:items-center @[27rem]:justify-between @[27rem]:gap-8",
+        !stacked && !compact && "@[27rem]:flex-row @[27rem]:items-center @[27rem]:justify-between @[27rem]:gap-8",
+        !stacked && compact && "@[18rem]:flex-row @[18rem]:items-center @[18rem]:justify-between @[18rem]:gap-6",
         className,
       )}
     >
-      <div className={cn("min-w-0 space-y-1", !stacked && "@[27rem]:max-w-[24rem]")}>
+      <div className={cn("min-w-0 space-y-1", !stacked && !compact && "@[27rem]:max-w-[24rem]", !stacked && compact && "@[18rem]:flex-1")}>
         <Label {...(htmlFor ? { htmlFor } : {})} className="block text-sm font-medium text-pretty text-foreground">
           {label}
         </Label>
         {description && <SettingsHint>{description}</SettingsHint>}
       </div>
       {children && (
-        <div className={cn("min-w-0", !stacked && "@[27rem]:flex @[27rem]:shrink-0 @[27rem]:justify-end @[27rem]:w-[min(20rem,50%)]")}>
+        <div
+          className={cn(
+            "min-w-0",
+            !stacked && !compact && "@[27rem]:flex @[27rem]:shrink-0 @[27rem]:justify-end @[27rem]:w-[min(20rem,50%)]",
+            !stacked && compact && "@[18rem]:flex @[18rem]:shrink-0 @[18rem]:justify-end @[18rem]:w-[min(16rem,50%)]",
+          )}
+        >
           {children}
         </div>
       )}

@@ -1,4 +1,4 @@
-import type { HarnessProvider, HarnessProviderModel, ModelOption, OptionSetting } from "@/models/Pairing";
+import type { Computer, ComputerSetup, HarnessProvider, HarnessProviderModel, ModelOption, OptionSetting } from "@/models/Pairing";
 
 // What a model picker holds: a provider instance id and a model slug, "" meaning the default at that level.
 export interface ModelPick {
@@ -17,6 +17,22 @@ export type RailFilter = { kind: "all" } | { kind: "favourites" } | { kind: "pro
 
 // A favourite is keyed by the provider instance and the slug, since two providers can list the same slug.
 export const modelKey = (providerId: string, slug: string) => `${providerId}::${slug}`;
+
+// A slug by the same words its computer would list it under, for when the computer can't say: "claude-opus-5-5" reads
+// "Claude Opus 5.5". The one fallback every model string uses.
+const ACRONYMS = new Set(["gpt", "glm", "llm"]);
+
+export const slugName = (slug: string): string =>
+  slug
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .reduce<string[]>((words, token) => {
+      const last = words[words.length - 1];
+      if (/^\d+$/.test(token) && last && /\d$/.test(last)) return [...words.slice(0, -1), `${last}.${token}`];
+      if (ACRONYMS.has(token.toLowerCase())) return [...words, token.toUpperCase()];
+      return [...words, token.charAt(0).toUpperCase() + token.slice(1)];
+    }, [])
+    .join(" ");
 
 export const findModel = (providers: HarnessProvider[], pick: ModelPick) =>
   providers.find((p) => p.id === pick.provider)?.models.find((m) => m.slug === pick.model);
@@ -131,3 +147,11 @@ export const optionsLabel = (options: ModelOption[], settings: OptionSetting[]) 
       return choice ? [choice.label] : [];
     })
     .join(" · ") || "Defaults";
+
+// The model a provider runs on one computer, as the computer lists it, else by its slug's words; "Default" when none is picked.
+export const computerModelName = (computer: Computer, setup: ComputerSetup, driver: string): string => {
+  const slug = setup.models[driver] ?? "";
+  if (slug === "") return "Default";
+  const models = computer.facts?.providers.find((p) => p.driver.toLowerCase() === driver.toLowerCase())?.models ?? [];
+  return models.find((m) => m.slug === slug)?.name ?? slugName(slug);
+};

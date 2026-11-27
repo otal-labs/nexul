@@ -20,8 +20,9 @@ export const ProjectCheckoutCell = ({ computerName, repository, checkout, onPick
       </span>
     )}
     {checkout.state === "has" && (
-      <span className="min-w-0 truncate font-mono text-xs text-muted-foreground" title={checkout.project.path}>
-        {checkout.project.title}
+      <span className="flex min-w-0 items-baseline gap-1 text-xs text-muted-foreground" title="T3 project on this computer">
+        <span>in</span>
+        <span className="min-w-0 truncate font-mono">{checkout.project.title}</span>
       </span>
     )}
     {checkout.state === "ambiguous" && (

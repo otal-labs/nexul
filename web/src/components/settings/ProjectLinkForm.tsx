@@ -82,7 +82,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
         </div>
         <div className="flex items-center gap-2 pt-3">
           {linkSaysSomething(link) && (
-            <Button type="button" variant="ghost" size="sm" onClick={onClear} loading={clearLink.isPending}>
+            <Button type="button" variant="outline" size="sm" onClick={onClear} loading={clearLink.isPending}>
               Use defaults
             </Button>
           )}

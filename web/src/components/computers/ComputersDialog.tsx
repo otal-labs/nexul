@@ -1,4 +1,5 @@
 import { PlusIcon } from "lucide-react";
+import { useRef } from "react";
 import { useSearchParams } from "react-router";
 
 import { ComputersBody } from "@/components/computers/ComputersBody";
@@ -15,6 +16,7 @@ const FRAME =
 export const ComputersDialog = () => {
   const [params, setParams] = useSearchParams();
   const target = params.get(COMPUTERS_PARAM);
+  const content = useRef<HTMLDivElement>(null);
 
   const onOpenChange = (open: boolean) => {
     if (open) return;
@@ -30,7 +32,17 @@ export const ComputersDialog = () => {
 
   return (
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
-      <DialogContent className={FRAME} aria-describedby={undefined}>
+      <DialogContent
+        ref={content}
+        className={FRAME}
+        aria-describedby={undefined}
+        // Focus starts on the open list item (or the list), not on Add a computer, so the dialog opens without a ring on a button.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          const list = content.current?.querySelector<HTMLElement>("nav");
+          (list?.querySelector<HTMLElement>('[aria-current="page"]') ?? list)?.focus();
+        }}
+      >
         <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border py-3 pr-14 pl-4 sm:pl-6">
           <DialogTitle className="type-display text-xl">Computers</DialogTitle>
           <DialogDescription className="sr-only">Your computers in run order, and where runs go</DialogDescription>

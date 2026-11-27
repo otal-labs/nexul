@@ -174,15 +174,15 @@ describe("TrailModel", () => {
     answerProviders(providers);
     renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
 
-    expect(await screen.findByText("GPT X")).toBeInTheDocument();
-    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(await screen.findByText("Codex")).toBeInTheDocument();
+    expect(screen.getByText("GPT X")).toBeInTheDocument();
   });
 
-  it("falls back to the slug and provider id while the computer can't say", async () => {
+  it("falls back to the slug's words and provider id while the computer can't say", async () => {
     answerProviders("error");
     renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
 
-    expect(await screen.findByText("gpt-x")).toBeInTheDocument();
+    expect(await screen.findByText("GPT X")).toBeInTheDocument();
     expect(screen.getByText("codex")).toBeInTheDocument();
   });
 
@@ -199,7 +199,7 @@ describe("TrailModel", () => {
     useViewAsStore.setState({ target: { workspaceId: "ws-1", workspaceName: "Northwind", userId: "u-2", name: "Lena", avatarUrl: "" } });
     renderInDialog(trail({ provider: "codex", model: "gpt-x" }));
 
-    expect(screen.getByText("gpt-x")).toBeInTheDocument();
+    expect(screen.getByText("GPT X")).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/pairing/computers/pc-1/providers");
   });
 });

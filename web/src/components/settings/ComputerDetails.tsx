@@ -4,7 +4,6 @@ import { ComputerContainers } from "@/components/settings/ComputerContainers";
 import { ComputerSharedRuns } from "@/components/settings/ComputerSharedRuns";
 import { ComputerFactRows } from "@/components/settings/ComputerFactRows";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
-import { Microheader } from "@/components/Microheader";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner, t3Status } from "@/models/ComputerFacts";
 import {
@@ -66,7 +65,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
     <section className="space-y-3">
-      <Microheader>On this computer</Microheader>
+      <h3 className="text-sm font-medium">On this computer</h3>
       <dl className="@container space-y-3">
         {computer.server_url && !reachedThroughRunner(computer.server_url) && (
           <Fact label="Address">

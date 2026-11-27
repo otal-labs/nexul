@@ -41,7 +41,7 @@ export const ComputersList = ({ current }: ComputersListProps) => {
       {computers && computers.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ListPaneGroup label="Your computers" count={computers.length}>
+            <ListPaneGroup plain label="Your computers" count={computers.length}>
               {computers.map((computer) => (
                 <ComputerListRow key={computer.id} computer={computer} rank={ids.indexOf(computer.id) + 1} sortable={ids.length > 1} selected={computer.id === current} />
               ))}
@@ -50,14 +50,14 @@ export const ComputersList = ({ current }: ComputersListProps) => {
         </DndContext>
       )}
       {computers && computers.length === 0 && (
-        <ListPaneGroup label="Your computers" count={0}>
+        <ListPaneGroup plain label="Your computers" count={0}>
           <li>
             <EmptyRow className="px-3 py-2 text-xs">No computers yet</EmptyRow>
           </li>
         </ListPaneGroup>
       )}
       {shared.length > 0 && (
-        <ListPaneGroup label="Shared with you" count={shared.length}>
+        <ListPaneGroup plain label="Shared with you" count={shared.length}>
           {shared.map((computer) => (
             <ComputerListRow key={computer.id} computer={computer} sortable={false} selected={computer.id === current} />
           ))}

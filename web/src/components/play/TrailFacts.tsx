@@ -14,7 +14,7 @@ import { computersQuery, useFetchHarnessProviders } from "@/hooks/PairingHooks";
 import { useLiveTrailState } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import { runnerPresence } from "@/models/ComputerChecks";
-import { findModel } from "@/models/ModelPick";
+import { findModel, slugName } from "@/models/ModelPick";
 import { checkoutPasses, passOverLines } from "@/models/Pairing";
 import { sharedComputerName } from "@/models/SharedComputer";
 import { type Trail } from "@/models/Trail";
@@ -78,7 +78,7 @@ const TrailComputer = ({ trail }: TrailFactsProps) => {
   );
 };
 
-// The model by the name its computer lists it under, its slug while the computer can't say, and the computer's default when none was picked.
+// The model by the name its computer lists it under, its slug's words while the computer can't say, and the computer's default when none was picked.
 const TrailModel = ({ trail }: TrailFactsProps) => {
   const viewing = useIsViewingAs();
   const { data: providers } = useFetchHarnessProviders(trail.model === "" || viewing ? "" : trail.computer_id);
@@ -90,7 +90,7 @@ const TrailModel = ({ trail }: TrailFactsProps) => {
       {trail.model === "" && trail.computer_id === "" && <Muted>None</Muted>}
       {trail.model === "" && trail.computer_id !== "" && <Muted>The computer's default</Muted>}
       {model && <span className="font-medium break-words">{model.name}</span>}
-      {trail.model !== "" && !model && <span className="font-mono text-xs leading-5 break-all">{trail.model}</span>}
+      {trail.model !== "" && !model && <span className="font-medium break-words">{slugName(trail.model)}</span>}
       {trail.model !== "" && <span className="text-xs text-muted-foreground">{provider?.name ?? trail.provider}</span>}
     </span>
   );

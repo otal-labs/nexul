@@ -20,7 +20,7 @@ export const AddComputerRow = ({ computers, unavailable, onAdd }: AddComputerRow
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
           <PlusIcon aria-hidden />
-          Add computer
+          Include a computer
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-w-xs min-w-52">
