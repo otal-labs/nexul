@@ -8,10 +8,8 @@ import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { InboxDaySection } from "@/components/notifications/InboxDaySection";
 import { InboxFilterToggle } from "@/components/notifications/InboxFilterToggle";
 import { InboxListSkeleton } from "@/components/notifications/InboxListSkeleton";
-import { InboxPageHeader } from "@/components/notifications/InboxPageHeader";
 import { Button } from "@/components/ui/button";
 import { useInboxFilterStore } from "@/stores/inboxFilterStore";
-import { cn } from "@/lib/utils";
 import { inboxDayGroups, inboxUnreadCount, unreadEntries, type InboxEntry } from "@/utils/InboxUtility";
 
 interface NotificationsSidebarProps {
@@ -50,10 +48,8 @@ export const NotificationsSidebar = ({
     </>
   );
   return (
-    // Filling the page, the list keeps to a reading width so each row's time stays beside its title.
-    <div className={cn("flex h-full min-h-0 flex-col", !rowKey && "mx-auto max-w-4xl")}>
-      {!rowKey && <InboxPageHeader unread={unread} controls={controls} />}
-      {rowKey && <ListPaneHeader title="Inbox" count={unread} hideZeroCount controls={controls} />}
+    <div className="flex h-full min-h-0 flex-col">
+      <ListPaneHeader title="Inbox" count={unread} hideZeroCount controls={controls} />
       <nav ref={listRef} aria-label="Notifications" className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable_both-edges]">
         {isLoading && <InboxListSkeleton />}
         {Boolean(error) && <ErrorDisplay error={error} />}
