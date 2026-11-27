@@ -300,6 +300,16 @@ describe("rows that open", () => {
     expect(stale?.parentElement).toHaveAttribute("title", expect.stringMatching(/^Offline · seen \d+ days ago$/));
   });
 
+  it("dots an online computer whose T3 Code cannot take a run as not ready, with the reason on its pill", async () => {
+    const blocked = { ...MINI, facts: { t3: { state: "not_running" } } };
+    serve({ plays: [play()], computers: [blocked], autoPlays: { "play-fix": [autoPlay()] } });
+    renderAgentPage("/acme/agent/ticket");
+
+    const row = await screen.findByRole("button", { name: /When it enters In progress/ });
+    await waitFor(() => expect(row).toHaveTextContent("onik-mini· T3 Code not running"));
+    expect(within(row).getByRole("img", { name: "Not ready" })).toHaveClass("bg-muted-foreground/50");
+  });
+
   it("says a person auto play nobody is picked for needs Runs as set, and lists no computers until one is", async () => {
     const user = userEvent.setup();
     serve({ plays: [play()], computers: [MINI], autoPlays: { "play-fix": [autoPlay({ run_as: "" })] } });
