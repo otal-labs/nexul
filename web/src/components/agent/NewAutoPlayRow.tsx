@@ -8,7 +8,7 @@ export const newAutoPlayKey = (playId: string) => `new:${playId}`;
 interface NewAutoPlayRowProps {
   playId: string;
   open: boolean;
-  // Always drawn while the play has no auto plays; otherwise it shows with the play row hovered, focused or open, and stays in the tab order.
+  // Always drawn while the play has no auto plays; otherwise it takes no room until the play is hovered or holds focus, so Tab from the play reaches it.
   shown: boolean;
 }
 
@@ -16,7 +16,13 @@ interface NewAutoPlayRowProps {
 export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => {
   const { toggle } = useOpenRow();
   return (
-    <div className={cn("relative flex h-7 items-center border-b border-border pl-12", open && currentRowFillClass)}>
+    <div
+      className={cn(
+        "relative flex h-7 items-center border-b border-border pl-12",
+        !shown && !open && "hidden group-focus-within/play:flex group-hover/play:flex",
+        open && currentRowFillClass,
+      )}
+    >
       {open && <CurrentRowEdge />}
       <ActionButton
         permission="autoplays:write"
@@ -25,10 +31,7 @@ export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => 
         variant="ghost"
         size="sm"
         aria-expanded={open}
-        className={cn(
-          "-ml-2.5 h-6 px-2.5 text-xs font-normal text-muted-foreground transition-opacity duration-150 ease-standard focus-visible:opacity-100 group-focus-within/play:opacity-100 group-hover/play:opacity-100",
-          !shown && !open && "opacity-0",
-        )}
+        className="-ml-2.5 h-6 px-2.5 text-xs font-normal text-muted-foreground"
         onClick={() => toggle(newAutoPlayKey(playId))}
       >
         + Start it by itself when…
