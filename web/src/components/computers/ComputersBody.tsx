@@ -16,7 +16,7 @@ interface ComputersBodyProps {
   target: string;
 }
 
-// The list beside the open record; each column scrolls on its own. Below 640px one of them shows at a time: the list when
+// The list beside the open record; each column scrolls on its own. Below 920px one of them shows at a time: the list when
 // the dialog opens on no record, then the record with a back control.
 export const ComputersBody = ({ target }: ComputersBodyProps) => {
   const { data: computers } = useListOrderComputers();
@@ -32,18 +32,18 @@ export const ComputersBody = ({ target }: ComputersBodyProps) => {
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] sm:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)]">
-      {/* A scroller of its own with the app's scrollbar and room under its last row; nothing fades over it. */}
+    <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] min-[920px]:grid-cols-[18rem_minmax(0,1fr)]">
+      {/* A scroller of its own: the app's scrollbar and edge fade, and room under its last row so the fade clears at the end. */}
       <nav
         aria-label="Computers and run settings"
         tabIndex={-1}
         onClick={onListClick}
-        className={cn("min-h-0 overflow-y-auto border-border pb-6 outline-none sm:border-r", !listShown && "max-sm:hidden")}
+        className={cn("scroll-edge quiet-focus min-h-0 overflow-y-auto border-border pb-6 outline-none [scrollbar-gutter:stable] min-[920px]:border-r", !listShown && "max-[919px]:hidden")}
       >
         <ComputersList current={current} />
       </nav>
-      <section aria-label="Details" className={cn("min-h-0 overflow-y-auto px-4 pt-4 pb-6 sm:px-6 sm:pt-6", listShown && "max-sm:hidden")}>
-        <Button type="button" variant="ghost" size="sm" className="-ml-2 mb-3 sm:hidden" onClick={() => setListFor(target)}>
+      <section aria-label="Details" className={cn("scroll-edge min-h-0 overflow-y-auto px-4 pt-4 pb-6 [scrollbar-gutter:stable] sm:px-6 sm:pt-6", listShown && "max-[919px]:hidden")}>
+        <Button type="button" variant="ghost" size="sm" className="-ml-2 mb-3 min-[920px]:hidden" onClick={() => setListFor(target)}>
           <ChevronLeftIcon aria-hidden />
           Computers
         </Button>

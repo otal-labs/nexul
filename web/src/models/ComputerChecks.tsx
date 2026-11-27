@@ -76,6 +76,8 @@ export interface Lane {
   tone: SettingsStatusTone;
   text: string;
   detail?: string;
+  // Offline reads as a ring dot on every surface.
+  hollow?: boolean;
 }
 
 const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
@@ -111,8 +113,8 @@ export const worstFirst = <T extends { tone: SettingsStatusTone }>(lanes: T[]): 
 export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
   if (runner?.connected) return { tone: "success", text: "Online" };
   if (runner?.reconnecting) return { tone: "warning", text: "Reconnecting" };
-  if (runner && staleSince(runner.last_seen)) return { tone: "warning", text: "Offline" };
-  return { tone: "muted", text: "Offline" };
+  if (runner && staleSince(runner.last_seen)) return { tone: "warning", text: "Offline", hollow: true };
+  return { tone: "muted", text: "Offline", hollow: true };
 };
 
 export const offlineForDays = (computer: Computer): number => {
@@ -127,6 +129,7 @@ export const isStaleOffline = (computer: Computer) => offlineForDays(computer) >
 export interface StateLine {
   tone: SettingsStatusTone;
   text: string;
+  hollow?: boolean;
 }
 
 // One short line for a list row: the lane that needs doing first, "Online · idle" or "Online · 2 of 4 running" when all is well, "seen 16m ago" when offline.
@@ -135,6 +138,6 @@ export const computerStateLine = (computer: Computer, presence: string | undefin
   const [lane] = worstFirst(computerLanes(computer, presence));
   if (!lane) return { tone: "muted", text: "" };
   if (lane.text === "Online" || lane.text === "T3 Code answering") return { tone: "success", text: `Online · ${computer.running > 0 ? `${computer.running} of ${computer.runs_at_once} running` : "idle"}` };
-  if (lane.text === "Offline" && computer.runner) return { tone: lane.tone, text: `seen ${seenAgo(computer.runner.last_seen)}` };
+  if (lane.text === "Offline" && computer.runner) return { tone: lane.tone, text: `Offline · seen ${seenAgo(computer.runner.last_seen)}`, hollow: true };
   return { tone: lane.tone, text: lane.text };
 };

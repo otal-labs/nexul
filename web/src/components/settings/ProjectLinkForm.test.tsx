@@ -70,7 +70,7 @@ describe("ProjectLinkForm", () => {
     renderForm();
     await screen.findByText("t3-app");
 
-    await user.click(screen.getByRole("radio", { name: "Custom" }));
+    await user.click(screen.getByRole("radio", { name: "Only these" }));
     await pickOption(user, /pick the checkout on build-box/i, /t3-app-b/);
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
@@ -126,7 +126,7 @@ describe("ProjectLinkForm", () => {
     renderForm();
     await screen.findByText("t3-app");
 
-    await user.click(screen.getByRole("radio", { name: "Custom" }));
+    await user.click(screen.getByRole("radio", { name: "Only these" }));
     const list = screen.getByRole("list", { name: /this project's computers/i });
     expect(within(list).getAllByRole("button", { name: /^Reorder/ })).toHaveLength(2);
     await user.click(within(list).getByRole("button", { name: "Remove build-box" }));

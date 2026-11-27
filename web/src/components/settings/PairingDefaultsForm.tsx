@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
+import { DefaultsOrderList } from "@/components/computers/DefaultsOrderList";
 import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { RunSettingField } from "@/components/settings/RunSettingField";
@@ -49,6 +50,9 @@ export const PairingDefaultsForm = ({ defaults }: PairingDefaultsFormProps) => {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)}>
       <div>
+        <RunSettingField label="Computers">
+          <DefaultsOrderList />
+        </RunSettingField>
         <RunSettingField label="Send runs to">
           <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel options={PLACEMENT_OPTIONS} />
         </RunSettingField>

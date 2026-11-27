@@ -55,7 +55,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div>
-          <ProjectComputersField projectId={projectId} />
+          <ProjectComputersField projectId={projectId} projectName={projectName} />
           {ids.length > 0 && (
             <RunSettingField label="Send runs to">
               <FormSelect control={form.control} name="placement" label="Send runs to" hideLabel placeholder={SAME_AS_DEFAULTS} options={PLACEMENT_OPTIONS} />
@@ -80,13 +80,13 @@ export const ProjectLinkForm = ({ projectId, projectName, link }: ProjectLinkFor
             <FormSelect control={form.control} name="start_in" label="Threads start in" hideLabel placeholder={SAME_AS_DEFAULTS} options={START_IN_OPTIONS} />
           </RunSettingField>
         </div>
-        <div className="flex items-center gap-2 pt-3">
+        <div className="flex items-center justify-end gap-2 pt-3">
           {linkSaysSomething(link) && (
             <Button type="button" variant="outline" size="sm" onClick={onClear} loading={clearLink.isPending}>
               Use defaults
             </Button>
           )}
-          <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} className="ml-auto" loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
+          <Button type="submit" size="sm" variant={form.formState.isDirty ? "default" : "outline"} loading={form.formState.isSubmitting} disabled={!form.formState.isDirty}>
             Save
           </Button>
         </div>

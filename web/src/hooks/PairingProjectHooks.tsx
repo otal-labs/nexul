@@ -113,7 +113,7 @@ export const useProjectLinkSummary = (link: ProjectLink | undefined): string | u
   return [names.join(", "), model, startIn].filter(Boolean).join(" · ");
 };
 
-// "First in order · Sonnet 5 · New worktree"; undefined while the model's name loads.
+// "First in your order · Sonnet 5 · New worktree"; undefined while the model's name loads.
 export const useDefaultsSummary = (defaults: PairingDefaults | undefined): string | undefined => {
   const modelComputer = useModelComputerId();
   const { data: providers, isPending } = useFetchHarnessProviders(modelComputer);

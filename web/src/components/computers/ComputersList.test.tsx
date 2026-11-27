@@ -217,18 +217,18 @@ describe("Your computers", () => {
     await screen.findByRole("link", { name: /^build-box/ });
     const list = screen.getByRole("navigation", { name: "Computers and run settings" });
     expect(list.contains(document.activeElement), "not Add a computer").toBe(true);
-    expect(list, "a deep link opens on its record, so the list waits behind it below 640px").toHaveClass("max-sm:hidden");
+    expect(list, "a deep link opens on its record, so the list waits behind it below 920px").toHaveClass("max-[919px]:hidden");
   });
 
   it("shows the list first when the dialog opens on no record, and the record once a row is picked", async () => {
     const user = userEvent.setup();
     renderComputers("/acme/agent?computers=");
     const list = await screen.findByRole("navigation", { name: "Computers and run settings" });
-    expect(list).not.toHaveClass("max-sm:hidden");
+    expect(list).not.toHaveClass("max-[919px]:hidden");
     await screen.findByRole("region", { name: "Your computers" });
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
-    expect(list).toHaveClass("max-sm:hidden");
+    expect(list).toHaveClass("max-[919px]:hidden");
     await user.click(screen.getByRole("button", { name: "Computers" }));
-    expect(list).not.toHaveClass("max-sm:hidden");
+    expect(list).not.toHaveClass("max-[919px]:hidden");
   });
 });
