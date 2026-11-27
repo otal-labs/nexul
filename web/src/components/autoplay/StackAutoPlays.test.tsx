@@ -105,7 +105,7 @@ describe("a stack play's auto plays", () => {
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Set Runs as"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Runs as not set"));
     await waitFor(() => expect(rows[1]).toHaveTextContent("Bob's computers"));
   });
 
@@ -213,7 +213,7 @@ describe("a stack play's auto plays", () => {
     expect(mocks.patch.mock.calls[1]?.[1]).toMatchObject({ run_on: "person", run_as_me: true });
   });
 
-  it("switches an auto play on with its person as it is, so the server still refuses an unpicked one", async () => {
+  it("switches an auto play with its person as it is, and holds the switch of one nobody is picked for", async () => {
     autoPlays = [autoPlay(), autoPlay({ id: "ap-2", moment: "stack.service_recovered", run_as: "u-me", enabled: true })];
     const { user } = await openAutoPlays();
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
@@ -221,9 +221,9 @@ describe("a stack play's auto plays", () => {
     await user.click(await screen.findByRole("switch", { name: "Turn When a stack service recovers on or off" }));
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-2", expect.objectContaining({ enabled: false, run_on: "person" }));
 
-    await user.click(screen.getByRole("switch", { name: "Turn When a stack service crashes on or off" }));
-    expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/pl-1/auto-plays/ap-1", expect.objectContaining({ enabled: true }));
-    expect(mocks.patch.mock.calls.at(-1)?.[1]).not.toHaveProperty("run_as_me");
+    const unset = screen.getByRole("switch", { name: "Turn When a stack service crashes on or off" });
+    expect(unset).toBeDisabled();
+    expect(unset).toHaveAttribute("title", "Set who it runs as first");
   });
 });
 

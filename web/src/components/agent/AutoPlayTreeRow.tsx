@@ -26,6 +26,7 @@ export const AutoPlayTreeRow = ({ play, autoPlay, open }: AutoPlayTreeRowProps) 
   const update = useUpdateAutoPlay(autoPlay.workspace_id, autoPlay.play_id);
   const places = useAutoPlayPlaces(autoPlay, autoPlay.computer_rule);
   const id = useId();
+  const unset = places?.kind === "role" && places.role === "nobody";
 
   return (
     <div data-off={!autoPlay.enabled || undefined} onClick={() => toggle(autoPlay.id)} className={cn(treeRowClass, "min-h-10 py-1.5 pl-12", open && currentRowFillClass)}>
@@ -44,7 +45,7 @@ export const AutoPlayTreeRow = ({ play, autoPlay, open }: AutoPlayTreeRowProps) 
                 <ComputerPills places={places} />
               </span>
             )}
-            {autoPlay.one_at_a_time && <span className="text-xs text-muted-foreground">1 at a time</span>}
+            {autoPlay.one_at_a_time && <span className="text-xs text-muted-foreground">· one at a time</span>}
           </span>
         </span>
       </button>
@@ -60,6 +61,8 @@ export const AutoPlayTreeRow = ({ play, autoPlay, open }: AutoPlayTreeRowProps) 
           verb="switch auto plays on or off"
           checked={autoPlay.enabled}
           onCheckedChange={(enabled) => update.mutate({ id: autoPlay.id, input: { ...toRequest(autoPlay), enabled } })}
+          disabled={unset}
+          {...(unset && { title: "Set who it runs as first" })}
           aria-label="Turn this auto play on or off"
           labelledBy={`${id}-turn ${id} ${id}-off`}
         />

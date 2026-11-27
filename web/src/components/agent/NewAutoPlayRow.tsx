@@ -21,7 +21,7 @@ export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => 
     <div
       className={cn(
         "relative flex items-center overflow-hidden pl-[4.375rem]",
-        shown || open ? "h-6 border-b border-border" : "h-0 group-focus-within/play:h-6 group-focus-within/play:border-b group-hover/play:h-6 group-hover/play:border-b group-hover/play:border-border group-focus-within/play:border-border",
+        shown || open ? "h-7 border-b border-border" : "h-0 group-focus-within/play:h-7 group-focus-within/play:border-b group-hover/play:h-7 group-hover/play:border-b group-hover/play:border-border group-focus-within/play:border-border",
         open && currentRowFillClass,
       )}
     >
@@ -33,10 +33,14 @@ export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => 
         variant="ghost"
         size="sm"
         aria-expanded={open}
-        className={cn(inlineActionClass, "h-6 px-0 font-normal hover:bg-transparent")}
+        aria-label="+ Add auto play"
+        className={cn(inlineActionClass, "h-7 gap-0 px-0 font-normal hover:bg-transparent")}
         onClick={() => toggle(newAutoPlayKey(playId))}
       >
-        + Add auto play
+        <span aria-hidden className="inline-block w-5">
+          +
+        </span>
+        Add auto play
       </ActionButton>
     </div>
   );
