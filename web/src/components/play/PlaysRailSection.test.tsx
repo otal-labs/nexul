@@ -91,7 +91,7 @@ describe("PlaysRailSection", () => {
     renderSection();
     const hint = "No computer is paired to run plays.";
     expect(await screen.findAllByText(hint)).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/acme/agent");
+    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/acme/agent?computers=");
     expect(screen.getByRole("button", { name: /Fix with AI/ })).toHaveAccessibleDescription(hint);
     expect(screen.getByRole("button", { name: /Review with AI/ })).toBeDisabled();
   });

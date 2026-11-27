@@ -11,6 +11,6 @@ describe("NoComputersDisplay", () => {
         <NoComputersDisplay />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/acme/agent");
+    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/acme/agent?computers=");
   });
 });

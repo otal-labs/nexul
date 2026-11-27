@@ -118,7 +118,7 @@ describe("PlaysRailSection auto play signals", () => {
   it("links the person a run waits on to the fix for their computer setup", async () => {
     mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }), "u-alice");
     renderSection();
-    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/acme/agent");
+    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/acme/agent?computers=");
   });
 
   it("says only what the gap is to anyone else, since the fix is in the run's person's own settings", async () => {

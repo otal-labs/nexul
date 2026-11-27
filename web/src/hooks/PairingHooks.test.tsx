@@ -71,16 +71,16 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "rejected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "expired", link: { to: "/agent" } }),
+      expect(result.current).toMatchObject({ state: "expired", link: { to: "/agent?computers=" } }),
     );
   });
 
   it.each([
-    ["unpaired", "unpaired", "/agent"],
-    ["expired_token", "expired", "/agent"],
-    ["needs_location", "needs_location", "/agent"],
-    ["no_computer_ready", "no_computer_ready", "/agent"],
-    ["setup_required", "no_computer_ready", "/agent"],
+    ["unpaired", "unpaired", "/agent?computers="],
+    ["expired_token", "expired", "/agent?computers="],
+    ["needs_location", "needs_location", "/agent?computers="],
+    ["no_computer_ready", "no_computer_ready", "/agent?computers="],
+    ["setup_required", "no_computer_ready", "/agent?computers="],
   ])("maps the %s refusal to %s with a link to fix it", async (reason, state, to) => {
     mockRoutes({ resolve: { ok: false, reason }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
@@ -102,7 +102,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "no_computer_ready", passed_over: [offline, missing] }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ link: { to: "/agent", label: "Your computers" } }),
+      expect(result.current).toMatchObject({ link: { to: "/agent?computers=", label: "Your computers" } }),
     );
   });
 

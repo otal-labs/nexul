@@ -578,10 +578,10 @@ export interface ReadinessLink {
   label: string;
 }
 
-// Workspace-relative: the Agent page holds your computers and each project's run settings (ADR 0211).
-export const COMPUTERS_PATH = AGENT_PATH;
+// Workspace-relative: the Computers dialog holds your computers and each project's run settings, opened over the Agent page.
+export const COMPUTERS_PATH = `${AGENT_PATH}${computersSearch()}`;
 export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_PATH, label: "Add a computer" };
-export const COMPUTER_PROJECTS_PATH = AGENT_PATH;
+export const COMPUTER_PROJECTS_PATH = `${AGENT_PATH}${computersSearch()}`;
 
 // The computers a run passed over for the project's checkout there, which the run itself fixes (spec decision 6).
 export const checkoutPasses = (passes: PassOver[]): PassOver[] =>
