@@ -64,7 +64,7 @@ export const ComputerListRow = ({ computer, rank, sortable, selected }: Computer
       metaOnTitleLine
       trailing={<DrillChevron />}
       detail={
-        <span className="min-w-0 truncate">
+        <span className="min-w-0">
           {state.text}
           {state.seen && <span className={cn(state.tone === "warning" && "text-warning")}>{state.seen}</span>}
         </span>
