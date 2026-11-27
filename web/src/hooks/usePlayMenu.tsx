@@ -1,5 +1,3 @@
-import { useNavigate, useParams } from "react-router";
-
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useActionState } from "@/hooks/useActionState";
@@ -8,11 +6,9 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 import { useRowGates } from "@/hooks/useRowGates";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { AGENT_PATH } from "@/models/Agent";
 import type { Play } from "@/models/Play";
 
-// A play's row menu, shared by its list row and its detail header; only the header can mount the History dialog, so it alone passes onHistory. Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
+// A play's row menu, shared by the Agent page's rows and the ticket rail; only a caller that can mount the History dialog passes onHistory. Permissions… follows plays:write too: a play's rules are written with the same bit as the play itself.
 export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
   const { offered, gates, deleteGate } = useRowGates({
     onEdit: { permission: "plays:write", verb: "edit plays" },
@@ -22,9 +18,6 @@ export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
     ...(play.builtin_key ? {} : { onClone: { permission: "plays:write", verb: "create plays" } }),
   });
   const canWrite = useActionState({ permission: "plays:write" }).state === "live";
-  const { kind, id } = useParams();
-  const navigate = useNavigate();
-  const wsPath = useWorkspacePath();
   const deletePlay = useDeletePlay(play.workspace_id);
   const openPermissions = usePermissionsDialog();
   const { open: confirm } = useConfirmationDialog();
@@ -38,11 +31,7 @@ export const usePlayMenu = (play: Play, onHistory?: () => void): RowMenu => {
       confirmLabel: "Delete play",
     });
     if (!ok) return;
-    deletePlay.mutate(play.id, {
-      onSuccess: () => {
-        if (kind === "plays" && id === play.id) void navigate(wsPath(AGENT_PATH));
-      },
-    });
+    deletePlay.mutate(play.id);
   };
 
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };

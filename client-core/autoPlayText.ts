@@ -208,3 +208,10 @@ export const autoPlayTitle = (autoPlay: AutoPlayMomentFields, subject: AutoPlayS
   const stage = autoPlay.moment_stage ? ` ${PLAY_STAGE_LABELS[autoPlay.moment_stage]}` : "";
   return `When a ${subject} ${MOMENT_PHRASES[autoPlay.moment]}${stage}`;
 };
+
+// The title as a sentence about "it": "When it enters In progress". A stack's moments already read as one.
+export const autoPlayLead = (autoPlay: AutoPlayMomentFields, subject: AutoPlaySubject): string => {
+  const title = autoPlayTitle(autoPlay, subject);
+  if (autoPlay.moment === "schedule" || subject === "stack") return title;
+  return title.replace(`When a ${subject} `, "When it ");
+};

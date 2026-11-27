@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { ContextAwareConfirmation } from "react-confirm";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
-import { AgentPage } from "@/pages/AgentPage";
+import { LegacyAgentPage } from "@/test/LegacyAgentPage";
 
 // A computer added with its app, online; overrides reshape it.
 export const computer = (overrides: Record<string, unknown> = {}) => ({
@@ -32,8 +32,8 @@ export const renderAgent = (path: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
     [
-      { path: "/acme/agent", element: <AgentPage /> },
-      { path: "/acme/agent/:kind/:id", element: <AgentPage /> },
+      { path: "/acme/agent", element: <LegacyAgentPage /> },
+      { path: "/acme/agent/:kind/:id", element: <LegacyAgentPage /> },
     ],
     { initialEntries: [path] },
   );

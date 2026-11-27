@@ -11,9 +11,9 @@ export const RunOnSection = () => {
   const [subject, run_on] = useWatch<AutoPlayDraft, ["subject", "run_on"]>({ name: ["subject", "run_on"] });
 
   return (
-    <ComposerSection title="Run on">
+    <ComposerSection title="Runs as">
       <InlineSelect
-        label="Run on"
+        label="Runs as"
         value={run_on}
         options={SUBJECT_RUN_ON[subject].map((value) => ({ value, label: RUN_ON_LABELS[value] }))}
         onChange={(value) => setValue("run_on", value as AutoPlayRunOn, { shouldDirty: true })}

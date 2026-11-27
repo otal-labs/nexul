@@ -74,6 +74,7 @@ const serve = () =>
     if (url === "/api/stacks/st-1/services") return { data: [{ id: "sv-1", stack_id: "st-1", name: "api" }, { id: "sv-2", stack_id: "st-1", name: "worker" }] };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [{ user_id: "u-bob", login: "bob", display_name: "Bob", avatar_url: "" }] } };
     if (url === "/api/auth/me") return { data: { user: { id: "u-me" } } };
+    if (url === "/api/pairing/computers") return { data: { computers: [] } };
     if (url === "/api/permissions/explain") return { data: { effective: [] } };
     if (url.startsWith("/api/permissions")) return { data: { grants: [] } };
     return { data: [] };
@@ -81,10 +82,12 @@ const serve = () =>
 
 const openAutoPlays = async () => {
   const user = userEvent.setup();
-  renderAgentPage("/acme/agent/plays/pl-1");
-  await screen.findByRole("region", { name: "Starts by itself" });
+  renderAgentPage(`/acme/agent/${current.type}`);
+  await screen.findByRole("button", { name: ADD });
   return { user };
 };
+
+const ADD = "+ Start it by itself when…";
 
 const footer = (name: string) => screen.getAllByRole("button", { name }).at(-1)!;
 
@@ -97,36 +100,30 @@ beforeEach(() => {
 });
 
 describe("a stack play's auto plays", () => {
-  it("reads a row's clauses about a stack, naming the person it runs as or that nobody is picked", async () => {
-    autoPlays = [
-      autoPlay(),
-      autoPlay({ id: "ap-2", moment: "stack.service_recovered", run_as: "u-me", enabled: true }),
-      autoPlay({ id: "ap-3", moment: "stack.error_rate_crossed", run_as: "u-bob", enabled: true }),
-    ];
+  it("names whose computers a stack auto play runs on, or that nobody is picked", async () => {
+    autoPlays = [autoPlay(), autoPlay({ id: "ap-3", moment: "stack.error_rate_crossed", run_as: "u-bob", enabled: true })];
     await openAutoPlays();
 
     const rows = await screen.findAllByRole("button", { name: /When a stack/ });
-    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Priority Normal Runs on Nobody yet"));
-    await waitFor(() => expect(rows[1]).toHaveTextContent("Runs on Your computers"));
-    await waitFor(() => expect(rows[2]).toHaveTextContent("Runs on Bob's computers"));
-    expect(screen.queryByText("Auto plays per ticket a day")).not.toBeInTheDocument();
+    await waitFor(() => expect(rows[0]).toHaveTextContent("When a stack service crashes Nobody picked yet"));
+    await waitFor(() => expect(rows[1]).toHaveTextContent("Bob: their computers"));
   });
 
   it("offers the stack moments and conditions, runs as you by default, and saves that", async () => {
     const { user } = await openAutoPlays();
-    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
+    await user.click(await screen.findByRole("button", { name: ADD }));
 
     expect(screen.getByRole("combobox", { name: "Moment" })).toHaveTextContent("Service crashes");
     await user.click(screen.getByRole("combobox", { name: "Moment" }));
     expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Service crashes", "Service recovers", "Error rate goes over its limit"]);
     await user.keyboard("{Escape}");
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
-    expect(within(runOn).getByRole("combobox", { name: "Run on" })).toHaveTextContent("A person");
+    const runOn = screen.getByRole("region", { name: "Runs as" });
+    expect(within(runOn).getByRole("combobox", { name: "Runs as" })).toHaveTextContent("A person");
     expect(await within(runOn).findByText("Runs as you, on your computers in your order.")).toBeInTheDocument();
     expect(within(runOn).queryByRole("button", { name: "Run as me" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Add a condition" }));
+    await user.click(screen.getByRole("button", { name: "+ Add a condition" }));
     await user.click(screen.getByRole("combobox", { name: "Field" }));
     expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Project", "Stack", "Service"]);
     await user.click(screen.getByRole("option", { name: "Service" }));
@@ -150,15 +147,16 @@ describe("a stack play's auto plays", () => {
         memory_ids: [],
         one_at_a_time: false,
         resource: "",
+        computer_rule: { labels_in: [], labels_out: [], ids: [] },
       }),
     );
   });
 
   it("offers a stack play only the person run-on", async () => {
     const { user } = await openAutoPlays();
-    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
+    await user.click(await screen.findByRole("button", { name: ADD }));
 
-    await user.click(within(screen.getByRole("region", { name: "Run on" })).getByRole("combobox", { name: "Run on" }));
+    await user.click(within(screen.getByRole("region", { name: "Runs as" })).getByRole("combobox", { name: "Runs as" }));
     expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["A person"]);
     await user.keyboard("{Escape}");
   });
@@ -168,7 +166,7 @@ describe("a stack play's auto plays", () => {
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
+    const runOn = screen.getByRole("region", { name: "Runs as" });
     expect(await within(runOn).findByText("Runs as Bob, on their computers.")).toBeInTheDocument();
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
@@ -183,7 +181,7 @@ describe("a stack play's auto plays", () => {
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
+    const runOn = screen.getByRole("region", { name: "Runs as" });
     await user.click(await within(runOn).findByRole("button", { name: "Run as me" }));
     expect(within(runOn).getByText("Runs as you, on your computers in your order.")).toBeInTheDocument();
     expect(within(runOn).queryByRole("button", { name: "Run as me" })).not.toBeInTheDocument();
@@ -200,7 +198,7 @@ describe("a stack play's auto plays", () => {
     const { user } = await openAutoPlays();
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
+    const runOn = screen.getByRole("region", { name: "Runs as" });
     expect(await within(runOn).findByText("Nobody picked yet.")).toBeInTheDocument();
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
@@ -233,24 +231,24 @@ describe("the run-on choices of the other play types", () => {
   it("are developer, tester, whoever caused it and a person for a ticket play", async () => {
     current = play({ label: "Fix with AI", type: "ticket", show_when_stage: "progress", builtin_key: "" });
     const { user } = await openAutoPlays();
-    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
+    await user.click(await screen.findByRole("button", { name: ADD }));
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
-    await user.click(within(runOn).getByRole("combobox", { name: "Run on" }));
+    const runOn = screen.getByRole("region", { name: "Runs as" });
+    await user.click(within(runOn).getByRole("combobox", { name: "Runs as" }));
     expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Developer", "Tester", "Whoever caused it", "A person"]);
     await user.keyboard("{Escape}");
-    await pickOption(user, "Run on", "A person");
+    await pickOption(user, "Runs as", "A person");
     expect(await within(runOn).findByText("Runs as you, on your computers in your order.")).toBeInTheDocument();
   });
 
   it("are whoever caused it and a person for a doc play", async () => {
     current = play({ label: "To tickets via AI", type: "doc", builtin_key: "" });
     const { user } = await openAutoPlays();
-    await user.click(await screen.findByRole("button", { name: "Add auto play" }));
+    await user.click(await screen.findByRole("button", { name: ADD }));
 
-    const runOn = screen.getByRole("region", { name: "Run on" });
-    expect(within(runOn).getByRole("combobox", { name: "Run on" })).toHaveTextContent("Whoever caused it");
-    await user.click(within(runOn).getByRole("combobox", { name: "Run on" }));
+    const runOn = screen.getByRole("region", { name: "Runs as" });
+    expect(within(runOn).getByRole("combobox", { name: "Runs as" })).toHaveTextContent("Whoever caused it");
+    await user.click(within(runOn).getByRole("combobox", { name: "Runs as" }));
     expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Whoever caused it", "A person"]);
     await user.keyboard("{Escape}");
   });

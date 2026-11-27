@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeSchedule, normalRunOn, runOnPhrase, zoneName } from "@nexul/client-core/autoPlayText";
+import { autoPlayLead, describeSchedule, normalRunOn, runOnPhrase, zoneName } from "@nexul/client-core/autoPlayText";
 
 describe("describeSchedule", () => {
   it.each([
@@ -33,5 +33,17 @@ describe("runOnPhrase", () => {
   it("reads the older computer run-on as a person", () => {
     expect(normalRunOn("computer")).toBe("person");
     expect(runOnPhrase("computer", "Sam's")).toBe("Sam's computers");
+  });
+});
+
+describe("autoPlayLead", () => {
+  const at = { moment_stage: null, schedule: null };
+  it.each([
+    ["a ticket moment reads about it", { ...at, moment: "ticket.entered_stage" as const, moment_stage: "progress" as const }, "ticket" as const, "When it enters In progress"],
+    ["a doc moment reads about it", { ...at, moment: "doc.created" as const }, "doc" as const, "When it is created"],
+    ["a stack moment keeps its own words", { ...at, moment: "stack.service_crashed" as const }, "stack" as const, "When a stack service crashes"],
+    ["a schedule is the schedule", { ...at, moment: "schedule" as const, schedule: { cron: "0 23 * * *", timezone: "Europe/London" } }, "ticket" as const, "Every day at 23:00, London"],
+  ])("%s", (_, autoPlay, subject, expected) => {
+    expect(autoPlayLead(autoPlay, subject)).toBe(expected);
   });
 });

@@ -2,22 +2,16 @@ import { useState } from "react";
 import { MonitorUpIcon } from "lucide-react";
 
 import { AgentComputersGroup } from "@/components/agent/AgentComputersGroup";
-import { AgentPlayGroups } from "@/components/agent/AgentPlayGroups";
 import { AgentProjectsGroup } from "@/components/agent/AgentProjectsGroup";
 import { AgentSharedGroup } from "@/components/agent/AgentSharedGroup";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
-import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 
-// What the Agent runs and where, one group each: plays, your computers, shared ones, and project run settings.
+// Your computers, the ones shared with you, and project run settings; the Computers dialog replaces it.
 export const AgentListPane = () => {
   const [search, setSearch] = useState("");
-  const can = useAreaAccess();
-  const { create } = usePlayDialogs();
   const query = search.trim().toLowerCase();
-  const plays = !!can?.("plays");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -25,7 +19,6 @@ export const AgentListPane = () => {
         title="Agent"
         count={0}
         hideZeroCount
-        {...(plays && { newLabel: "New play", newPermission: "plays:write" as const, newVerb: "create plays", onNew: () => void create() })}
         search={search}
         onSearch={setSearch}
         controls={
@@ -39,7 +32,6 @@ export const AgentListPane = () => {
         }
       />
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable_both-edges]">
-        {plays && <AgentPlayGroups query={query} />}
         <AgentComputersGroup query={query} />
         <AgentSharedGroup query={query} />
         <AgentProjectsGroup query={query} />
