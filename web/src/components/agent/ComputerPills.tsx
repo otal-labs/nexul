@@ -4,7 +4,7 @@ import type { AutoPlayPlaces } from "@nexul/client-core/autoPlayComputers";
 import { statusDotClass } from "@/components/settings/SettingsStatus";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
-import { isStaleOffline, runnerPresence } from "@/models/ComputerChecks";
+import { isStaleOffline, offlineForDays } from "@/models/ComputerChecks";
 import type { Computer } from "@/models/Pairing";
 
 const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
@@ -22,12 +22,16 @@ interface ComputerPillProps {
 }
 
 const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
-  const presence = runnerPresence(computer.runner);
-  // The Computers dialog's mapping: online green, offline grey, offline for over a week a warning.
-  const state = presence.tone === "muted" && isStaleOffline(computer) ? { ...presence, tone: "warning" as const } : presence;
+  const online = !!computer.runner?.connected;
+  const days = offlineForDays(computer);
+  const stale = isStaleOffline(computer);
+  const tip = stale ? `Offline · seen ${days} ${days === 1 ? "day" : "days"} ago` : "Offline · passed over while offline";
   return (
-    <span className={cn(pillClass, "font-mono", struck && "text-muted-foreground line-through")}>
-      {!struck && <span role="img" aria-label={state.text} className={cn("size-1.5 shrink-0 rounded-full", statusDotClass[state.tone])} />}
+    <span title={online || struck ? undefined : tip} className={cn(pillClass, "font-mono", (struck || !online) && "text-muted-foreground", struck && "line-through")}>
+      {!struck && online && <span role="img" aria-label="Online" className={cn("size-1.5 shrink-0 rounded-full", statusDotClass.success)} />}
+      {!struck && !online && (
+        <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", stale ? "border-warning-mark" : "border-muted-foreground")} />
+      )}
       <span className="truncate">{computer.name}</span>
     </span>
   );

@@ -20,10 +20,11 @@ export const PlayTreeSection = ({ play }: { play: WorkspacePlay }) => {
   const { data: autoPlays } = useFetchAutoPlays(play.workspace_id, branch ? play.id : "");
 
   return (
-    <section aria-label={play.label} className="group/play">
+    <section aria-label={play.label} className="relative">
+      {open === play.id && <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-10 w-0.5 bg-brand" />}
       <PlayTreeRow play={play} open={open === play.id} onHistory={() => setHistoryOpen(true)} />
       {branch && autoPlays?.map((autoPlay) => <AutoPlayBranch key={autoPlay.id} play={play} autoPlay={autoPlay} open={open === autoPlay.id} />)}
-      {branch && autoPlays && <NewAutoPlayBranch play={play} shown={autoPlays.length === 0} />}
+      {branch && autoPlays && <NewAutoPlayBranch play={play} />}
       {branch && (
         <div className="border-b border-border bg-surface-2 py-2 pl-12 empty:hidden">
           <PlayQueueNowLine play={play} />

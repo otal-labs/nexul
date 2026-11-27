@@ -17,8 +17,7 @@ export const HistoryRestoreFooter = ({ version, savedAt, isCurrent, restore }: H
       projectId={restore.projectId}
       answer={restore.answer}
       verb="restore versions"
-      variant={isCurrent ? "outline" : "default"}
-      disabled={isCurrent}
+            disabled={isCurrent}
       loading={restore.pending}
       className="tabular-nums"
       onClick={() => restore.run(version)}

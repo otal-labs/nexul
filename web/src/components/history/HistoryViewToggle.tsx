@@ -18,7 +18,7 @@ export const HistoryViewToggle = ({ view, onView }: HistoryViewToggleProps) => (
     onValueChange={(next) => next && onView(next as HistoryView)}
     className="shrink-0"
   >
-    <ToggleGroupItem value="changes">Changes</ToggleGroupItem>
-    <ToggleGroupItem value="as-it-was">As it was</ToggleGroupItem>
+    <ToggleGroupItem value="changes">What changed</ToggleGroupItem>
+    <ToggleGroupItem value="as-it-was">Previous version</ToggleGroupItem>
   </ToggleGroup>
 );

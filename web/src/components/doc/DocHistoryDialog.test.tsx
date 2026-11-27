@@ -106,12 +106,12 @@ describe("DocHistoryDialog", () => {
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it("shows the version as it was, with no marks, once As it was is picked", async () => {
+  it("shows the version as it was, with no marks, once Previous version is picked", async () => {
     const user = userEvent.setup();
     renderDialog();
     await screen.findByText("thirty minutes");
 
-    await user.click(screen.getByRole("radio", { name: "As it was" }));
+    await user.click(screen.getByRole("radio", { name: "Previous version" }));
 
     expect(screen.getByText("Watch error rates for thirty minutes then promote.")).toBeInTheDocument();
     expect(screen.queryByText("an hour")).not.toBeInTheDocument();

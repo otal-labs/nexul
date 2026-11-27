@@ -231,7 +231,7 @@ describe("the tree", () => {
     await waitFor(() => expect(mine).toHaveTextContent("onik-mini"));
     expect(mine).not.toHaveTextContent("DESKTOP-4DMA8EK");
     expect(await screen.findByRole("button", { name: /When it becomes unblocked/ })).toHaveTextContent("The mover's computers");
-    expect(screen.getByRole("button", { name: "+ Start it by itself when…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Add auto play" })).toBeInTheDocument();
   });
 
   it("gives an interview play no auto plays and no way to add one", async () => {
@@ -239,7 +239,7 @@ describe("the tree", () => {
     renderAgentPage("/acme/agent/interview");
     await screen.findByText("Interview a project");
     await settle();
-    expect(screen.queryByRole("button", { name: "+ Start it by itself when…" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Add auto play" })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -255,7 +255,7 @@ describe("the tree", () => {
       [
         { role: "switch", name: "Turn Fix with AI on or off", reason: "Your role can't edit plays" },
         { role: "switch", name: "Turn When it enters In progress on or off", reason: "Your role can't switch auto plays on or off" },
-        { role: "button", name: "+ Start it by itself when…", reason: "Your role can't add auto plays" },
+        { role: "button", name: "+ Add auto play", reason: "Your role can't add auto plays" },
       ],
       showLocked,
     );
@@ -296,7 +296,8 @@ describe("rows that open", () => {
     await waitFor(() => expect(within(row).getAllByRole("img")).toHaveLength(2));
     const [online, stale] = within(row).getAllByRole("img");
     expect(online).toHaveClass("bg-success");
-    expect(stale).toHaveClass("bg-warning-mark");
+    expect(stale).toHaveClass("border-warning-mark");
+    expect(stale?.parentElement).toHaveAttribute("title", expect.stringMatching(/^Offline · seen \d+ days ago$/));
   });
 
   it("says a person auto play nobody is picked for needs a person, and lists no computers until one is", async () => {
@@ -304,7 +305,9 @@ describe("rows that open", () => {
     renderAgentPage("/acme/agent/ticket?open=ap-1");
 
     const editor = await screen.findByRole("group", { name: "Edit auto play" });
-    expect(await within(editor).findByText("Needs a person")).toBeInTheDocument();
+    expect(await within(editor).findByRole("combobox", { name: "Runs as" })).toHaveTextContent("Pick who it runs as");
+    expect(within(editor).getByRole("button", { name: "Run as me" })).toBeInTheDocument();
+    expect(within(editor).getByText("Pick who it runs as first")).toBeInTheDocument();
     expect(within(editor).queryByText("Right now that's")).not.toBeInTheDocument();
     expect(within(await screen.findByRole("button", { name: /When it enters In progress/ })).getByText("Needs a person")).toBeInTheDocument();
   });
@@ -402,7 +405,7 @@ describe("a row unfolded in place", () => {
     mocks.post.mockResolvedValue({ data: autoPlay() });
     const router = renderAgentPage("/acme/agent/ticket");
 
-    await user.click(await screen.findByRole("button", { name: "+ Start it by itself when…" }));
+    await user.click(await screen.findByRole("button", { name: "+ Add auto play" }));
     expect(router.state.location.search).toBe("?open=new%3Aplay-fix");
     const editor = await screen.findByRole("group", { name: "New auto play" });
     await user.click(within(editor).getByRole("button", { name: "Save" }));
