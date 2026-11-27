@@ -5,10 +5,12 @@ interface LabelChipProps extends React.ComponentProps<"span"> {
   label: string;
   /** The label's configured hue name or hex; unset falls back to a hue hashed from the text. */
   color?: string | undefined;
+  /** False draws the chip with no leading dot, for a plain fact such as a computer's "docker". */
+  dot?: boolean;
 }
 
 // A label is a tag, not a state: a neutral hairline pill with muted text, its own hue only on the leading dot.
-export const LabelChip = ({ label, color, className, children, ...props }: LabelChipProps) => (
+export const LabelChip = ({ label, color, dot = true, className, children, ...props }: LabelChipProps) => (
   <span
     data-slot="label-chip"
     className={cn(
@@ -17,7 +19,7 @@ export const LabelChip = ({ label, color, className, children, ...props }: Label
     )}
     {...props}
   >
-    <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} style={hueStyle(color)} aria-hidden />
+    {dot && <span className={cn("size-1.5 shrink-0 self-center rounded-full", labelDotColor(label, color))} style={hueStyle(color)} aria-hidden />}
     <span className="truncate">{label}</span>
     {children}
   </span>

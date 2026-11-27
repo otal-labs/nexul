@@ -206,7 +206,7 @@ describe("Your computers", () => {
     expect(order()).toEqual(["laptop", "build-box"]);
     expect(screen.queryByText("#3")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /^Remove 2 unfinished setups/ }));
+    await user.click(screen.getByRole("button", { name: "Remove 2 setups" }));
     await user.click(await within(await screen.findByRole("dialog", { name: /Remove these 2 setups/ })).findByRole("button", { name: "Remove" }));
     await waitFor(() => expect(mocks.del).toHaveBeenCalledTimes(2));
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u1");
