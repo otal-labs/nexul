@@ -40,6 +40,12 @@ export const runsAgents = (computer: Computer) => !!computer.shared?.permissions
 export const ownComputers = (computers: Computer[]) => computers.filter((c) => !c.shared);
 export const sharedComputers = (computers: Computer[]) => computers.filter((c) => !!c.shared);
 
-// The viewer's run order: their own computers and the shared ones they added, by position, their own first on a tie.
+// The viewer's run order: their own finished computers and the shared ones they added, by position, their own first on a tie.
 export const orderComputers = (computers: Computer[]) =>
-  computers.filter((c) => !c.shared || c.shared.in_order).sort((a, b) => a.position - b.position || Number(!!a.shared) - Number(!!b.shared));
+  computers.filter((c) => !c.unfinished && (!c.shared || c.shared.in_order)).sort((a, b) => a.position - b.position || Number(!!a.shared) - Number(!!b.shared));
+
+// Setups that never enrolled: no name, no session, in no run order (ADR 0213).
+export const unfinishedComputers = (computers: Computer[]) => computers.filter((c) => c.unfinished && !c.shared);
+
+// Shared with the viewer and left out of their run order, still reachable to add.
+export const sharedOutOfOrder = (computers: Computer[]) => computers.filter((c) => !!c.shared && !c.shared.in_order);

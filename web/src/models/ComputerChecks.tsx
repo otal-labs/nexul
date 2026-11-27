@@ -1,7 +1,7 @@
 import type { SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { reachedThroughRunner } from "@/models/ComputerFacts";
 import { stillPairing, type Computer, type ComputerRunner } from "@/models/Pairing";
-import { formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
+import { daysAgo, formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
 
 export type CheckState = "waiting" | "passed" | "warning" | "failed";
 
@@ -100,4 +100,31 @@ export const runnerPresence = (runner: ComputerRunner | undefined): Lane => {
   if (runner?.connected) return { tone: "success", text: "Online" };
   if (runner?.reconnecting) return { tone: "warning", text: "Reconnecting" };
   return { tone: "muted", text: "Offline" };
+};
+
+// A computer unseen this long is likely gone for good, so its pane offers Remove beside the warning.
+export const STALE_OFFLINE_DAYS = 7;
+
+export const offlineForDays = (computer: Computer): number => {
+  const runner = computer.runner;
+  if (!runner || runner.connected || runner.reconnecting) return 0;
+  const days = daysAgo(runner.last_seen);
+  return Number.isNaN(days) ? 0 : days;
+};
+
+export const isStaleOffline = (computer: Computer) => offlineForDays(computer) >= STALE_OFFLINE_DAYS;
+
+export interface StateLine {
+  tone: SettingsStatusTone;
+  text: string;
+}
+
+// One short line for a list row: the lane that needs doing first, "Online · 1/4" when all is well, "seen 16m ago" when offline.
+export const computerStateLine = (computer: Computer, presence: string | undefined): StateLine => {
+  if (computer.shared) return runnerPresence(computer.runner);
+  const [lane] = worstFirst(computerLanes(computer, presence));
+  if (!lane) return { tone: "muted", text: "" };
+  if (lane.text === "Online" || lane.text === "T3 Code answering") return { tone: "success", text: `Online · ${computer.running}/${computer.runs_at_once}` };
+  if (lane.text === "Offline" && computer.runner) return { tone: isStaleOffline(computer) ? "warning" : "muted", text: `seen ${formatRelativeTime(computer.runner.last_seen)}` };
+  return { tone: lane.tone, text: lane.text };
 };

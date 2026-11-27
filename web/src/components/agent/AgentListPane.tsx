@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { MonitorUpIcon } from "lucide-react";
 
-import { AgentComputersGroup } from "@/components/agent/AgentComputersGroup";
 import { AgentPlayGroups } from "@/components/agent/AgentPlayGroups";
-import { AgentProjectsGroup } from "@/components/agent/AgentProjectsGroup";
-import { AgentSharedGroup } from "@/components/agent/AgentSharedGroup";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { usePlayDialogs } from "@/hooks/usePlayDialogs";
 
-// What the Agent runs and where, one group each: plays, your computers, shared ones, and project run settings.
+// What the Agent runs: the play groups. Computers and run settings open in the Computers dialog.
 export const AgentListPane = () => {
   const [search, setSearch] = useState("");
   const can = useAreaAccess();
@@ -40,9 +37,6 @@ export const AgentListPane = () => {
       />
       <div className="scroll-edge min-h-0 flex-1 overflow-y-auto pb-6 [scrollbar-gutter:stable_both-edges]">
         {plays && <AgentPlayGroups query={query} />}
-        <AgentComputersGroup query={query} />
-        <AgentSharedGroup query={query} />
-        <AgentProjectsGroup query={query} />
       </div>
     </div>
   );

@@ -177,9 +177,10 @@ Runner — a Runner executes builds; the Agent converses and drives the product
 through MCP.
 
 **Agent page**:
-The workspace page, Agent in the sidebar, that holds what the Agent does by itself and where it runs: the plays and
-their auto plays, your computers in run order, the computers shared with you, and each project's run settings with
-Defaults first, as one list beside the open one (ADR 0211). Settings → Computers opens it.
+The workspace page, Agent in the sidebar, that holds what the Agent does by itself: the plays and their auto plays
+(ADR 0211). Its Computers button opens the **Computers dialog**, on any page through the `computers` search param: your
+computers in run order, the computers shared with you, and each project's run settings with Defaults first, as one list
+beside the open one. Settings → Computers opens it.
 _Avoid_: Plays page, Computers settings
 
 **Steer**:
@@ -341,7 +342,7 @@ _Avoid_: Checkout (that is a stack's on a machine), fallback T3 project
 
 **Project link**:
 One person's provider, model, model options, and start-in for one project
-they can open, set under Projects on the Agent page, used on whichever
+they can open, set under Where runs go in the Computers dialog, used on whichever
 computer the run lands on. It follows Your computers or names its own list in
 its own order (ADR 0165). Each person has their own; nobody else's turns use
 it. A play pressed in a project no computer of theirs has asks where to run,

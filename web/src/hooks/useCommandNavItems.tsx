@@ -5,6 +5,7 @@ import {
   CpuIcon,
   FileTextIcon,
   InboxIcon,
+  LaptopIcon,
   LayoutDashboardIcon,
   MessagesSquareIcon,
   NetworkIcon,
@@ -24,6 +25,7 @@ import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { computersSearch } from "@/models/Agent";
 import type { CommandGroup, CommandItem } from "@/models/Command";
 import { boardPath, interviewPath, projectSettingsPath, projectToken } from "@/models/Project";
 
@@ -54,7 +56,8 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("project-settings", "Project settings", SettingsIcon, projectSettingsPath(token), !!current && !!can?.("projects")),
     ...page("runners", "Runners", CpuIcon, "/runners", showRunners),
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
-    ...page("agent", "Agent", SparklesIcon, "/agent", true, "plays auto plays computers pair t3"),
+    ...page("agent", "Agent", SparklesIcon, "/agent", true, "plays auto plays pair t3"),
+    { id: "page:computers", label: "Computers", icon: LaptopIcon, keywords: "go to page pair t3 runs at once defaults", run: () => void navigate(computersSearch()) },
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
     ...page("access", "Access", ShieldCheck, "/access", canOpen("access") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),

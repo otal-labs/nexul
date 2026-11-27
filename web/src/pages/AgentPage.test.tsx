@@ -161,7 +161,7 @@ describe("an open play", () => {
     expect(screen.getByText("Ticket play")).toBeInTheDocument();
     expect(screen.getByText("Reads the ticket and opens a PR.")).toBeInTheDocument();
     expect(screen.getByText("Shows on")).toBeInTheDocument();
-    expect(await screen.findAllByText("Website"), "the project it skips, and its row under Projects").toHaveLength(2);
+    expect(await screen.findByText("Website"), "the project it skips").toBeInTheDocument();
     expect(screen.getByText(/Read the ticket\./)).toHaveTextContent("Read the ticket. Open a PR.");
   });
 

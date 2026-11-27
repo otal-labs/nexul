@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AgentComputerDetail } from "@/components/agent/AgentComputerDetail";
+import { ComputerPane } from "@/components/computers/ComputerPane";
 import { pairingFollower } from "@/hooks/PairingHooks";
 import type { Computer } from "@/models/Pairing";
 import { followFrame } from "@/test/followFrame";
@@ -58,7 +58,7 @@ const renderSection = () => {
   render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
-        <AgentComputerDetail computerId="c1" />
+        <ComputerPane computerId="c1" />
       </QueryClientProvider>
     </MemoryRouter>,
   );

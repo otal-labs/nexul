@@ -2,7 +2,7 @@ import type { AxiosError } from "axios";
 import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
-import { AGENT_PATH, agentPath } from "@/models/Agent";
+import { AGENT_PATH, computersSearch, SETUP_PARAM } from "@/models/Agent";
 import type { ComputerFacts } from "@/models/ComputerFacts";
 import type { SharedComputer } from "@/models/SharedComputer";
 
@@ -369,8 +369,8 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// The computer on the Agent page with its Set up step open, workspace-relative.
-export const computerSetupPath = (computerId: string) => `${agentPath("computers", computerId)}?setup=${encodeURIComponent(computerId)}`;
+// The query that opens the Computers dialog on one computer with its Set up step open, on whatever page the link sits.
+export const computerSetupSearch = (computerId: string) => `${computersSearch(computerId)}&${SETUP_PARAM}=${encodeURIComponent(computerId)}`;
 
 // Mirrors pairing.ReasonNeedsLocation: no computer of the person's has the project, so their run asks where (ADR 0165).
 export const NEEDS_LOCATION_REASON = "needs_location";

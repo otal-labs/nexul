@@ -2,8 +2,7 @@ import { SettingsSectionNav, type SettingsSectionNavItem } from "@/components/se
 import { INSTANCE_GROUP, sectionLabels as instanceLabels, type SettingsSection } from "@/components/settings/SettingsNav";
 import { useInstanceSettingsSections } from "@/hooks/AccessHooks";
 import { useSkillsOutdated } from "@/hooks/ComputerSetupHooks";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { AGENT_PATH } from "@/models/Agent";
+import { computersSearch } from "@/models/Agent";
 import { SKILLS_OUTDATED } from "@/models/Pairing";
 
 export const YOUR_SETTINGS_SECTIONS = ["profile", "appearance", "security"] as const;
@@ -32,11 +31,10 @@ export const YourSettingsNav = ({ active }: YourSettingsNavProps) => {
   const instanceSections = useInstanceSettingsSections() ?? [];
   const skillsOutdated = useSkillsOutdated();
   const personalGroup = instanceSections.length > 0 ? YOUR_GROUP : undefined;
-  const wsPath = useWorkspacePath();
   const items: SettingsSectionNavItem[] = [
     ...YOUR_SETTINGS_SECTIONS.map((section) => ({ section, label: sectionLabels[section], group: personalGroup })),
-    // Your computers live on the workspace's Agent page (ADR 0211); the link keeps them findable from here.
-    { section: "computers", label: "Computers", group: personalGroup, to: wsPath(AGENT_PATH), dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
+    // Your computers open in the Computers dialog, on this page (ADR 0211).
+    { section: "computers", label: "Computers", group: personalGroup, to: computersSearch(), dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
     ...instanceSections.map((section) => ({ section, label: instanceLabels[section], group: INSTANCE_GROUP })),
   ];
 

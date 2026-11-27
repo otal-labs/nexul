@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { renderAgent } from "@/test/agentComputers";
+import { renderComputers } from "@/test/agentComputers";
 import { pickOption } from "@/test/pickOption";
 import { asOwner } from "@/test/viewer";
 
@@ -69,7 +69,7 @@ const oneWorkspace: Fixture = {
   links: [{ project_id: "p-web", computers: ["c1"], checkouts: [], provider: "claude", model: "sonnet-5", start_in: "worktree" }],
 };
 
-const projectsGroup = () => screen.findByRole("region", { name: "Projects" });
+const projectsGroup = () => screen.findByRole("region", { name: "Where runs go" });
 
 describe("the projects on the Agent page", () => {
   beforeEach(() => {
@@ -81,7 +81,7 @@ describe("the projects on the Agent page", () => {
 
   it("leads with Defaults and reads each project's own computers and model back by name, the rest as using defaults", async () => {
     serve(oneWorkspace);
-    renderAgent("/acme/agent");
+    renderComputers("/acme/agent?computers=");
 
     expect(await screen.findByText("home · Sonnet 5 · New worktree")).toBeInTheDocument();
     const group = await projectsGroup();
@@ -93,7 +93,7 @@ describe("the projects on the Agent page", () => {
   it("names a model from the first computer that is online when the first in order is not", async () => {
     const links = [{ project_id: "p-web", computers: [], checkouts: [], provider: "claude", model: "sonnet-5", start_in: "worktree" }];
     serve({ ...oneWorkspace, computers: [computer("c1", "home"), computer("c2", "vps")], links, presence: { c2: "connected" } });
-    renderAgent("/acme/agent");
+    renderComputers("/acme/agent?computers=");
 
     expect(await screen.findByText("Sonnet 5 · New worktree")).toBeInTheDocument();
   });
@@ -102,13 +102,13 @@ describe("the projects on the Agent page", () => {
     serve(oneWorkspace);
     mocks.put.mockImplementation(async (_url: string, body: object) => ({ data: { project_id: "p-api", ...body } }));
     const user = userEvent.setup();
-    renderAgent("/acme/agent/projects/p-web");
+    renderComputers("/acme/agent?computers=project%3Ap-web");
 
-    expect(await screen.findByRole("heading", { name: "Web", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Web", level: 3 })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Use defaults" })).toBeInTheDocument();
 
     await user.click(within(await projectsGroup()).getByRole("link", { name: /Api/ }));
-    expect(await screen.findByRole("heading", { name: "Api", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Api", level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Use defaults" }), "nothing to clear on a project that uses the defaults").not.toBeInTheDocument();
     await user.click(await screen.findByRole("radio", { name: "Custom" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -121,7 +121,7 @@ describe("the projects on the Agent page", () => {
     serve(oneWorkspace);
     mocks.del.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
-    renderAgent("/acme/agent/projects/p-web");
+    renderComputers("/acme/agent?computers=project%3Ap-web");
 
     await user.click(await screen.findByRole("button", { name: "Use defaults" }));
 
@@ -133,9 +133,9 @@ describe("the projects on the Agent page", () => {
     serve(oneWorkspace);
     mocks.put.mockResolvedValue({ data: { provider: "claude", model: "sonnet-5", placement: "spread", clone_automatically: false, start_in: "worktree" } });
     const user = userEvent.setup();
-    renderAgent("/acme/agent/projects/defaults");
+    renderComputers("/acme/agent?computers=defaults");
 
-    expect(await screen.findByRole("heading", { name: "Defaults", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Defaults", level: 3 })).toBeInTheDocument();
     await pickOption(user, /send runs to/i, "Least busy");
     await user.click(await screen.findByRole("combobox", { name: "Model" }));
     await user.click(await screen.findByRole("option", { name: "Sonnet 5" }));

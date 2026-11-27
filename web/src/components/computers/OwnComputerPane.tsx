@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 import { MoveComputerDialog } from "@/components/pairing/MoveComputerDialog";
-import { LegacyComputerPane } from "@/components/agent/LegacyComputerPane";
-import { RunnerComputerPane } from "@/components/agent/RunnerComputerPane";
+import { LegacyComputerPane } from "@/components/computers/LegacyComputerPane";
+import { RunnerComputerPane } from "@/components/computers/RunnerComputerPane";
 import { useEnrollComputer } from "@/hooks/ComputerHooks";
 import { useFetchPresence } from "@/hooks/PairingHooks";
 import { addedWithRunner } from "@/models/ComputerChecks";

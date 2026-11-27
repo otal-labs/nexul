@@ -2,8 +2,10 @@ import { useState, type ReactNode } from "react";
 import { Plus, RefreshCw, Wrench } from "lucide-react";
 import { useSearchParams } from "react-router";
 
-import { Container } from "@/components/Container";
-import { PageHeader } from "@/components/PageHeader";
+import { ComputerSettingsCard } from "@/components/computers/ComputerSettingsCard";
+import { ComputerTerminalButton } from "@/components/computers/ComputerTerminalButton";
+import { PaneHeader } from "@/components/computers/PaneHeader";
+import { StaleComputerNote } from "@/components/computers/StaleComputerNote";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { SetupComputerDialog } from "@/components/pairing/SetupComputerDialog";
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
@@ -20,9 +22,8 @@ import { useComputerMoves } from "@/hooks/useComputerMoves";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { AGENT_PATH } from "@/models/Agent";
-import { computerLanes, worstFirst } from "@/models/ComputerChecks";
+import { SETUP_PARAM } from "@/models/Agent";
+import { computerLanes, isStaleOffline, offlineForDays, worstFirst } from "@/models/ComputerChecks";
 import { computerEntity } from "@/models/PermissionPanel";
 import { onlySkillsOutdated, RenameComputerFormSchema, setupSummary, stillPairing, type Computer, type RenameComputerFormData } from "@/models/Pairing";
 import { daysUntil } from "@/utils/TimeUtility";
@@ -37,7 +38,8 @@ interface RunnerComputerPaneProps {
   presence?: string | undefined;
 }
 
-// A computer added with its app: each lane on its own, at most one action for what needs doing, the rest in its menu.
+// A computer added with its app: each lane on its own, at most one action for what needs doing, the rest in its menu, then
+// its switches and settings and what is on it.
 export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPaneProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pairing = stillPairing(computer);
@@ -50,11 +52,11 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
   const { open: confirm } = useConfirmationDialog();
   const openPermissions = usePermissionsDialog();
   const moveActions = useComputerMoves(computer.id);
-  const wsPath = useWorkspacePath();
-  const [setupOpen, setSetupOpen] = useState(!pairing && searchParams.get("setup") === computer.id);
+  const [setupOpen, setSetupOpen] = useState(!pairing && searchParams.get(SETUP_PARAM) === computer.id);
 
   const name = computer.name || UNNAMED;
   const connected = computer.runner?.connected === true;
+  const staleDays = isStaleOffline(computer) ? offlineForDays(computer) : 0;
   const summary = setup && setupSummary(setup);
   const lines: { tone: SettingsStatusTone; text: string; detail?: ReactNode }[] = [
     ...computerLanes(computer, presence, pairNow.isPending),
@@ -88,7 +90,7 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
   const forgetLink = () =>
     setSearchParams(
       (params) => {
-        params.delete("setup");
+        params.delete(SETUP_PARAM);
         return params;
       },
       { replace: true },
@@ -105,22 +107,22 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
   ];
 
   return (
-    <Container className="space-y-6 py-8 sm:pr-3.5">
-      <PageHeader
-        crumbs={[{ label: "Agent", to: wsPath(AGENT_PATH) }, { label: "Your computers" }]}
+    <div className="space-y-6">
+      <PaneHeader
         title={name}
         meta={
-          <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+          <>
             {worstFirst(lines).map((line) => (
               <SettingsStatus key={line.text} tone={line.tone} detail={line.detail}>
                 {line.text}
               </SettingsStatus>
             ))}
             {!pairing && <ComputerLoad computer={computer} />}
-          </span>
+          </>
         }
         actions={
           <>
+            {connected && computer.shell_enabled && <ComputerTerminalButton computer={computer} />}
             {/* Mounted whatever the pane shows, so the pane changing as the computer connects can't close the dialog. */}
             <AddComputerDialog
               again={{ id: computer.id, name: computer.name }}
@@ -164,8 +166,10 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
           </>
         }
       />
+      {staleDays > 0 && <StaleComputerNote days={staleDays} onRemove={() => void removeComputer()} />}
+      {!pairing && <ComputerSettingsCard computer={computer} setup={setup} />}
       <ComputerDetails computer={computer} setup={setup} />
       {!pairing && <SetupComputerDialog computer={computer} open={setupOpen} onOpenChange={setSetupOpen} onClosed={forgetLink} />}
-    </Container>
+    </div>
   );
 };

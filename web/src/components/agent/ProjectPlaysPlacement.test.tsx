@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { renderAgent } from "@/test/agentComputers";
+import { renderComputers } from "@/test/agentComputers";
 import { asViewer } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -55,7 +55,7 @@ beforeEach(() => {
 
 describe("where a project's plays land now", () => {
   it("answers every play from one read, plays sharing needs sharing an answer, switched-off and excluded plays left out", async () => {
-    renderAgent("/acme/agent/projects/proj-1");
+    renderComputers("/acme/agent?computers=project%3Aproj-1");
 
     const section = await screen.findByRole("region", { name: "Where its plays land now" });
     const rows = await within(section).findAllByRole("listitem");
