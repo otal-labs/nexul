@@ -3,12 +3,13 @@ import type { AutoPlayPlaces } from "@nexul/client-core/autoPlayComputers";
 
 import { formatShortAgo } from "@/components/doc/docTime";
 import { statusDotClass } from "@/components/settings/SettingsStatus";
+import { useFetchPresence } from "@/hooks/PairingHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
-import { isStaleOffline, offlineForDays } from "@/models/ComputerChecks";
+import { computerReadiness, offlineForDays, readinessDot } from "@/models/ComputerChecks";
 import type { Computer } from "@/models/Pairing";
 
-const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
+export const pillClass = "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border px-1.5 py-0.5 text-xs leading-4";
 
 const ROLE_TEXT = { causer: "The mover's computers", developer: "The developer's computers", tester: "The tester's computers" } as const;
 
@@ -22,21 +23,33 @@ interface ComputerPillProps {
   struck?: boolean;
 }
 
+const RING: Record<string, string> = { muted: "border-muted-foreground", warning: "border-warning-mark" };
+
 const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
-  const online = !!computer.runner?.connected;
+  const presence = useFetchPresence();
+  const { state, words } = computerReadiness(computer, presence.data?.[computer.id]);
+  const dot = readinessDot(state);
   const days = offlineForDays(computer);
-  const stale = isStaleOffline(computer);
-  const age = stale ? `${days}d` : computer.runner?.last_seen ? formatShortAgo(computer.runner.last_seen) : "";
-  const tip = stale ? `Offline · seen ${days} ${days === 1 ? "day" : "days"} ago` : "Offline · passed over while offline";
+  const offline = state === "offline" || state === "stale";
+  const age = state === "stale" ? `${days}d` : computer.runner?.last_seen ? formatShortAgo(computer.runner.last_seen) : "";
+  const note = (() => {
+    if (state === "degraded") return words;
+    return offline && age ? `seen ${age}` : "";
+  })();
+  const tip = (() => {
+    if (struck || state === "ready") return undefined;
+    if (state === "stale") return `Offline · seen ${days} ${days === 1 ? "day" : "days"} ago`;
+    if (state === "offline") return "Offline · passed over while offline";
+    return words;
+  })();
   return (
-    <span title={online || struck ? undefined : tip} className={cn(pillClass, "font-mono", (struck || !online) && "text-muted-foreground", struck && "line-through")}>
-      {!struck && online && <span role="img" aria-label="Online" className={cn("size-1.5 shrink-0 rounded-full", statusDotClass.success)} />}
-      {!struck && !online && (
-        <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", stale ? "border-warning-mark" : "border-muted-foreground")} />
-      )}
+    <span title={tip} className={cn(pillClass, "font-mono", (struck || state !== "ready") && "text-muted-foreground", struck && "line-through")}>
+      {!struck && !dot.hollow && <span role="img" aria-label={state === "ready" ? "Online" : "Not ready"} className={cn("size-1.5 shrink-0 rounded-full", statusDotClass[dot.tone])} />}
+      {!struck && dot.hollow && <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", RING[dot.tone])} />}
       <span className="truncate">{computer.name}</span>
-      {!struck && !online && age && <span aria-hidden className="shrink-0 text-muted-foreground">· seen {age}</span>}
-      {!struck && !online && <span className="sr-only">, offline{stale ? ` ${days} ${days === 1 ? "day" : "days"}` : ""}</span>}
+      {!struck && note && <span aria-hidden className="shrink-0 text-muted-foreground">· {note}</span>}
+      {!struck && state === "degraded" && <span className="sr-only">, {words}</span>}
+      {!struck && offline && <span className="sr-only">, offline{state === "stale" ? ` ${days} ${days === 1 ? "day" : "days"}` : ""}</span>}
     </span>
   );
 };

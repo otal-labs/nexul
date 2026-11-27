@@ -21,7 +21,7 @@ export const NewAutoPlayRow = ({ playId, open, shown }: NewAutoPlayRowProps) => 
     <div
       className={cn(
         "relative flex items-center overflow-hidden pl-[4.375rem]",
-        shown || open ? "h-7 border-b border-border" : "h-0 group-focus-within/play:h-7 group-focus-within/play:border-b group-hover/play:h-7 group-hover/play:border-b group-hover/play:border-border group-focus-within/play:border-border",
+        shown || open ? "h-7" : "h-0 group-focus-within/play:h-7 group-hover/play:h-7",
         open && currentRowFillClass,
       )}
     >

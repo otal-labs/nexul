@@ -15,8 +15,6 @@ interface PlayTreeRowProps {
   play: WorkspacePlay;
   open: boolean;
   onHistory: () => void;
-  // How many auto plays hang under it, said beside its line while it is open.
-  autoPlays?: number;
 }
 
 // Where a play's button is: on a ticket in its stage, on a doc, or on the project's Interview page; a stack play has no button, it runs on stack events.
@@ -35,7 +33,7 @@ const lineOf = (play: WorkspacePlay) => {
 };
 
 // One play: its name over one muted line, its runs in 7 days, its last run and its switch; the whole row opens its settings.
-export const PlayTreeRow = ({ play, open, onHistory, autoPlays = 0 }: PlayTreeRowProps) => {
+export const PlayTreeRow = ({ play, open, onHistory }: PlayTreeRowProps) => {
   const { toggle, setOpen } = useOpenRow();
   const menu = { ...usePlayMenu(play, onHistory), onEdit: () => setOpen(play.id) };
 
@@ -47,7 +45,7 @@ export const PlayTreeRow = ({ play, open, onHistory, autoPlays = 0 }: PlayTreeRo
           <RowChevron open={open} className="mt-0.5" />
           <span className="min-w-0">
             <span className={cn("block truncate text-sm font-medium", !play.enabled && "text-muted-foreground")}>{play.label}</span>
-            <span className="line-clamp-2 text-xs text-muted-foreground">{lineOf(play)}{open && autoPlays > 0 && ` · ${autoPlays} auto ${autoPlays === 1 ? "play" : "plays"}`}</span>
+            <span className="line-clamp-2 text-xs text-muted-foreground">{lineOf(play)}</span>
           </span>
         </button>
         <span className={cn("hidden text-right font-mono text-sm tabular-nums lg:block", play.runs_7d === 0 ? "text-muted-foreground" : "text-foreground")}>{play.runs_7d}</span>
