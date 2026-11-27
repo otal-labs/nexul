@@ -24,6 +24,7 @@ export const MemoriesSection = () => {
           label="Memories"
           values={memoryIds}
           field={field}
+          placeholder="Add memories"
           onChange={(ids) => setValue("memory_ids", ids, { shouldDirty: true })}
           disabled={formState.disabled}
         />

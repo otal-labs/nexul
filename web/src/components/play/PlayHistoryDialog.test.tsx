@@ -81,6 +81,17 @@ describe("PlayHistoryDialog", () => {
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("titles every version \"Version N\", notes a built-in default under it, disables Restore on the current one and has one close control", async () => {
+    renderDialog();
+    await screen.findByRole("group", { name: "Change 1 of 1, added" });
+
+    expect(screen.getByText("Version 3")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Version \d$/)).toHaveLength(3);
+    expect(screen.getByText("Built-in default")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: /^Close$/ })).toHaveLength(1);
+  });
+
   it("opens on the version it is asked for, not the newest", async () => {
     renderDialog(2);
 

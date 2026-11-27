@@ -50,6 +50,7 @@ export const ComputersSection = () => {
           />
         )}
       </div>
+      {places?.kind === "role" && places.role === "nobody" && <p className="text-xs text-muted-foreground">Pick who it runs as first</p>}
       {places && (places.kind !== "role" || places.role !== "nobody") && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>Right now that's</span>

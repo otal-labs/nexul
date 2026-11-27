@@ -62,7 +62,7 @@ export const PlayEditor = ({ play, onClose, onHistory }: PlayEditorProps) => {
   });
 
   return (
-    <UnfoldedEditor label={`Edit ${play.label}`}>
+    <UnfoldedEditor label={`Edit ${play.label}`} title={`${play.label} · settings`}>
       <ComposerSection title="Name">
         <Input aria-label="Name" aria-invalid={!!formState.errors.label || undefined} className="max-w-md" {...register("label")} />
         {formState.errors.label && <p className="text-xs text-destructive">{formState.errors.label.message}</p>}

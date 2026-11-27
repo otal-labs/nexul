@@ -125,6 +125,15 @@ export const LIMIT_PRESETS = [0, 60, 24 * 60, 7 * 24 * 60];
 
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
+// The repeat window as the editor's select reads it.
+export const repeatLabel = (minutes: number): string => {
+  if (minutes === 0) return "Any time";
+  if (minutes === 60) return "Once an hour";
+  if (minutes === 24 * 60) return "Once a day";
+  if (minutes === 7 * 24 * 60) return "Once a week";
+  return `Once every ${limitLabel(minutes)}`;
+};
+
 export const limitLabel = (minutes: number): string => {
   if (minutes === 0) return "No limit";
   if (minutes === 7 * 24 * 60) return "7 days";

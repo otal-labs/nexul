@@ -87,7 +87,7 @@ const openAutoPlays = async () => {
   return { user };
 };
 
-const ADD = "+ Start it by itself when…";
+const ADD = "+ Add auto play";
 
 const footer = (name: string) => screen.getAllByRole("button", { name }).at(-1)!;
 
@@ -199,7 +199,7 @@ describe("a stack play's auto plays", () => {
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
 
     const runOn = screen.getByRole("region", { name: "Runs as" });
-    expect(await within(runOn).findByText("Needs a person")).toBeInTheDocument();
+    expect(await within(runOn).findByRole("combobox", { name: "Runs as" })).toHaveTextContent("Pick who it runs as");
 
     mocks.patch.mockResolvedValue({ data: autoPlays[0] });
     await user.click(footer("Save"));

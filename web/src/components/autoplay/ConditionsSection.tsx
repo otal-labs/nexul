@@ -24,7 +24,7 @@ export const ConditionsSection = () => {
 
   return (
     <ComposerSection title="Only if">
-      {groups.length === 0 && <p className="pt-1.5 text-sm text-muted-foreground">Every time</p>}
+      {groups.length === 0 && <p className="pt-1.5 text-sm text-muted-foreground">No conditions</p>}
       {groups.map((group, i) => (
         <div key={i}>
           {group.nested && <NestedGroupEditor index={i} onRemove={() => without(i)} />}

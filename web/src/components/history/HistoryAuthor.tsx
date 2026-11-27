@@ -31,7 +31,7 @@ export const HistoryAuthor = ({ people, via }: HistoryAuthorProps) => {
     <span className="mt-1.5 flex items-center gap-1.5">
       {first && <PersonAvatar login={first.login} name={personLabel(first)} src={first.avatar_url} label={personLabel(first)} className="size-[18px]" />}
       {!first && (
-        <span aria-hidden className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground">
+        <span role="img" aria-label={via ? viaLabel(via) : "Saved automatically"} title={via ? viaLabel(via) : "Saved automatically"} className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground">
           <ViaMark via={via} className="size-3" />
         </span>
       )}

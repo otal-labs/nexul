@@ -38,10 +38,10 @@ export const PlayTreeRow = ({ play, open, onHistory }: PlayTreeRowProps) => {
           <RowChevron open={open} className="mt-0.5" />
           <span className="min-w-0">
             <span className={cn("block truncate text-sm font-medium", !play.enabled && "text-muted-foreground")}>{play.label}</span>
-            <span className="line-clamp-2 text-xs text-muted-foreground lg:line-clamp-1">{lineOf(play)}</span>
+            <span className="line-clamp-2 text-xs text-muted-foreground">{lineOf(play)}</span>
           </span>
         </button>
-        <span className={cn("hidden text-right font-mono text-sm tabular-nums sm:block", play.runs_7d === 0 && "text-muted-foreground")}>{play.runs_7d}</span>
+        <span className={cn("hidden text-right font-mono text-sm tabular-nums sm:block", play.runs_7d === 0 ? "text-muted-foreground" : "text-foreground")}>{play.runs_7d}</span>
         <span className="hidden text-right font-mono text-xs text-muted-foreground tabular-nums lg:block">{play.last_run ? lastRunDate(play.last_run.started_at) : "—"}</span>
         <span onClick={stopRowClick} className="flex justify-end">
           <PlayEnabledSwitch play={play} />
