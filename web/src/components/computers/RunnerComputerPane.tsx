@@ -113,20 +113,18 @@ export const RunnerComputerPane = ({ computer, presence }: RunnerComputerPanePro
         note="Changes save as you go"
         meta={
           <>
-            {staleDays > 0 && (
-              <>
-                <SettingsStatus tone="warning" hollow detail={`seen ${staleDays} days ago`} detailClassName="text-warning">
-                  Offline
-                </SettingsStatus>
-                <span>{[...lines.filter((l) => l.text !== "Offline").map((l) => l.text), `${computer.running} of ${computer.runs_at_once} running`].join(" · ")}</span>
-              </>
-            )}
-            {staleDays === 0 && worstFirst(lines).map((line) => (
-              <SettingsStatus key={line.text} tone={line.tone} hollow={!!line.hollow} detail={line.detail} {...(line.tone === "warning" && line.detail && { detailClassName: "text-warning" })}>
-                {line.text}
+            {worstFirst(lines).map((line) => (
+              <SettingsStatus
+                key={line.text}
+                tone={line.tone}
+                hollow={!!line.hollow}
+                {...(line.tone === "warning" && line.hollow && { textClassName: "text-warning" })}
+                detail={line.hollow ? undefined : line.detail}
+              >
+                {line.hollow && line.detail ? `${line.text} · ${line.detail}` : line.text}
               </SettingsStatus>
             ))}
-            {staleDays === 0 && !pairing && <ComputerLoad computer={computer} />}
+            {!pairing && <ComputerLoad computer={computer} />}
           </>
         }
         actions={

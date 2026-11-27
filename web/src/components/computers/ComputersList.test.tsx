@@ -178,10 +178,10 @@ describe("Your computers", () => {
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
 
     expect(within(yourComputers()).getByRole("link", { name: /^laptop/ })).toHaveTextContent("Online · 1 of 2 running");
-    expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+ days ago/);
+    expect(within(yourComputers()).getByRole("link", { name: /^build-box/ })).toHaveTextContent(/seen \d+d ago/);
     await user.click(within(yourComputers()).getByRole("link", { name: /^build-box/ }));
     expect(await screen.findByRole("note")).toHaveTextContent(/Not seen for \d+ days/);
-    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/), "the pane agrees with the row").toHaveClass("text-warning");
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+d ago/), "the pane agrees with the row").toHaveClass("text-warning");
     expect(screen.getByRole("button", { name: "Remove computer" })).toBeInTheDocument();
   });
 
@@ -195,19 +195,19 @@ describe("Your computers", () => {
     expect(router.state.location.search).toBe("?keep=1");
   });
 
-  it("keeps setups that never finished out of the order and clears them together after the confirm", async () => {
+  it("keeps setups that never finished out of the order and removes them together after the confirm", async () => {
     const user = userEvent.setup();
     const never = { ...computer("u1", "", 0), unfinished: true, token_expires_at: "0001-01-01T00:00:00Z", server_url: "" };
     computers = [...computers, never, { ...never, id: "u2" }];
     mocks.del.mockResolvedValue({ data: undefined });
     renderComputers("/acme/agent?computers=c-laptop");
 
-    expect(await screen.findByText("2 setups never finished")).toBeInTheDocument();
+    expect(await screen.findByText(/2 setups never finished/)).toBeInTheDocument();
     expect(order()).toEqual(["laptop", "build-box"]);
     expect(screen.queryByText("#3")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clear" }));
-    await user.click(await within(await screen.findByRole("dialog", { name: /Clear these 2 setups/ })).findByRole("button", { name: "Clear" }));
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(await within(await screen.findByRole("dialog", { name: /Remove these 2 setups/ })).findByRole("button", { name: "Remove" }));
     await waitFor(() => expect(mocks.del).toHaveBeenCalledTimes(2));
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u1");
     expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/u2");
@@ -249,7 +249,7 @@ describe("Your computers", () => {
     renderComputers("/acme/agent?computers=c-box");
 
     await screen.findByRole("note");
-    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+ days ago/)).toHaveClass("text-warning");
+    expect(within(screen.getByRole("region", { name: "Details" })).getByText(/seen \d+d ago/)).toHaveClass("text-warning");
         await user.click(screen.getByRole("button", { name: "Remove computer" }));
     expect(await screen.findByRole("dialog", { name: "Remove build-box?" })).toBeInTheDocument();
     expect(mocks.del).not.toHaveBeenCalled();

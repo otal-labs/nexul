@@ -157,7 +157,7 @@ describe("ProjectLinkForm", () => {
     mocks.del.mockResolvedValue({});
     renderForm({ project_id: "proj-1", computers: ["c2"], checkouts: [] });
 
-    await user.click(await screen.findByRole("button", { name: "Use defaults" }));
+    await user.click(await screen.findByRole("button", { name: "Reset to defaults" }));
 
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/projects/proj-1"));
   });

@@ -66,11 +66,8 @@ export const STALE_OFFLINE_DAYS = 7;
 
 const staleSince = (lastSeen: string) => daysAgo(lastSeen) >= STALE_OFFLINE_DAYS;
 
-// "2h ago" for a recent sighting, "15 days ago" once it is days old.
-export const seenAgo = (lastSeen: string) => {
-  const days = daysAgo(lastSeen);
-  return days >= 2 ? `${days} days ago` : formatRelativeTime(lastSeen);
-};
+// "3h ago", "15d ago": short units, so a state line never wraps.
+export const seenAgo = (lastSeen: string) => formatRelativeTime(lastSeen);
 
 export interface Lane {
   tone: SettingsStatusTone;

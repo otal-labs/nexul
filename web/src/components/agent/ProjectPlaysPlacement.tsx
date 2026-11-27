@@ -45,7 +45,7 @@ export const ProjectPlaysPlacement = ({ projectId }: ProjectPlaysPlacementProps)
 
   return (
     keys.length > 0 && (
-      <section aria-labelledby="plays-land" className="space-y-2">
+      <section aria-labelledby="plays-land" className="space-y-2 py-3">
         <h3 id="plays-land" className="text-xs font-medium text-muted-foreground">
           Where its plays land now
         </h3>
