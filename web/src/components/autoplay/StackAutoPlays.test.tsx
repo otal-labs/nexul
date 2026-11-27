@@ -207,7 +207,7 @@ describe("a stack play's auto plays", () => {
     expect(mocks.patch.mock.calls[0]?.[1]).not.toHaveProperty("run_as_me");
 
     await user.click(await screen.findByRole("button", { name: /When a stack/ }));
-    await user.click(await screen.findByRole("button", { name: "Run as me" }));
+    await pickOption(user, "Runs as", "Run as me");
     await user.click(footer("Save"));
     await waitFor(() => expect(mocks.patch).toHaveBeenCalledTimes(2));
     expect(mocks.patch.mock.calls[1]?.[1]).toMatchObject({ run_on: "person", run_as_me: true });

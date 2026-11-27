@@ -33,6 +33,8 @@ const ComputerPill = ({ computer, struck }: ComputerPillProps) => {
         <span role="img" aria-label="Offline" className={cn("size-1.5 shrink-0 rounded-full border", stale ? "border-warning-mark" : "border-muted-foreground")} />
       )}
       <span className="truncate">{computer.name}</span>
+      {stale && <span aria-hidden className="shrink-0 text-muted-foreground">· {days}d</span>}
+      {!struck && !online && <span className="sr-only">, offline{stale ? ` ${days} ${days === 1 ? "day" : "days"}` : ""}</span>}
     </span>
   );
 };

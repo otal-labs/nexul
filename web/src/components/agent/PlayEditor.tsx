@@ -90,15 +90,15 @@ export const PlayEditor = ({ play, onClose, onHistory }: PlayEditorProps) => {
         <PlayNeedsField control={control} bare />
       </ComposerSection>
       <EditorFooter>
-        {onDelete && (
-          <ActionButton permission="plays:delete" verb="delete plays" type="button" variant="ghost" liveClassName="text-destructive hover:text-destructive" onClick={onDelete}>
-            Delete
-          </ActionButton>
-        )}
         <ActionButton permission="plays:read" verb="read play history" type="button" variant="ghost" onClick={onHistory}>
           History
         </ActionButton>
         <span className="flex-1" />
+        {onDelete && (
+          <ActionButton permission="plays:delete" verb="delete plays" type="button" variant="ghost" className="mr-3" liveClassName="text-destructive hover:text-destructive" onClick={onDelete}>
+            Delete
+          </ActionButton>
+        )}
         <Button type="button" variant="outline" onClick={() => void back()}>
           Cancel
         </Button>

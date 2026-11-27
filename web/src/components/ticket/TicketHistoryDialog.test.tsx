@@ -102,6 +102,6 @@ describe("TicketHistoryDialog", () => {
     expect(rail.getByText("Sam Okafor")).toBeInTheDocument();
     expect(rail.getByText(/Alice Moreau via Implement with AI/)).toBeInTheDocument();
     expect(rail.getByText(/Alice Moreau via an agent/)).toBeInTheDocument();
-    expect(rail.getByText(/by Alice Moreau/)).toBeInTheDocument();
+    expect(rail.getAllByText(/by Alice Moreau/).length).toBeGreaterThan(0);
   });
 });

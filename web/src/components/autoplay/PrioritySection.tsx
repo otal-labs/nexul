@@ -2,7 +2,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 
 import type { AutoPlayLevel } from "@nexul/client-core/autoPlayText";
 
-import { ComposerSection, InlineSelect } from "@/components/autoplay/ComposerControls";
+import { ComposerSection, inlineActionClass, InlineSelect } from "@/components/autoplay/ComposerControls";
 import { PriorityRuleRow } from "@/components/autoplay/PriorityRuleRow";
 import { blankRule, LEVEL_OPTIONS, SUBJECT_FIELDS, type AutoPlayDraft } from "@/models/AutoPlay";
 
@@ -32,7 +32,7 @@ export const PrioritySection = () => {
             disabled={formState.disabled}
           />
           {!formState.disabled && (
-            <button type="button" onClick={add} className="rounded-sm text-xs text-muted-foreground hover:text-foreground focus-visible:text-foreground">
+            <button type="button" onClick={add} className={inlineActionClass}>
               + Add a priority rule
             </button>
           )}

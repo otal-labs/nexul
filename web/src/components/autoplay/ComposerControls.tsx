@@ -62,4 +62,7 @@ export const RemoveIcon = ({ label, onClick }: { label: string; onClick: () => v
   <QuietIcon label={label} onClick={onClick} icon={XIcon} />
 );
 
+// The muted text button that adds a row in an editor: "+ Add a condition", "+ Add a priority rule", "+ Add auto play".
+export const inlineActionClass = "rounded-sm text-row text-muted-foreground hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline";
+
 export const ComposerSection = ({ title, children }: { title: string; children: ReactNode }) => <EditorRow label={title}>{children}</EditorRow>;
