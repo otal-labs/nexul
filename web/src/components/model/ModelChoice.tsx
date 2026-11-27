@@ -25,27 +25,31 @@ interface ModelChoiceProps {
 // The model button, a hairline, the options' name, then its options button, in one frame; a model with no options shows the model alone.
 export const ModelChoice = ({ providers, value, options, onPick, onOptions, label, allowDefault = false, defaultLabel, disabled = false, mark = true, className }: ModelChoiceProps) => {
   const modelOptions = findModel(providers, value)?.options ?? [];
+  const frame = "flex h-full items-center rounded-md border border-input shadow-xs dark:bg-input/20";
   return (
-    <div className={cn("inline-flex h-8 min-w-0 items-center rounded-md border border-input shadow-xs dark:bg-input/20", className)}>
-      <ModelPicker
-        providers={providers}
-        value={value}
-        onChange={onPick}
-        label={label}
-        allowDefault={allowDefault}
-        {...(defaultLabel && { defaultLabel })}
-        disabled={disabled}
-        mark={mark}
-        className={cn(INNER, "min-w-0 flex-1")}
-      />
-      {modelOptions.length > 0 && <span aria-hidden className="h-4 w-px shrink-0 bg-border" />}
-      {/* Names the second control, 16px from the model button. */}
+    // The model and its options are one right-aligned pair, 8px apart: the model takes the width, Effort about 8rem.
+    <div className={cn("inline-flex h-8 min-w-0 items-center gap-2", className)}>
+      <div className={cn(frame, "min-w-0 flex-1")}>
+        <ModelPicker
+          providers={providers}
+          value={value}
+          onChange={onPick}
+          label={label}
+          allowDefault={allowDefault}
+          {...(defaultLabel && { defaultLabel })}
+          disabled={disabled}
+          mark={mark}
+          className={cn(INNER, "min-w-0 flex-1")}
+        />
+      </div>
       {modelOptions.length > 0 && (
-        <span aria-hidden className="ml-4 shrink-0 text-xs text-muted-foreground">
-          Effort
-        </span>
+        <div className={cn(frame, "w-32 shrink-0")}>
+          <span aria-hidden className="pl-2.5 text-xs text-muted-foreground">
+            Effort
+          </span>
+          <ModelOptionsPicker options={modelOptions} value={options} onChange={onOptions} label={`${label} options`} disabled={disabled} className={cn(INNER, "min-w-0 flex-1")} />
+        </div>
       )}
-      <ModelOptionsPicker options={modelOptions} value={options} onChange={onOptions} label={`${label} options`} disabled={disabled} className={cn(INNER, "shrink-0")} />
     </div>
   );
 };

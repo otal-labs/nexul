@@ -85,7 +85,22 @@ describe("where a project's plays land now", () => {
     renderComputers("/acme/agent?computers=project%3Aproj-1");
 
     const section = await screen.findByRole("region", { name: "Where its plays land now" });
-    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is skipped while offline.");
+    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is offline.");
     expect(within(section).queryByRole("listitem")).not.toBeInTheDocument();
+  });
+
+  it("names a computer the project's own list leaves out beside the ones that are offline", async () => {
+    const base = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/pairing/projects") return Promise.resolve({ data: { links: [{ project_id: "proj-1", computers: ["c-desk"], checkouts: [] }] } });
+      if (url.startsWith("/api/pairing/projects/proj-1/placement")) {
+        return Promise.resolve({ data: { answers: [{ needs: [], computer_id: "c-desk", passed_over: [] }, { needs: ["windows-vm"], computer_id: "c-desk", passed_over: [] }] } });
+      }
+      return base(url);
+    });
+    renderComputers("/acme/agent?computers=project%3Aproj-1");
+
+    const section = await screen.findByRole("region", { name: "Where its plays land now" });
+    expect(await within(section).findByText(/All 3 plays go to/)).toHaveTextContent("All 3 plays go to desk. winbox is not in this project's computers.");
   });
 });
